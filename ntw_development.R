@@ -30,9 +30,10 @@ library(ggplot2)
 data <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
   # remove empty lines...  
 
+data <- filter(data, date.pmd == "") # remove pmds
+
 ## add julian columns
 # change current columns to date format
-
 data <- data[,-18] # remove "X" column
 data <- rename(data, date.hatch = hatch.date) # for consistency
 
@@ -44,11 +45,43 @@ data$date.5th <- as.Date(data$date.5th, format = "%m/%d/%y")
 data$date.wander <- as.Date(data$date.wander, format = "%m/%d/%y")  
 
 # make new julian columns
-data$jdate.hatch <- format(data$date.hatch, "%j")
+data$jdate.hatch <- as.numeric(format(data$date.hatch, "%j"))
+data$jdate.2nd <- as.numeric(format(data$date.2nd, "%j"))
+data$jdate.3rd <- as.numeric(format(data$date.3rd, "%j"))
+data$jdate.4th <- as.numeric(format(data$date.4th, "%j"))
+data$jdate.5th <- as.numeric(format(data$date.5th, "%j"))
+data$jdate.wander <- as.numeric(format(data$date.wander, "%j")) # breaks (ie doesnt format) if empty?
 
 # light analysis ----------------------------------------------------------
 
 # for 230207: look at average instar masses + time to instars for all groups (no filtering)
 
+### average masses
+mass <- data %>% group_by(treatment) %>%
+  summarise(n = n(),
+            avg.mass.3rd = mean(mass.3rd, na.rm=T), sd.mass.3rd = sd(mass.3rd, na.rm=T),
+            avg.mass.4th = mean(mass.4th, na.rm=T), sd.mass.4rd = sd(mass.4th, na.rm=T),
+            avg.mass.5th = mean(mass.5th, na.rm=T), sd.mass.5th = sd(mass.5th, na.rm=T))
+
+### average time between instars
+# make new "time to..." for each instar
+time <- mutate(data, time.to.2nd = jdate.2nd - jdate.hatch,
+                    time.to.3rd = jdate.3rd - jdate.hatch,
+                    time.to.4th = jdate.4th - jdate.hatch,
+                    time.to.5th = jdate.5th - jdate.hatch,
+                    time.to.wander = jdate.wander - jdate.hatch) %>%
+       group_by(treatment) %>%
+       summarise(n = n(),
+                 avg.time.to.2nd = mean(time.to.2nd, na.rm=T), sd.time.to.2nd = sd(time.to.2nd, na.rm=T),
+                 avg.time.to.3rd = mean(time.to.3rd, na.rm=T), sd.time.to.3rd = sd(time.to.3rd, na.rm=T),
+                 avg.time.to.4th = mean(time.to.4th, na.rm=T), sd.time.to.4th = sd(time.to.4th, na.rm=T),
+                 avg.time.to.5th = mean(time.to.5th, na.rm=T), sd.time.to.5th = sd(time.to.5th, na.rm=T),
+                 avg.time.to.wander = mean(time.to.wander, na.rm=T), sd.time.to.wander = sd(time.to.wander, na.rm=T))
+
+stats <- merge(mass, time, by=c("treatment", "n"))
+
+### plots
+
+mass.plot <- ggpplot(stats, aes(x=as.factor(treatment), y=))
 
   
