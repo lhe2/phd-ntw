@@ -25,10 +25,30 @@
 
 library(dplyr)
 library(ggplot2)
-library(readr)
+#library(readr)
 
 data <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
-  # remove empties...  
-  
-  
+  # remove empty lines...  
+
+## add julian columns
+# change current columns to date format
+
+data <- data[,-18] # remove "X" column
+data <- rename(data, date.hatch = hatch.date) # for consistency
+
+data$date.hatch <- as.Date(data$date.hatch, format = "%m/%d/%y")
+data$date.2nd <- as.Date(data$date.2nd, format = "%m/%d/%y")
+data$date.3rd <- as.Date(data$date.3rd, format = "%m/%d/%y")
+data$date.4th <- as.Date(data$date.4th, format = "%m/%d/%y")
+data$date.5th <- as.Date(data$date.5th, format = "%m/%d/%y")
+data$date.wander <- as.Date(data$date.wander, format = "%m/%d/%y")  
+
+# make new julian columns
+data$jdate.hatch <- format(data$date.hatch, "%j")
+
+# light analysis ----------------------------------------------------------
+
+# for 230207: look at average instar masses + time to instars for all groups (no filtering)
+
+
   
