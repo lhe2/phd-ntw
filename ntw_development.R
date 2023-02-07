@@ -82,6 +82,7 @@ stats <- merge(mass, time, by=c("treatment", "n"))
 
 ### plots
 
-mass.plot <- ggpplot(stats, aes(x=as.factor(treatment), y=))
+#mass.plot <- ggpplot(stats, aes(x=as.factor(treatment), y=))
+  # hit a snag when i realised the y won't work the way i want it to here...
 
   
