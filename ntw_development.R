@@ -30,11 +30,15 @@ library(ggplot2)
 data <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
   # remove empty lines...  
 
+data_notes <- data[c(1:3,31)] 
+data <- data[,-31] # save notes column in a different df and remove from main df
+
 data <- filter(data, date.pmd == "") # remove pmds
+  # // TODO: calculate # pmds
 
 ## add julian columns
 # change current columns to date format
-data <- data[,-18] # remove "X" column
+#data <- data[,-18] # remove "X" column
 data <- rename(data, date.hatch = hatch.date) # for consistency
 
 data$date.hatch <- as.Date(data$date.hatch, format = "%m/%d/%y")
@@ -43,6 +47,7 @@ data$date.3rd <- as.Date(data$date.3rd, format = "%m/%d/%y")
 data$date.4th <- as.Date(data$date.4th, format = "%m/%d/%y")
 data$date.5th <- as.Date(data$date.5th, format = "%m/%d/%y")
 data$date.wander <- as.Date(data$date.wander, format = "%m/%d/%y")  
+data$date.pupate <- as.Date(data$date.pupate, format = "%m/%d/%y") 
 
 # make new julian columns
 data$jdate.hatch <- as.numeric(format(data$date.hatch, "%j"))
@@ -51,6 +56,7 @@ data$jdate.3rd <- as.numeric(format(data$date.3rd, "%j"))
 data$jdate.4th <- as.numeric(format(data$date.4th, "%j"))
 data$jdate.5th <- as.numeric(format(data$date.5th, "%j"))
 data$jdate.wander <- as.numeric(format(data$date.wander, "%j")) # breaks (ie doesnt format) if empty?
+data$jdate.pupate <- as.numeric(format(data$date.pupate, "%j"))
 
 # light analysis ----------------------------------------------------------
 
@@ -69,16 +75,18 @@ time <- mutate(data, time.to.2nd = jdate.2nd - jdate.hatch,
                     time.to.3rd = jdate.3rd - jdate.hatch,
                     time.to.4th = jdate.4th - jdate.hatch,
                     time.to.5th = jdate.5th - jdate.hatch,
-                    time.to.wander = jdate.wander - jdate.hatch) %>%
+                    time.to.wander = jdate.wander - jdate.hatch,
+                    time.to.pupate = jdate.pupate - jdate.hatch)%>%
        group_by(treatment) %>%
        summarise(n = n(),
                  avg.time.to.2nd = mean(time.to.2nd, na.rm=T), sd.time.to.2nd = sd(time.to.2nd, na.rm=T),
                  avg.time.to.3rd = mean(time.to.3rd, na.rm=T), sd.time.to.3rd = sd(time.to.3rd, na.rm=T),
                  avg.time.to.4th = mean(time.to.4th, na.rm=T), sd.time.to.4th = sd(time.to.4th, na.rm=T),
                  avg.time.to.5th = mean(time.to.5th, na.rm=T), sd.time.to.5th = sd(time.to.5th, na.rm=T),
-                 avg.time.to.wander = mean(time.to.wander, na.rm=T), sd.time.to.wander = sd(time.to.wander, na.rm=T))
+                 avg.time.to.wander = mean(time.to.wander, na.rm=T), sd.time.to.wander = sd(time.to.wander, na.rm=T),
+                 avg.time.to.pupate = mean(time.to.pupate, na.rm=T), sd.time.to.pupate = sd(time.to.pupate, na.rm=T))
 
-stats <- merge(mass, time, by=c("treatment", "n"))
+allstats <- merge(mass, time, by=c("treatment", "n"))
 
 ### plots
 
