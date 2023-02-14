@@ -20,6 +20,8 @@
     # 330: 0, 1 (ptnlly worth filtering)
     # 337: 1, 2 (ptnlly worth filtering)
 
+# survival stats
+
 
 # setup -------------------------------------------------------------------
 
@@ -67,7 +69,8 @@ mass <- data %>% group_by(treatment) %>%
   summarise(n = n(),
             avg.mass.3rd = mean(mass.3rd, na.rm=T), sd.mass.3rd = sd(mass.3rd, na.rm=T),
             avg.mass.4th = mean(mass.4th, na.rm=T), sd.mass.4rd = sd(mass.4th, na.rm=T),
-            avg.mass.5th = mean(mass.5th, na.rm=T), sd.mass.5th = sd(mass.5th, na.rm=T))
+            avg.mass.5th = mean(mass.5th, na.rm=T), sd.mass.5th = sd(mass.5th, na.rm=T),
+            avg.mass.wander = mean(mass.wander, na.rm=T), sd.mass.wander = sd(mass.wander, na.rm=T))
 
 ### average time between instars
 # make new "time to..." for each instar
