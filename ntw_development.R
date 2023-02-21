@@ -29,13 +29,18 @@ library(dplyr)
 library(ggplot2)
 #library(readr)
 
-data <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
+data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
   # remove empty lines...  
 
-data_notes <- data[c(1:3,31)] 
+# making some subsets
+data_notes <- data_all[c(1:3,31)] 
 data <- data[,-31] # save notes column in a different df and remove from main df
 
-data <- filter(data, date.pmd == "") # remove pmds
+data <- filter(data_all, date.pmd == "") # remove pmds
+
+data_pmds <- filter(data_all, date.pmd != "")
+data_pmds <- data_pmds[-2,] # remove UID 1007 bc never existed
+data_pmds <- filter(data_pmds, notes != "squished") # remove ones that got squished as 1sts
   # // TODO: calculate # pmds
 
 ## add julian columns
