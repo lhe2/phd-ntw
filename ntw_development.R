@@ -27,6 +27,7 @@
 
 library(dplyr)
 library(ggplot2)
+library(tidyr)
 #library(readr)
 
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
@@ -43,10 +44,28 @@ data_pmds <- data_pmds[-2,] # remove UID 1007 bc never existed
 data_pmds <- filter(data_pmds, notes != "squished") # remove ones that got squished as 1sts
   # // TODO: calculate # pmds
 
+# pivot longer
+#longtest <- pivot_longer(data, cols = starts_with(c("date", "mass", "h")),
+#                         names_to = c("date", "mass", "molt_status"),
+#                         names_sep = ("."),
+#                         names_prefix = c("date.", "mass.", "h."))
+
+data <- rename(data, date.hatch = hatch.date) # for consistency
+data <- data[-23,] # take out 'date.15' column
+
+longtest <- pivot_longer(data, cols = starts_with(c("date", "mass", "h")),
+                        names_to = c(".value", "instar"),
+                        #names_sep = ".",
+                        values_drop_na = TRUE,
+                        names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)"))
+
+longtest <- longtest %>% rename(molt.status = h) %>%
+  mutate(date = as.Date(date, format = "%m/%d/%y"),
+         jdate = as.numeric(format(date, "%j")))
+
 ## add julian columns
 # change current columns to date format
 #data <- data[,-18] # remove "X" column
-data <- rename(data, date.hatch = hatch.date) # for consistency
 
 data$date.hatch <- as.Date(data$date.hatch, format = "%m/%d/%y")
 data$date.2nd <- as.Date(data$date.2nd, format = "%m/%d/%y")
