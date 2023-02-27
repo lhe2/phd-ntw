@@ -33,15 +33,16 @@ library(tidyr)
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
   # remove empty lines...  
 
-# making some subsets
-data_notes <- data_all[c(1:3,31)] 
-data <- data[,-31] # save notes column in a different df and remove from main df
+# initial cleaning: making some subsets, removing some samples
+data_notes <- data_all[c(1:3,31)] # save data notes elsewhere
 
-data <- filter(data_all, date.pmd == "") # remove pmds
-
-data_pmds <- filter(data_all, date.pmd != "")
+data_pmds <- filter(data_all, date.pmd != "") # save pmd info elsewhere
 data_pmds <- data_pmds[-2,] # remove UID 1007 bc never existed
 data_pmds <- filter(data_pmds, notes != "squished") # remove ones that got squished as 1sts
+
+# final cleanup of main analysis df
+data <- data_all %>% filter(date.pmd == "") %>% select(-c("notes", "date.15"))
+
   # // TODO: calculate # pmds
 
 # pivot longer
@@ -50,8 +51,9 @@ data_pmds <- filter(data_pmds, notes != "squished") # remove ones that got squis
 #                         names_sep = ("."),
 #                         names_prefix = c("date.", "mass.", "h."))
 
-data <- rename(data, date.hatch = hatch.date) # for consistency
-data <- data[-23,] # take out 'date.15' column
+data <- rename(data, date.hatch = hatch.date) # for consistency (// TODO: fix this in main data sheet)
+
+# // TODO: autoconvert all dates to julian (so i dont need to do this when updating the csv every time)
 
 longtest <- pivot_longer(data, cols = starts_with(c("date", "mass", "h")),
                         names_to = c(".value", "instar"),
