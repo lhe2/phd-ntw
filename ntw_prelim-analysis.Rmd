@@ -3,6 +3,10 @@ title: "NTW prelim data analysis"
 output: html_notebook
 ---
 
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, include = FALSE)
+```
+
 # information
 
 here is code for some analysis of preliminary NTW experiments. as usual i keep making 50 different new files for things bc im indecisive about how to do things
@@ -33,7 +37,7 @@ experiment groups:
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-library(data.table) #for setDT
+#library(data.table) #for setDT
 ```
 
 # load in data and clean
@@ -54,6 +58,44 @@ data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}"), .after = 1) %>% # after isnt working idky
   mutate(across(starts_with("jdate."), as.numeric))
 
+# create subsets
+data_A <- data[data$expt.group == "A",]
+data_B <- data[data$expt.group == "B",]
+
 ```
 
+# stats... pt A
+
+```{r}
+avgmass_A <- data_A %>% group_by(treatment) %>%
+  summarise(n = n(),
+            log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
+            log.avg.mass.4th = mean(log(mass.4th), na.rm=T), sd.mass.4rd = sd(log(mass.4th), na.rm=T),
+            log.avg.mass.5th = mean(log(mass.5th), na.rm=T), sd.mass.5th = sd(log(mass.5th), na.rm=T),
+            log.avg.mass.wander = mean(log(mass.wander), na.rm=T), sd.mass.wander = sd(log(mass.wander), na.rm=T))
+
+adultmass_A <- data_A %>% group_by(treatment, sex) %>%
+  summarise(n=n(),
+            avg.mass.pupa = mean(mass.pupa, na.rm=T), sd.mass.pupa = sd(mass.pupa, na.rm=T),
+            avg.mass.adult = mean(mass.adult, na.rm=T), sd.mass.pupa = sd(mass.pupa, na.rm=T))
+
+time_A <- mutate(data_A, time.to.2nd = jdate.2nd - jdate.hatch,
+                    time.to.3rd = jdate.3rd - jdate.hatch,
+                    time.to.4th = jdate.4th - jdate.hatch,
+                    time.to.5th = jdate.5th - jdate.hatch,
+                    time.to.wander = jdate.wander - jdate.hatch,
+                    time.to.pupate = jdate.pupate - jdate.hatch,
+                    time.to.eclose = jdate.eclose - jdate.hatch)%>%
+       group_by(treatment) %>%
+       summarise(n = n(),
+                 avg.time.to.2nd = mean(time.to.2nd, na.rm=T), sd.time.to.2nd = sd(time.to.2nd, na.rm=T),
+                 avg.time.to.3rd = mean(time.to.3rd, na.rm=T), sd.time.to.3rd = sd(time.to.3rd, na.rm=T),
+                 avg.time.to.4th = mean(time.to.4th, na.rm=T), sd.time.to.4th = sd(time.to.4th, na.rm=T),
+                 avg.time.to.5th = mean(time.to.5th, na.rm=T), sd.time.to.5th = sd(time.to.5th, na.rm=T),
+                 avg.time.to.wander = mean(time.to.wander, na.rm=T), sd.time.to.wander = sd(time.to.wander, na.rm=T),
+                 avg.time.to.pupate = mean(time.to.pupate, na.rm=T), sd.time.to.pupate = sd(time.to.pupate, na.rm=T),
+                 avg.time.to.eclose = mean(time.to.eclose, na.rm=T), sd.time.to.eclose = sd(time.to.eclose, na.rm=T))
+
+allstats <- merge(avgmass_A, time_A, by=c("treatment", "n"))
+```
 
