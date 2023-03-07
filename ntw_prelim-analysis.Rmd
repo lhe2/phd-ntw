@@ -1,0 +1,53 @@
+---
+title: "NTW prelim data analysis"
+output: html_notebook
+---
+
+# information
+
+here is code for some analysis of preliminary NTW experiments. as usual i keep making 50 different new files for things bc im indecisive about how to do things
+
+TODO list: (search `// TODO`)
+
+* create function to convert `date.` to julian
+* create `daysto.` columns (from hatching) for all instars/development timepoints
+
+
+statistics to measure:
+
+* log average weight at instars
+  * h/m considerations...
+* average length of instars
+* survival
+
+
+experiment groups:
+
+* A: 2x2 of mean temp = 26 or 33, with 0 degC fluct or 7 degC fluct
+* B: 
+  * redoing 337 from hatching (A)
+  * 2x2(ish) of entering 260 or 337 treatment at different times (hatch, 3rd, 4th)
+
+# load packages
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+# load in data and clean
+```{r}
+data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
+
+# save wordier notes elsewhere and remove from analysis dataset
+data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "notes"))
+data <- select(data_all, -c("notes")) #not sure if analsis works with this column
+
+# remove squished/non-existent individuals
+data <- data[data$ID != 1002,]
+data <- data[data$ID != 1007,]
+data <- data[data$ID != 1017,]
+```
+
+hi
