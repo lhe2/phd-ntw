@@ -34,13 +34,22 @@ data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", heade
   # remove empty lines...  
 
 # initial cleaning: making some subsets, removing some samples
-data_notes <- data_all[c(1:3,31)] # save data notes elsewhere
+data_notes <- data_all[c(1:3,31)] # save data notes elsewhere (this is currently misaligned!!)
+
+
+# // TO DO: function for julian dates
+
+to_julian <- function(date){
+  
+}
+
+#find_diff # to subtract stuff...
 
 data_pmds <- filter(data_all, date.pmd != "") # save pmd info elsewhere
-data_pmds <- data_pmds[-2,] # remove UID 1007 bc never existed
-data_pmds <- filter(data_pmds, notes != "squished") # remove ones that got squished as 1sts
+data_pmds <- filter(data_pmds, notes != "squished", # remove ones that got squished as 1sts
+                    ID != "1007") # remove UID 1007 bc never existed
 
-# final cleanup of main analysis df
+# main analysis df
 data <- data_all %>% filter(date.pmd == "") %>% select(-c("notes", "date.15"))
 
   # // TODO: calculate # pmds
@@ -53,7 +62,7 @@ data <- data_all %>% filter(date.pmd == "") %>% select(-c("notes", "date.15"))
 
 data <- rename(data, date.hatch = hatch.date) # for consistency (// TODO: fix this in main data sheet)
 
-# // TODO: autoconvert all dates to julian (so i dont need to do this when updating the csv every time)
+  # // TODO: autoconvert all dates to julian (so i dont need to do this when updating the csv every time)
 
 longtest <- pivot_longer(data, cols = starts_with(c("date", "mass", "h")),
                         names_to = c(".value", "instar"),
@@ -65,7 +74,7 @@ longtest <- longtest %>% rename(molt.status = h) %>%
   mutate(date = as.Date(date, format = "%m/%d/%y"),
          jdate = as.numeric(format(date, "%j")))
 
-## add julian columns
+## add julian columns // TODO: do this earlier to make analysing other subsets easier
 # change current columns to date format
 #data <- data[,-18] # remove "X" column
 
@@ -76,6 +85,7 @@ data$date.4th <- as.Date(data$date.4th, format = "%m/%d/%y")
 data$date.5th <- as.Date(data$date.5th, format = "%m/%d/%y")
 data$date.wander <- as.Date(data$date.wander, format = "%m/%d/%y")  
 data$date.pupate <- as.Date(data$date.pupate, format = "%m/%d/%y") 
+data$date.eclose <- as.Date(data$date.eclose, format = "%m/%d/%y") # breaks.. add year in csv 
 
 # make new julian columns
 data$jdate.hatch <- as.numeric(format(data$date.hatch, "%j"))
@@ -85,10 +95,13 @@ data$jdate.4th <- as.numeric(format(data$date.4th, "%j"))
 data$jdate.5th <- as.numeric(format(data$date.5th, "%j"))
 data$jdate.wander <- as.numeric(format(data$date.wander, "%j")) # breaks (ie doesnt format) if empty?
 data$jdate.pupate <- as.numeric(format(data$date.pupate, "%j"))
+data$jdate.eclose <- as.numeric(format(data$date.eclose, "%j"))
 
 # light analysis ----------------------------------------------------------
 
 # for 230207: look at average instar masses + time to instars for all groups (no filtering)
+
+# // TODO: combine relevant code w/ plot code (closer together)
 
 ### average masses
 mass <- data %>% group_by(treatment) %>%
@@ -120,6 +133,20 @@ allstats <- merge(mass, time, by=c("treatment", "n"))
 ### plots
 
 #mass.plot <- ggpplot(stats, aes(x=as.factor(treatment), y=))
-  # hit a snag when i realised the y won't work the way i want it to here...
+  # hit a snag when i realised the y won't work the way i want it to here... --> use 'longtest' df
+
+### pmd stats
+
+stats_pmd$date.pmd = as.Date(stats_pmd$date.pmd, format = "%m/%d/%y")
+stats_pmd$jdate.pmd = as.numeric(format(stats_pmd$date.pmd, format = "%j"))
+stats_pmd$date.hatch = as.Date(stats_pmd$date.hatch, format = "%m/%d/%y")
+stats_pmd$jdate.hatch = as.numeric(format(stats_pmd$date.hatch, format = "%j"))
+
+stats_pmd <- data_all %>% filter(notes != "squished",
+                                 ID != "1007")
+         
+
+#time.to.pmd = jdate.pmd-jdate.hatch)
+
 
   
