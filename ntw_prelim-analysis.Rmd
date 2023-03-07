@@ -77,15 +77,15 @@ avgmass_A <- data_A %>% group_by(treatment) %>%
 adultmass_A <- data_A %>% group_by(treatment, sex) %>%
   summarise(n=n(),
             avg.mass.pupa = mean(mass.pupa, na.rm=T), sd.mass.pupa = sd(mass.pupa, na.rm=T),
-            avg.mass.adult = mean(mass.adult, na.rm=T), sd.mass.pupa = sd(mass.pupa, na.rm=T))
+            avg.mass.adult = mean(mass.adult, na.rm=T), sd.mass.adult = sd(mass.adult, na.rm=T))
 
 time_A <- mutate(data_A, time.to.2nd = jdate.2nd - jdate.hatch,
                     time.to.3rd = jdate.3rd - jdate.hatch,
                     time.to.4th = jdate.4th - jdate.hatch,
                     time.to.5th = jdate.5th - jdate.hatch,
                     time.to.wander = jdate.wander - jdate.hatch,
-                    time.to.pupate = jdate.pupate - jdate.hatch,
-                    time.to.eclose = jdate.eclose - jdate.hatch)%>%
+                    time.to.pupate = jdate.pupate - jdate.wander,
+                    time.to.eclose = jdate.eclose - jdate.15)%>%
        group_by(treatment) %>%
        summarise(n = n(),
                  avg.time.to.2nd = mean(time.to.2nd, na.rm=T), sd.time.to.2nd = sd(time.to.2nd, na.rm=T),
@@ -96,6 +96,6 @@ time_A <- mutate(data_A, time.to.2nd = jdate.2nd - jdate.hatch,
                  avg.time.to.pupate = mean(time.to.pupate, na.rm=T), sd.time.to.pupate = sd(time.to.pupate, na.rm=T),
                  avg.time.to.eclose = mean(time.to.eclose, na.rm=T), sd.time.to.eclose = sd(time.to.eclose, na.rm=T))
 
-allstats <- merge(avgmass_A, time_A, by=c("treatment", "n"))
+allstats_A <- merge(avgmass_A, time_A, by=c("treatment", "n"))
 ```
 
