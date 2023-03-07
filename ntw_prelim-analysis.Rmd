@@ -9,7 +9,6 @@ here is code for some analysis of preliminary NTW experiments. as usual i keep m
 
 TODO list: (search `// TODO`)
 
-* create function to convert `date.` to julian
 * create `daysto.` columns (from hatching) for all instars/development timepoints
 
 
@@ -34,6 +33,7 @@ experiment groups:
 library(dplyr)
 library(ggplot2)
 library(tidyr)
+library(data.table) #for setDT
 ```
 
 # load in data and clean
@@ -48,6 +48,12 @@ data <- select(data_all, -c("notes")) #not sure if analsis works with this colum
 data <- data[data$ID != 1002,]
 data <- data[data$ID != 1007,]
 data <- data[data$ID != 1017,]
+
+# create julian date columns
+data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}"), .after = 1) %>% # after isnt working idky
+  mutate(across(starts_with("jdate."), as.numeric))
+
 ```
 
-hi
+
