@@ -78,36 +78,45 @@ data_B <- long[long$expt.group == "B",]
 # pt A analysis
 
 ```{r}
-growth_A <- data_A %>% group_by(treatment) %>%
+# growth_A <- data_A %>% group_by(treatment) %>%
+#   summarise(n = n(),
+#             log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
+#             log.avg.mass.4th = mean(log(mass.4th), na.rm=T), sd.mass.4rd = sd(log(mass.4th), na.rm=T),
+#             log.avg.mass.5th = mean(log(mass.5th), na.rm=T), sd.mass.5th = sd(log(mass.5th), na.rm=T),
+#             log.avg.mass.wander = mean(log(mass.wander), na.rm=T), sd.mass.wander = sd(log(mass.wander), na.rm=T))
+
+# works!!
+growth_A <- data_A %>% group_by(treatment, instar) %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
   summarise(n = n(),
-            log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
-            log.avg.mass.4th = mean(log(mass.4th), na.rm=T), sd.mass.4rd = sd(log(mass.4th), na.rm=T),
-            log.avg.mass.5th = mean(log(mass.5th), na.rm=T), sd.mass.5th = sd(log(mass.5th), na.rm=T),
-            log.avg.mass.wander = mean(log(mass.wander), na.rm=T), sd.mass.wander = sd(log(mass.wander), na.rm=T))
+            avg.log.mass = mean(log(mass), na.rm = T),
+            sd.log.mass = sd(log(mass), na.rm = T))
 
+# works!!
 adultmass_A <- data_A %>% group_by(treatment, sex) %>%
+  filter(instar == "pupa" | instar == "adult") %>%
   summarise(n=n(),
-            avg.mass.pupa = mean(mass.pupa, na.rm=T), sd.mass.pupa = sd(mass.pupa, na.rm=T),
-            avg.mass.adult = mean(mass.adult, na.rm=T), sd.mass.adult = sd(mass.adult, na.rm=T))
+            avg.log.mass = mean(mass, na.rm = T),
+            sd.log.mass = sd(mass, na.rm = T))
 
-devtime_A <- mutate(data_A, time.to.2nd = jdate.2nd - jdate.hatch,
-                    time.to.3rd = jdate.3rd - jdate.hatch,
-                    time.to.4th = jdate.4th - jdate.hatch,
-                    time.to.5th = jdate.5th - jdate.hatch,
-                    time.to.wander = jdate.wander - jdate.hatch,
-                    time.to.pupate = jdate.pupate - jdate.wander,
-                    time.to.eclose = jdate.eclose - jdate.15)%>%
-       group_by(treatment) %>%
-       summarise(n = n(),
-                 avg.time.to.2nd = mean(time.to.2nd, na.rm=T), sd.time.to.2nd = sd(time.to.2nd, na.rm=T),
-                 avg.time.to.3rd = mean(time.to.3rd, na.rm=T), sd.time.to.3rd = sd(time.to.3rd, na.rm=T),
-                 avg.time.to.4th = mean(time.to.4th, na.rm=T), sd.time.to.4th = sd(time.to.4th, na.rm=T),
-                 avg.time.to.5th = mean(time.to.5th, na.rm=T), sd.time.to.5th = sd(time.to.5th, na.rm=T),
-                 avg.time.to.wander = mean(time.to.wander, na.rm=T), sd.time.to.wander = sd(time.to.wander, na.rm=T),
-                 avg.time.to.pupate = mean(time.to.pupate, na.rm=T), sd.time.to.pupate = sd(time.to.pupate, na.rm=T),
-                 avg.time.to.eclose = mean(time.to.eclose, na.rm=T), sd.time.to.eclose = sd(time.to.eclose, na.rm=T))
+# i think this works...
+devtime_A <- data %>% filter(expt.group == "A") %>%
+  select(-starts_with(c("h", "date", "mass"))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupate = jdate.pupate - jdate.wander,
+         eclose = jdate.eclose - jdate.15) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c(10:16), # pivot differences by stage
+                names_to = "stage",
+                values_to = "days.to",
+                values_drop_na = T)
 
-stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n"))
+#stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n"))
+# breaks bc of all my new pivots!
 ```
 
 # make dfs plottable
