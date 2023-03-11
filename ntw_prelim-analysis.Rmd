@@ -57,7 +57,7 @@ data <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.die
 # remove individuals that didn't survive to pupation
 data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast")
 
-# create julian date columns
+# create julian date columns, additional column fixing
 data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
@@ -85,50 +85,16 @@ data_B <- long[long$expt.group == "B",]
 # pt A analysis
 
 ```{r}
-# works!!
-# growth_A <- data_A %>% group_by(treatment, instar) %>%
-#   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-#   summarise(n = n(),
-#             avg.log.mass = mean(log(mass), na.rm = T),
-#             sd.log.mass = sd(log(mass), na.rm = T))
-
 # for boxplot
 growth_A2 <- data_A %>% group_by(treatment, instar) %>%
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
     mutate(log.mass = log(mass))
 
-# works!!
-# adultmass_A <- data_A %>% group_by(treatment, sex) %>%
-#   filter(instar == "pupa" | instar == "adult") %>%
-#   summarise(n=n(),
-#             avg.log.mass = mean(mass, na.rm = T),
-#             sd.log.mass = sd(mass, na.rm = T))
-
 # for boxplot (lots of extra data but its fine)
 adultmass_A2 <- data_A %>% group_by(treatment, sex) %>%
   filter(instar == "pupa" | instar == "adult")
 
-# works? maybe needs pivot_wider?
-# devtime_A <- data %>% filter(expt.group == "A") %>%
-#   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
-#   mutate("2nd" = jdate.2nd - jdate.hatch,
-#          "3rd" = jdate.3rd - jdate.hatch,
-#          "4th" = jdate.4th - jdate.hatch,
-#          "5th" = jdate.5th - jdate.hatch,
-#          wander = jdate.wander - jdate.hatch,
-#          pupate = jdate.pupate - jdate.wander,
-#          eclose = jdate.eclose - jdate.15) %>%
-#   select(-starts_with("jdate.")) %>%
-#   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
-#                 names_to = "stage",
-#                 values_to = "days.to",
-#                 values_drop_na = T) %>%
-#   group_by(treatment, stage) %>%
-#   summarise(n = n(),
-#             avg.diff = mean(days.to, na.rm = T),
-#             sd.diff = sd(days.to, na.rm = T))
-
-# for boxplot
+# for boxplot (pivot wider later for some reason?)
 devtime_A2 <- data %>% filter(expt.group == "A") %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
@@ -146,11 +112,6 @@ devtime_A2 <- data %>% filter(expt.group == "A") %>%
                 values_drop_na = T) %>%
   group_by(treatment, stage)
 
-
-# works, needs better names though...
-# stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
-#   rename(instar.mass = instar, # mass
-#          instar.duration = stage) # time
 
 stats_A2 <- merge(growth_A2, devtime_A2, all = T) %>%
   rename(instar.mass = instar, # mass
@@ -177,9 +138,6 @@ todo:
 
 ```{r}
 ## larval instar masses
-
-#massA_plot <- ggplot(data = stats_A, aes(x = instar.mass, y = avg.log.mass))
-  # doesn't work there's no spread lol (no individual data points)
 
 massA_plot <- ggplot(data = stats_A2, aes(x = instar.mass, y = log.mass))
 
@@ -311,10 +269,51 @@ devB.l_plot + geom_boxplot(aes(color = factor(trt.stage, level = B_trts))) +
 
 # code dump
 
-things im not using anymore
+things im not using anymore. recently added stuff is at the top
 
 ```{r}
-# growth stats for grp A
+## old stats calculations for grp A (averaged everything -- got rid of this for boxplots to work)
+# growth_A <- data_A %>% group_by(treatment, instar) %>%
+#   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+#   summarise(n = n(),
+#             avg.log.mass = mean(log(mass), na.rm = T),
+#             sd.log.mass = sd(log(mass), na.rm = T))
+
+# adultmass_A <- data_A %>% group_by(treatment, sex) %>%
+#   filter(instar == "pupa" | instar == "adult") %>%
+#   summarise(n=n(),
+#             avg.log.mass = mean(mass, na.rm = T),
+#             sd.log.mass = sd(mass, na.rm = T))
+
+# devtime_A <- data %>% filter(expt.group == "A") %>%
+#   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+#   mutate("2nd" = jdate.2nd - jdate.hatch,
+#          "3rd" = jdate.3rd - jdate.hatch,
+#          "4th" = jdate.4th - jdate.hatch,
+#          "5th" = jdate.5th - jdate.hatch,
+#          wander = jdate.wander - jdate.hatch,
+#          pupate = jdate.pupate - jdate.wander,
+#          eclose = jdate.eclose - jdate.15) %>%
+#   select(-starts_with("jdate.")) %>%
+#   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
+#                 names_to = "stage",
+#                 values_to = "days.to",
+#                 values_drop_na = T) %>%
+#   group_by(treatment, stage) %>%
+#   summarise(n = n(),
+#             avg.diff = mean(days.to, na.rm = T),
+#             sd.diff = sd(days.to, na.rm = T))
+
+# columns need better names...
+# stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
+#   rename(instar.mass = instar, # mass
+#          instar.duration = stage) # time
+
+## old mass @ start of instar plot for grp A
+#vmassA_plot <- ggplot(data = stats_A, aes(x = instar.mass, y = avg.log.mass))
+  # doesn't work bc there's no spread lol (no individual data points)
+
+## old growth stats calc for grp A
 # growth_A <- data_A %>% group_by(treatment) %>%
 #   summarise(n = n(),
 #             log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
