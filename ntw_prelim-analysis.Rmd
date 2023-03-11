@@ -56,7 +56,8 @@ data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == 
 
 # create julian date columns
 data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
-  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}"), .after = 1) %>% # after isnt working idky
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  #relocate(starts_with("jdate."), .after = starts_with("date.")) %>%
   mutate(across(starts_with("jdate."), as.numeric))
 
 # pivot and make subsets
@@ -100,9 +101,9 @@ adultmass_A <- data_A %>% group_by(treatment, sex) %>%
             avg.log.mass = mean(mass, na.rm = T),
             sd.log.mass = sd(mass, na.rm = T))
 
-# i think this works...
+# works? maybe needs pivot_wider?
 devtime_A <- data %>% filter(expt.group == "A") %>%
-  select(-starts_with(c("h", "date", "mass"))) %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
          "4th" = jdate.4th - jdate.hatch,
@@ -111,13 +112,19 @@ devtime_A <- data %>% filter(expt.group == "A") %>%
          pupate = jdate.pupate - jdate.wander,
          eclose = jdate.eclose - jdate.15) %>%
   select(-starts_with("jdate.")) %>%
-  pivot_longer (cols = c(10:16), # pivot differences by stage
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
                 names_to = "stage",
                 values_to = "days.to",
-                values_drop_na = T)
+                values_drop_na = T) %>%
+  group_by(treatment, stage) %>%
+  summarise(n = n(),
+            avg.diff = mean(days.to, na.rm = T),
+            sd.diff = sd(days.to, na.rm = T))
 
-#stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n"))
-# breaks bc of all my new pivots!
+# works, needs better names though...
+stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
+  rename(instar.mass = instar, # mass
+         instar.duration = stage) # time
 ```
 
 # make dfs plottable
