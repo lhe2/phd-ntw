@@ -150,7 +150,45 @@ stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
 
 * check for batch effects (260 and 337)
   * merge 260A and 337A with B if its ok
-* similar analyses for these groups as in A
+* [done?] similar analyses for these groups as in A
+
+```{r}
+# just copied over code from pt A and replaced w Bs
+growth_B <- data_B %>% group_by(treatment, instar) %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+  summarise(n = n(),
+            avg.log.mass = mean(log(mass), na.rm = T),
+            sd.log.mass = sd(log(mass), na.rm = T))
+
+adultmass_B <- data_B %>% group_by(treatment, sex) %>%
+  filter(instar == "pupa" | instar == "adult") %>%
+  summarise(n=n(),
+            avg.log.mass = mean(mass, na.rm = T),
+            sd.log.mass = sd(mass, na.rm = T))
+
+devtime_B <- data %>% filter(expt.group == "B") %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupate = jdate.pupate - jdate.wander,
+         eclose = jdate.eclose - jdate.15) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
+                names_to = "stage",
+                values_to = "days.to",
+                values_drop_na = T) %>%
+  group_by(treatment, stage) %>%
+  summarise(n = n(),
+            avg.diff = mean(days.to, na.rm = T),
+            sd.diff = sd(days.to, na.rm = T))
+
+stats_B <- merge(growth_B, devtime_B, by=c("treatment", "n")) %>%
+  rename(instar.mass = instar, # mass
+         instar.duration = stage) # time
+```
 
 
 
