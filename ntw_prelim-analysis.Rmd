@@ -60,7 +60,8 @@ data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
   mutate(across(starts_with("jdate."), as.numeric),
-         treatment = as.factor(treatment))
+         treatment = as.factor(treatment),
+         trt.stage = paste(treatment,instar.enter, sep = "-"))
 
 # pivot and make subsets
 long <- data %>% select(-(starts_with("date."))) %>%
