@@ -4,7 +4,7 @@ output: html_notebook
 ---
 
 ```{r setup, include=FALSE} 
-knitr::opts_chunk$set(warning = FALSE, include = FALSE)
+knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
 ```
 
 # information
@@ -20,6 +20,7 @@ statistics to measure:
 
 * [done] log average weight at instars
   * h/m considerations... (esp for grp B)
+  * from.E considerations... (only pick 0 and 1?)
 * [done] average length of instars
 * survival
 * A vs B comparisons (26 constant)
@@ -57,8 +58,9 @@ data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == 
 # create julian date columns
 data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-  #relocate(starts_with("jdate."), .after = starts_with("date.")) %>%
-  mutate(across(starts_with("jdate."), as.numeric))
+  #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
+  mutate(across(starts_with("jdate."), as.numeric),
+         treatment = as.factor(treatment))
 
 # pivot and make subsets
 long <- data %>% select(-(starts_with("date."))) %>%
@@ -80,29 +82,51 @@ data_B <- long[long$expt.group == "B",]
 # pt A analysis
 
 ```{r}
-# growth_A <- data_A %>% group_by(treatment) %>%
+# works!!
+# growth_A <- data_A %>% group_by(treatment, instar) %>%
+#   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
 #   summarise(n = n(),
-#             log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
-#             log.avg.mass.4th = mean(log(mass.4th), na.rm=T), sd.mass.4rd = sd(log(mass.4th), na.rm=T),
-#             log.avg.mass.5th = mean(log(mass.5th), na.rm=T), sd.mass.5th = sd(log(mass.5th), na.rm=T),
-#             log.avg.mass.wander = mean(log(mass.wander), na.rm=T), sd.mass.wander = sd(log(mass.wander), na.rm=T))
+#             avg.log.mass = mean(log(mass), na.rm = T),
+#             sd.log.mass = sd(log(mass), na.rm = T))
+
+# for boxplot
+growth_A2 <- data_A %>% group_by(treatment, instar) %>%
+    filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    mutate(log.mass = log(mass))
 
 # works!!
-growth_A <- data_A %>% group_by(treatment, instar) %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-  summarise(n = n(),
-            avg.log.mass = mean(log(mass), na.rm = T),
-            sd.log.mass = sd(log(mass), na.rm = T))
+# adultmass_A <- data_A %>% group_by(treatment, sex) %>%
+#   filter(instar == "pupa" | instar == "adult") %>%
+#   summarise(n=n(),
+#             avg.log.mass = mean(mass, na.rm = T),
+#             sd.log.mass = sd(mass, na.rm = T))
 
-# works!!
-adultmass_A <- data_A %>% group_by(treatment, sex) %>%
-  filter(instar == "pupa" | instar == "adult") %>%
-  summarise(n=n(),
-            avg.log.mass = mean(mass, na.rm = T),
-            sd.log.mass = sd(mass, na.rm = T))
+# for boxplot (lots of extra data but its fine)
+adultmass_A2 <- data_A %>% group_by(treatment, sex) %>%
+  filter(instar == "pupa" | instar == "adult")
 
 # works? maybe needs pivot_wider?
-devtime_A <- data %>% filter(expt.group == "A") %>%
+# devtime_A <- data %>% filter(expt.group == "A") %>%
+#   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+#   mutate("2nd" = jdate.2nd - jdate.hatch,
+#          "3rd" = jdate.3rd - jdate.hatch,
+#          "4th" = jdate.4th - jdate.hatch,
+#          "5th" = jdate.5th - jdate.hatch,
+#          wander = jdate.wander - jdate.hatch,
+#          pupate = jdate.pupate - jdate.wander,
+#          eclose = jdate.eclose - jdate.15) %>%
+#   select(-starts_with("jdate.")) %>%
+#   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
+#                 names_to = "stage",
+#                 values_to = "days.to",
+#                 values_drop_na = T) %>%
+#   group_by(treatment, stage) %>%
+#   summarise(n = n(),
+#             avg.diff = mean(days.to, na.rm = T),
+#             sd.diff = sd(days.to, na.rm = T))
+
+# for boxplot
+devtime_A2 <- data %>% filter(expt.group == "A") %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
@@ -116,31 +140,58 @@ devtime_A <- data %>% filter(expt.group == "A") %>%
                 names_to = "stage",
                 values_to = "days.to",
                 values_drop_na = T) %>%
-  group_by(treatment, stage) %>%
-  summarise(n = n(),
-            avg.diff = mean(days.to, na.rm = T),
-            sd.diff = sd(days.to, na.rm = T))
+  group_by(treatment, stage)
+
 
 # works, needs better names though...
-stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
+# stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
+#   rename(instar.mass = instar, # mass
+#          instar.duration = stage) # time
+
+stats_A2 <- merge(growth_A2, devtime_A2, all = T) %>%
   rename(instar.mass = instar, # mass
          instar.duration = stage) # time
 ```
 
 # make dfs plottable
 
+(i think i did this above!)
+
 ```{r}
 
+# see stats_A
 
 ```
 
 
 # pt A plotting
 
-```{r}
-# larval masses (combine w/ adults?)
+todo:
 
-#massA_plot <- ggplot(data = stats_A)
+* larval growth/dev (maybe combine w/ part B at some point)
+* adult masses
+
+```{r}
+## larval instar masses
+
+#massA_plot <- ggplot(data = stats_A, aes(x = instar.mass, y = avg.log.mass))
+  # doesn't work there's no spread lol (no individual data points)
+
+massA_plot <- ggplot(data = stats_A2, aes(x = instar.mass, y = log.mass))
+
+# this is okay
+massA_plot + geom_boxplot(aes(color = treatment)) +
+  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))")
+  # // TODO: rename treatments/key, recolor graph + key
+
+
+## adult masses
+
+adultA_plot <- ggplot(data = adultmass_A2, aes(x = factor(instar, level = c("pupa", "adult")), y = mass))
+
+adultA_plot + geom_boxplot(aes(color = treatment)) + facet_wrap(~sex) +
+  labs(title = "adult masses", y = "mass (mg)", x = "stage")
+  # // TODO: rename treatments/key, recolor graph + key
 
 
 ```
@@ -153,18 +204,17 @@ stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
 * [done?] similar analyses for these groups as in A
 
 ```{r}
+### NEED TO CONCAT TRT for B!!!
+
+
 # just copied over code from pt A and replaced w Bs
 growth_B <- data_B %>% group_by(treatment, instar) %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-  summarise(n = n(),
-            avg.log.mass = mean(log(mass), na.rm = T),
-            sd.log.mass = sd(log(mass), na.rm = T))
+    filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    mutate(log.mass = log(mass))
 
 adultmass_B <- data_B %>% group_by(treatment, sex) %>%
   filter(instar == "pupa" | instar == "adult") %>%
-  summarise(n=n(),
-            avg.log.mass = mean(mass, na.rm = T),
-            sd.log.mass = sd(mass, na.rm = T))
+  mutate(log.mass = log(mass))
 
 devtime_B <- data %>% filter(expt.group == "B") %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
@@ -180,19 +230,51 @@ devtime_B <- data %>% filter(expt.group == "B") %>%
                 names_to = "stage",
                 values_to = "days.to",
                 values_drop_na = T) %>%
-  group_by(treatment, stage) %>%
-  summarise(n = n(),
-            avg.diff = mean(days.to, na.rm = T),
-            sd.diff = sd(days.to, na.rm = T))
+  group_by(treatment, stage)
 
-stats_B <- merge(growth_B, devtime_B, by=c("treatment", "n")) %>%
+stats_B <- merge(growth_B, devtime_B, all = T) %>%
   rename(instar.mass = instar, # mass
          instar.duration = stage) # time
 ```
 
+# B analysis
 
+(this will be the same as A)
+
+```{r}
+massB_plot <- ggplot(data = stats_B, aes(x = instar.mass, y = log.mass))
+
+# this is okay
+massB_plot + geom_boxplot(aes(color = treatment)) +
+  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))")
+  # // TODO: rename treatments/key, recolor graph + key
+```
+
+
+# A vs B
+
+* compare batch effects
+* maybe do combos here
 
 
 # overall survivorship
 
 * who died? (pmd) pre or post 3rd? did all slow growers die?
+
+
+# code dump
+
+things im not using anymore
+
+```{r}
+# growth stats for grp A
+# growth_A <- data_A %>% group_by(treatment) %>%
+#   summarise(n = n(),
+#             log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
+#             log.avg.mass.4th = mean(log(mass.4th), na.rm=T), sd.mass.4rd = sd(log(mass.4th), na.rm=T),
+#             log.avg.mass.5th = mean(log(mass.5th), na.rm=T), sd.mass.5th = sd(log(mass.5th), na.rm=T),
+#             log.avg.mass.wander = mean(log(mass.wander), na.rm=T), sd.mass.wander = sd(log(mass.wander), na.rm=T))
+
+
+```
+
