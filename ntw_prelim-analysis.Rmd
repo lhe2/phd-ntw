@@ -13,15 +13,18 @@ here is code for some analysis of preliminary NTW experiments. as usual i keep m
 
 TODO list: (search `// TODO`)
 
-* create `daysto.` columns (from hatching) for all instars/development timepoints
+* [done] create `daysto.` columns (from hatching) for all instars/development timepoints
 
 
 statistics to measure:
 
-* log average weight at instars
-  * h/m considerations...
-* average length of instars
+* [done] log average weight at instars
+  * h/m considerations... (esp for grp B)
+* [done] average length of instars
 * survival
+* A vs B comparisons (26 constant)
+* who got stuck
+* pupa development
 
 
 experiment groups:
@@ -46,12 +49,10 @@ data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", heade
 
 # save wordier notes elsewhere and remove from analysis dataset
 data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "notes"))
-data <- select(data_all, -c("notes")) #not sure if analsis works with this column
+data <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died")) # not sure if 'notes' column will mess things up
 
-# remove squished/non-existent individuals
-data <- data[data$ID != 1002,]
-data <- data[data$ID != 1007,]
-data <- data[data$ID != 1017,]
+# remove individuals that didn't survive to pupation
+data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast")
 
 # create julian date columns
 data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
@@ -143,3 +144,10 @@ devtime_A <- data %>% filter(expt.group == "A") %>%
 * check for batch effects (260 and 337)
   * merge 260A and 337A with B if its ok
 * similar analyses for these groups as in A
+
+
+
+
+# overall survivorship
+
+* who died? (pmd) pre or post 3rd? did all slow growers die?
