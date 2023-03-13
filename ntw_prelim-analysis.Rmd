@@ -40,7 +40,7 @@ experiment groups:
 
 # load packages
 
-```{r}
+```{r load libraries}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
@@ -48,7 +48,7 @@ library(tidyr)
 ```
 
 # load in data and clean
-```{r}
+```{r data preprocess + clean}
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
 
 # save wordier notes elsewhere and remove from analysis dataset
@@ -85,7 +85,7 @@ data_B <- long[long$expt.group == "B",]
 
 # pt A analysis
 
-```{r}
+```{r A stats}
 # for boxplot
 growth_A2 <- data_A %>% group_by(treatment, instar) %>%
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
@@ -119,26 +119,16 @@ stats_A2 <- merge(growth_A2, devtime_A2, all = T) %>%
          instar.duration = stage) # time
 ```
 
-# make dfs plottable
-
-(i think i did this above!)
-
-```{r}
-
-# see stats_A
-
-```
-
-
 # pt A plotting
 
 todo:
 
-* larval growth/dev (maybe combine w/ part B at some point)
-* adult masses
+* [done, not B] larval growth/dev (maybe combine w/ part B at some point)
+* [done] adult masses
 
-```{r}
+```{r A plots}
 A_colors <- c("#abd9e9", "#2c7bb6", "#fdae61", "#d7191c")
+A_labels <- c("26°C", "26±7°C", "33°C", "33±7°C")
 
 ## larval instar masses
 
@@ -152,7 +142,7 @@ massA_plot <- ggplot(data = stats_A2, aes(x = instar.mass, y = log.mass))
 
 ggplot(data = stats_A2, aes(y = log.mass)) + geom_boxplot(aes(fill = treatment)) +
   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))") +
-  scale_fill_manual(values = A_colors) + theme_bw() +
+  scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw() +
   facet_grid(~instar.mass, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
@@ -179,7 +169,7 @@ devA.l_plot <- stats_A2 %>% filter(instar.duration == "2nd" | instar.duration ==
 stats_A2 %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = treatment)) +
   labs(title = "larval instar development times", x = "stage", y = "days after hatching") +
-  scale_fill_manual(values = A_colors) + theme_bw() +
+  scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw() +
   facet_grid(~instar.duration, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
@@ -192,18 +182,18 @@ devA.a_plot <- stats_A2 %>% filter(instar.duration == "eclose" | instar.duration
 
 devA.a_plot + geom_boxplot(aes(fill = treatment)) +
   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
-  scale_fill_manual(values = A_colors) + theme_bw()
+  scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw()
 
 ```
 
 
 # pt B analysis
 
-* check for batch effects (260 and 337)
+* [see below] check for batch effects (260 and 337)
   * merge 260A and 337A with B if its ok
 * [done?] similar analyses for these groups as in A
 
-```{r}
+```{r B stats}
 # just copied over code from pt A and replaced w Bs
 growth_B <- data_B %>% group_by(trt.stage) %>%
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
@@ -239,9 +229,10 @@ stats_B <- merge(growth_B, devtime_B, all = T) %>%
 
 (this will be the same as A)
 
-```{r}
+```{r B plots}
 B_trts = c("260-hatch", "337-hatch", "337-3rd", "337-4th")
 B_colors = c("#abd9e9", "#d94701", "#fd8d3c", "#fdbe85")
+B_labels = c("26°C @ hatch", "33±7°C @ hatch", "33±7°C @ 3rd", "33±7°C @ 4th")
 
 ## larval masses
 massB_plot <- ggplot(data = stats_B, aes(x = instar.mass, y = log.mass))
@@ -250,11 +241,10 @@ massB_plot <- ggplot(data = stats_B, aes(x = instar.mass, y = log.mass))
 # massB_plot + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
 #   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
 #   scale_fill_manual(values = B_colors) + theme_bw()
-  # // TODO: rename treatments/key
 
 ggplot(data = stats_B, aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
-  scale_fill_manual(values = B_colors) + theme_bw() +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
   facet_grid(~instar.mass, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
@@ -264,7 +254,6 @@ ggplot(data = stats_B, aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.s
 # 
 # adultB_plot + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
 #   labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
-#   # // TODO: rename treatments/key
 
 ## dev time (larval)
 # done
@@ -277,7 +266,7 @@ devB.l_plot <- stats_B %>% filter(instar.duration == "2nd" | instar.duration == 
 stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
   labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "treatment") +
-  scale_fill_manual(values = B_colors) + theme_bw() +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
   facet_grid(~instar.duration, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
@@ -298,9 +287,29 @@ stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.
 * maybe do combos here
 
 
-# overall survivorship
+# overall survivorship (analysis)
 
 * who died? (pmd) pre or post 3rd? did all slow growers die?
+
+```{r all pmd stats & plots}
+# use data or long...?
+
+data_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformities", "mass.died")) %>%
+  filter(reason.pmd != "toast", reason.pmd != "squished") %>%
+  mutate(trt.stage = paste(treatment,instar.enter, sep = "-")) %>%
+  group_by(trt.stage, expt.group, reason.pmd) %>%
+  summarise(n=n())
+
+data_pmd[data_pmd==""] <- "survived"
+
+pmd_stats <- data_pmd %>% pivot_wider(names_from = reason.pmd, values_from = n) %>%
+  group_by(trt.stage) %>%
+  replace(is.na(.), 0)
+  #mutate(total = sum(c("survived", "pupa", "pmd", "LP"))) # bleh
+
+
+```
+
 
 
 # code dump
