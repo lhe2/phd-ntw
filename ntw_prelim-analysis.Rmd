@@ -25,9 +25,10 @@ statistics to measure:
 * [done for A, B] average length of instars
 * survival
 * A vs B comparisons (26 constant)
-* pool relevant A+B individuals?
+  * pool relevant A+B individuals --> then stats again?
 * who got stuck
 * pupa development (looking @ % none? idr what i originally meant here)
+* dv coloring (with B only)
 
 
 experiment groups:
@@ -137,23 +138,33 @@ todo:
 * adult masses
 
 ```{r}
+A_colors <- c("#abd9e9", "#2c7bb6", "#fdae61", "#d7191c")
+
 ## larval instar masses
 
 massA_plot <- ggplot(data = stats_A2, aes(x = instar.mass, y = log.mass))
 
 # this is okay
-massA_plot + geom_boxplot(aes(color = treatment)) +
-  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))")
-  # // TODO: rename treatments/key, recolor graph + key
+# massA_plot + geom_boxplot(aes(fill = treatment)) +
+#   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))") +
+#   scale_fill_manual(values = A_colors) + theme_bw()
+#   # // TODO: rename treatments/key
+
+ggplot(data = stats_A2, aes(y = log.mass)) + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))") +
+  scale_fill_manual(values = A_colors) + theme_bw() +
+  facet_grid(~instar.mass, switch="x") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
 ## adult masses
 
 adultA_plot <- ggplot(data = adultmass_A2, aes(x = factor(instar, level = c("pupa", "adult")), y = mass))
 
-adultA_plot + geom_boxplot(aes(color = treatment)) + facet_wrap(~sex) +
-  labs(title = "adult masses", y = "mass (mg)", x = "stage")
-  # // TODO: rename treatments/key, recolor graph + key
+adultA_plot + geom_boxplot(aes(fill = treatment)) + facet_wrap(~sex) +
+  labs(title = "adult masses", y = "mass (mg)", x = "stage") +
+  scale_fill_manual(values = A_colors) + theme_bw()
+  # // TODO: rename treatments/key
 
 
 ## dev time (larval)
@@ -161,8 +172,16 @@ adultA_plot + geom_boxplot(aes(color = treatment)) + facet_wrap(~sex) +
 devA.l_plot <- stats_A2 %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(x = instar.duration, y = days.to))
 
-devA.l_plot + geom_boxplot(aes(color = treatment)) +
-  labs(title = "larval instar development times", x = "stage", y = "days after hatching")
+# devA.l_plot + geom_boxplot(aes(fill = treatment)) +
+#   labs(title = "larval instar development times", x = "stage", y = "days after hatching") +
+#   scale_fill_manual(values = A_colors) + theme_bw()
+
+stats_A2 %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
+  ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "larval instar development times", x = "stage", y = "days after hatching") +
+  scale_fill_manual(values = A_colors) + theme_bw() +
+  facet_grid(~instar.duration, switch="x") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
 
@@ -171,8 +190,9 @@ devA.l_plot + geom_boxplot(aes(color = treatment)) +
 devA.a_plot <- stats_A2 %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to))
 
-devA.a_plot + geom_boxplot(aes(color = treatment)) +
-  labs(title = "post-pupation development times", x = "stage", y = "days after previous stage")
+devA.a_plot + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
+  scale_fill_manual(values = A_colors) + theme_bw()
 
 ```
 
@@ -215,43 +235,59 @@ stats_B <- merge(growth_B, devtime_B, all = T) %>%
          instar.duration = stage) # time
 ```
 
-# B analysis
+# B plotting
 
 (this will be the same as A)
 
 ```{r}
 B_trts = c("260-hatch", "337-hatch", "337-3rd", "337-4th")
+B_colors = c("#abd9e9", "#d94701", "#fd8d3c", "#fdbe85")
 
 ## larval masses
 massB_plot <- ggplot(data = stats_B, aes(x = instar.mass, y = log.mass))
 
 # this is okay
-massB_plot + geom_boxplot(aes(color = factor(trt.stage, level= B_trts))) +
-  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", color = "treatment")
-  # // TODO: rename treatments/key, recolor graph + key
+# massB_plot + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
+#   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
+#   scale_fill_manual(values = B_colors) + theme_bw()
+  # // TODO: rename treatments/key
+
+ggplot(data = stats_B, aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
+  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
+  scale_fill_manual(values = B_colors) + theme_bw() +
+  facet_grid(~instar.mass, switch="x") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
 ## adult masses (data tbd)
 # adultB_plot <- ggplot(data = adultmass_B, aes(x = factor(instar, level = c("pupa", "adult")), y = mass))
 # 
-# adultB_plot + geom_boxplot(aes(color = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
-#   labs(title = "adult masses", y = "mass (mg)", x = "stage", color = "treatment")
-#   # // TODO: rename treatments/key, recolor graph + key
+# adultB_plot + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
+#   labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
+#   # // TODO: rename treatments/key
 
 ## dev time (larval)
 # done
 devB.l_plot <- stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(x = instar.duration, y = days.to))
 
-devB.l_plot + geom_boxplot(aes(color = factor(trt.stage, level = B_trts))) +
-  labs(title = "larval instar development times", x = "stage", y = "days after hatching", color = "treatment")
+# devB.l_plot + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
+#   labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "treatment")
+
+stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
+  ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
+  labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "treatment") +
+  scale_fill_manual(values = B_colors) + theme_bw() +
+  facet_grid(~instar.duration, switch="x") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
+
 
 ## dev time (post-pupation)
 # data tbd!
 # devB.a_plot <- stats_B %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
 #   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to))
 # 
-# devB.a_plot + geom_boxplot(aes(color = treatment)) +
+# devB.a_plot + geom_boxplot(aes(fill = treatment)) +
 #   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage")
 ```
 
