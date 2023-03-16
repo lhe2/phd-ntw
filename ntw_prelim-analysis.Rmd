@@ -282,10 +282,106 @@ stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.
 ```
 
 
-# A vs B
+# compare A vs B
 
 * compare batch effects
-* maybe do combos here
+* maybe do combining of A+B here
+
+```{r analysis A vs B}
+# copying over more code...
+
+compare <- long %>% filter((trt.stage == "337-hatch" | trt.stage == "260-hatch") & (expt.group == "A" | expt.group == "B")) %>%
+  rename(group = expt.group) %>%
+  mutate(grp.trt = paste(group, trt.stage, sep = "-")) %>%
+  relocate(grp.trt, .before = 1)
+
+growth_AB <- compare %>% group_by(grp.trt) %>%
+    filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    mutate(log.mass = log(mass))
+
+adultmass_AB <- compare %>% group_by(grp.trt, sex) %>%
+  filter(instar == "pupa" | instar == "adult") %>%
+  mutate(log.mass = log(mass))
+
+devtime_AB <- data %>% filter((trt.stage == "337-hatch" | trt.stage == "260-hatch") & (expt.group == "A" | expt.group == "B")) %>%
+  rename(group = expt.group) %>% mutate(grp.trt = paste(group, trt.stage, sep = "-")) %>%
+  relocate(grp.trt, .before = 1) %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupate = jdate.pupate - jdate.wander,
+         #eclose = jdate.eclose - jdate.15
+         eclose = jdate.eclose - jdate.pupate) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
+                names_to = "stage",
+                values_to = "days.to",
+                values_drop_na = T) %>%
+  group_by(grp.trt, stage)
+
+stats_AB <- merge(growth_AB, devtime_AB, all = T) %>%
+  rename(instar.mass = instar, # mass
+         instar.duration = stage) # time
+
+```
+
+# plot A vs B
+
+(do a proper test?)
+
+```{r plotting A vs B}
+# using pt A plot code
+
+stats_AB$grp.trt <- factor(stats_AB$grp.trt, c("A-260-hatch", "B-260-hatch", "A-337-hatch", "B-337-hatch"))
+AB_colors <- c("#abd9e9", "#2c7bb6", "#fdae61", "#d7191c")
+AB_labels <- c("A 26°C", "B 26°C","A 33±7°C", "B 33±7°C")
+
+
+## larval instar masses
+
+massAB_plot <- ggplot(data = stats_AB, aes(x = instar.mass, y = log.mass))
+
+ggplot(data = stats_AB, aes(y = log.mass)) + geom_boxplot(aes(fill = grp.trt)) +
+  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "group-treatment") +
+  scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw() +
+  facet_grid(~instar.mass, switch="x") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
+
+
+## adult masses (not plottable rn)
+
+# adultAB_plot <- ggplot(data = adultmass_AB, aes(x = factor(instar, level = c("pupa", "adult")), y = mass))
+# 
+# adultAB_plot + geom_boxplot(aes(fill = grp.trt)) + facet_wrap(~sex) +
+#   labs(title = "adult masses", y = "mass (mg)", x = "stage") +
+#   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw()
+
+
+## dev time (larval)
+# done
+devAB.l_plot <- stats_AB %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
+  ggplot(aes(y = days.to))
+
+devAB.l_plot + geom_boxplot(aes(fill = grp.trt)) + 
+  labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "group-treatment") +
+  scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw() +
+  facet_grid(~instar.duration, switch="x") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
+
+
+
+## dev time (post-pupation) (not doable rn)
+# devAB.a_plot <- stats_AB %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
+#   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to))
+# 
+# devAB.a_plot + geom_boxplot(aes(fill = treatment)) +
+#   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
+#   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw()
+
+```
 
 
 # overall survivorship (analysis)
