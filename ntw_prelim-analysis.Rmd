@@ -269,6 +269,7 @@ stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.
   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
   facet_grid(~instar.duration, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
+  # // TODO: take out the stuck ones...?
 
 
 ## dev time (post-pupation)
@@ -292,21 +293,43 @@ stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.
 * who died? (pmd) pre or post 3rd? did all slow growers die?
 
 ```{r all pmd stats & plots}
-# use data or long...?
+# probably finished
 
 data_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformities", "mass.died")) %>%
-  filter(reason.pmd != "toast", reason.pmd != "squished") %>%
+  filter(reason.pmd != "toast", reason.pmd != "squished", reason.pmd != "empty") %>%
   mutate(trt.stage = paste(treatment,instar.enter, sep = "-")) %>%
-  group_by(trt.stage, expt.group, reason.pmd) %>%
+  group_by(trt.stage, reason.pmd) %>% # grouping by expt.group is wonky (summing is weird)
   summarise(n=n())
 
 data_pmd[data_pmd==""] <- "survived"
 
+# summary table
 pmd_stats <- data_pmd %>% pivot_wider(names_from = reason.pmd, values_from = n) %>%
   group_by(trt.stage) %>%
-  replace(is.na(.), 0)
-  #mutate(total = sum(c("survived", "pupa", "pmd", "LP"))) # bleh
+  replace(is.na(.), 0) %>%
+  mutate(n = sum(c(survived, pupa, pmd, LP))) %>% select(-survived) %>%
+  mutate(pct.pupa = round(pupa/n*100, digits = 1),
+         pct.larva = round(pmd/n*100, digits = 1),
+         pct.LPI = round(LP/n*100, digits = 1),
+         "total pct" = sum(c(pct.pupa, pct.larva, pct.LPI))) %>%
+  rename(larva = pmd, LPI = LP)
 
+# individuals (need to manually reorg table to see better)
+individial_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformities", "mass.died")) %>%
+  filter(reason.pmd == "pmd" | reason.pmd == "LP" | reason.pmd == "pupa") %>%
+  mutate(trt.stage = paste(treatment,instar.enter, sep = "-"), .before = 1) %>%
+  mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
+  mutate(across(starts_with("jdate."), as.numeric),
+         "2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupate = jdate.pupate - jdate.wander) %>%
+  rename("days.to.2nd" = "2nd", "days.to.3rd" = "3rd","days.to.4th" = "4th","days.to.5th" = "5th", "days.to.wander" = wander,"days.to.pupate" = pupate) %>%
+  select(-starts_with(c("jdate.", "h.", "date.", "from.", "instar.", "time.")), -c("treatment", "dv", "mass.adult"))
 
 ```
 
