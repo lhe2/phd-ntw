@@ -5,6 +5,10 @@ output: html_notebook
 
 ```{r setup, include=FALSE} 
 knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
 ```
 
 # information & todo
@@ -24,6 +28,9 @@ TODO / statistics to measure:
   * from.E considerations... (only pick 0 and 1?)
 * [done for A, B] average length of instars
 * [doneish] survival
+  * kaplan meier curves -- see:
+    * https://rviews.rstudio.com/2017/09/25/survival-analysis-with-r/
+    * https://www.emilyzabor.com/tutorials/survival_analysis_in_r_tutorial.html#Packages 
 * [done] A vs B comparisons (26 constant)
   * pool relevant A+B individuals --> then stats again?
 * who got stuck
@@ -42,10 +49,14 @@ experiment groups:
 # load packages
 
 ```{r load libraries}
-library(dplyr)
-library(ggplot2)
-library(tidyr)
-#library(data.table) #for setDT
+# library(dplyr)
+# library(ggplot2)
+# library(tidyr)
+
+# for some reason this broke on 230321 so is now in the setup chunk
+
+#library(data.table) #for setDT (forget why i was thinking about this one)
+#library(survival) # for kaplan-meier
 ```
 
 # load in data and clean
@@ -64,6 +75,7 @@ data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
   mutate(across(starts_with("jdate."), as.numeric),
+         across(starts_with("mass."), as.numeric), # fix adult.mass
          treatment = as.factor(treatment),
          trt.stage = paste(treatment,instar.enter, sep = "-"))
 
@@ -336,16 +348,16 @@ stats_AvB <- merge(growth_AvB, devtime_AvB, all = T) %>%
 ```{r plotting A vs B}
 # using pt A plot code
 
-stats_AB$grp.trt <- factor(stats_AB$grp.trt, c("A-260-hatch", "B-260-hatch", "A-337-hatch", "B-337-hatch"))
+stats_AvB$grp.trt <- factor(stats_AvB$grp.trt, c("A-260-hatch", "B-260-hatch", "A-337-hatch", "B-337-hatch"))
 AB_colors <- c("#abd9e9", "#2c7bb6", "#fdae61", "#d7191c")
 AB_labels <- c("A 26°C", "B 26°C","A 33±7°C", "B 33±7°C")
 
 
 ## larval instar masses
 
-massAB_plot <- ggplot(data = stats_AB, aes(x = instar.mass, y = log.mass))
+massAvB_plot <- ggplot(data = stats_AvB, aes(x = instar.mass, y = log.mass))
 
-ggplot(data = stats_AB, aes(y = log.mass)) + geom_boxplot(aes(fill = grp.trt)) +
+ggplot(data = stats_AvB, aes(y = log.mass)) + geom_boxplot(aes(fill = grp.trt)) +
   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "group-treatment") +
   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw() +
   facet_grid(~instar.mass, switch="x") +
@@ -363,10 +375,10 @@ ggplot(data = stats_AB, aes(y = log.mass)) + geom_boxplot(aes(fill = grp.trt)) +
 
 ## dev time (larval)
 # done
-devAB.l_plot <- stats_AB %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
+devAvB.l_plot <- stats_AvB %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(y = days.to))
 
-devAB.l_plot + geom_boxplot(aes(fill = grp.trt)) + 
+devAvB.l_plot + geom_boxplot(aes(fill = grp.trt)) + 
   labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "group-treatment") +
   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw() +
   facet_grid(~instar.duration, switch="x") +
@@ -375,10 +387,10 @@ devAB.l_plot + geom_boxplot(aes(fill = grp.trt)) +
 
 
 ## dev time (post-pupation) (not doable rn)
-# devAB.a_plot <- stats_AB %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
+# devAvB.a_plot <- stats_AvB %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
 #   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to))
 # 
-# devAB.a_plot + geom_boxplot(aes(fill = treatment)) +
+# devAvB.a_plot + geom_boxplot(aes(fill = treatment)) +
 #   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
 #   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw()
 
@@ -495,6 +507,7 @@ AB_dev %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.d
 # overall survivorship (analysis)
 
 * who died? (pmd) pre or post 3rd? did all slow growers die?
+* visualise: do stacked bars?
 
 ```{r all pmd stats & plots}
 # probably finished
@@ -537,6 +550,10 @@ individial_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformitie
 
 ```
 
+# kaplan-meier curves
+```{r}
+
+```
 
 
 # code dump
