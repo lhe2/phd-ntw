@@ -9,6 +9,8 @@ knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
+library(survival) # for kaplan-meier
+#library(survminer) # maybe, for visualisation
 ```
 
 # information & todo
@@ -53,7 +55,7 @@ experiment groups:
 # library(ggplot2)
 # library(tidyr)
 
-# for some reason this broke on 230321 so is now in the setup chunk
+# for some reason this broke on 230321 so now use the setup chunk
 
 #library(data.table) #for setDT (forget why i was thinking about this one)
 #library(survival) # for kaplan-meier
@@ -507,7 +509,9 @@ AB_dev %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.d
 # overall survivorship (analysis)
 
 * who died? (pmd) pre or post 3rd? did all slow growers die?
-* visualise: do stacked bars?
+  * want to add columns for this!
+  * how to grp trts? (by mean/fluct/instar? or mean-fluct/instar?)
+* visualise: curve + do stacked bars (for an overview)?
 
 ```{r all pmd stats & plots}
 # probably finished
@@ -543,6 +547,8 @@ individial_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformitie
          "3rd" = jdate.3rd - jdate.hatch,
          "4th" = jdate.4th - jdate.hatch,
          "5th" = jdate.5th - jdate.hatch,
+         #stuck = jdate.stuck - jdate.hatch,
+         #was.stuck = ifelse(date.stuck != "", "1", "NA", #not working like i want it to lol
          wander = jdate.wander - jdate.hatch,
          pupate = jdate.pupate - jdate.wander) %>%
   rename("days.to.2nd" = "2nd", "days.to.3rd" = "3rd","days.to.4th" = "4th","days.to.5th" = "5th", "days.to.wander" = wander,"days.to.pupate" = pupate) %>%
@@ -551,7 +557,24 @@ individial_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformitie
 ```
 
 # kaplan-meier curves
+
+* b/g reading
+  * general ideas https://datatab.net/tutorial/survival-analysis
+      * prob use cox to account for instar entered, trt, stuck in 5th
+        * http://www.sthda.com/english/wiki/cox-proportional-hazards-model 
+        * https://rstudio-pubs-static.s3.amazonaws.com/5896_8f0fed2ccbbd42489276e554a05af87e.html 
+* probably use [this](https://dk81.github.io/dkmathstats_site/rvisual-kaplan-meier.html)
+
+
+variables needed
+
+* id, trt, etc (group curves by trt?)
+* time to pmd/event (death as LP, P, L)
+* censorship for other events (stuck)
+
 ```{r}
+
+km <- data %>% transmute()
 
 ```
 
