@@ -39,6 +39,7 @@ TODO / statistics to measure:
 * pupa development (looking @ % none? idr what i originally meant here)
 * dv coloring (with B only)
 * graph a bunch of growth lines + avg growth
+* plot time vs mass (dot plot w/ error bars on both sides)
 
 
 experiment groups:
@@ -61,7 +62,14 @@ experiment groups:
 #library(survival) # for kaplan-meier
 ```
 
-# load in data and clean
+# load in data and clean, labels
+
+outputs
+
+* data_all, data_notes, data (surv to pup)
+  * maybe rename data to data_ec (surv to eclosion)
+* data_A, data_B
+
 ```{r data preprocess + clean}
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
 
@@ -96,9 +104,19 @@ long <- long[long$instar != "in",] # from 'instar.in.trt'?
 data_A <- long[long$expt.group == "A",]
 data_B <- long[long$expt.group == "B",]
 
+# labels
+A_colors <- c("#abd9e9", "#2c7bb6", "#fdae61", "#d7191c")
+A_labels <- c("26°C", "26±7°C", "33°C", "33±7°C")
+
+B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch")
+B_colors = c("#abd9e9", "#fdbe85", "#fd8d3c", "#d94701")
+B_labels = c("26°C @ hatch", "33±7°C @ 4th", "33±7°C @ 3rd", "33±7°C @ hatch")
+
 ```
 
-# pt A analysis
+# group A
+
+## pt A analysis
 
 ```{r A stats}
 # for boxplot
@@ -134,7 +152,7 @@ stats_A2 <- merge(growth_A2, devtime_A2, all = T) %>%
          instar.duration = stage) # time
 ```
 
-# pt A plotting
+## pt A plotting
 
 todo:
 
@@ -142,9 +160,6 @@ todo:
 * [done] adult masses
 
 ```{r A plots}
-A_colors <- c("#abd9e9", "#2c7bb6", "#fdae61", "#d7191c")
-A_labels <- c("26°C", "26±7°C", "33°C", "33±7°C")
-
 ## larval instar masses
 
 massA_plot <- ggplot(data = stats_A2, aes(x = instar.mass, y = log.mass))
@@ -201,11 +216,14 @@ devA.a_plot + geom_boxplot(aes(fill = treatment)) +
 
 ```
 
+# group B
 
-# pt B analysis
+* todo: look at this as a 2x2 (@ hatch, @ 3rd)
+
+## pt B analysis
 
 * [see below] check for batch effects (260 and 337)
-  * merge 260A and 337A with B if its ok
+  * [done] merge 260A and 337A with B if its ok
 * [done?] similar analyses for these groups as in A
 
 ```{r B stats}
@@ -240,15 +258,11 @@ stats_B <- merge(growth_B, devtime_B, all = T) %>%
          instar.duration = stage) # time
 ```
 
-# B plotting
+## B plotting
 
 (this will be the same as A)
 
 ```{r B plots}
-B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch")
-B_colors = c("#abd9e9", "#fdbe85", "#fd8d3c", "#d94701")
-B_labels = c("26°C @ hatch", "33±7°C @ 4th", "33±7°C @ 3rd", "33±7°C @ hatch")
-
 ## larval masses
 massB_plot <- ggplot(data = stats_B, aes(x = instar.mass, y = log.mass))
 
@@ -297,10 +311,12 @@ stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.
 ```
 
 
-# compare A vs B
+# comparing A vs B
 
-* compare batch effects
-* maybe do combining of A+B here
+* to compare batch effects
+* maybe do combining of A+B here [this is done in the AB pool analyses]
+
+## AvB analysis
 
 ```{r analysis A vs B}
 # copying over more code...
@@ -343,9 +359,9 @@ stats_AvB <- merge(growth_AvB, devtime_AvB, all = T) %>%
 
 ```
 
-# plot A vs B
+## AvB plotting
 
-(do a proper test?)
+(do a proper test? compare the distss/means?)
 
 ```{r plotting A vs B}
 # using pt A plot code
@@ -397,11 +413,15 @@ devAvB.l_plot + geom_boxplot(aes(fill = grp.trt)) +
 #   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw()
 
 ```
-# AB pool analysis
+
+# AB pooled
+
+## AB pooled analysis
 
 ```{r AB pool analysis}
 # doing this some groups seem fine to combine
   # // TO DO: futzing around but i think actually keep the grouping separate LOL (i.e. dont list 100 treatments tgt)
+  # i totally cannot remember what this means lol
 # stealing code from AvB
 
 growth_AB <- long %>% group_by(trt.stage) %>%
@@ -436,13 +456,19 @@ stats_AB <- merge(growth_AB, devtime_AB, all = T) %>%
 ```
 
 
-# AB pool plots
+## AB pooled plots
+
+* todo: need to fix the adult ones (check subsetting + variables)
 
 ```{r AB pool plotting}
 # using code from AvB
 
+# create subsets for plotting effect of temp and temp @ instar
 AB_temps <- stats_AB %>% filter(treatment == "260" | treatment == "267" | treatment == "330" | (treatment == "337" & instar.enter == "hatch"))
+AB_adtemps <- adultmass_AB %>% filter(treatment == "260" | treatment == "267" | treatment == "330" | (treatment == "337" & instar.enter == "hatch"))
+
 AB_dev <- stats_AB %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+AB_addev <- adultmass_AB %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
 
 ### plots comparing effect of temps ###
 
@@ -454,10 +480,10 @@ ggplot(data = AB_temps, aes(y = log.mass)) + geom_boxplot(aes(fill = treatment))
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 # adult masses
-adultmass_AB %>% filter(sex != "") %>% # remove the pt B wanderers for now
+AB_adtemps %>% filter(sex != "") %>% # remove the pt B wanderers for now
   ggplot(aes(x = factor(instar, level = c("pupa", "adult")), y = mass)) + geom_boxplot(aes(fill = treatment)) + facet_wrap(~sex) +
   labs(title = "adult masses", y = "mass (mg)", x = "stage") +
-  scale_fill_manual(values = A_colors) + theme_bw()
+  scale_fill_manual(values = A_colors, labels=A_labels) + theme_bw()
 
 # larval dev time
 AB_temps %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
@@ -468,8 +494,8 @@ AB_temps %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 # adult dev time
-AB_temps %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
-  ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
+AB_adtemps %>% filter(instar == "pupa" | instar == "adult") %>%
+  ggplot(aes(x = factor(instar, levels = c("pupa", "adult")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
   scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw()
 
@@ -483,10 +509,11 @@ AB_dev %>% ggplot(aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.stage,
   facet_grid(~instar.mass, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
-# adult masses (data tbd)
-# ggplot(data = adultmass_AB, aes(x = factor(instar, level = c("pupa", "adult")), y = mass)) + 
-#   geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
-#   labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
+# adult masses
+ggplot(data = AB_addev, aes(x = factor(instar, level = c("pupa", "adult")), y = mass)) +
+  geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
+  labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
 
 # larval dev
 AB_dev %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
@@ -497,21 +524,24 @@ AB_dev %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.d
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
-## dev time (post-pupation) (data tbd)
-# AB_dev %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
-#   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
-#   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage")
+# dev time (post-pupation) # this looks wrong... maybe bc theres no data in the other 2 cats yet? (337-hatch is mapping to 337-4th)
+AB_addev %>% filter(instar.duration == "pupa" | instar.duration == "pupate") %>%
+  ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw()
 
 ```
 
 
 
-# overall survivorship (analysis)
+# overall survivorship/kill curves
 
 * who died? (pmd) pre or post 3rd? did all slow growers die?
   * want to add columns for this!
   * how to grp trts? (by mean/fluct/instar? or mean-fluct/instar?)
 * visualise: curve + do stacked bars (for an overview)?
+
+## pmd analysis
 
 ```{r all pmd stats & plots}
 # probably finished
@@ -556,7 +586,7 @@ individial_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformitie
 
 ```
 
-# kaplan-meier curves
+## kaplan-meier curves
 
 * b/g reading
   * general ideas https://datatab.net/tutorial/survival-analysis
@@ -564,6 +594,8 @@ individial_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformitie
         * http://www.sthda.com/english/wiki/cox-proportional-hazards-model 
         * https://rstudio-pubs-static.s3.amazonaws.com/5896_8f0fed2ccbbd42489276e554a05af87e.html 
 * probably use [this](https://dk81.github.io/dkmathstats_site/rvisual-kaplan-meier.html)
+  * https://argoshare.is.ed.ac.uk/healthyr_book/recode-the-data-1.html 
+    * look into [cox.zph](https://argoshare.is.ed.ac.uk/healthyr_book/cox-proportional-hazards-regression.html) for stuck?
 
 
 variables needed
