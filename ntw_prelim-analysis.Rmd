@@ -9,7 +9,7 @@ knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-library(survival) # for kaplan-meier
+#library(survival) # for kaplan-meier
 #library(survminer) # maybe, for visualisation
 ```
 
@@ -421,17 +421,20 @@ devAvB.l_plot + geom_boxplot(aes(fill = grp.trt)) +
 ```{r AB pool analysis}
 # doing this some groups seem fine to combine
   # // TO DO: futzing around but i think actually keep the grouping separate LOL (i.e. dont list 100 treatments tgt)
-  # i totally cannot remember what this means lol
+    # i totally cannot remember what this means lol
 # stealing code from AvB
 
-growth_AB <- long %>% group_by(trt.stage) %>%
+# larva/adult mass @ instars
+  # pupa/adults need to be separated from the larva bc of sex differences
+lmass_AB <- long %>% group_by(trt.stage) %>%
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
     mutate(log.mass = log(mass))
 
-adultmass_AB <- long %>% group_by(trt.stage, sex) %>%
+amass_AB <- long %>% group_by(trt.stage, sex) %>%
   filter(instar == "pupa" | instar == "adult") %>%
   mutate(log.mass = log(mass))
 
+# calculate development time (instar duration), split into larva/adults
 devtime_AB <- data %>% 
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
@@ -449,9 +452,28 @@ devtime_AB <- data %>%
                 values_drop_na = T) %>%
   group_by(trt.stage, stage)
 
-stats_AB <- merge(growth_AB, devtime_AB, all = T) %>%
-  rename(instar.mass = instar, # mass
-         instar.duration = stage) # time
+ldev_AB <- devtime_AB %>% filter(stage == "3rd" | stage == "4th" | stage == "5th" | stage == "wander")
+adev_AB <- devtime_AB %>% filter(stage == "pupate" | stage == "eclose")
+
+
+# merge into larval/adult stats
+lstats_AB <- merge(lmass_AB, ldev_AB, all = T) %>%
+  rename(instar.mass = instar, # mass @ start of instar
+         instar.duration = stage) # duration of instar
+
+astats_AB <- merge(amass_AB, adev_AB, all = T) %>%
+  rename(instar.mass = instar,
+         instar.duration = stage)
+
+
+# create subsets for plotting effect of temp and temp @ instar
+# temp effect subsets
+AB_ltemps <- lstats_AB %>% filter(instar.enter == "hatch")
+AB_atemps <- astats_AB %>% filter(instar.enter == "hatch")
+
+# temp+instar effects subsets
+AB_linstar <- lstats_AB %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+AB_ainstar <- astats_AB %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
 
 ```
 
@@ -462,72 +484,66 @@ stats_AB <- merge(growth_AB, devtime_AB, all = T) %>%
 
 ```{r AB pool plotting}
 # using code from AvB
+# might have fixed the adult plots. should come back to check
+  # post-pupation ones are broken for temps, temp x instar
 
-# create subsets for plotting effect of temp and temp @ instar
-AB_temps <- stats_AB %>% filter(treatment == "260" | treatment == "267" | treatment == "330" | (treatment == "337" & instar.enter == "hatch"))
-AB_adtemps <- adultmass_AB %>% filter(treatment == "260" | treatment == "267" | treatment == "330" | (treatment == "337" & instar.enter == "hatch"))
-
-AB_dev <- stats_AB %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
-AB_addev <- adultmass_AB %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
 
 ### plots comparing effect of temps ###
-
 # larval masses
-ggplot(data = AB_temps, aes(y = log.mass)) + geom_boxplot(aes(fill = treatment)) +
-  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))") +
+AB_ltemps %>% ggplot(aes(y = log.mass)) + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "(temp) mass at start of instar", x = "instar", y = "log(mass (mg))") +
   scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw() +
   facet_grid(~instar.mass, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 # adult masses
-AB_adtemps %>% filter(sex != "") %>% # remove the pt B wanderers for now
-  ggplot(aes(x = factor(instar, level = c("pupa", "adult")), y = mass)) + geom_boxplot(aes(fill = treatment)) + facet_wrap(~sex) +
-  labs(title = "adult masses", y = "mass (mg)", x = "stage") +
+AB_atemps %>% filter(sex != "") %>% # remove the pt B wanderers for now
+  ggplot(aes(x = factor(instar.mass, level = c("pupa", "adult")), y = mass)) + geom_boxplot(aes(fill = treatment)) + facet_wrap(~sex) +
+  labs(title = "(temp) adult masses", y = "mass (mg)", x = "stage") +
   scale_fill_manual(values = A_colors, labels=A_labels) + theme_bw()
 
 # larval dev time
-AB_temps %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
+AB_ltemps %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = treatment)) +
-  labs(title = "larval instar development times", x = "stage", y = "days after hatching") +
+  labs(title = "(temp) larval instar development times", x = "stage", y = "days after hatching") +
   scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw() +
   facet_grid(~instar.duration, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 # adult dev time
-AB_adtemps %>% filter(instar == "pupa" | instar == "adult") %>%
-  ggplot(aes(x = factor(instar, levels = c("pupa", "adult")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
-  labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
+AB_atemps %>% filter(instar.duration == "pupate" | instar.duration == "eclose") %>%
+  ggplot(aes(x = factor(instar.mass, levels = c("pupa", "adult")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "(temp) post-pupation development times", x = "stage", y = "days after previous stage") +
   scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw()
 
 
 ### plots comparing effect of instars ###
-
 # larval masses
-AB_dev %>% ggplot(aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
-  labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
+AB_linstar %>% ggplot(aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
+  labs(title = "(temp x instar) mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
   facet_grid(~instar.mass, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 # adult masses
-ggplot(data = AB_addev, aes(x = factor(instar, level = c("pupa", "adult")), y = mass)) +
+AB_ainstar %>% ggplot(aes(x = factor(instar.mass, level = c("pupa", "adult")), y = mass)) +
   geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
-  labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
+  labs(title = "(temp x instar) adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
 
 # larval dev
-AB_dev %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
+AB_linstar %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
-  labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "treatment") +
+  labs(title = "(temp x instar) larval instar development times", x = "stage", y = "days after hatching", fill = "treatment") +
   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
   facet_grid(~instar.duration, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
 # dev time (post-pupation) # this looks wrong... maybe bc theres no data in the other 2 cats yet? (337-hatch is mapping to 337-4th)
-AB_addev %>% filter(instar.duration == "pupa" | instar.duration == "pupate") %>%
+AB_ainstar %>% filter(instar.duration == "pupa" | instar.duration == "pupate") %>%
   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
-  labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
+  labs(title = "(temp x instar) post-pupation development times", x = "stage", y = "days after previous stage") +
   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw()
 
 ```
@@ -541,9 +557,11 @@ AB_addev %>% filter(instar.duration == "pupa" | instar.duration == "pupate") %>%
   * how to grp trts? (by mean/fluct/instar? or mean-fluct/instar?)
 * visualise: curve + do stacked bars (for an overview)?
 
-## pmd analysis
+## pmd analysis (defunct, do KM instead)
 
-```{r all pmd stats & plots}
+leaving this here for reference, but use KM to look at the data instead
+
+```{r defunct! all pmd stats & plots}
 # probably finished
 
 data_pmd <- data_all %>% select(-c("notes", "mass.toast", "pupa.deformities", "mass.died")) %>%
@@ -606,14 +624,14 @@ variables needed
 
 ```{r}
 
-km <- data %>% transmute()
+#km <- data %>% transmute()
 
 ```
 
 
 # code dump
 
-things im not using anymore. recently added stuff is at the top
+things im not using anymore but can reference. recently added stuff is at the top
 
 ```{r}
 ## old stats calculations for grp A (averaged everything -- got rid of this for boxplots to work)
