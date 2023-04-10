@@ -361,6 +361,78 @@ want to look at mass/dev time simultaneously on y/x axes respectively
 
 * need to calc: log.se.mass, se.days.to
   * can use the lstats_AB and astats_AB
+  
+```{r stats}
+
+# larva/adult mass @ instars
+  # pupa/adults need to be separated from the larva bc of sex differences
+lmass_AB2 <- long %>% group_by(trt.stage, instar) %>%
+    filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    mutate(log.mass = log(mass)) %>%
+    #rename(instar.mass = instar) %>%
+    summarise(avg.logmass = mean(log.mass),
+              se.logmass = sd(log.mass)/sqrt(length(log.mass)))
+
+amass_AB2 <- long %>% group_by(trt.stage, sex, instar) %>%
+    filter(instar == "pupa" | instar == "adult") %>%
+    mutate(log.mass = log(mass)) %>%
+    rename(instar.mass = instar) %>%
+    summarise(avg.logmass = mean(log.mass),
+              se.logmass = sd(log.mass)/sqrt(length(log.mass)))
+
+# calculate development time (instar duration), split into larva/adults
+devtime_AB2 <- data %>% 
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupate - jdate.wander,
+         #eclose = jdate.eclose - jdate.15
+         adult = jdate.eclose - jdate.pupate) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "adult"), # pivot differences by stage
+                names_to = "stage",
+                values_to = "days.to",
+                values_drop_na = T) %>%
+  group_by(trt.stage, stage) %>%
+  mutate(se.daysto = sd(days.to)/sqrt(length(days.to)),
+         avg.daysto = mean(days.to))
+
+# this looks right
+ldev_AB2 <- devtime_AB2 %>% filter(stage == "3rd" | stage == "4th" | stage == "5th" | stage == "wander") %>%
+  rename(instar = stage) %>%
+  group_by(trt.stage, instar) %>%
+  summarise(avg.daysto = mean(days.to),
+            se.daysto = sd(days.to)/sqrt(length(days.to)))
+
+adev_AB2 <- devtime_AB2 %>% filter(stage == "pupa" | stage == "adult") %>%
+  rename(instar.duration = stage) %>%
+  group_by(trt.stage, sex, instar.duration) %>%
+  summarise(avg.daysto = mean(days.to),
+            se.daysto = sd(days.to)/sqrt(length(days.to)))
+
+
+# merge into larval/adult stats
+  ## doublecheck this is where log mass goes for the mass/dev simultaneoous LOL
+lstats_AB2 <- merge(lmass_AB2, ldev_AB2, cols = c("trt.stage", "instar")) 
+astats_AB2 <- merge(amass_AB2, adev_AB2, all = T)
+
+
+# create subsets for plotting effect of temp and temp @ instar
+# temp effect subsets
+AB_ltemps2 <- lstats_AB2 %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th")
+AB_atemps2 <- astats_AB2 %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th")
+
+# temp+instar effects subsets
+AB_linstar2 <- lstats_AB2 %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+AB_ainstar2 <- astats_AB2 %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+
+```
+
+  
+  
 
 ```{r}
 ## go double check that the new se columns are where u think theyre supposed to be
@@ -369,9 +441,9 @@ want to look at mass/dev time simultaneously on y/x axes respectively
 
 ### plots comparing effect of temps ###
 # larval mass/dev
-AB_ltemps %>% 
-  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar.mass)) +
-  geom_point(aes(color=treatment)) +
+AB_ltemps2 %>% 
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar)) +
+  geom_point(aes(color=trt.stage)) +
   labs(title = "(temp) mass at start of instar", x = "instar length", y = "log(mass (mg))") +
   scale_fill_manual(label=A_labels, values = A_colors) + theme_bw() 
   #facet_grid(~instar.mass, switch="x") +
@@ -425,10 +497,15 @@ AB_ainstar %>% ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclo
 
 
 
-# the test one!
-AB_ltemps %>% 
-  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar.mass)) +
-  geom_point(aes(color=treatment), size=2) +
+# I THINK THIS WORKS...
+  # change shapes to be more visible
+  # rip my 337 hatch group idk where it is
+AB_ltemps2 %>%
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color = trt.stage)) +
+  geom_point(size=3) +
+  geom_line(aes(group = trt.stage)) +
+  geom_errorbar(aes(ymin=avg.logmass-se.logmass, ymax=avg.logmass+se.logmass)) +
+  geom_errorbarh(aes(xmin=avg.daysto-se.daysto, xmax=avg.daysto+se.daysto)) +
   labs(title = "(temp) mass at start of instar", x = "instar length", y = "log(mass (mg))") +
   scale_fill_manual(label=A_labels, values = A_colors) + theme_bw() 
   # there's too many points.... (also need to add error bars)
