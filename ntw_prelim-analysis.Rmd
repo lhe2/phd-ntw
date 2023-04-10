@@ -28,6 +28,7 @@ TODO / statistics to measure:
 * [done] log average weight at instars
   * h/m considerations... (esp for grp B)
   * from.E considerations... (only pick 0 and 1?)
+  * for clarity, should come up w better naming system for the adults/larva + groupings
 * [done for A, B] average length of instars
 * [doneish] survival
   * kaplan meier curves -- see:
@@ -49,7 +50,7 @@ experiment groups:
   * redoing 337 from hatching (A)
   * 2x2(ish) of entering 260 or 337 treatment at different times (hatch, 3rd, 4th)
 
-# load packages
+# load packages (use the setup chunk instead)
 
 ```{r load libraries}
 # library(dplyr)
@@ -77,8 +78,9 @@ data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", heade
 data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "notes"))
 data <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died")) # not sure if 'notes' column will mess things up
 
-# remove individuals that didn't survive to pupation
-data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast")
+# keep individuals that survived to pupation
+data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
+  # omit the LPs?
 
 # create julian date columns, additional column fixing
 data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
@@ -278,19 +280,21 @@ ggplot(data = stats_B, aes(y = log.mass)) + geom_boxplot(aes(fill = factor(trt.s
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
-## adult masses (data tbd)
-# adultB_plot <- ggplot(data = adultmass_B, aes(x = factor(instar, level = c("pupa", "adult")), y = mass))
-# 
-# adultB_plot + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
-#   labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
+## adult masses
+adultB_plot <- ggplot(data = adultmass_B, aes(x = factor(instar, level = c("pupa", "adult")), y = mass))
+
+adultB_plot + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
+  labs(title = "adult masses", y = "mass (mg)", x = "stage", fill = "treatment") +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw()
 
 ## dev time (larval)
 # done
 devB.l_plot <- stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(x = instar.duration, y = days.to))
 
-# devB.l_plot + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
-#   labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "treatment")
+devB.l_plot + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
+  labs(title = "larval instar development times", x = "stage", y = "days after hatching", fill = "treatment") +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw()
 
 stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
   ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
@@ -302,12 +306,14 @@ stats_B %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.
 
 
 ## dev time (post-pupation)
-# data tbd!
-# devB.a_plot <- stats_B %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
-#   ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to))
-# 
-# devB.a_plot + geom_boxplot(aes(fill = treatment)) +
-#   labs(title = "post-pupation development times", x = "stage", y = "days after previous stage")
+
+# not working bc adults arent in here lol
+devB.a_plot <- stats_B %>% filter(instar.duration == "eclose" | instar.duration == "pupate") %>%
+  ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to))
+
+devB.a_plot + geom_boxplot(aes(fill = treatment)) +
+  labs(title = "post-pupation development times", x = "stage", y = "days after previous stage") +
+  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw()
 ```
 
 
