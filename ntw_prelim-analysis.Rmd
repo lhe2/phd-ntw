@@ -35,12 +35,12 @@ TODO / statistics to measure:
     * https://rviews.rstudio.com/2017/09/25/survival-analysis-with-r/
     * https://www.emilyzabor.com/tutorials/survival_analysis_in_r_tutorial.html#Packages 
 * [done] A vs B comparisons (26 constant)
-  * pool relevant A+B individuals --> then stats again?
+  * [done] pool relevant A+B individuals --> then stats again?
 * who got stuck
 * pupa development (looking @ % none? idr what i originally meant here)
 * dv coloring (with B only)
 * graph a bunch of growth lines + avg growth
-* plot time vs mass (dot plot w/ error bars on both sides)
+* [in prog] plot time vs mass (dot plot w/ error bars on both sides)
 
 
 experiment groups:
@@ -71,6 +71,10 @@ outputs
   * maybe rename data to data_ec (surv to eclosion)
 * data_A, data_B
 
+```{r quick load data}
+load(file="dfs.RData")
+```
+
 ```{r data preprocess + clean}
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
 
@@ -87,9 +91,9 @@ data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
   mutate(across(starts_with("jdate."), as.numeric),
-         across(starts_with("mass."), as.numeric), # fix adult.mass
+         across(starts_with("mass."), as.numeric),
          treatment = as.factor(treatment),
-         trt.stage = paste(treatment,instar.enter, sep = "-"))
+         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")))
 
 # pivot and make subsets
 long <- data %>% select(-(starts_with("date."))) %>%
@@ -113,6 +117,9 @@ A_labels <- c("26°C", "26±7°C", "33°C", "33±7°C")
 B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch")
 B_colors = c("#abd9e9", "#fdbe85", "#fd8d3c", "#d94701")
 B_labels = c("26°C @ hatch", "33±7°C @ 4th", "33±7°C @ 3rd", "33±7°C @ hatch")
+
+# save all this as .RData file
+#save(data_all, data_notes, data, long, data_A, data_B, A_colors, A_labels, B_trts, B_colors, B_labels, file="dfs.RData")
 
 ```
 
@@ -355,23 +362,82 @@ AB_ainstar %>% ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclo
 
 ```
 
-## AB pooled plots pt 2
+## AB pooled mass&dev analysis
 
 want to look at mass/dev time simultaneously on y/x axes respectively
 
 * need to calc: log.se.mass, se.days.to
   * can use the lstats_AB and astats_AB
   
-```{r stats}
+```{r troubleshooting}
+df1 <- data.frame(id= c(1:6, 6, 7:11, 12, 11, 12),
+                  group = c("1", "1", "1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "2", "2", "2"),
+                  stage = c("a", "a", "a", "a", "a", "a", "b", "a", "a", "a", "a", "a", "a", "b", "b"),
+                  treatment = c("X", "X", "X", "Y", "Y", "Y", "Y", "Z", "Z", "Z", "Y", "Y", "Y", "Y", "Y"),
+                  mass =  c(10, 10, 10, 20, 20, 20, 21, 30, 30, 30, 20, 20, 20, 21, 21))
 
+df_wide <- pivot_wider(df1, names_from = stage, values_from = c(mass))
+
+df2 <- data.frame(id=c(1:12),
+                       group = c("1", "1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "2"),
+                       treatment = c("X", "X", "X", "Y", "Y", "Y", "Z", "Z", "Z", "Y", "Y", "Y"),
+                       a = c(10, 10, 10, 20, 20, 20, 30, 30, 30, 20, 20, 20),
+                       b = c(NA, NA, NA, NA, NA, 21, NA, NA, NA, NA, 21, 21))
+
+df_long <- pivot_longer(df2, cols = c(a, b), names_to ="stage", values_to = "mass")
+
+df1 %>% group_by(treatment, stage) %>%
+  summarise(avg = mean(mass), n=n())
+
+df_long %>% 
+  na.omit() %>%
+  group_by(treatment, stage) %>%
+  #mutate(mass = first(na.omit(mass))) %>%
+  #ungroup() %>% 
+  #group_by(treatment, stage) %>%
+  summarise(avg = mean(mass), n=n())
+# THIS WORKS idk why mine doesnt. i think you need to go look back at how you named the columns in the pivot_longer bc thats where it looks like its breaking
+
+
+
+
+test <- filter(long, (reason.pmd == "" | reason.pmd == "toast") & (trt.stage == "337-hatch" | trt.stage == "260-hatch") & (instar == "5th" | instar == "pupa"))
+#& (instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander"))
+#& (instar == "5th" | instar == "wander" | instar == "pupa"))
+
+test1 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & instar == "5th") 
+#%>% summarise(n = n())
+test2 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & instar == "pupa")
+test2 %>% summarise(n = n())
+
+test %>% 
+  na.omit() %>%
+  #select(-expt.group) %>% 
+  group_by(trt.stage, instar) %>% 
+  #na.omit() %>%
+  summarise(avg = mean(mass),
+            n=n())
+
+levels(as.factor(test$expt.group))
+
+```
+  
+  
+  
+```{r}
 # larva/adult mass @ instars
   # pupa/adults need to be separated from the larva bc of sex differences
-lmass_AB2 <- long %>% group_by(trt.stage, instar) %>%
+lmass_AB2 <- long %>% #group_by(trt.stage, instar) %>%
+    #group_by(treatment, instar.enter, instar) %>% # this also doesnt workkkk
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    group_by(instar, trt.stage) %>%
     mutate(log.mass = log(mass)) %>%
     #rename(instar.mass = instar) %>%
-    summarise(avg.logmass = mean(log.mass),
-              se.logmass = sd(log.mass)/sqrt(length(log.mass)))
+    summarise(avgmass = mean(mass), # breaks?
+              avg.logmass = mean(log.mass),
+              se.logmass = sd(log.mass)/sqrt(length(log.mass)),
+              n=n())
+  # this is dropping the grp B 337-hatch 5ths for some reason (so probably the A's also then?)
 
 amass_AB2 <- long %>% group_by(trt.stage, sex, instar) %>%
     filter(instar == "pupa" | instar == "adult") %>%
@@ -432,7 +498,9 @@ AB_ainstar2 <- astats_AB2 %>% filter(trt.stage == "260-hatch" | trt.stage == "33
 ```
 
   
-  
+## AB pooled mass&dev plots  
+
+* add 33 constant to tempxinstar
 
 ```{r}
 ## go double check that the new se columns are where u think theyre supposed to be
