@@ -79,30 +79,31 @@ load(file="dfs.RData")
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
 
 # save wordier notes elsewhere and remove from analysis dataset
-data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "notes"))
-data <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died")) # not sure if 'notes' column will mess things up
+data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "final.fate", "notes"))
+data_pup <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died", "time.in.approx")) # not sure if 'notes' column will mess things up
 
 # keep individuals that survived to pupation
-data <- data %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
-  # omit the LPs?
+data_pup <- data_pup %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
+  # omit the LPs? -> currently yes
 
 # create julian date columns, additional column fixing
-data <- data %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+data_pup <- data_pup %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
   mutate(across(starts_with("jdate."), as.numeric),
          across(starts_with("mass."), as.numeric),
-         treatment = as.factor(treatment),
+         treatment = as.character(treatment),
          trt.stage = as.character(paste(treatment,instar.enter, sep = "-")))
 
 # pivot and make subsets
-long <- data %>% select(-(starts_with("date."))) %>%
+long <- data_pup %>% select(-(starts_with("date."))) %>%
                  pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
                         names_to = c(".value", "instar"),
                         #names_sep = ".",
                         values_drop_na = TRUE,
                         names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
-                 rename(molt.status = h)
+                 rename(molt.status = h) %>%
+                 drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
 
 long <- long[long$instar != "in",] # from 'instar.in.trt'?
 
@@ -369,6 +370,7 @@ want to look at mass/dev time simultaneously on y/x axes respectively
 * need to calc: log.se.mass, se.days.to
   * can use the lstats_AB and astats_AB
   
+###troubleshooting
 ```{r troubleshooting}
 df1 <- data.frame(id= c(1:6, 6, 7:11, 12, 11, 12),
                   group = c("1", "1", "1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "2", "2", "2"),
@@ -401,24 +403,61 @@ df_long %>%
 
 
 
-test <- filter(long, (reason.pmd == "" | reason.pmd == "toast") & (trt.stage == "337-hatch" | trt.stage == "260-hatch") & (instar == "5th" | instar == "pupa"))
+test <- filter(long, (reason.pmd == "" | reason.pmd == "toast") & trt.stage == "337-hatch")
+#               | trt.stage == "260-hatch") & (instar == "5th" | instar == "pupa"))
 #& (instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander"))
 #& (instar == "5th" | instar == "wander" | instar == "pupa"))
 
-test1 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & instar == "5th") 
+test1 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & (instar == "5th" | instar == "wander")) 
 #%>% summarise(n = n())
 test2 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & instar == "pupa")
 test2 %>% summarise(n = n())
 
 test %>% 
-  na.omit() %>%
+  #na.omit() %>%
   #select(-expt.group) %>% 
   group_by(trt.stage, instar) %>% 
   #na.omit() %>%
   summarise(avg = mean(mass),
-            n=n())
+            n=n()) %>%
+  na.omit()
 
-levels(as.factor(test$expt.group))
+
+test %>% 
+  #na.omit() %>%
+  group_by(trt.stage, instar) %>%
+  #mutate(mass = first(na.omit(mass))) %>%
+  #ungroup() %>% 
+  #group_by(treatment, stage) %>%
+  summarise(avg = mean(mass, na.rm=T), n=n()) %>%
+  na.omit()
+# 1235.477, n=53
+
+test2 <- filter(test, instar == "5th")
+test3 <- filter(test, instar == "5th" & expt.group == "A")
+test4 <- filter(test, instar == "5th" & expt.group == "B")
+
+mean(test0$mass, na.rm=T)
+#1839.38
+
+mean(test2$mass, na.rm=T)
+#1235.477
+
+mean(test3$mass, na.rm=T)
+#1284.693
+
+mean(test4$mass, na.rm=T)
+#1199.021
+
+test2 %>% summarise(mean = mean(mass, na.rm=T), n=n())
+#1235.477, n=53
+
+is.numeric(test2$jdate)
+
+levels(as.factor(test$instar))
+
+
+# IS THE ANSWER TO JUST INSERT A NA.RM=T THE WHOLE TIME LOL
 
 ```
   
@@ -430,12 +469,16 @@ levels(as.factor(test$expt.group))
 lmass_AB2 <- long %>% #group_by(trt.stage, instar) %>%
     #group_by(treatment, instar.enter, instar) %>% # this also doesnt workkkk
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    #naniar::replace_with_na_all(condition = ~.x == "NA") %>% #doesnt work
+    #na.omit(mass) %>%
+    #na.exclude(mass) %>%
     group_by(instar, trt.stage) %>%
-    mutate(log.mass = log(mass)) %>%
+    #mutate(mass = first(na.omit(mass))) %>% #i think this works
+    mutate(logmass = log(mass)) %>%
     #rename(instar.mass = instar) %>%
-    summarise(avgmass = mean(mass), # breaks?
-              avg.logmass = mean(log.mass),
-              se.logmass = sd(log.mass)/sqrt(length(log.mass)),
+    summarise(avg.mass = mean(mass),
+              avg.logmass = mean(logmass),
+              se.logmass = sd(logmass)/sqrt(length(logmass)),
               n=n())
   # this is dropping the grp B 337-hatch 5ths for some reason (so probably the A's also then?)
 
@@ -447,24 +490,25 @@ amass_AB2 <- long %>% group_by(trt.stage, sex, instar) %>%
               se.logmass = sd(log.mass)/sqrt(length(log.mass)))
 
 # calculate development time (instar duration), split into larva/adults
-devtime_AB2 <- data %>% 
+devtime_AB2 <- data_pup %>% 
+  #drop_na(starts_with("jdate.")) %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
          "4th" = jdate.4th - jdate.hatch,
          "5th" = jdate.5th - jdate.hatch,
          wander = jdate.wander - jdate.hatch,
-         pupa = jdate.pupate - jdate.wander,
+         pupa = jdate.pupa - jdate.wander,
          #eclose = jdate.eclose - jdate.15
-         adult = jdate.eclose - jdate.pupate) %>%
+         adult = jdate.eclose - jdate.pupa) %>%
   select(-starts_with("jdate.")) %>%
   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "adult"), # pivot differences by stage
                 names_to = "stage",
-                values_to = "days.to",
-                values_drop_na = T) %>%
+                values_to = "days.to") %>%
   group_by(trt.stage, stage) %>%
   mutate(se.daysto = sd(days.to)/sqrt(length(days.to)),
          avg.daysto = mean(days.to))
+# running into same issue here with jdate
 
 # this looks right
 ldev_AB2 <- devtime_AB2 %>% filter(stage == "3rd" | stage == "4th" | stage == "5th" | stage == "wander") %>%
