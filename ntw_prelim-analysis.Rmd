@@ -82,7 +82,8 @@ data_all <- read.csv("~/Documents/projects/data/ntw_data/development.csv", heade
 
 # save wordier notes elsewhere and remove from analysis dataset
 data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "final.fate", "notes"))
-data_pup <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died", "time.in.approx")) # not sure if 'notes' column will mess things up
+data_pup <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died", "time.in.approx")) 
+  # not sure if 'notes' column will mess things up
 
 # keep individuals that survived to pupation
 data_pup <- data_pup %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
@@ -91,7 +92,6 @@ data_pup <- data_pup %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason
 # create julian date columns, additional column fixing
 data_pup <- data_pup %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-  #relocate(starts_with("jdate."), .after = starts_with("date.")) %>% # this is not working lol
   mutate(across(starts_with("jdate."), as.numeric),
          across(starts_with("mass."), as.numeric),
          treatment = as.character(treatment),
@@ -106,7 +106,7 @@ long <- data_pup %>% select(-(starts_with("date."))) %>%
                         values_drop_na = TRUE,
                         names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
                  rename(molt.status = h) %>%
-                 drop_na(jdate) %>% # drops NA's if an individual didnt reach a certain stage
+                 drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
 
 long <- long[long$instar != "in",] # from 'instar.in.trt'?
 long$instar <- factor(long$instar, c("hatch", "2nd", "3rd", "4th", "5th", "stuck", "wander", "pupa", "eclose", "pmd"))
@@ -125,7 +125,7 @@ B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch") # custom-defined
 B_colors = c("260-hatch"="#abd9e9", "337-4th"="#fdbe85", "337-3rd"="#fd8d3c", "337-hatch"="#d94701")
 B_labels = c("260-hatch"="26°C @ hatch", "337-4th"="33±7°C @ 4th", "337-3rd"="33±7°C @ 3rd", "337-hatch"="33±7°C @ hatch")
 
-# save all this as .RData file
+# save all this as .RData file (delete later)
 #save(data_all, data_notes, data, long, data_A, data_B, A_colors, A_labels, B_trts, B_colors, B_labels, file="dfs.RData")
 
 ```
@@ -139,17 +139,6 @@ B_labels = c("260-hatch"="26°C @ hatch", "337-4th"="33±7°C @ 4th", "337-3rd"=
 
 ```{r analysis A vs B}
 ## I THINK THIS IS OK/DONE NOW
-# copying over more code...
-
-# this has been worked into the main 'long' df
-# compare <- long %>% filter((trt.stage == "337-hatch" | trt.stage == "260-hatch") & (expt.group == "A" | expt.group == "B")) %>%
-#   #rename(group = expt.group) %>%
-#   mutate(grp.trt = paste(expt.group, trt.stage, sep = "-")) %>%
-#   relocate(grp.trt, .before = 1)
-
-# AvB_lgrowth <- compare %>% group_by(grp.trt) %>%
-#     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-#     mutate(log.mass = log(mass))
 
 AvB_lgrowth <- long %>% 
     filter((trt.stage == "260-hatch" | trt.stage == "337-hatch") &
@@ -162,10 +151,10 @@ AvB_agrowth <- long %>%
           (instar == "pupa" | instar == "eclose")) %>%
   group_by(grp.trt, sex)
 
+
 AvB_devtime <- data_pup %>%
   filter((trt.stage == "337-hatch" | trt.stage == "260-hatch") & (expt.group == "A" | expt.group == "B")) %>%
   mutate(grp.trt = paste(expt.group, trt.stage, sep = "-")) %>%
-  #relocate(grp.trt, .before = 1) %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
@@ -183,10 +172,9 @@ AvB_devtime <- data_pup %>%
   group_by(grp.trt, stage)
 
 AvB_ldev <- filter(AvB_devtime, stage == "3rd" | stage == "4th" | stage == "5th" | stage == "wander")
-
 AvB_adev <- filter(AvB_devtime, stage == "pupate" | stage == "eclose")
 
-# merge stats into larva/adults
+# merge stats into larva/adult subsets
 AvB_lstats <- merge(AvB_lgrowth, AvB_ldev, all = T) %>%
   rename(mass.instar = instar, # mass
          duration.instar = stage) # time
@@ -199,13 +187,12 @@ AvB_astats <- merge(AvB_agrowth, AvB_adev, all = T) %>%
 
 ## AvB plotting
 
-(do a proper test? compare the distss/means?)
+(should do a proper test? compare the distributions/means?)
 
 ```{r plotting A vs B}
 ## I THINK THESE ARE DONE NOW
 
-# using pt A plot code
-
+# define factors, levels
 AvB_stats$grp.trt <- factor(AvB_stats$grp.trt, c("A-260-hatch", "B-260-hatch", "A-337-hatch", "B-337-hatch"))
 AB_colors <- c("A-260-hatch"="#abd9e9", "B-260-hatch"="#2c7bb6", "A-337-hatch"="#fdae61", "B-337-hatch"="#d7191c")
 AB_labels <- c("A-260-hatch"="A 26°C", "B-260-hatch"="B 26°C","A-337-hatch"="A 33±7°C", "B-337-hatch"="B 33±7°C")
@@ -213,16 +200,15 @@ AB_labels <- c("A-260-hatch"="A 26°C", "B-260-hatch"="B 26°C","A-337-hatch"="A
 
 ## larval instar masses
 # done
-#AvBmass_plot <- ggplot(data = AvB_stats, aes(x = instar.mass, y = log.mass))
-ggplot(data = AvB_lstats, aes(y = log.mass)) + geom_boxplot(aes(fill = grp.trt)) +
+AvB_lstats %>% ggplot(aes(y = log.mass)) + geom_boxplot(aes(fill = grp.trt)) +
   labs(title = "mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "group-treatment") +
   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw() +
   facet_grid(~mass.instar, switch="x") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
 
 
-## adult masses (not plottable rn)
-  # havent looked at this yet
+## adult masses
+  # havent rly looked at this yet
 AvB_amass_plot <- AvB_astats %>%
   filter(grp.trt !="A-337-hatch") %>%
   ggplot(aes(x = mass.instar, y = mass))
@@ -235,7 +221,6 @@ AvB_amass_plot + geom_boxplot(aes(fill = grp.trt)) + facet_wrap(~sex) +
 ## dev time (larval)
 # done
 AvB_ldev_plot <- AvB_lstats %>% 
-  # filter(duration.instar == "2nd" | duration.instar == "3rd" | duration.instar == "4th" | duration.instar == "5th" | duration.instar == "wander") %>%
   ggplot(aes(y = days.to))
 
 AvB_ldev_plot + geom_boxplot(aes(fill = grp.trt)) + 
@@ -250,7 +235,6 @@ AvB_ldev_plot + geom_boxplot(aes(fill = grp.trt)) +
   # havent looked at this yet
 AvB_adev_plot <- AvB_astats %>% 
   filter(grp.trt != "A-337-hatch") %>%
-  #filter(duration.instar == "eclose" | duration.instar == "pupate") %>%
   ggplot(aes(x = duration.instar, y = days.to))
 
 AvB_adev_plot + geom_boxplot(aes(fill = grp.trt)) +
@@ -261,7 +245,7 @@ AvB_adev_plot + geom_boxplot(aes(fill = grp.trt)) +
 
 # AB pooled
 
-## AB pooled analysis
+## AB1 pooled analysis
 
 ```{r AB pool analysis}
 # doing this some groups seem fine to combine
@@ -329,7 +313,7 @@ AB_ainstar <- AB_astats %>% filter(trt.stage == "260-hatch" | trt.stage == "337-
 ```
 
 
-## AB pooled plots
+## AB1 pooled plots
 
 * todo: need to fix the adult ones (check subsetting + variables)
 
@@ -394,106 +378,13 @@ AB_ainstar %>% ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclo
 
 ```
 
-## AB pooled mass&dev analysis
+## AB2 pooled mass&dev analysis (troubleshot?!)
 
 want to look at mass/dev time simultaneously on y/x axes respectively
 
 * need to calc: log.se.mass, se.days.to
   * can use the lstats_AB and astats_AB
-  
-###troubleshooting tests
-```{r troubleshooting}
-df1 <- data.frame(id= c(1:6, 6, 7:11, 12, 11, 12),
-                  group = c("1", "1", "1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "2", "2", "2"),
-                  stage = c("a", "a", "a", "a", "a", "a", "b", "a", "a", "a", "a", "a", "a", "b", "b"),
-                  treatment = c("X", "X", "X", "Y", "Y", "Y", "Y", "Z", "Z", "Z", "Y", "Y", "Y", "Y", "Y"),
-                  mass =  c(10, 10, 10, 20, 20, 20, 21, 30, 30, 30, 20, 20, 20, 21, 21))
 
-df_wide <- pivot_wider(df1, names_from = stage, values_from = c(mass))
-
-df2 <- data.frame(id=c(1:12),
-                       group = c("1", "1", "1", "1", "1", "1", "2", "2", "2", "2", "2", "2"),
-                       treatment = c("X", "X", "X", "Y", "Y", "Y", "Z", "Z", "Z", "Y", "Y", "Y"),
-                       a = c(10, 10, 10, 20, 20, 20, 30, 30, 30, 20, 20, 20),
-                       b = c(NA, NA, NA, NA, NA, 21, NA, NA, NA, NA, 21, 21))
-
-df_long <- pivot_longer(df2, cols = c(a, b), names_to ="stage", values_to = "mass")
-
-df1 %>% group_by(treatment, stage) %>%
-  summarise(avg = mean(mass), n=n())
-
-df_long %>% 
-  na.omit() %>%
-  group_by(treatment, stage) %>%
-  #mutate(mass = first(na.omit(mass))) %>%
-  #ungroup() %>% 
-  #group_by(treatment, stage) %>%
-  summarise(avg = mean(mass), n=n())
-# THIS WORKS idk why mine doesnt. i think you need to go look back at how you named the columns in the pivot_longer bc thats where it looks like its breaking
-
-
-
-
-test <- filter(long, (reason.pmd == "" | reason.pmd == "toast") & trt.stage == "337-hatch")
-#               | trt.stage == "260-hatch") & (instar == "5th" | instar == "pupa"))
-#& (instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander"))
-#& (instar == "5th" | instar == "wander" | instar == "pupa"))
-
-test1 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & (instar == "5th" | instar == "wander")) 
-#%>% summarise(n = n())
-test2 <- long %>% filter(reason.pmd == "" & trt.stage == "337-hatch" & instar == "pupa")
-test2 %>% summarise(n = n())
-
-test %>% 
-  #na.omit() %>%
-  #select(-expt.group) %>% 
-  group_by(trt.stage, instar) %>% 
-  #na.omit() %>%
-  summarise(avg = mean(mass),
-            n=n()) %>%
-  na.omit()
-
-
-test %>% 
-  #na.omit() %>%
-  group_by(trt.stage, instar) %>%
-  #mutate(mass = first(na.omit(mass))) %>%
-  #ungroup() %>% 
-  #group_by(treatment, stage) %>%
-  summarise(avg = mean(mass, na.rm=T), n=n()) %>%
-  na.omit()
-# 1235.477, n=53
-
-test2 <- filter(test, instar == "5th")
-test3 <- filter(test, instar == "5th" & expt.group == "A")
-test4 <- filter(test, instar == "5th" & expt.group == "B")
-
-mean(test0$mass, na.rm=T)
-#1839.38
-
-mean(test2$mass, na.rm=T)
-#1235.477
-
-mean(test3$mass, na.rm=T)
-#1284.693
-
-mean(test4$mass, na.rm=T)
-#1199.021
-
-test2 %>% summarise(mean = mean(mass, na.rm=T), n=n())
-#1235.477, n=53
-
-is.numeric(test2$jdate)
-
-levels(as.factor(test$instar))
-
-
-# IS THE ANSWER TO JUST INSERT A NA.RM=T THE WHOLE TIME LOL
-
-```
-  
-  
-### troubleshooted?! analyses  
 ```{r}
 # larva/adult mass @ instars
   # pupa/adults need to be separated from the larva before summarising bc of sex differences
@@ -564,7 +455,7 @@ AB2_ainstar <- AB2_astats %>% filter(trt.stage == "260-hatch" | trt.stage == "33
 
 
   
-## AB pooled mass&dev plots  
+## AB2 pooled mass&dev plots  
 
 * add 33 constant to tempxinstar..
 
@@ -741,7 +632,7 @@ things im not using anymore but can reference. recently added stuff is at the to
 
 ## old A + B isolated analyses (use the AB pooled one instead!!!!)
 
-### (old) group A only (temps)
+### (old) A only (temps)
 
 #### pt A analysis
 
@@ -843,7 +734,7 @@ devA.a_plot + geom_boxplot(aes(fill = treatment)) +
 
 ```
 
-### (old) group B only (temp x stage)
+### (old) B only (temp x stage)
 
 * todo: look at this as a 2x2 (@ hatch, @ 3rd)
 
@@ -942,58 +833,4 @@ devB.a_plot + geom_boxplot(aes(fill = treatment)) +
 ```
 
 
-## super old calcs
-
-```{r}
-## old stats calculations for grp A (averaged everything -- but got rid of this for boxplots to work)
-# growth_A <- data_A %>% group_by(treatment, instar) %>%
-#   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-#   summarise(n = n(),
-#             avg.log.mass = mean(log(mass), na.rm = T),
-#             sd.log.mass = sd(log(mass), na.rm = T))
-
-# adultmass_A <- data_A %>% group_by(treatment, sex) %>%
-#   filter(instar == "pupa" | instar == "adult") %>%
-#   summarise(n=n(),
-#             avg.log.mass = mean(mass, na.rm = T),
-#             sd.log.mass = sd(mass, na.rm = T))
-
-# devtime_A <- data %>% filter(expt.group == "A") %>%
-#   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
-#   mutate("2nd" = jdate.2nd - jdate.hatch,
-#          "3rd" = jdate.3rd - jdate.hatch,
-#          "4th" = jdate.4th - jdate.hatch,
-#          "5th" = jdate.5th - jdate.hatch,
-#          wander = jdate.wander - jdate.hatch,
-#          pupate = jdate.pupate - jdate.wander,
-#          eclose = jdate.eclose - jdate.15) %>%
-#   select(-starts_with("jdate.")) %>%
-#   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupate", "eclose"), # pivot differences by stage
-#                 names_to = "stage",
-#                 values_to = "days.to",
-#                 values_drop_na = T) %>%
-#   group_by(treatment, stage) %>%
-#   summarise(n = n(),
-#             avg.diff = mean(days.to, na.rm = T),
-#             sd.diff = sd(days.to, na.rm = T))
-
-# columns need better names...
-# stats_A <- merge(growth_A, devtime_A, by=c("treatment", "n")) %>%
-#   rename(instar.mass = instar, # mass
-#          instar.duration = stage) # time
-
-## old mass @ start of instar plot for grp A
-#vmassA_plot <- ggplot(data = stats_A, aes(x = instar.mass, y = avg.log.mass))
-  # doesn't work bc there's no spread lol (no individual data points)
-
-## old growth stats calc for grp A
-# growth_A <- data_A %>% group_by(treatment) %>%
-#   summarise(n = n(),
-#             log.avg.mass.3rd = mean(log(mass.3rd), na.rm=T), sd.mass.3rd = sd(log(mass.3rd), na.rm=T),
-#             log.avg.mass.4th = mean(log(mass.4th), na.rm=T), sd.mass.4rd = sd(log(mass.4th), na.rm=T),
-#             log.avg.mass.5th = mean(log(mass.5th), na.rm=T), sd.mass.5th = sd(log(mass.5th), na.rm=T),
-#             log.avg.mass.wander = mean(log(mass.wander), na.rm=T), sd.mass.wander = sd(log(mass.wander), na.rm=T))
-
-
-```
 
