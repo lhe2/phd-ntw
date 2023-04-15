@@ -117,13 +117,18 @@ data_B <- long[long$expt.group == "B",]
 
 # defining factors, labels
 # A: effect of temp (treatment)
-A_colors <- c("260"="#abd9e9","267"="#2c7bb6", "330"="#fdae61", "337"="#d7191c")
-A_labels <- c("260"="26°C", "267"="26±7°C", "330"="33°C", "337"="33±7°C")
+A_colors <- c("260-hatch"="#abd9e9","267-hatch"="#2c7bb6", "330-hatch"="#fdae61", "337-hatch"="#d7191c")
+A_labels <- c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
 
 # B: effect of temp:instar (trt.stage)
-B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch") # custom-defined
+B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch") # manually set factor levels
 B_colors = c("260-hatch"="#abd9e9", "337-4th"="#fdbe85", "337-3rd"="#fd8d3c", "337-hatch"="#d94701")
 B_labels = c("260-hatch"="26°C @ hatch", "337-4th"="33±7°C @ 4th", "337-3rd"="33±7°C @ 3rd", "337-hatch"="33±7°C @ hatch")
+
+  # addtl subset to include 33 constant (5 groups)
+B5_trts = c("260-hatch", "330-hatch", "337-4th", "337-3rd", "337-hatch")
+B5_colors = c("260-hatch"="#abd9e9", "330-hatch"="#ffddaa", "337-4th"="#fdae6b", "337-3rd"="#e6550d", "337-hatch"="#a63603")
+B5_labels = c("260-hatch"="26°C @ hatch", "330-hatch" = "33°C @ hatch","337-4th"="33±7°C @ 4th", "337-3rd"="33±7°C @ 3rd", "337-hatch"="33±7°C @ hatch")
 
 # save all this as .RData file (delete later)
 #save(data_all, data_notes, data, long, data_A, data_B, A_colors, A_labels, B_trts, B_colors, B_labels, file="dfs.RData")
@@ -285,6 +290,7 @@ AvB_lstats2 %>% ggplot(aes(y = avg.logmass, x = avg.daysto, color = grp.trt, sha
        color = "group-treatment", shape = "instar") +
   scale_fill_manual(labels = AB_labels, values = AB_colors) + theme_bw()
 
+# colors arent right?
 AvB_astats2 %>% filter(grp.trt != "A-337-hatch") %>%
   ggplot(aes(y = avg.mass, x = avg.daysto, color = grp.trt, shape = instar)) +
   geom_point() + facet_wrap(~sex) +
@@ -506,6 +512,10 @@ AB2_atemps <- AB2_astats %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4
 AB2_linstar <- AB2_lstats %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
 AB2_ainstar <- AB2_astats %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
 
+AB2_linstar2 <- AB2_lstats %>% filter(trt.stage != "267-hatch")
+AB2_ainstar2 <- AB2_astats %>% filter(trt.stage != "267-hatch")
+
+
 ```
 
 
@@ -523,79 +533,78 @@ AB2_ainstar <- AB2_astats %>% filter(trt.stage == "260-hatch" | trt.stage == "33
   # u should have 4 graphs at the end
     # temps: larva, adult
     # temp-instar: larva, adult
+      # + 1 for B5
 
 
 ### plots comparing effect of temps ###
-# %% larval mass/dev
+# larval mass/dev
 AB2_ltemps %>% 
-  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar)) +
-  geom_point(aes(color=trt.stage)) +
-  labs(title = "(temp) mass at start of instar", x = "instar length", y = "log(mass (mg))") +
-  scale_fill_manual(label=A_labels, values = A_colors) + theme_bw() 
-  #facet_grid(~instar.mass, switch="x") +
-  #theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point() +
+  geom_line(aes(group = trt.stage), alpha = 0.5) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels=A_labels, values = A_colors) + theme_bw()
 
-# larval dev time
-# AB_ltemps %>% ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = treatment)) +
-#   labs(title = "(temp) larval instar development times", x = "stage", y = "days after hatching") +
-#   scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw() +
-#   facet_grid(~instar.duration, switch="x") +
-#   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
-
-# %% adult mass/dev
-AB2_atemps %>% filter(sex != "") %>% # omit pt B unpupated ones
-  ggplot(aes(x = instar, y = avg.mass)) + geom_boxplot(aes(fill = trt.stage)) + facet_wrap(~sex) +
-  labs(title = "(temp) adult masses", y = "mass (mg)", x = "stage") +
-  scale_fill_manual(values = A_colors, labels=A_labels) + theme_bw()
-
-# adult dev time
-# AB_atemps %>% ggplot(aes(x = factor(instar.duration, levels = c("pupate", "eclose")), y = days.to)) + geom_boxplot(aes(fill = treatment)) +
-#   labs(title = "(temp) post-pupation development times", x = "stage", y = "days after previous stage") +
-#   scale_fill_manual(labels = A_labels, values = A_colors) + theme_bw()
+# adult mass/dev
+AB2_atemps %>% 
+  ggplot(aes(x = avg.daysto, y = avg.mass, color=trt.stage)) +
+  geom_point() +
+  geom_line(aes(group = trt.stage), alpha=0.5) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  facet_wrap(~sex) +
+  labs(title = "(temp) avg adult growth", y = "avg mass (mg)", x = "days since last stage") +
+  scale_color_manual(values = A_colors, labels=A_labels) + theme_bw()
 
 ### plots comparing effect of temp x instar ###
-# %% larval mass/dev
-AB2_linstar %>% ggplot(aes(y = avg.logmass)) + geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) +
-  labs(title = "(temp x instar) mass at start of instar", x = "instar", y = "log(mass (mg))", fill = "treatment") +
-  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
-  facet_grid(~instar, switch="x") +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
+# larval mass/dev
+  # hard to see shapes...
+AB2_linstar %>% 
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point(size=2, alpha = 0.5) +
+  geom_line(aes(group = trt.stage), alpha = 0.5) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp x instar) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels = B_labels, values = B_colors) + theme_bw()
 
-# # larval dev
-# AB2_linstar %>% filter(instar.duration == "2nd" | instar.duration == "3rd" | instar.duration == "4th" | instar.duration == "5th" | instar.duration == "wander") %>%
-#   ggplot(aes(y = days.to)) + geom_boxplot(aes(fill = factor(trt.stage, level = B_trts))) +
-#   labs(title = "(temp x instar) larval instar development times", x = "stage", y = "days after hatching", fill = "treatment") +
-#   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
-#   facet_grid(~instar.duration, switch="x") +
-#   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), panel.spacing = unit(0, "lines"))
-
-# %% adult mass/dev
-AB2_ainstar %>% ggplot(aes(x = factor(mass.instar, level = c("pupa", "adult")), y = mass)) +
-  geom_boxplot(aes(fill = factor(trt.stage, level= B_trts))) + facet_wrap(~sex) +
-  scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw() +
-  labs(title = "(temp x instar) adult masses", y = "mass (mg)", x = "stage", fill = "treatment")
-
-
-# # dev time (post-pupation)
-# AB2_ainstar %>% ggplot(aes(x = factor(instar.duration, y = days.to))) + geom_boxplot(aes(fill = trt.stage)) +
-#   labs(title = "(temp x instar) post-pupation development times", x = "stage", y = "days after previous stage") +
-#   scale_fill_manual(labels = B_labels, values = B_colors) + theme_bw()
+# adult mass/dev
+AB2_ainstar %>% 
+  ggplot(aes(x = avg.daysto, y = avg.mass, shape=instar, color=trt.stage)) +
+  geom_point(size=2, alpha = 0.5) +
+  geom_line(aes(group = trt.stage), alpha = 0.5) +
+  facet_wrap(~sex) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  scale_color_manual(labels = B_labels, values = B_colors) + theme_bw() +
+  labs(title = "(temp x instar) avg adult growth", y = "avg mass (mg)", x = "days since last stage")
 
 
+# B+1 larval mass/dev
+AB2_linstar2 %>% 
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point(size=2, alpha = 0.5) +
+  geom_line(aes(group = trt.stage), alpha = 0.5) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp x instar) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels = B5_labels, values = B5_colors) + theme_bw()
 
-# I THINK THIS WORKS...
-  # change shapes to be more visible
-  # rip my 337 hatch group idk where it is
-AB_ltemps2 %>%
-  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color = trt.stage)) +
-  geom_point(size=3) +
-  geom_line(aes(group = trt.stage)) +
-  geom_errorbar(aes(ymin=avg.logmass-se.logmass, ymax=avg.logmass+se.logmass)) +
-  geom_errorbarh(aes(xmin=avg.daysto-se.daysto, xmax=avg.daysto+se.daysto)) +
-  labs(title = "(temp) mass at start of instar", x = "instar length", y = "log(mass (mg))") +
-  scale_fill_manual(label=A_labels, values = A_colors) + theme_bw() 
-  # there's too many points.... (also need to add error bars)
-  # prob just need to start from scratch w the avg se/etc
+
+# B+1 adult mass/dev
+AB2_ainstar2 %>% 
+  ggplot(aes(x = avg.daysto, y = avg.mass, shape=instar, color=trt.stage)) +
+  geom_point(size=2, alpha = 0.5) +
+  geom_line(aes(group = trt.stage), alpha = 0.5) +
+  facet_wrap(~sex) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  scale_color_manual(labels = B5_labels, values = B5_colors) + theme_bw() +
+  labs(title = "(temp x instar) avg adult growth", y = "avg mass (mg)", x = "days since last stage")
+
+
 
 ```
 
