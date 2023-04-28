@@ -11,7 +11,8 @@ library(ggplot2)
 library(tidyr)
 library(survival) # for kaplan-meier/survival objects
 library(cmprsk) # bc i think that's what this is lol
-#library(survminer) # maybe, for visualisation
+library(survminer) # maybe, for visualisation
+library(survey)
 ```
 
 # information & todo
@@ -543,7 +544,12 @@ variables needed
 * time to pmd/event (death as LP, P, L)
 * censorship for other events (stuck)
 
-```{r survival coding}
+```{r compting risk survival coding}
+### i dont like this and dont think this is it actually###
+# but the data coding we'll keep
+
+
+
 ## calculate time to event and recode events
 
   # can hardcode fates into here so dont have to be in exel (using recode())
@@ -554,38 +560,84 @@ surv <- data_all %>%
   mutate(timeto.exit = jdate.exit-jdate.hatch,
          meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
          fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
-         devent = ifelse(final.fate=="eclose", 0, 1), # 1 if died
-         devent2 = ifelse(final.fate=="eclose", NA, fate.code), #testing smth
-         fate.code = ifelse(final.fate=="eclose", 0, 1)) # to filter out eclosion later
+         ifdied = ifelse(final.fate=="eclose", 0, 1), # 0=alive, 1=died
+         fc2 = ifelse(final.fate=="eclose", NA, fate.code)) #testing smth: to make the tables work later. alt way to code the final fate
+         #fate.code = ifelse(final.fate=="eclose", 0, 1)) # to filter out eclosion later #(this is d.event/ifdied...)
 
 # recode censoring: censoring indicators for each type of failure
-surv$fail1 <- ifelse(surv$fate.code=="1" & surv$devent=="1", 1, 0)
-surv$fail2 <- ifelse(surv$fate.code=="2" & surv$devent=="1", 1, 0)
-surv$fail3 <- ifelse(surv$fate.code=="3" & surv$devent=="1", 1, 0)
-surv$fail4 <- ifelse(surv$fate.code=="4" & surv$devent=="1", 1, 0)
-surv$fail5 <- ifelse(surv$fate.code=="5" & surv$devent=="1", 1, 0)
-surv$fail6 <- ifelse(surv$fate.code=="6" & surv$devent=="1", 1, 0)
-surv$fail7 <- ifelse(surv$fate.code=="7" & surv$devent=="1", 1, 0)
-surv$fail8 <- ifelse(surv$fate.code=="8" & surv$devent=="1", 1, 0) #idk how to handle these yet
+surv$fail1 <- ifelse(surv$fate.code=="1" & surv$ifdied=="1", 1, 0)
+surv$fail2 <- ifelse(surv$fate.code=="2" & surv$ifdied=="1", 1, 0)
+surv$fail3 <- ifelse(surv$fate.code=="3" & surv$ifdied=="1", 1, 0)
+surv$fail4 <- ifelse(surv$fate.code=="4" & surv$ifdied=="1", 1, 0)
+surv$fail5 <- ifelse(surv$fate.code=="5" & surv$ifdied=="1", 1, 0)
+surv$fail6 <- ifelse(surv$fate.code=="6" & surv$ifdied=="1", 1, 0)
+surv$fail7 <- ifelse(surv$fate.code=="7" & surv$ifdied=="1", 1, 0)
+surv$fail8 <- ifelse(surv$fate.code=="8" & surv$ifdied=="1", 1, 0) #idk how to handle these yet
 
 # censor data
 surv$censor <- NA
-surv$dcode <- ifelse(is.na(surv$fate.code)==T, 0, surv$fate.code) # filter eclosed
+surv$dcode <- ifelse(is.na(surv$ifdied)==T, 0, surv$fate.code) # filter eclosed
 surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$fail5==0&surv$fail6==0&surv$fail7==0&surv$fail8==0)] <- 0 # eclosed
 surv$censor[which(surv$fail1==1|surv$fail2==1|surv$fail3==1|surv$fail4==1|surv$fail5==1|surv$fail6==1|surv$fail7==1&surv$fail8==0)] <- 1 # died at some point
 surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$fail5==0&surv$fail6==0&surv$fail7==0&surv$fail8==1)] <- 2 # toasted
 
 ## look at events 
 # (death, eclose, or toast)
-table(surv$censor, surv$devent)
+table(surv$censor, surv$ifdied)
 
 # (types of death)
-table(surv$devent2, surv$dcode)
+table(surv$fc2, surv$ifdied)
 ```
 
 ```{r survival plots}
+# analyse as CR or KM?
+# see kath code
 
 
+### as KM ###
+# create surv object: from hatch to outcome as defined by ifdied
+sobj <- Surv(surv$timeto.exit, surv$ifdied)
+  # this does not account for the toast ones
+
+# check if worked: + if survived to eclosion (will be censored)
+View(sobj)
+
+# set grouping variable as trt.stage (to get unique lines per trt later)
+sfit <- survfit(sobj ~ trt.stage, data = surv)
+
+# rough check of plot
+plot(sfit) # I GUESS!
+
+
+### plotting with survminer
+# rough plot
+ggsurvplot(fit = sfit,
+           xlab = "days",
+           ylab = "survival probability")
+  # not the worst ever.....???? need to go recolor the trt stages tho.
+  # should double check what the lines are lol
+  # cant see where the 50C toasty ones are!!
+
+# add some more info (this doesnt work for now)
+  # think about this one some more..
+ggsurvplot(fit = sfit, data = surv,
+           linetype = c("strata"),
+           #facet.by = idk what makes sense here!,
+           xlab = "days",
+           ylab = "survival probability")
+
+
+
+
+## plot as CR
+# create design object
+#options(survey.lonely.psu="adjust")
+#des<-svydesign(ids=~psu, strata=~strata, weights = ~mortwt, data=sub[sub$mortwt>0,], nest=T)
+des <- svydesign(ids=~fc2, weights=)
+  # need to calc freq weights....
+
+# create survival object
+sobj2 <- svykm(Surv(timeto.exit, fc2)~strata(trt.stage), design = des, se=T)
 
 ```
 
