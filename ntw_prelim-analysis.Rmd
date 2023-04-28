@@ -9,7 +9,8 @@ knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-#library(survival) # for kaplan-meier
+library(survival) # for kaplan-meier/survival objects
+library(cmprsk) # bc i think that's what this is lol
 #library(survminer) # maybe, for visualisation
 ```
 
@@ -85,18 +86,18 @@ data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pup
 data_pup <- select(data_all, -c("notes", "mass.toast", "pupa.deformities", "mass.died", "time.in.approx")) 
   # not sure if 'notes' column will mess things up
 
-# keep individuals that survived to pupation
-data_pup <- data_pup %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
-  # omit the LPs? -> currently yes
-
 # create julian date columns, additional column fixing
-data_pup <- data_pup %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric),
          across(starts_with("mass."), as.numeric),
          treatment = as.character(treatment),
          trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
          grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+
+# keep individuals that survived to pupation
+data_pup <- data_all %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
+  # omit the LPs? -> currently yes
 
 # pivot and make subsets
 long <- data_pup %>% select(-(starts_with("date."))) %>%
@@ -542,11 +543,52 @@ variables needed
 * time to pmd/event (death as LP, P, L)
 * censorship for other events (stuck)
 
-```{r}
+```{r survival coding}
+## calculate time to event and recode events
 
-#km <- data %>% transmute()
+  # can hardcode fates into here so dont have to be in exel (using recode())
+
+# calculate date of exit and other columns
+surv <- data_all %>% 
+  filter(fate.code != "99") %>% # remove accidental deaths
+  mutate(timeto.exit = jdate.exit-jdate.hatch,
+         meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
+         fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
+         devent = ifelse(final.fate=="eclose", 0, 1), # 1 if died
+         devent2 = ifelse(final.fate=="eclose", NA, fate.code), #testing smth
+         fate.code = ifelse(final.fate=="eclose", 0, 1)) # to filter out eclosion later
+
+# recode censoring: censoring indicators for each type of failure
+surv$fail1 <- ifelse(surv$fate.code=="1" & surv$devent=="1", 1, 0)
+surv$fail2 <- ifelse(surv$fate.code=="2" & surv$devent=="1", 1, 0)
+surv$fail3 <- ifelse(surv$fate.code=="3" & surv$devent=="1", 1, 0)
+surv$fail4 <- ifelse(surv$fate.code=="4" & surv$devent=="1", 1, 0)
+surv$fail5 <- ifelse(surv$fate.code=="5" & surv$devent=="1", 1, 0)
+surv$fail6 <- ifelse(surv$fate.code=="6" & surv$devent=="1", 1, 0)
+surv$fail7 <- ifelse(surv$fate.code=="7" & surv$devent=="1", 1, 0)
+surv$fail8 <- ifelse(surv$fate.code=="8" & surv$devent=="1", 1, 0) #idk how to handle these yet
+
+# censor data
+surv$censor <- NA
+surv$dcode <- ifelse(is.na(surv$fate.code)==T, 0, surv$fate.code) # filter eclosed
+surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$fail5==0&surv$fail6==0&surv$fail7==0&surv$fail8==0)] <- 0 # eclosed
+surv$censor[which(surv$fail1==1|surv$fail2==1|surv$fail3==1|surv$fail4==1|surv$fail5==1|surv$fail6==1|surv$fail7==1&surv$fail8==0)] <- 1 # died at some point
+surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$fail5==0&surv$fail6==0&surv$fail7==0&surv$fail8==1)] <- 2 # toasted
+
+## look at events 
+# (death, eclose, or toast)
+table(surv$censor, surv$devent)
+
+# (types of death)
+table(surv$devent2, surv$dcode)
+```
+
+```{r survival plots}
+
+
 
 ```
+
 
 
 # code dump
