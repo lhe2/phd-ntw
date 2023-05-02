@@ -81,6 +81,8 @@ load(file="dfs.RData")
 
 ```{r data preprocess + clean}
 data_all <- read.csv("~/Documents/projects/data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
+data_all <- mutate_all(data_all, na_if, "") # remove na lines introduced during import
+data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
 
 # save wordier notes elsewhere and remove from analysis dataset
 data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "final.fate", "notes"))
@@ -485,45 +487,50 @@ variables needed
   # double check what the possible outcomes are
   # ""         "empty"    "LP"       "pmd"      "pupa"     "squished" "toast"  
 
-# assign dstage (stage of death) based on when died
+## reference: making new columns for survival analyses. censoring is different based on what the endpoint is
+# dfs: surv_ec, surv_pup, surv_wander
+# columns: dins (instar died), dstage (life stage died), censor = for KM, date.exit = depends on endpt
 
-# coding final outcomes + addtl info
-surv2 <- data_all %>% # = stage of death
+# hardcoding final outcomes + addtl info (overall)
+  # hardcode up to 4th instar survival -- rest is based on endpt
+surv2 <- data_all %>%
+  filter(final.fate != "misc") %>% # remove accidental deaths from overall analysis
   mutate(meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
          fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
-         dstage = case_when(reason.pmd == "empty" | reason.pmd == "squished" ~ 99, # accidental death
-                            is.na(date.2nd) ~ 1, # died as 1st
-                            is.na(date.3rd) ~ 2,
-                            is.na(date.4th) ~ 3,
-                            reason.pmd != "toast" & is.na(date.5th) ~ 4,
-                            reason.pmd != "toast" & is.na(date.wander) ~ 5,
-                            !is.na(date.wander) & !is.na(date.LP) ~ 6, # died as LPI
-                            !is.na(date.wander) & is.na(date.LP) & is.na(date.eclose) ~ 7, # died as pupa
-                            reason.pmd == "toast" ~ 8, # the toasted ones
-                            TRUE ~ 0), # eclosed
-         ifdied = ifelse((dstage == 0 | dstage == 8), 0, 1)) %>% # 0 = to eclosion, 1 = died
-  filter(dstage != 99) # remove accidental deaths from analysis
+         dins = case_when(is.na(date.2nd) ~ 1, # died as 1st instar
+                          is.na(date.3rd) ~ 2,
+                          is.na(date.4th) ~ 3,
+                          reason.pmd != "toast" & is.na(date.5th) ~ 4))
 
-# survival curves to eclosion
-surv_ec <- surv2 %>%
-  mutate(censor = case_when(dstage == 1 | dstage == 2 | dstage == 3 | dstage == 4 | dstage == 5 ~ 1,
-                               dstage == 6 ~ 2, # LP
-                               dstage == 7 ~ 3, # P
-                               dstage == 0 | dstage == 8 ~ 0), # censor eclosion or toast
-         date.exit = case_when(censor == 1 ~ date.pmd, # exit time if to eclosion
-                               censor == 2 ~ date.LP,
-                               censor == TRUE ~ date.eclose))
+# test:  test2 <- filter(surv_ec, dstage == 5)
+
+# subset: endpoint = eclosion
+surv_ec <- surv2 %>% # life stage died
+  mutate(dins = case_when(reason.pmd != "toast" & is.na(date.pupate) & is.na(date.LP) ~ 5, # died as 5th instar
+                          !is.na(date.LP) ~ 6, # died as LPI
+                          !is.na(date.pupate) & is.na(date.eclose) ~ 7, # died as pupa
+                          reason.pmd == "toast" ~ 8, # the toasted ones
+                          TRUE ~ 0), # eclosed
+         censor = ifelse((dins == 0 | dins == 8), 0, 1), # 0 = to eclosion, 1 = died
+         dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1,
+                            dins == 6 ~ 2, # LP
+                            dins == 7 ~ 3, # P
+                            dins == 0 | dins == 8 ~ 0), # censor eclosion or toast
+         date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to eclosion
+                               dstage == 2 ~ date.LP,
+                               dstage == 3 ~ as.Date(jdate.15+10, format = "%m/%d/%y", origin = date.hatch),
+                               dins == 8 ~ date.pmd,
+                               dins == 0 ~ date.eclose))
          
   
   
   
   
-  filter(fate.code != "99") %>% # remove accidental deaths
-  mutate(timeto.exit = jdate.exit-jdate.hatch,
-         meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
-         fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
-         ifdied2 = ifelse((final.fate == "eclose" | reason.pmd == "toast"), 0, 1), # censor if they got toasted. maybe use this one
-         fc2 = ifelse(final.fate=="eclose", NA, fate.code))
+  # mutate(timeto.exit = jdate.exit-jdate.hatch,
+  #        meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
+  #        fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
+  #        ifdied2 = ifelse((final.fate == "eclose" | reason.pmd == "toast"), 0, 1), # censor if they got toasted. maybe use this one
+  #        fc2 = ifelse(final.fate=="eclose", NA, fate.code))
 ```
 
 ### attempt 1
