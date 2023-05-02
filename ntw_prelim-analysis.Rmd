@@ -500,27 +500,54 @@ surv2 <- data_all %>%
          dins = case_when(is.na(date.2nd) ~ 1, # died as 1st instar
                           is.na(date.3rd) ~ 2,
                           is.na(date.4th) ~ 3,
-                          reason.pmd != "toast" & is.na(date.5th) ~ 4))
+                          reason.pmd != "toast" & is.na(date.5th) ~ 4,
+                          reason.pmd == "toast" ~ 99)) # the toasted ones
 
 # test:  test2 <- filter(surv_ec, dstage == 5)
 
 # subset: endpoint = eclosion
-surv_ec <- surv2 %>% # life stage died
+surv_ec <- surv2 %>%
   mutate(dins = case_when(reason.pmd != "toast" & is.na(date.pupate) & is.na(date.LP) ~ 5, # died as 5th instar
                           !is.na(date.LP) ~ 6, # died as LPI
                           !is.na(date.pupate) & is.na(date.eclose) ~ 7, # died as pupa
-                          reason.pmd == "toast" ~ 8, # the toasted ones
                           TRUE ~ 0), # eclosed
-         censor = ifelse((dins == 0 | dins == 8), 0, 1), # 0 = to eclosion, 1 = died
+         censor = ifelse((dins == 0 | dins == 99), 0, 1), # 0 = to eclosion, 1 = died
          dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1,
                             dins == 6 ~ 2, # LP
                             dins == 7 ~ 3, # P
-                            dins == 0 | dins == 8 ~ 0), # censor eclosion or toast
+                            dins == 0 | dins == 99 ~ 0), # censor eclosion or toast
          date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to eclosion
                                dstage == 2 ~ date.LP,
                                dstage == 3 ~ as.Date(jdate.15+10, format = "%m/%d/%y", origin = date.hatch),
-                               dins == 8 ~ date.pmd,
+                               dins == 99 ~ date.pmd,
                                dins == 0 ~ date.eclose))
+
+
+# subset: endpoint = pupation
+surv_pup <- surv2 %>%
+  mutate(dins = case_when(reason.pmd != "toast" & is.na(date.pupate) & is.na(date.LP) ~ 5, # died as 5th instar
+                          !is.na(date.LP) ~ 6, # died as LPI
+                          TRUE ~ 0), # pupated
+         censor = ifelse((dins == 0 | dins == 99), 0, 1), # 0 = to pupation, 1 = died
+         dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1, # died larva
+                            dins == 6 ~ 2, # died LP
+                            dins == 0 | dins == 99 ~ 0), # censor pupation or toast
+         date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to pupation
+                               dstage == 2 ~ date.LP,
+                               dins == 99 ~ date.pmd,
+                               dins == 0 ~ date.eclose))
+
+# subset: endpoint = wandering
+surv_wand <- surv2 %>%
+  mutate(dins = case_when(reason.pmd != "toast" & is.na(date.wander) ~ 5, # died pre-wandering
+                          TRUE ~ 0), # wandered
+         censor = ifelse((dins == 0 | dins == 99), 0, 1), # 0 = to wandering, 1 = died
+         dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1, # died larva
+                            dins == 0 | dins == 99 ~ 0), # censor wandering or toast
+         date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to wandering
+                               dins == 99 ~ date.pmd,
+                               dins == 0 ~ date.wander))
+         
          
   
   
