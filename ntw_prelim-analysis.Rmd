@@ -130,6 +130,7 @@ A_labels <- c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", 
 
 # B: effect of temp:instar (trt.stage)
 B_trts = c("260-hatch", "337-4th", "337-3rd", "337-hatch") # manually set factor levels
+B_hex = c("#abd9e9", "#fdbe85", "#fd8d3c", "#d94701")
 B_colors = c("260-hatch"="#abd9e9", "337-4th"="#fdbe85", "337-3rd"="#fd8d3c", "337-hatch"="#d94701")
 B_labels = c("260-hatch"="26°C @ hatch", "337-4th"="33±7°C @ 4th", "337-3rd"="33±7°C @ 3rd", "337-hatch"="33±7°C @ hatch")
 
@@ -634,18 +635,15 @@ surv_temp <- surv3 %>%
   filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
 
 # trying to make the legend.labs work...
-surv_temp2 <- surv_temp %>% 
-  mutate(trt.stageo = ordered(trt.stage, A_trts)) %>% as_tibble()
-
-surv_ins <- surv3 %>% 
-  filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+# surv_temp2 <- surv_temp %>% 
+#   mutate(trt.stageo = ordered(trt.stage, A_trts)) %>% as_tibble()
+  # idt this is needed bc i figured out the hex labels
 
 
-## create survival objects
 
-# can i do all 3 outcomes + facet?
-sobj_temp_ec <- Surv(surv_temp$timeto.exit.hatch, surv_temp$censor)
-sfit_temp_ec <- survfit(sobj_temp_ec ~ trt.stage, data = surv_temp)
+
+sobj_temp<- Surv(surv_temp$timeto.exit.hatch, surv_temp$censor)
+sfit_temp<- survfit(sobj_temp_ec ~ trt.stage, data = surv_temp)
 
 ggsurvplot(fit = sfit_temp_ec, data=surv_temp,
            xlab = "days from hatching",
@@ -654,6 +652,37 @@ ggsurvplot(fit = sfit_temp_ec, data=surv_temp,
            palette = A_hex, 
            legend.title = "", legend.labs = A_labels) # palette and labels need to just be what u wanna replace fml
            # how to change the facet labels?
+
+
+
+# temp x instar
+surv_ins <- surv3 %>% 
+  filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+
+# from hatching
+sobj_inshatch<- Surv(surv_ins$timeto.exit.hatch, surv_ins$censor)
+sfit_inshatch<- survfit(sobj_inshatch ~ trt.stage, data = surv_ins)
+
+ggsurvplot(fit = sfit_inshatch, data=surv_ins,
+           xlab = "days from hatching",
+           ylab = "survival probability",
+           facet.by = "subset",
+           palette = B_hex, 
+           legend.title = "survival from hatching", legend.labs = B_labels)
+
+# from entering expt
+sobj_insenter<- Surv(surv_ins$timeto.exit.intrt, surv_ins$censor)
+sfit_insenter<- survfit(sobj_insenter ~ trt.stage, data = surv_ins)
+
+ggsurvplot(fit = sfit_insenter, data=surv_ins,
+           xlab = "days from hatching",
+           ylab = "survival probability",
+           facet.by = "subset",
+           censor.shape = "|",
+           conf.int = T,
+           palette = B_hex, 
+           legend.title = "survival from entering treatment", legend.labs = B_labels)
+
 
 
 ```
