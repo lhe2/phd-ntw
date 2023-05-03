@@ -648,16 +648,16 @@ sobj_temp<- Surv(surv_temp$timeto.exit.hatch, surv_temp$censor)
 sfit_temp<- survfit(sobj_temp_ec ~ trt.stage, data = surv_temp)
 
 ggsurvplot(fit = sfit_temp_ec, data=surv_temp,
-           xlab = "days from hatching",
-           ylab = "survival probability",
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp x survival from hatching",
            facet.by = "subset",
            palette = A_hex, 
-           legend.title = "", legend.labs = A_labels) # palette and labels need to just be what u wanna replace fml
+           legend.title = "treatment", legend.labs = A_labels) # palette and labels need to just be what u wanna replace fml
            # how to change the facet labels?
 
 
 
-# temp x instar
+# temp x instar effects
 surv_ins <- surv3 %>% 
   filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
 
@@ -666,11 +666,11 @@ sobj_inshatch<- Surv(surv_ins$timeto.exit.hatch, surv_ins$censor)
 sfit_inshatch<- survfit(sobj_inshatch ~ trt.stage, data = surv_ins)
 
 ggsurvplot(fit = sfit_inshatch, data=surv_ins,
-           xlab = "days from hatching",
-           ylab = "survival probability",
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp:instar x survival from hatching", 
            facet.by = "subset",
            palette = B_hex, 
-           legend.title = "survival from hatching", legend.labs = B_labels)
+           legend.title = "treatment-stage entered", legend.labs = B_labels)
 
 # from entering expt
 sobj_insenter<- Surv(surv_ins$timeto.exit.intrt, surv_ins$censor)
@@ -678,8 +678,8 @@ sfit_insenter<- survfit(sobj_insenter ~ trt.stage, data = surv_ins)
 
   # i want free x axes.. -> okay maybe this is moot
 ggsurvplot(fit = sfit_insenter, data = surv_ins,
-           xlab = "days from hatching",
-           ylab = "survival probability",
+           xlab = "days from entering treatment", ylab = "survival probability",
+           title = "temp:instar x survival from entering treatment",
            facet.by = "subset",
            #linetype = c("strata"),
            #scales = "free", # this works in ggplot....
@@ -687,8 +687,40 @@ ggsurvplot(fit = sfit_insenter, data = surv_ins,
            risk.table = T,
            #conf.int = T,
            palette = B_hex, 
-           legend.title = "survival from entering treatment", legend.labs = B_labels)
+           #p.val = T,
+           legend.title = "treatment-stage entered", legend.labs = B_labels)
 
+
+
+### just do graphs for pupation bc all of them is kinda ugly
+
+surv_inspup <- filter(surv_ins, subset == "to.pup")
+surv_temppup <- filter(surv_temp, subset == "to.pup")
+
+sfit_inspup_hatch <- survfit(Surv(surv_inspup$timeto.exit.hatch, surv_inspup$censor) ~ trt.stage, data = surv_inspup)
+sfit_inspup_intrt <- survfit(Surv(surv_inspup$timeto.exit.intrt, surv_inspup$censor) ~ trt.stage, data = surv_inspup)
+sfit_temppup <- survfit(Surv(surv_temppup$timeto.exit.hatch, surv_temppup$censor) ~ trt.stage, data = surv_temppup)
+
+ggsurvplot(fit = sfit_temppup, data = surv_temppup,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp x survival from hatching to pupation",
+           #conf.int = T,
+           palette = A_hex,
+           legend.title = "treatment entered", legend.labs = A_labels)
+
+ggsurvplot(fit = sfit_inspup_hatch, data = surv_inspup,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp:instar x survival from hatching to pupation",
+           #conf.int = T,
+           palette = B_hex,
+           legend.title = "treatment-stage entered", legend.labs = B_labels)
+
+ggsurvplot(fit = sfit_inspup_intrt, data = surv_inspup,
+           xlab = "days from entering treatment", ylab = "survival probability",
+           title = "temp:instar x survival from entering treatment to pupation",
+           #conf.int = T,
+           palette = B_hex,
+           legend.title = "treatment-stage entered", legend.labs = B_labels)
 
 ```
 
