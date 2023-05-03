@@ -521,7 +521,8 @@ surv_ec <- surv2 %>%
                                dstage == 2 ~ date.LP,
                                dstage == 3 ~ as.Date(jdate.15+10, format = "%m/%d/%y", origin = date.hatch),
                                dins == 99 ~ date.pmd,
-                               dins == 0 ~ date.eclose))
+                               dins == 0 ~ date.eclose),
+         subset = "to.ec")
 
 
 # subset: endpoint = pupation
@@ -538,7 +539,8 @@ surv_pup <- surv2 %>%
                                dstage == 2 ~ date.LP,
                                !is.na(date.pupate) & is.na(date.eclose) ~ as.Date(jdate.15+10, format = "%m/%d/%y", origin = date.hatch),
                                dins == 99 ~ date.pmd,
-                               dins == 0 ~ date.pupate))
+                               dins == 0 ~ date.pupate),
+         subset = "to.pup")
 
 # subset: endpoint = wandering
 surv_wand <- surv2 %>%
@@ -550,9 +552,21 @@ surv_wand <- surv2 %>%
                             dins == 0 | dins == 99 ~ 0), # censor wandering or toast
          date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to wandering
                                dins == 99 ~ date.pmd,
-                               dins == 0 ~ date.wander))
+                               dins == 0 ~ date.wander),
+         subset = "to.wand")
 
+# merge into 1 df for convenience
+surv3 <- do.call("rbind", list(surv_ec, surv_pup, surv_wand))
+#surv3$subset <- levels(c()) (maybe change levels)
 
+# calculate exit times
+surv3 <- surv3 %>%
+  mutate(timeto.exit.hatch = as.numeric(format.Date(date.exit, format = "%j")) - jdate.hatch,
+         timeto.exit.intrt = as.numeric(format.Date(date.exit, format = "%j")) - jdate.in.trt)
+         
+```
+
+```{r surv subset sanity checks}
 ## sanity check - look at events
 table(surv_ec$dins, surv_ec$censor)
   #      0   1
@@ -594,10 +608,48 @@ table(surv_wand$dstage, surv_wand$censor)
   #     0   1
   # 0 189   0
   # 1   0  11
-         
+
 ```
 
+
 ```{r survival plotting try 2...}
+
+# //TODO -- figure out how to facet... i think just filter the trts out of surv3
+
+# subseting the data into the diff expts for KM analyses
+
+B_labels = c("260-hatch"="26°C @ hatch", "267-hatch"="26±7°C @ hatch", "330-hatch"="33°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th")
+
+surv3$trt.stage <- factor(surv3$trt.stage, levels = c("260-hatch"="26°C @ hatch", "267-hatch"="26±7°C @ hatch", "330-hatch"="33°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th"))
+
+surv_temp <- surv3 %>% 
+  filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+
+surv_ins <- surv3 %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "337-3rd" | trt.stage == "337-4th")
+
+
+## create survival objects
+
+# look @ temp surv to ec
+# sobj_temp_ec <- surv_temp %>% filter(subset == "ec")
+# sobj_temp_ec <-  Surv(sobj_temp_ec$timeto.exit.hatch, sobj_temp_ec$censor)
+# sfit_temp_ec <- survfit(sobj_temp_ec ~ trt.stage, data = filter(surv_temp, subset == "ec"))
+# 
+# ggsurvplot(fit = sfit_temp_ec, data=filter(surv_temp, subset == "ec"),
+#            xlab = "days from hatching",
+#            ylab = "survival probability")
+
+
+# can i do all 3 outcomes + facet?
+sobj_temp_ec <- Surv(surv_temp$timeto.exit.hatch, surv_temp$censor)
+sfit_temp_ec <- survfit(sobj_temp_ec ~ trt.stage, data = surv_temp)
+
+ggsurvplot(fit = sfit_temp_ec, data=surv_temp,
+           xlab = "days from hatching",
+           ylab = "survival probability",
+           facet.by = "subset",
+           palette = A_colors, legend.title = "", levels = A_labels)
+
 
 ```
 
