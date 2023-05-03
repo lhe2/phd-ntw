@@ -510,6 +510,7 @@ surv_ec <- surv2 %>%
   mutate(dins = case_when(reason.pmd != "toast" & is.na(date.pupate) & is.na(date.LP) ~ 5, # died as 5th instar
                           !is.na(date.LP) ~ 6, # died as LPI
                           !is.na(date.pupate) & is.na(date.eclose) ~ 7, # died as pupa
+                          reason.pmd == "toast" ~ 99, # toasted
                           TRUE ~ 0), # eclosed
          censor = ifelse((dins == 0 | dins == 99), 0, 1), # 0 = to eclosion, 1 = died
          dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1,
@@ -527,6 +528,7 @@ surv_ec <- surv2 %>%
 surv_pup <- surv2 %>%
   mutate(dins = case_when(reason.pmd != "toast" & is.na(date.pupate) & is.na(date.LP) ~ 5, # died as 5th instar
                           !is.na(date.LP) ~ 6, # died as LPI
+                          reason.pmd == "toast" ~ 99, # toasted
                           TRUE ~ 0), # pupated
          censor = ifelse((dins == 0 | dins == 99), 0, 1), # 0 = to pupation, 1 = died
          dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1, # died larva
@@ -534,12 +536,14 @@ surv_pup <- surv2 %>%
                             dins == 0 | dins == 99 ~ 0), # censor pupation or toast
          date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to pupation
                                dstage == 2 ~ date.LP,
+                               !is.na(date.pupate) & is.na(date.eclose) ~ as.Date(jdate.15+10, format = "%m/%d/%y", origin = date.hatch),
                                dins == 99 ~ date.pmd,
-                               dins == 0 ~ date.eclose))
+                               dins == 0 ~ date.pupate))
 
 # subset: endpoint = wandering
 surv_wand <- surv2 %>%
-  mutate(dins = case_when(reason.pmd != "toast" & is.na(date.wander) ~ 5, # died pre-wandering
+  mutate(dins = case_when(reason.pmd != "toast" & is.na(date.wander) ~ 5, # died pre-wandering,
+                          reason.pmd == "toast" ~ 99, # toasted
                           TRUE ~ 0), # wandered
          censor = ifelse((dins == 0 | dins == 99), 0, 1), # 0 = to wandering, 1 = died
          dstage = case_when(dins == 1 | dins == 2 | dins == 3 | dins == 4 | dins == 5 ~ 1, # died larva
@@ -547,18 +551,56 @@ surv_wand <- surv2 %>%
          date.exit = case_when(dstage == 1 ~ date.pmd, # exit time if to wandering
                                dins == 99 ~ date.pmd,
                                dins == 0 ~ date.wander))
+
+
+## sanity check - look at events
+table(surv_ec$dins, surv_ec$censor)
+  #      0   1
+  # 0  157   0
+  # 5    0  13
+  # 6    0   2
+  # 7    0   4
+  # 99  24   0
+
+table(surv_ec$dstage, surv_ec$censor)
+  #     0   1
+  # 0 181   0
+  # 1   0  13
+  # 2   0   2
+  # 3   0   4
+
+
+table(surv_pup$dins, surv_pup$censor)
+  #      0   1
+  # 0  161   0
+  # 5    0  13
+  # 6    0   2
+  # 99  24   0
+
+table(surv_pup$dstage, surv_pup$censor)
+  #     0   1
+  # 0 185   0
+  # 1   0  13
+  # 2   0   2
          
+
+table(surv_wand$dins, surv_wand$censor)
+  #      0   1
+  # 0  165   0
+  # 5    0  11
+  # 99  24   0
+
+table(surv_wand$dstage, surv_wand$censor)
+  #     0   1
+  # 0 189   0
+  # 1   0  11
          
-  
-  
-  
-  
-  # mutate(timeto.exit = jdate.exit-jdate.hatch,
-  #        meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
-  #        fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
-  #        ifdied2 = ifelse((final.fate == "eclose" | reason.pmd == "toast"), 0, 1), # censor if they got toasted. maybe use this one
-  #        fc2 = ifelse(final.fate=="eclose", NA, fate.code))
 ```
+
+```{r survival plotting try 2...}
+
+```
+
 
 ### attempt 1
 
@@ -566,14 +608,20 @@ surv_wand <- surv2 %>%
 ### i dont like this and dont think this is it actually###
 # but the data coding we'll keep and ref for attempt 2
 
-
+data_v1 <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
 
 ## calculate time to event and recode events
 
   # can hardcode fates into here so dont have to be in exel (using recode())
 
 # calculate date of exit and other columns
-surv <- data_all %>%
+surv <- data_v1 %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric),
+         across(starts_with("mass."), as.numeric),
+         treatment = as.character(treatment),
+         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+         grp.trt = paste(expt.group, trt.stage, sep = "-")) %>% # round @ treatment
   filter(fate.code != "99") %>% # remove accidental deaths
   mutate(timeto.exit = jdate.exit-jdate.hatch,
          meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
@@ -603,8 +651,20 @@ surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$f
 # (death, eclose, or toast)
 table(surv$censor, surv$ifdied)
 
+  #     0   1
+  # 0 157   0 # 157 eclosed
+  # 1   0  17 # 
+  # 2   0  27
+
 # (types of death)
 table(surv$fc2, surv$ifdied)
+
+  #    0  1
+  # 1  0  2
+  # 5  0  9
+  # 6  0  1
+  # 7  0  5
+  # 8  0 27
 ```
 
 ```{r survival plots}
