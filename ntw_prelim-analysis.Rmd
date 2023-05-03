@@ -643,7 +643,7 @@ surv_temp <- surv3 %>%
 
 
 
-
+# temp only effects
 sobj_temp<- Surv(surv_temp$timeto.exit.hatch, surv_temp$censor)
 sfit_temp<- survfit(sobj_temp_ec ~ trt.stage, data = surv_temp)
 
@@ -798,15 +798,6 @@ ggsurvplot(fit = sfit, data = surv,
 
 
 
-### plot as CR ###
-# # create design object
-# #options(survey.lonely.psu="adjust")
-# #des<-svydesign(ids=~psu, strata=~strata, weights = ~mortwt, data=sub[sub$mortwt>0,], nest=T)
-# des <- svydesign(ids=~fc2, weights=)
-#   # need to calc freq weights....
-# 
-# # create survival object
-# sobj2 <- svykm(Surv(timeto.exit, fc2)~strata(trt.stage), design = des, se=T)
 
 ```
 

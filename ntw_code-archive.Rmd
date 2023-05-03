@@ -10,6 +10,21 @@ things im not using anymore but can reference. recently added stuff is at the to
 # KM dump
 
 ```{r}
+
+### plotting as CR (instead of KM)###
+# # create design object
+# #options(survey.lonely.psu="adjust")
+# #des<-svydesign(ids=~psu, strata=~strata, weights = ~mortwt, data=sub[sub$mortwt>0,], nest=T)
+# des <- svydesign(ids=~fc2, weights=)
+#   # need to calc freq weights....
+# 
+# # create survival object
+# sobj2 <- svykm(Surv(timeto.exit, fc2)~strata(trt.stage), design = des, se=T)
+
+
+
+
+
 ### attempting to facet + use free_x scales ###
 
 
