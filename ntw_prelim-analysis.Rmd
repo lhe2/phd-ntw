@@ -80,7 +80,7 @@ load(file="dfs.RData")
 ```
 
 ```{r data preprocess + clean}
-data_all <- read.csv("~/Documents/projects/data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
+data_all <- read.csv("~/Documents/projects/_not-public/1_data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
 data_all <- mutate_all(data_all, na_if, "") # remove na lines introduced during import
 data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
 
@@ -637,7 +637,7 @@ ggsurvplot(fit = sfit_inspup_intrt, data = surv_inspup,
 ### i dont like this and dont think this is it actually###
 # but the data coding we'll keep and ref for attempt 2
 
-data_v1 <- read.csv("~/Documents/projects/data/ntw_data/development.csv", header = T)
+data_v1 <- read.csv("~/Documents/projects/_not-public/1_data/ntw_data/development.csv", header = T)
 
 ## calculate time to event and recode events
 
