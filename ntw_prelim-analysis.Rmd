@@ -76,11 +76,11 @@ outputs
 * data_A, data_B
 
 ```{r quick load data}
-load(file="dfs.RData")
+#load(file="dfs.RData")
 ```
 
 ```{r data preprocess + clean}
-data_all <- read.csv("~/Documents/projects/_not-public/1_data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
+data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
 data_all <- mutate_all(data_all, na_if, "") # remove na lines introduced during import
 data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
 
@@ -164,7 +164,7 @@ all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "33
 * need to calc: log.se.mass, se.days.to
   * can use the lstats_AB and astats_AB
 
-```{r AB stats}
+```{r prep data for AB stats}
 # larva/adult mass @ instars
   # pupa/adults need to be separated from the larva before summarising bc of sex differences
 
@@ -249,7 +249,7 @@ AB2_ainstar$trt.stage <- factor(AB2_ainstar$trt.stage, levels = c("260-hatch", "
 
 * [done] add 33 constant to tempxinstar..
 
-```{r}
+```{r AB2 plots}
 # I REALLY HOPE THESE ARE DONE....
 
 
@@ -489,9 +489,10 @@ summary(masswander1)
 anova(masswander2)
 summary(masswander2)
 
+# library(rstatix)
 # pwc1 <- temp_survwand %>% tukey_hsd(mass.wander~as.factor(fluct))
 # pwc2 <- temp_survwand %>% tukey_hsd(mass.wander~as.factor(meanT))
-pwc3 <- temp_survwand %>% tukey_hsd(mass.wander~treatment)
+# pwc3 <- temp_survwand %>% tukey_hsd(mass.wander~treatment)
   # 26-0 and 26-7 aren't sig diff; 33-0 and 33-7 aren't sig diff
 
 
@@ -631,119 +632,10 @@ ggsurvplot(fit = sfit_inspup_intrt, data = surv_inspup,
 ```
 
 
-### attempt 1
-
-```{r compting risk survival coding attempt 1}
-### i dont like this and dont think this is it actually###
-# but the data coding we'll keep and ref for attempt 2
-
-data_v1 <- read.csv("~/Documents/projects/_not-public/1_data/ntw_data/development.csv", header = T)
-
-## calculate time to event and recode events
-
-  # can hardcode fates into here so dont have to be in exel (using recode())
-
-# calculate date of exit and other columns
-surv <- data_v1 %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
-  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-  mutate(across(starts_with("jdate."), as.numeric),
-         across(starts_with("mass."), as.numeric),
-         treatment = as.character(treatment),
-         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
-         grp.trt = paste(expt.group, trt.stage, sep = "-")) %>% # round @ treatment
-  filter(fate.code != "99") %>% # remove accidental deaths
-  mutate(timeto.exit = jdate.exit-jdate.hatch,
-         meantemp = ifelse((treatment=="260" | treatment=="267"), 26, 33),
-         fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7),
-         ifdied = ifelse(final.fate=="eclose", 0, 1), # 0=alive, 1=died
-         fc2 = ifelse(final.fate=="eclose", NA, fate.code)) #testing smth: to make the tables work later. alt way to code the final fate
-         #fate.code = ifelse(final.fate=="eclose", 0, 1)) # to filter out eclosion later #(this is d.event/ifdied...)
-
-# recode censoring: censoring indicators for each type of failure
-surv$fail1 <- ifelse(surv$fate.code=="1" & surv$ifdied=="1", 1, 0)
-surv$fail2 <- ifelse(surv$fate.code=="2" & surv$ifdied=="1", 1, 0)
-surv$fail3 <- ifelse(surv$fate.code=="3" & surv$ifdied=="1", 1, 0)
-surv$fail4 <- ifelse(surv$fate.code=="4" & surv$ifdied=="1", 1, 0)
-surv$fail5 <- ifelse(surv$fate.code=="5" & surv$ifdied=="1", 1, 0)
-surv$fail6 <- ifelse(surv$fate.code=="6" & surv$ifdied=="1", 1, 0)
-surv$fail7 <- ifelse(surv$fate.code=="7" & surv$ifdied=="1", 1, 0)
-surv$fail8 <- ifelse(surv$fate.code=="8" & surv$ifdied=="1", 1, 0) #idk how to handle these yet
-
-# censor data
-surv$censor <- NA
-surv$dcode <- ifelse(is.na(surv$ifdied)==T, 0, surv$fate.code) # filter eclosed
-surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$fail5==0&surv$fail6==0&surv$fail7==0&surv$fail8==0)] <- 0 # eclosed
-surv$censor[which(surv$fail1==1|surv$fail2==1|surv$fail3==1|surv$fail4==1|surv$fail5==1|surv$fail6==1|surv$fail7==1&surv$fail8==0)] <- 1 # died at some point
-surv$censor[which(surv$fail1==0&surv$fail2==0&surv$fail3==0&surv$fail4==0&surv$fail5==0&surv$fail6==0&surv$fail7==0&surv$fail8==1)] <- 2 # toasted
-
-## look at events 
-# (death, eclose, or toast)
-table(surv$censor, surv$ifdied)
-
-  #     0   1
-  # 0 157   0 # 157 eclosed
-  # 1   0  17 # 
-  # 2   0  27
-
-# (types of death)
-table(surv$fc2, surv$ifdied)
-
-  #    0  1
-  # 1  0  2
-  # 5  0  9
-  # 6  0  1
-  # 7  0  5
-  # 8  0 27
-```
-
-```{r survival plots}
-# analyse as CR or KM?
-# see kath code
-
-
-### as KM ###
-# create surv object: from hatch to outcome as defined by ifdied
-sobj <- Surv(surv$timeto.exit, surv$ifdied)
-  # this does not account for the toast ones
-
-# check if worked: + if survived to eclosion (will be censored)
-# View(sobj)
-
-# set grouping variable as trt.stage (to get unique lines per trt later)
-sfit <- survfit(sobj ~ trt.stage, data = surv)
-
-# rough check of plot
-plot(sfit) # I GUESS!
-
-
-### plotting with survminer
-# rough plot
-ggsurvplot(fit = sfit,
-           xlab = "days",
-           ylab = "survival probability")
-  # not the worst ever.....???? need to go recolor the trt stages tho.
-  # should double check what the lines are lol
-  # cant see where the 50C toasty ones are!!
-
-# add some more info (this doesnt work for now)
-  # think about this one some more..
-ggsurvplot(fit = sfit, data = surv,
-           linetype = c("strata"),
-           #facet.by = idk what makes sense here!,
-           xlab = "days",
-           ylab = "survival probability")
-
-
-
-
-
-```
-
-
-
 # code dump
 
-most moved to archive doc
+- most moved to archive doc
+- initial KM/survival coding attempts and plotting got moved to archive
 
 # comparing A vs B
 

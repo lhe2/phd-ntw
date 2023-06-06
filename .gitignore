@@ -4,6 +4,9 @@
 .RData
 .Ruserdata
 =======
+# html notebook outputs
+.nb.html
+
 # History files
 .Rhistory
 .Rapp.history
