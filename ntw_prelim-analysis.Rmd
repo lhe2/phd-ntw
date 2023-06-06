@@ -15,14 +15,16 @@ library(survminer) # maybe, for visualisation
 library(survey)
 ```
 
-# information & todo
+# TODO & information
 
 here is code for some analysis of preliminary NTW experiments. as usual i keep making 50 different new files for things bc im indecisive about how to do things
 
 TODO list: (search `// TODO`)
 
 * [done] create `daysto.` columns (from hatching) for all instars/development timepoints
-* consolidate todo items up here lol (then redistribute to below... or vice versa)
+* [sorta done] consolidate todo items up here lol (then redistribute to below... or vice versa)
+* separate processing code from analysis code lowkey bc i just want to import a fresh .csv instead of doing this 80 times, and then less things to change if i change the filenames again
+  * yeet the .nb.ntml file lol
 
 
 TODO / statistics to measure:
