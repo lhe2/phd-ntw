@@ -83,7 +83,9 @@ outputs
 
 ```{r data preprocess + clean}
 data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
-data_all <- mutate_all(data_all, na_if, "") # remove na lines introduced during import
+
+# remove na lines introduced during import
+data_all <- mutate_all(data_all, na_if, "")
 data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
 
 # filter out things that didnt hatch at 26C
@@ -95,7 +97,7 @@ data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pup
 data_pup <- select(data_all, -c("notes", "pupa.deformities", "mass.died", "time.in.approx")) 
   # not sure if 'notes' column will mess things up
 
-# create julian date columns, additional column fixing
+# create julian date columns, additional column fixing and creation
 data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric),
@@ -632,6 +634,45 @@ ggsurvplot(fit = sfit_inspup_intrt, data = surv_inspup,
            legend.title = "treatment-stage entered", legend.labs = B_labels)
 
 ```
+
+# joel data overlay analysis
+
+```{r}
+# read in new data
+data_fluct2015 <- read.csv("~/Documents/repos/_not-public/1_data/others/KS2015-JExpBiol_Msexta.MeanFlucTempExp.2014.csv", header = T, sep = ",")
+
+data_fluct2015$from.data <- c("y2015")
+
+# make my data look like 2015 data: remove extra columns, calculate times to instars, add surv5th and survPup,  match names
+data_fluct2023 <- data_all %>%
+  select(c(ID, meanT, fluct, instar.enter, trt.stage, starts_with("mass."), sex, starts_with("date."), starts_with("jdate."), final.fate))
+  
+# mutate new columns to indicate survival like in 2015 csv
+data_fluct2023 <- data_fluct2023 %>%
+  filter(final.fate != "misc") %>% # remove accidental deaths from overall analysis
+  mutate(surv.5th = ifelse(is.na(jdate.5th) & final.fate != "pmd", "N", "Y"),
+         surv.pupa = ifelse(is.na(jdate.pupa), "N", "Y"),
+         from.data = c("y2023"),
+         mass.3rd = mass.3rd/1000,
+         mass.4th = mass.4th/1000,
+         mass.5th = mass.5th/1000,
+         mass.pupa = mass.pupa/1000)
+
+# match columns and stack
+data_fluct2023$ID <- as.character(data_fluct2023$ID)
+data_fluct2023$sex <- toupper(data_fluct2023$sex)
+names(data_fluct2015)[3:24] <- tolower(names(data_fluct2015)[3:24])
+data_fluct2023 <- data_fluct2023 %>% rename(meanTemp = meanT, fluctTemp = fluct)
+data_fluct2015 <- data_fluct2015 %>% rename(meanTemp = meantemp, fluctTemp = flucttemp)
+
+data_flucts <- bind_rows(data_fluct2015, data_fluct2023) %>% select(c(1:25))
+
+
+
+```
+
+
+
 
 
 # code dump
