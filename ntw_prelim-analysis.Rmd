@@ -332,50 +332,21 @@ long_more <- data_more %>% select(-(starts_with(c("date.", "jdate.")))) %>%
                  # drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
 
 sumstats_all <- long_more %>%
+  mutate(mass = mass/1000) %>% # convert to g
+  mutate(log.mass = log(mass)) %>% # u get neg values if using mass_g
   filter(final.fate != "misc") %>% 
   filter(instar != "stuck" & instar != "2nd" & instar != "died") %>%
   group_by(meanT, fluct, instar.enter, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(log.mass)),
+            se.logmass = sd(na.omit(log.mass))/sqrt(length(na.omit(log.mass))),
             avg.time = mean(na.omit(timeto)),
-            se.time = sd(na.omit(timeto))/sqrt(na.omit(timeto)),
-            n=n()) # broken LOL once i do the na.omit
+            se.time = sd(na.omit(timeto))/sqrt(length(na.omit(timeto))),
+            n=n())
 
+sumstats_all$instar <- factor(sumstats_all$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
 
-## first attempt
-# sumstats_all <- data_all %>%
-#   filter(final.fate != "misc") %>% # remove accidental deaths from overall analysis
-#   group_by(meanT, fluct, instar.enter) %>%
-#   mutate(time.2nd = jdate.2nd-jdate.hatch,
-#          time.3rd = jdate.3rd-jdate.hatch,
-#          time.4th = jdate.4th-jdate.hatch,
-#          time.5th = jdate.5th-jdate.hatch,
-#          time.pupa = jdate.pupa-jdate.hatch,
-#          time.wander = jdate.wander-jdate.hatch,
-#          surv.5th = ifelse(is.na(jdate.5th) & final.fate != "pmd", "N", "Y"),
-#          surv.pupa = ifelse(is.na(jdate.pupa), "N", "Y"),
-#          surv.wander = ifelse(is.na(jdate.wander), "N", "Y")) %>%
-#   summarise(avg.mass3rd = mean(na.omit(mass.3rd)),
-#             se.mass3rd = sd(na.omit(mass.3rd))/sqrt(length(na.omit(mass.3rd))),
-#             avg.time3rd = mean(na.omit(time.3rd)), 
-#             se.time3rd = sd(na.omit(time.3rd))/sqrt(length(na.omit(time.3rd))),
-#             avg.mass4th = mean(na.omit(mass.4th)),
-#             se.mass4th = sd(na.omit(mass.4th))/sqrt(length(na.omit(mass.4th))),
-#             avg.time4th = mean(na.omit(time.4th)), 
-#             se.time4th = sd(na.omit(time.4th))/sqrt(length(na.omit(time.4th))),
-#             avg.mass5th = mean(na.omit(mass.5th)),
-#             se.mass5th = sd(na.omit(mass.5th))/sqrt(length(na.omit(mass.5th))),
-#             avg.time5th = mean(na.omit(time.5th)), 
-#             se.time5th = sd(na.omit(time.5th))/sqrt(length(na.omit(time.5th))),
-#             avg.masswander = mean(na.omit(mass.wander)),
-#             se.masswander = sd(na.omit(mass.wander))/sqrt(length(na.omit(mass.wander))),
-#             avg.timewander = mean(na.omit(time.wander)), 
-#             se.timewander = sd(na.omit(time.wander))/sqrt(length(na.omit(time.wander))),
-#             avg.masspupa = mean(na.omit(mass.pupa)), 
-#             se.masspupa = sd(na.omit(mass.pupa))/sqrt(length(na.omit(mass.pupa))),
-#             avg.timepupa = mean(na.omit(time.pupa)), 
-#             se.timepupa = sd(na.omit(time.pupa))/sqrt(length(na.omit(time.pupa))),
-#             n=n())
 
 ```
 
@@ -383,27 +354,46 @@ sumstats_all <- long_more %>%
 ```{r alt analysis plots}
 
 sumstats_temp <- filter(sumstats_all, instar.enter == "hatch")
-  
 sumstats_instar <- filter(sumstats_all, meanT == "33")
 
-### TEMP PLOTS
-# mass 3rd
+### temp mass
 sumstats_temp %>%
-  ggplot(aes(x = meanT, y = avg.mass3rd)) +
+  ggplot(aes(x = meanT, y = avg.mass)) +
   geom_line(aes(lty=factor(fluct))) +
   geom_point(aes(shape = factor(fluct)), size=2.5) +
-  geom_errorbar(aes(ymin = avg.mass3rd - se.mass3rd, ymax = avg.mass3rd + se.mass3rd), width = 0.15) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
   theme_bw() +
-  labs(y = "mass at 3rd (mg)", lty = "fluctuation", shape = "fluctuation")
+  labs(y = "temp: mass at instar (mg)", lty = "fluctuation", shape = "fluctuation")
 
-# time to 3rd
+### temp time
 sumstats_temp %>%
-  ggplot(aes(x = meanT, y = avg.time3rd)) +
+  ggplot(aes(x = meanT, y = avg.time)) +
   geom_line(aes(lty=factor(fluct))) +
   geom_point(aes(shape = factor(fluct)), size=2.5) +
-  geom_errorbar(aes(ymin = avg.time3rd - se.time3rd, ymax = avg.time3rd + se.time3rd), width = 0.15) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
   theme_bw() +
-  labs(y = "time to 3rd (days)", lty = "fluctuation", shape = "fluctuation")
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", lty = "fluctuation", shape = "fluctuation")
+
+### instar mass
+sumstats_instar %>%
+  ggplot(aes(x = fluct, y = avg.mass, color = instar.enter)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "instar: mass at instar (mg)", color = "instar entered")
+
+### instar time
+sumstats_instar %>%
+  ggplot(aes(x = fluct, y = avg.time, color = instar.enter)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") 
+  labs(y = "instar: time to instar (days)", color = "instar entered")
+
 ```
 
 
@@ -837,6 +827,68 @@ sumstats_flucts %>%
 
 - most moved to archive doc
 - initial KM/survival coding attempts and plotting got moved to archive
+
+## old 2015 attempt
+
+```{r}
+# # first attempt
+# sumstats_old <- data_all %>%
+#   filter(final.fate != "misc") %>% # remove accidental deaths from overall analysis
+#   group_by(meanT, fluct, instar.enter) %>%
+#   mutate(time.2nd = jdate.2nd-jdate.hatch,
+#          time.3rd = jdate.3rd-jdate.hatch,
+#          time.4th = jdate.4th-jdate.hatch,
+#          time.5th = jdate.5th-jdate.hatch,
+#          time.pupa = jdate.pupa-jdate.hatch,
+#          time.wander = jdate.wander-jdate.hatch,
+#          surv.5th = ifelse(is.na(jdate.5th) & final.fate != "pmd", "N", "Y"),
+#          surv.pupa = ifelse(is.na(jdate.pupa), "N", "Y"),
+#          surv.wander = ifelse(is.na(jdate.wander), "N", "Y")) %>%
+#   summarise(avg.mass3rd = mean(na.omit(mass.3rd)),
+#             se.mass3rd = sd(na.omit(mass.3rd))/sqrt(length(na.omit(mass.3rd))),
+#             avg.time3rd = mean(na.omit(time.3rd)),
+#             se.time3rd = sd(na.omit(time.3rd))/sqrt(length(na.omit(time.3rd))),
+#             avg.mass4th = mean(na.omit(mass.4th)),
+#             se.mass4th = sd(na.omit(mass.4th))/sqrt(length(na.omit(mass.4th))),
+#             avg.time4th = mean(na.omit(time.4th)),
+#             se.time4th = sd(na.omit(time.4th))/sqrt(length(na.omit(time.4th))),
+#             avg.mass5th = mean(na.omit(mass.5th)),
+#             se.mass5th = sd(na.omit(mass.5th))/sqrt(length(na.omit(mass.5th))),
+#             avg.time5th = mean(na.omit(time.5th)),
+#             se.time5th = sd(na.omit(time.5th))/sqrt(length(na.omit(time.5th))),
+#             avg.masswander = mean(na.omit(mass.wander)),
+#             se.masswander = sd(na.omit(mass.wander))/sqrt(length(na.omit(mass.wander))),
+#             avg.timewander = mean(na.omit(time.wander)),
+#             se.timewander = sd(na.omit(time.wander))/sqrt(length(na.omit(time.wander))),
+#             avg.masspupa = mean(na.omit(mass.pupa)),
+#             se.masspupa = sd(na.omit(mass.pupa))/sqrt(length(na.omit(mass.pupa))),
+#             avg.timepupa = mean(na.omit(time.pupa)),
+#             se.timepupa = sd(na.omit(time.pupa))/sqrt(length(na.omit(time.pupa))),
+#             n=n())
+# 
+# sumstats_tempold <- filter(sumstats_old, instar.enter == "hatch")
+# sumstats_instarold <- filter(sumstats_old, meanT == "33")
+# 
+# # mass 3rd
+# sumstats_tempold %>%
+#   ggplot(aes(x = meanT, y = avg.mass3rd)) +
+#   geom_line(aes(lty=factor(fluct))) +
+#   geom_point(aes(shape = factor(fluct)), size=2.5) +
+#   geom_errorbar(aes(ymin = avg.mass3rd - se.mass3rd, ymax = avg.mass3rd + se.mass3rd), width = 0.15) +
+#   theme_bw() +
+#   labs(y = "mass at 3rd (mg)", lty = "fluctuation", shape = "fluctuation")
+# 
+# # time to 3rd
+# sumstats_tempold %>%
+#   ggplot(aes(x = meanT, y = avg.time3rd)) +
+#   geom_line(aes(lty=factor(fluct))) +
+#   geom_point(aes(shape = factor(fluct)), size=2.5) +
+#   geom_errorbar(aes(ymin = avg.time3rd - se.time3rd, ymax = avg.time3rd + se.time3rd), width = 0.15) +
+#   theme_bw() +
+#   labs(y = "time to 3rd (days)", lty = "fluctuation", shape = "fluctuation")
+```
+
+
 
 # comparing A vs B
 
