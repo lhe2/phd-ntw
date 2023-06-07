@@ -77,10 +77,6 @@ outputs
   * maybe rename data to data_ec (surv to eclosion)
 * data_A, data_B
 
-```{r quick load data}
-#load(file="dfs.RData")
-```
-
 ```{r data preprocess + clean}
 data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
 
@@ -153,9 +149,6 @@ B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", 
 #CD133F
 
 all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th")
-
-# save all this as .RData file (delete later)
-#save(data_all, data_notes, data, long, data_A, data_B, A_colors, A_labels, B_trts, B_colors, B_labels, file="dfs.RData")
 
 ```
 
