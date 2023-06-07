@@ -637,22 +637,24 @@ ggsurvplot(fit = sfit_inspup_intrt, data = surv_inspup,
 
 # joel data overlay analysis
 
-```{r}
+## data prep
+
+```{r prep 2015 v 2013}
 # read in new data
 data_fluct2015 <- read.csv("~/Documents/repos/_not-public/1_data/others/KS2015-JExpBiol_Msexta.MeanFlucTempExp.2014.csv", header = T, sep = ",")
 
-data_fluct2015$from.data <- c("y2015")
+data_fluct2015$year <- c("y2015")
 
-# make my data look like 2015 data: remove extra columns, calculate times to instars, add surv5th and survPup,  match names
+# make my data look like 2015 data: 
+# remove extra columns, calculate times to instars, add surv5th and survPup columns, mass from mg to g
 data_fluct2023 <- data_all %>%
-  select(c(ID, meanT, fluct, instar.enter, trt.stage, starts_with("mass."), sex, starts_with("date."), starts_with("jdate."), final.fate))
-  
-# mutate new columns to indicate survival like in 2015 csv
-data_fluct2023 <- data_fluct2023 %>%
+  select(c(ID, meanT, fluct, instar.enter, trt.stage, starts_with("mass."), sex, starts_with("date."), starts_with("jdate."), final.fate)) %>%
   filter(final.fate != "misc") %>% # remove accidental deaths from overall analysis
-  mutate(surv.5th = ifelse(is.na(jdate.5th) & final.fate != "pmd", "N", "Y"),
+  mutate(time.5th = jdate.5th-jdate.hatch,
+         time.pupa = jdate.pupa-jdate.hatch,
+         surv.5th = ifelse(is.na(jdate.5th) & final.fate != "pmd", "N", "Y"),
          surv.pupa = ifelse(is.na(jdate.pupa), "N", "Y"),
-         from.data = c("y2023"),
+         year = c("y2023"),
          mass.3rd = mass.3rd/1000,
          mass.4th = mass.4th/1000,
          mass.5th = mass.5th/1000,
@@ -665,12 +667,67 @@ names(data_fluct2015)[3:24] <- tolower(names(data_fluct2015)[3:24])
 data_fluct2023 <- data_fluct2023 %>% rename(meanTemp = meanT, fluctTemp = fluct)
 data_fluct2015 <- data_fluct2015 %>% rename(meanTemp = meantemp, fluctTemp = flucttemp)
 
-data_flucts <- bind_rows(data_fluct2015, data_fluct2023) %>% select(c(1:25))
+commonCols <- intersect(colnames(data_fluct2015), colnames(data_fluct2023))
+data_flucts <- bind_rows(data_fluct2015[, commonCols], data_fluct2023[, commonCols])
 
 
+# summmary stats
+sumstats_flucts <- data_flucts %>%
+  group_by(year, meanTemp, fluctTemp) %>%
+  summarise(avg.mass5th = mean(na.omit(mass.5th)),
+            se.mass5th = sd(na.omit(mass.5th))/sqrt(length(na.omit(mass.5th))),
+            avg.time5th = mean(na.omit(time.5th)), 
+            se.time5th = sd(na.omit(time.5th))/sqrt(length(na.omit(time.5th))),
+            avg.masspupa = mean(na.omit(mass.pupa)), 
+            se.masspupa = sd(na.omit(mass.pupa))/sqrt(length(na.omit(mass.pupa))),
+            avg.timepupa = mean(na.omit(time.pupa)), 
+            se.timepupa = sd(na.omit(time.pupa))/sqrt(length(na.omit(time.pupa))))
 
 ```
 
+## plotting
+
+```{r plotting 2015 v 2023}
+
+# time to 5th
+sumstats_flucts %>%
+  ggplot(aes(x = meanTemp, y = avg.time5th, color = year, group = interaction(year, fluctTemp))) +
+  geom_line(aes(lty=factor(fluctTemp))) +
+  geom_point(aes(shape = factor(fluctTemp)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.time5th - se.time5th, ymax = avg.time5th + se.time5th), width = 0.15) +
+  theme_bw() +
+  labs(y = "time to 5th (days)", lty = "fluctuation", shape = "fluctuation")
+
+# mass 5th
+sumstats_flucts %>%
+  ggplot(aes(x = meanTemp, y = avg.mass5th, color = year, group = interaction(year, fluctTemp))) +
+  geom_line(aes(lty=factor(fluctTemp))) +
+  geom_point(aes(shape = factor(fluctTemp)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass5th - se.mass5th, ymax = avg.mass5th + se.mass5th), width = 0.15) +
+  theme_bw() +
+  labs(y = "mass at 5th (g)", lty = "fluctuation", shape = "fluctuation")
+
+
+# time to pupa
+sumstats_flucts %>%
+  ggplot(aes(x = meanTemp, y = avg.timepupa, color = year, group = interaction(year, fluctTemp))) +
+  geom_line(aes(lty=factor(fluctTemp))) +
+  geom_point(aes(shape = factor(fluctTemp)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.timepupa - se.timepupa, ymax = avg.timepupa + se.timepupa), width = 0.15) +
+  theme_bw() +
+  labs(y = "time to pupation (days)", lty = "fluctuation", shape = "fluctuation")
+
+# mass pupa
+sumstats_flucts %>%
+  ggplot(aes(x = meanTemp, y = avg.masspupa, color = year, group = interaction(year, fluctTemp))) +
+  geom_line(aes(lty=factor(fluctTemp))) +
+  geom_point(aes(shape = factor(fluctTemp)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.masspupa - se.masspupa, ymax = avg.masspupa + se.masspupa), width = 0.15) +
+  theme_bw() +
+  labs(y = "mass at pupation (g)", lty = "fluctuation", shape = "fluctuation")
+  
+
+```
 
 
 
