@@ -347,7 +347,6 @@ sumstats_all <- long_more %>%
 
 sumstats_all$instar <- factor(sumstats_all$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
 
-
 ```
 
 ## alt plots
@@ -379,6 +378,7 @@ sumstats_temp %>%
 ### instar mass
 sumstats_instar %>%
   ggplot(aes(x = fluct, y = avg.mass, color = instar.enter)) +
+  geom_line() +
   geom_point() +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
   facet_wrap(~instar, scales = "free") +
@@ -388,13 +388,77 @@ sumstats_instar %>%
 ### instar time
 sumstats_instar %>%
   ggplot(aes(x = fluct, y = avg.time, color = instar.enter)) +
+  geom_line() +
   geom_point() +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
   theme_bw() +
-  facet_wrap(~instar, scales = "free") 
+  facet_wrap(~instar, scales = "free") +
   labs(y = "instar: time to instar (days)", color = "instar entered")
 
 ```
+## alt adult plots
+```{r}
+# calc summary stats
+sumstats_ad <- long_more %>%
+  mutate(mass = mass/1000) %>% # convert to g
+  filter(final.fate != "misc" & sex != "unk") %>% 
+  filter(instar == "pupa" | instar == "eclose") %>%
+  group_by(meanT, fluct, instar.enter, instar, sex) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.time = mean(na.omit(timeto)),
+            se.time = sd(na.omit(timeto))/sqrt(length(na.omit(timeto))),
+            n=n())
+
+sumstats_ad$instar <- factor(sumstats_ad$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+
+sumstats_aTemp <- filter(sumstats_ad, instar.enter == "hatch")
+sumstats_aInstar <- filter(sumstats_ad, meanT == "33")
+
+# plots
+### temp mass
+sumstats_aTemp %>%
+  ggplot(aes(x = meanT, y = avg.mass, color = sex)) +
+  geom_line(aes(lty=factor(fluct))) +
+  geom_point(aes(shape = factor(fluct)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "temp: mass at instar (mg)", lty = "fluctuation", shape = "fluctuation")
+
+### temp time
+sumstats_aTemp %>%
+  ggplot(aes(x = meanT, y = avg.time, color=sex)) +
+  geom_line(aes(lty=factor(fluct))) +
+  geom_point(aes(shape = factor(fluct)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", lty = "fluctuation", shape = "fluctuation")
+
+jitter <- position_dodge(width=0.5)
+
+### instar mass
+sumstats_aInstar %>%
+  ggplot(aes(x = fluct, y = avg.mass, color = instar.enter)) +
+  #geom_line() +
+  geom_point(aes(shape = sex), size = 2.5, position = jitter) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
+  facet_wrap(instar~sex, scales = "free") +
+  theme_bw() +
+  labs(y = "instar: mass at instar (mg)", color = "instar entered")
+
+### instar time
+sumstats_aInstar %>%
+  ggplot(aes(x = fluct, y = avg.time, color = instar.enter)) +
+  #geom_line() +
+  geom_point(aes(shape = sex), size = 2, position = jitter) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
+  theme_bw() +
+  facet_wrap(instar~sex, scales = "free") +
+  labs(y = "instar: time to instar (days)")
+```
+
 
 
 
