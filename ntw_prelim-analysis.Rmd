@@ -106,8 +106,7 @@ data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = 
                                ifelse((treatment=="260" | treatment=="267"), 26, 33))),
          fluct = ifelse(treatment == "419", 10.5,
                         ifelse(treatment == "433", 3.5,
-                               ifelse((treatment == "260" | treatment == "330"), 0, 7))),
-         test = "test")
+                               ifelse((treatment == "260" | treatment == "330"), 0, 7))))
 
 #data_all$trt.stage <- factor(data_all$trt.stage, levels = c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th"))
 
@@ -132,8 +131,14 @@ long$instar <- factor(long$instar, c("hatch", "2nd", "3rd", "4th", "5th", "stuck
 # create subsets
 data_A <- long[long$expt.group == "A",]
 data_B <- long[long$expt.group == "B",]
+data_C <- long[long$expt.group == "C",]
 
-# defining factors, labels
+```
+
+```{r define factors, labels, aesthetics}
+all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th", "40-19", "40-26")
+
+
 # A: effect of temp (treatment)
 A_trts = c("260-hatch", "267-hatch", "330-hatch", "337-hatch")
 # A_hex = c("#abd9e9","#2c7bb6", "#fdae61", "#d7191c")
@@ -153,7 +158,14 @@ B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
 B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", "337-4th"="#F3922B")
 #CD133F
 
-all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th")
+
+# C: same DTs, different NTs
+C_trts = c("260-hatch", "40-19", "337-hatch", "40-33") # manually set factor levels
+# B_hex = c("#abd9e9", "#fdbe85", "#fd8d3c", "#d94701")
+# B_colors = c("260-hatch"="#abd9e9", "337-4th"="#fdbe85", "337-3rd"="#fd8d3c", "337-hatch"="#d94701")
+C_labels = c("260-hatch"="26°C","40-19"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "40-33"="36.5±3.5°C (40/33)")
+C_hex = c("#00C2D1", "#4059AD", "#6B9AC4", "#97D8C4")
+C_colors = c("260-hatch"="#00C2D1", "40-19"="#4059AD", "337-hatch"="#6B9AC4", "40-33"="#97D8C4")
 
 ```
 
@@ -360,6 +372,7 @@ sumstats_all$instar.enter <- factor(sumstats_all$instar.enter, levels=c("hatch",
 
 sumstats_temp <- filter(sumstats_all, instar.enter == "hatch")
 sumstats_instar <- filter(sumstats_all, meanT == "33")
+sumstats_NT <- filter(sumstats_all, meanT == "33")
 
 ### temp mass
 sumstats_temp %>%
