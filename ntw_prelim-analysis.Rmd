@@ -101,8 +101,13 @@ data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = 
          treatment = as.character(treatment),
          trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
          grp.trt = paste(expt.group, trt.stage, sep = "-"), # round @ treatment
-         meanT = ifelse((treatment=="260" | treatment=="267"), 26, 33),
-         fluct = ifelse((treatment == "260" | treatment == "330"), 0, 7))
+         meanT = ifelse(treatment == "419", 29.5, 
+                        ifelse(treatment == "433", 36.5,
+                               ifelse((treatment=="260" | treatment=="267"), 26, 33))),
+         fluct = ifelse(treatment == "419", 10.5,
+                        ifelse(treatment == "433", 3.5,
+                               ifelse((treatment == "260" | treatment == "330"), 0, 7))),
+         test = "test")
 
 #data_all$trt.stage <- factor(data_all$trt.stage, levels = c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th"))
 
@@ -346,6 +351,7 @@ sumstats_all <- long_more %>%
             n=n())
 
 sumstats_all$instar <- factor(sumstats_all$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+sumstats_all$instar.enter <- factor(sumstats_all$instar.enter, levels=c("hatch", "3rd", "4th"))
 
 ```
 
@@ -411,6 +417,7 @@ sumstats_ad <- long_more %>%
             n=n())
 
 sumstats_ad$instar <- factor(sumstats_ad$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+sumstats_ad$instar.enter <- factor(sumstats_ad$instar.enter, levels=c("hatch", "3rd", "4th"))
 
 sumstats_aTemp <- filter(sumstats_ad, instar.enter == "hatch")
 sumstats_aInstar <- filter(sumstats_ad, meanT == "33")
