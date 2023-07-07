@@ -160,10 +160,10 @@ B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", 
 
 
 # C: same DTs, different NTs
-C_trts = c("260-hatch", "40-19", "337-hatch", "40-33") # manually set factor levels
-C_labels = c("267-hatch"="26±7°C (33/19)","40-19"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "40-33"="36.5±3.5°C (40/33)")
+#C_trts = c("260-hatch", "40-19", "337-hatch", "40-33") # manually set factor levels
+C_labels = c("267"="26±7°C (33/19)","419"="29.5±10.5°C (40/19)", "426"="33±7°C (40/26)", "433"="36.5±3.5°C (40/33)")
 C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
-C_colors = c("267-hatch"="#F4B942", "40-19"="#4059AD", "337-hatch"="#6B9AC4", "40-33"="#97D8C4")
+C_colors = c("267"="#F4B942", "419"="#4059AD", "426"="#6B9AC4", "433"="#97D8C4")
   # tbh not sure what i want to compare with here... 260 or 267?
 
 ```
@@ -263,7 +263,7 @@ AB2_ainstar$trt.stage <- factor(AB2_ainstar$trt.stage, levels = c("260-hatch", "
 ```{r TEMP grp C analysis until they pupate}
 ### STATS
 
-long2 <- data_all %>% filter(trt.stage == "267-hatch" | expt.group == "C") %>%
+long2 <- data_all %>% filter(trt.stage == "267-hatch" | trt.stage == "337-hatch" | expt.group == "C") %>%
   select(-(starts_with("date."))) %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
                names_to = c(".value", "instar"),
@@ -272,6 +272,8 @@ long2 <- data_all %>% filter(trt.stage == "267-hatch" | expt.group == "C") %>%
                names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
   rename(molt.status = h) %>%
   drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
+
+#long2$treatment[long2$treatment==337] <- 426
 
 C_mass <- long2 %>%
   group_by(treatment, instar) %>%
@@ -283,7 +285,11 @@ C_mass <- long2 %>%
             n=n())
 
 C_dev <- data_all %>%
-  filter(trt.stage == "267-hatch" | expt.group == "C") %>%
+  filter(trt.stage == "267-hatch" | trt.stage == "337-hatch" | expt.group == "C")
+
+#C_dev$treatment[C_dev$treatment==337] <- 426
+
+C_dev <- C_dev %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
@@ -310,6 +316,17 @@ C_stats <- C_stats %>%
 
 
 ### FIGS
+
+C_stats %>% 
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=treatment)) +
+  geom_point(size=3, alpha=0.75) +
+  scale_shape_manual(values=c(16, 17, 15, 18))+
+  geom_line(aes(group = treatment)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+
 ```
 
 
