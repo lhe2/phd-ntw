@@ -131,7 +131,7 @@ long$instar <- factor(long$instar, c("hatch", "2nd", "3rd", "4th", "5th", "stuck
 # create subsets
 data_A <- long[long$expt.group == "A",]
 data_B <- long[long$expt.group == "B",]
-data_C <- long[long$expt.group == "C",]
+#data_C <- long[long$expt.group == "C",]
 
 ```
 
@@ -161,11 +161,10 @@ B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", 
 
 # C: same DTs, different NTs
 C_trts = c("260-hatch", "40-19", "337-hatch", "40-33") # manually set factor levels
-# B_hex = c("#abd9e9", "#fdbe85", "#fd8d3c", "#d94701")
-# B_colors = c("260-hatch"="#abd9e9", "337-4th"="#fdbe85", "337-3rd"="#fd8d3c", "337-hatch"="#d94701")
-C_labels = c("260-hatch"="26°C","40-19"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "40-33"="36.5±3.5°C (40/33)")
-C_hex = c("#00C2D1", "#4059AD", "#6B9AC4", "#97D8C4")
-C_colors = c("260-hatch"="#00C2D1", "40-19"="#4059AD", "337-hatch"="#6B9AC4", "40-33"="#97D8C4")
+C_labels = c("267-hatch"="26±7°C (33/19)","40-19"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "40-33"="36.5±3.5°C (40/33)")
+C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
+C_colors = c("267-hatch"="#F4B942", "40-19"="#4059AD", "337-hatch"="#6B9AC4", "40-33"="#97D8C4")
+  # tbh not sure what i want to compare with here... 260 or 267?
 
 ```
 
@@ -255,7 +254,62 @@ AB2_ainstar$trt.stage <- factor(AB2_ainstar$trt.stage, levels = c("260-hatch", "
 # AB2_linstar2 <- AB2_lstats %>% filter(trt.stage != "267-hatch")
 # AB2_ainstar2 <- AB2_astats %>% filter(trt.stage != "267-hatch")
 
+#AB2_lNT <- AB2_lstats %>% (trt.stage == "267-hatch" | )
 
+
+```
+
+
+```{r TEMP grp C analysis until they pupate}
+### STATS
+
+long2 <- data_all %>% filter(trt.stage == "267-hatch" | expt.group == "C") %>%
+  select(-(starts_with("date."))) %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
+               names_to = c(".value", "instar"),
+               #names_sep = ".",
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  rename(molt.status = h) %>%
+  drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
+
+C_mass <- long2 %>%
+  group_by(treatment, instar) %>%
+  mutate(logmass = log(mass)) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+C_dev <- data_all %>%
+  filter(trt.stage == "267-hatch" | expt.group == "C") %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupa - jdate.wander,
+         #eclose = jdate.eclose - jdate.15
+         eclose = jdate.eclose - jdate.pupa) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
+                names_to = "instar",
+                values_to = "days.to") %>%
+  group_by(treatment, instar) %>%
+  summarise(avg.daysto = mean(na.omit(days.to)),
+            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))))
+
+C_stats <- merge(C_mass, C_dev, all = T) 
+
+C_stats <- C_stats %>%
+    filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+    filter(treatment != "260")
+
+
+
+### FIGS
 ```
 
 
@@ -372,7 +426,7 @@ sumstats_all$instar.enter <- factor(sumstats_all$instar.enter, levels=c("hatch",
 
 sumstats_temp <- filter(sumstats_all, instar.enter == "hatch")
 sumstats_instar <- filter(sumstats_all, meanT == "33")
-sumstats_NT <- filter(sumstats_all, meanT == "33")
+#sumstats_NT <- filter(sumstats_all, meanT == "33")
 
 ### temp mass
 sumstats_temp %>%
