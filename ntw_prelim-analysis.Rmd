@@ -190,7 +190,7 @@ C_colors = c("267"="#F4B942", "419"="#4059AD", "426"="#6B9AC4", "433"="#97D8C4")
 AB2_lmass <- long %>%
   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
   group_by(instar, trt.stage) %>%
-  mutate(logmass = log(na.omit(mass))) %>%
+  mutate(logmass = log(mass)) %>% # 230710: took out the na.omit() to make it work. idky it broke tho
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
             avg.logmass = mean(na.omit(logmass)),
@@ -273,11 +273,12 @@ long2 <- data_all %>% filter(trt.stage == "267-hatch" | trt.stage == "337-hatch"
   rename(molt.status = h) %>%
   drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
 
-#long2$treatment[long2$treatment==337] <- 426
+long2$treatment[long2$treatment==337] <- 426
 
 C_mass <- long2 %>%
+  drop_na(mass) %>%
   group_by(treatment, instar) %>%
-  mutate(logmass = log(mass)) %>%
+  mutate(logmass = log(na.omit(mass))) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
             avg.logmass = mean(na.omit(logmass)),
@@ -287,9 +288,10 @@ C_mass <- long2 %>%
 C_dev <- data_all %>%
   filter(trt.stage == "267-hatch" | trt.stage == "337-hatch" | expt.group == "C")
 
-#C_dev$treatment[C_dev$treatment==337] <- 426
+C_dev$treatment[C_dev$treatment==337] <- 426
 
-C_dev <- C_dev %>%
+C_devlong <- C_dev %>%
+  #drop_na(starts_with("mass")) %>%
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
@@ -304,10 +306,11 @@ C_dev <- C_dev %>%
                 names_to = "instar",
                 values_to = "days.to") %>%
   group_by(treatment, instar) %>%
+  drop_na(days.to) %>%
   summarise(avg.daysto = mean(na.omit(days.to)),
             se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))))
 
-C_stats <- merge(C_mass, C_dev, all = T) 
+C_stats <- merge(C_mass, C_devlong, all = T) 
 
 C_stats <- C_stats %>%
     filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
@@ -318,6 +321,7 @@ C_stats <- C_stats %>%
 ### FIGS
 
 C_stats %>% 
+  filter(treatment != 267) %>%
   ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=treatment)) +
   geom_point(size=3, alpha=0.75) +
   scale_shape_manual(values=c(16, 17, 15, 18))+
@@ -326,6 +330,36 @@ C_stats %>%
   geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
   labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
   scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+
+C_stats %>% 
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=treatment)) +
+  geom_point(size=3, alpha=0.75) +
+  scale_shape_manual(values=c(16, 17, 15, 18))+
+  geom_line(aes(group = treatment)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+
+
+
+### STATS 2: instar growth rate (see below alt analyses)
+
+# C_instime <- C_dev %>%
+#   mutate(timeto.3rd = jdate.3rd-jdate.hatch,
+#          timeto.4th = jdate.4th-jdate.hatch,
+#          timeto.5th = jdate.5th-jdate.hatch,
+#          timeto.wander = jdate.wander-jdate.hatch,
+#          timeto.pupa = jdate.pupa-jdate.hatch,
+#          timeto.eclose = jdate.eclose-jdate.hatch) %>%
+#   select(-(starts_with(c("date.", "jdate.")))) %>%
+#                  pivot_longer(cols = starts_with(c("timeto", "mass", "h")),
+#                         names_to = c(".value", "instar"),
+#                         #names_sep = ".",
+#                         values_drop_na = TRUE,
+#                         names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+#                  rename(molt.status = h)
+
 
 ```
 
@@ -442,8 +476,8 @@ sumstats_all$instar.enter <- factor(sumstats_all$instar.enter, levels=c("hatch",
 ```{r alt analysis plots}
 
 sumstats_temp <- filter(sumstats_all, instar.enter == "hatch")
-sumstats_instar <- filter(sumstats_all, meanT == "33")
-#sumstats_NT <- filter(sumstats_all, meanT == "33")
+sumstats_instar <- filter(sumstats_all, meanT == "33.0")
+sumstats_NT <- filter(sumstats_all, (((meanT == "29.5" | meanT == "36.5") | fluct == 7.0) & instar.enter == "hatch"))
 
 ### temp mass
 sumstats_temp %>%
@@ -484,6 +518,28 @@ sumstats_instar %>%
   theme_bw() +
   facet_wrap(~instar, scales = "free") +
   labs(y = "instar: time to instar (days)", color = "instar entered")
+
+
+### NT mass
+sumstats_NT %>%
+  ggplot(aes(x = meanT, y = avg.mass, color=factor(fluct))) +
+  geom_point(size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+
+
+### NT time
+sumstats_NT %>%
+  ggplot(aes(x = meanT, y = avg.time, color=factor(fluct))) +
+  geom_point(size=2.5) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
 ```
 ## alt adult plots
