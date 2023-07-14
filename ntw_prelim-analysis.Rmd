@@ -78,7 +78,8 @@ outputs
 * data_A, data_B
 
 ```{r data preprocess + clean}
-data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v2.csv", header = T) # change to this bc v1 is missing some info
+data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v3.csv", header = T) # changed to v3 bc of some column reorg/hard coding
+# change to this bc v1 is missing some info
 
 # remove na lines introduced during import
 data_all <- mutate_all(data_all, na_if, "")
@@ -89,11 +90,14 @@ data_all <- data_all %>%
     filter(!(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
 # save wordier notes elsewhere and remove from analysis dataset
-data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "final.fate", "notes"))
-data_pup <- select(data_all, -c("notes", "pupa.deformities", "mass.died", "time.in.approx")) 
+data_notes <- select(data_all, c("treatment", "ID", "expt.group", ends_with("_ex")))
+
+# data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "final.fate", "notes"))
+# data_pup <- select(data_all, -c("notes", "pupa.deformities", "mass.died", "time.in.approx")) 
   # not sure if 'notes' column will mess things up
 
 # create julian date columns, additional column fixing and creation
+  # ignore 
 data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric),
@@ -101,18 +105,19 @@ data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = 
          treatment = as.character(treatment),
          trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
          grp.trt = paste(expt.group, trt.stage, sep = "-"), # round @ treatment
-         meanT = ifelse(treatment == "419", 29.5, 
-                        ifelse(treatment == "433", 36.5,
-                               ifelse((treatment=="260" | treatment=="267"), 26, 33))),
-         fluct = ifelse(treatment == "419", 10.5,
-                        ifelse(treatment == "433", 3.5,
-                               ifelse((treatment == "260" | treatment == "330"), 0, 7))))
+         # meanT = ifelse(treatment == "419", 29.5, 
+         #                ifelse(treatment == "433", 36.5,
+         #                       ifelse((treatment=="260" | treatment=="267"), 26, 33))),
+         # fluct = ifelse(treatment == "419", 10.5,
+         #                ifelse(treatment == "433", 3.5,
+         #                       ifelse((treatment == "260" | treatment == "330"), 0, 7)))
+         )
 
 #data_all$trt.stage <- factor(data_all$trt.stage, levels = c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th"))
 
 # keep individuals that survived to pupation
 #data_pup <- data_all %>% filter(reason.pmd == "" | reason.pmd == "pupa" | reason.pmd == "toast" )
-data_pup <- data_all %>% filter(final.fate == "accidental" | final.fate == "eclose" | final.fate == "pupa")
+data_pup <- data_all %>% filter(final.fate == "other" | final.fate == "eclose" | final.fate == "pupa")
   # omit the LPs? -> currently yes
 
 # pivot and make subsets
@@ -132,6 +137,10 @@ long$instar <- factor(long$instar, c("hatch", "2nd", "3rd", "4th", "5th", "stuck
 data_A <- long[long$expt.group == "A",]
 data_B <- long[long$expt.group == "B",]
 #data_C <- long[long$expt.group == "C",]
+
+
+### this is updated w/ v3 data but we're moving to a new sheet Rmd lol
+
 
 ```
 
