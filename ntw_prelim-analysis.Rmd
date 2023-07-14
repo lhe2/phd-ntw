@@ -90,14 +90,15 @@ data_all <- data_all %>%
     filter(!(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
 # save wordier notes elsewhere and remove from analysis dataset
-data_notes <- select(data_all, c("treatment", "ID", "expt.group", ends_with("_ex")))
+data_notes <- select(data_all, c("treatment", "
+                                 ID", "expt.group", "attempt.pupa", "got.stuck", ends_with("_ex")))
 
 # data_notes <- select(data_all, c("from.E", "treatment", "ID", "expt.group", "pupa.deformities", "final.fate", "notes"))
 # data_pup <- select(data_all, -c("notes", "pupa.deformities", "mass.died", "time.in.approx")) 
   # not sure if 'notes' column will mess things up
 
 # create julian date columns, additional column fixing and creation
-  # ignore 
+  # ignore the meantT/fluctT stuff bc i hardcoded that in v3
 data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric),

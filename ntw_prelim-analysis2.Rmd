@@ -1,0 +1,504 @@
+---
+title: "cleaned up NTW"
+output: html_notebook
+---
+
+because my main stuff is getting tooo messy again!!!
+
+
+0. load in data, packages
+1. clean/reformat data, make subsets
+2. look at mass gain/instar time on same plot
+  a. calculate stats for larva/adults
+  b. group stats by expts (temp, tempxins, NTs)
+  c. plot
+3. look at mass gain/instar time on separate plot
+  a. calculate stats
+  b. group stats by expts (temp, tempxins, NTs)
+  c. plot
+
+
+# 0. load in data, packages
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(survival)
+```
+
+```{r}
+data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v3.csv", header = T)
+```
+
+
+# 1. clean data
+
+## remove some extra data
+```{r}
+# remove na lines introduced during import
+data_all <- mutate_all(data_all, na_if, "")
+data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
+
+# filter out individuals that didnt hatch at 26C
+data_all <- data_all %>%
+    filter(!(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
+
+### TEMP: filter out 6ths im too lazy to change it all
+data_all <- select(data_all, -ends_with(".6th"))
+
+# extract wordier notes from data and save elsewhere
+data_notes <- select(data_all, c("treatment", "ID", "expt.group", "attempt.pupa", "got.stuck", ends_with("_ex")))
+data_all <- select(data_all, -c("from.E", ends_with("_ex")))
+```
+
+
+## create and reformat columns
+```{r}
+# match a column
+data_all$treatment[data_all$treatment==426] <- 337
+
+# create julian date columns, additional column fixing and creation
+data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric),
+         across(starts_with("mass."), as.numeric),
+         treatment = as.character(treatment),
+         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+         grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+
+
+# pivot
+long_all <- data_all %>% select(-(starts_with("date."))) %>%
+                 pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
+                        names_to = c(".value", "instar"),
+                        #names_sep = ".",
+                        values_drop_na = TRUE,
+                        names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+                 rename(molt.status = h) %>%
+                 drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
+
+# remove extra columns and add instar factor levels
+long_all <- long_all[long_all$instar != "in",] # from 'instar.in.trt'?
+long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+```
+
+
+## subset data
+```{r}
+# individuals that survived to pupation (includes LPs)
+data_pup <- data_all %>% filter(attempt.pupa == "Y")
+long_pup <- long_all %>% filter(attempt.pupa == "Y")
+```
+
+
+## define labels and aesthetics
+```{r}
+#all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th", "40-19", "40-26")
+
+
+# A: effect of mean/fluct temp (treatment)
+A_trts = c("260-hatch", "267-hatch", "330-hatch", "337-hatch")
+A_labels <- c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
+A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
+A_colors <- c("260-hatch"="#00C2D1","267-hatch"="#1929B3", "330-hatch"="#F9C639", "337-hatch"="#710A36")
+
+
+
+# B: effect of temp x instar (trt.stage)
+B_trts = c("260-hatch", "337-hatch", "337-3rd", "337-4th")
+B_labels = c("260-hatch"="26°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th")
+B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
+B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", "337-4th"="#F3922B")
+#CD133F
+
+
+# C: same DTs, different NTs
+C_trts = c("267-hatch", "419-hatch", "337-hatch", "433-hatch")
+C_labels = c("267-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
+C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
+C_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
+  # tbh not sure what i want to compare with here... 260 or 267?
+```
+
+
+
+# 2. look at mass gain/instar time on same plot
+
+## a. calculate stats for adult/larva subsets
+
+adults need to be separated out to be able to look at sex differences
+
+TODO: add in calcs for 6th instar
+
+### mass stats
+```{r}
+l_mass <- long_all %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+  group_by(instar, trt.stage) %>%
+  mutate(logmass = log(mass)) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+a_mass <- long_all %>% 
+  group_by(trt.stage, sex, instar) %>%
+  filter(instar == "pupa" | instar == "eclose") %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            n=n())
+```
+
+### development time stats
+```{r}
+# calculate for all groups
+all_devtime <- data_all %>% filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
+  #data_pup %>% 
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupa - jdate.wander,
+         #eclose = jdate.eclose - jdate.15
+         eclose = jdate.eclose - jdate.pupa) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
+                names_to = "instar",
+                values_to = "days.to") %>%
+  drop_na(days.to)
+
+# subset larva
+l_dev <- all_devtime %>% 
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+  group_by(trt.stage, instar) %>%
+  summarise(avg.daysto = mean(na.omit(days.to)),
+            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))))
+
+
+# subset adults
+a_dev <- all_devtime %>% 
+  filter(instar == "pupa" | instar == "eclose") %>%
+  group_by(trt.stage, sex, instar) %>%
+  summarise(avg.daysto = mean(na.omit(days.to)),
+            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))))
+```
+
+## b. resubset data into expts
+```{r}
+# combine mass/time data
+l_stats <- merge(l_mass, l_dev, all = T) %>%
+  drop_na(avg.daysto) # drop while waiting for pt C
+
+a_stats <- merge(a_mass, a_dev, all = T) %>%
+  drop_na(sex) # drop while waiting for pt C
+
+
+# subset: effect of mean/fluct temps
+temps_l <- l_stats %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th")
+temps_a <- a_stats %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th")
+
+# subset: effect of temp x instar (accumulation)
+instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch")
+instar_l$trt.stage <- factor(instar_l$trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th"))
+
+instar_a <- a_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch")
+instar_a$trt.stage <- factor(instar_a$trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th"))
+
+# subset: effect of different NTs
+NT_l <- l_stats %>% filter(trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+```
+
+
+## c. plot
+
+### temp figs
+```{r}
+temps_l %>%
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point(size=3, alpha=0.75) +
+  scale_shape_manual(values=c(16, 17, 15, 18))+
+  geom_line(aes(group = trt.stage)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels=A_labels, values = A_colors) + theme_bw()
+
+temps_a %>%
+  ggplot(aes(x = avg.daysto, y = avg.mass, color=trt.stage, shape=instar)) +
+  geom_point(size=3, alpha = 0.75) +
+  geom_line(aes(group = trt.stage)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  facet_wrap(~sex) +
+  labs(title = "(temp) avg adult growth", y = "avg mass (mg)", x = "days since last stage", color = "treatment") +
+  scale_color_manual(values = A_colors, labels=A_labels) + theme_bw()
+```
+
+
+
+### instar figs
+```{r}
+instar_l %>% 
+  drop_na() %>% # this is bc of the 6ths
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point(size=3, alpha = 0.75) +
+  scale_shape_manual(values=c(16, 17, 15, 18))+
+  geom_line(aes(group = trt.stage)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(instar) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels = B_labels, values = B_colors) + theme_bw()
+    ## looks kinda wrong w rerun analyses? (lines dont seem like they grouped right..)
+
+# adult mass/dev
+instar_a %>% 
+  ggplot(aes(x = avg.daysto, y = avg.mass, shape=instar, color=trt.stage)) +
+  geom_point(size=3, alpha = 0.75) +
+  geom_line(aes(group = trt.stage)) +
+  facet_wrap(~sex) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  scale_color_manual(labels = B_labels, values = B_colors) + theme_bw() +
+  labs(title = "(instar) avg adult growth", y = "avg mass (mg)", x = "days since last stage", color="treatment")
+```
+
+
+
+### NT figs
+```{r}
+# NT figs w/ 26-7
+NT_l %>%
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point(size=3, alpha=0.75) +
+  scale_shape_manual(values=c(16, 17, 15, 18))+
+  geom_line(aes(group = trt.stage)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+
+
+# NT figs w/o 26-7
+NT_l %>%
+  filter(trt.stage != "267-hatch") %>%
+  ggplot(aes(x = avg.daysto, y = avg.logmass, shape=instar, color=trt.stage)) +
+  geom_point(size=3, alpha=0.75) +
+  scale_shape_manual(values=c(16, 17, 15, 18))+
+  geom_line(aes(group = trt.stage)) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
+  scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+```
+
+
+# 3. look at mass gain/instar time on separate plots
+
+## a. calculate stats for larva/adults
+
+### larva
+```{r}
+# TODO: need to also do math for 6ths
+
+# repivot for easier mathing
+  # this is basically all_devtime except w/ renamed "timeto" bc i cant figure out how to make the paste work
+all_alt <- data_all %>%
+  mutate(timeto.3rd = jdate.3rd-jdate.hatch,
+         timeto.4th = jdate.4th-jdate.hatch,
+         timeto.5th = jdate.5th-jdate.hatch,
+         timeto.wander = jdate.wander-jdate.hatch,
+         timeto.pupa = jdate.pupa-jdate.hatch,
+         timeto.eclose = jdate.eclose-jdate.hatch) %>%
+  select(-(starts_with(c("date.", "jdate.")))) %>%
+  pivot_longer(cols = starts_with(c("timeto", "mass", "h")),
+               names_to = c(".value", "instar"),
+               #names_sep = ".",
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  rename(molt.status = h)
+# drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
+
+# summary statistics
+alt_sumstats <- all_alt %>%
+  mutate(mass = mass/1000) %>% # convert to g
+  mutate(log.mass = log(mass)) %>% # u get neg values if using mass_g
+  filter(final.fate != "ignore") %>% 
+  filter(instar != "stuck" & instar != "2nd" & instar != "died") %>%
+  group_by(meanT, fluctT, instar.enter, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(log.mass)),
+            se.logmass = sd(na.omit(log.mass))/sqrt(length(na.omit(log.mass))),
+            avg.time = mean(na.omit(timeto)),
+            se.time = sd(na.omit(timeto))/sqrt(length(na.omit(timeto))),
+            n=n())
+
+# fix factor levels
+alt_sumstats$instar <- factor(alt_sumstats$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+alt_sumstats$instar.enter <- factor(alt_sumstats$instar.enter, levels=c("hatch", "3rd", "4th"))
+```
+
+### adult
+
+```{r}
+# calc stats
+alt_sexstats <- all_alt %>%
+  mutate(mass = mass/1000) %>% # convert to g
+  filter(final.fate != "ignore" & sex != "unk") %>% 
+  filter(instar == "pupa" | instar == "eclose") %>%
+  group_by(meanT, fluctT, instar.enter, instar, sex) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.time = mean(na.omit(timeto)),
+            se.time = sd(na.omit(timeto))/sqrt(length(na.omit(timeto))),
+            n=n())
+
+# fix factor levels
+alt_sexstats$instar <- factor(alt_sexstats$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+alt_sexstats$instar.enter <- factor(alt_sexstats$instar.enter, levels=c("hatch", "3rd", "4th"))
+```
+
+
+
+## b. group stats by expts (temp, tempxins, NTs)
+```{r}
+# larva
+temps_la <- filter(alt_sumstats, ((fluctT == 0 | fluctT == 7) & instar.enter == "hatch"))
+instar_la <- filter(alt_sumstats, meanT == 33)
+NT_la <- filter(alt_sumstats, (((meanT == 29.5 | meanT == 36.5) | fluctT == 7) & instar.enter == "hatch"))
+
+# adults
+temps_aa <- filter(alt_sexstats, ((fluctT == 0 | fluctT == 7) & instar.enter == "hatch"))
+instar_aa <- filter(alt_sexstats, meanT == "33")
+NT_aa <- filter(alt_sexstats, (((meanT == 29.5 | meanT == 36.5) | fluctT == 7) & instar.enter == "hatch"))
+```
+
+
+## c. plots
+
+### larval instars
+```{r}
+### temp mass
+temps_la %>%
+  ggplot(aes(x = meanT, y = avg.mass)) +
+  geom_line(aes(lty=factor(fluctT))) +
+  geom_point(aes(shape = factor(fluctT)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "temp: mass at instar (mg)", lty = "fluctuation", shape = "fluctuation")
+
+### temp time
+temps_la %>%
+  ggplot(aes(x = meanT, y = avg.time)) +
+  geom_line(aes(lty=factor(fluctT))) +
+  geom_point(aes(shape = factor(fluctT)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", lty = "fluctuation", shape = "fluctuation")
+```
+
+```{r}
+### instar mass
+instar_la %>%
+  ggplot(aes(x = fluctT, y = avg.mass, color = instar.enter)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "instar: mass at instar (mg)", color = "instar entered")
+
+### instar time
+instar_la %>%
+  ggplot(aes(x = fluctT, y = avg.time, color = instar.enter)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "instar: time to instar (days)", color = "instar entered")
+```
+
+```{r}
+### NT mass
+NT_la %>%
+  ggplot(aes(x = meanT, y = avg.mass, color=factor(fluctT))) +
+  geom_point(size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+
+
+### NT time
+NT_la %>%
+  ggplot(aes(x = meanT, y = avg.time, color=factor(fluctT))) +
+  geom_point(size=2.5) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+```
+
+
+### adult instars
+```{r}
+### temp mass
+temps_aa %>%
+  ggplot(aes(x = meanT, y = avg.mass, color = sex)) +
+  geom_line(aes(lty=factor(fluctT))) +
+  geom_point(aes(shape = factor(fluctT)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "temp: mass at instar (mg)", lty = "fluctuation", shape = "fluctuation")
+
+### temp time
+temps_aa %>%
+  ggplot(aes(x = meanT, y = avg.time, color=sex)) +
+  geom_line(aes(lty=factor(fluctT))) +
+  geom_point(aes(shape = factor(fluctT)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", lty = "fluctuation", shape = "fluctuation")
+```
+
+```{r}
+jitter <- position_dodge(width=0.75)
+
+### instar mass
+instar_aa %>%
+  ggplot(aes(x = fluctT, y = avg.mass, color = instar.enter)) +
+  #geom_line() +
+  geom_point(aes(shape = sex), size = 2.5, position = jitter) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
+  facet_wrap(instar~sex, scales = "free") +
+  theme_bw() +
+  labs(y = "instar: mass at instar (mg)", color = "instar entered")
+
+### instar time
+instar_aa %>%
+  ggplot(aes(x = fluctT, y = avg.time, color = instar.enter)) +
+  #geom_line() +
+  geom_point(aes(shape = sex), size = 2, position = jitter) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
+  theme_bw() +
+  facet_wrap(instar~sex, scales = "free") +
+  labs(y = "instar: time to instar (days)")
+```
+
+```{r}
+## dont have data for NT_aa yet :)
+```
+
+
+# 4. kill curves
+
