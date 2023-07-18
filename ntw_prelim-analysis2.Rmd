@@ -16,6 +16,13 @@ because my main stuff is getting tooo messy again!!!
   a. calculate stats
   b. group stats by expts (temp, tempxins, NTs)
   c. plot
+4. kill curves
+5. misc: old 2013 data
+  
+
+TODO
+- add 6ths in to steps 2 and 3
+- add kill curves
 
 
 # 0. load in data, packages
@@ -509,4 +516,52 @@ instar_aa %>%
 
 
 # 4. kill curves
+
+## a. prep data
+
+checking survival to pupation from hatching
+
+```{r}
+# censor and create subsets
+
+# censor data
+surv_pup <-  data_all %>% 
+  filter(final.fate != "ignore") %>%
+  mutate(censor = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         timeto.exit = jdate.exit - jdate.hatch) %>%
+  select(-starts_with(c("h.", "date.", "mass.")))
+
+# subsets
+surv_temp <- surv_pup %>%
+  filter(fluctT == 0 | (fluctT == 7 & instar.enter == "hatch"))
+
+surv_instar <- surv_pup %>%
+  filter((meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 0))
+
+surv_NT <- surv_pup %>%
+  filter(expt.group == "C" | (meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 7))
+```
+
+## b. create survival objects and fits
+
+```{r}
+temp_sobj <- Surv(surv_temp$timeto.exit, surv_temp$censor)
+temp_sfit <- survfit(temp_sobj ~ trt.stage, data = surv_temp)
+
+ins_sobj <- Surv(surv_instar$timeto.exit, surv_instar$censor)
+ins_sfit <- survfit(ins_sobj ~ trt.stage, data = surv_instar)
+
+NT_sobj <- Surv(surv_NT$timeto.exit, surv_NT$censor)
+NT_sfit <- survfit(NT_sobj ~ trt.stage, data = surv_NT)
+  
+```
+
+
+
+# 5. misc: old 2013 data
+
+## a. prep data
+
+## b. plot data
 
