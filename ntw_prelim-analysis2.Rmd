@@ -31,9 +31,8 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(survival)
-```
+library(survminer)
 
-```{r}
 data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v3.csv", header = T)
 ```
 
@@ -105,16 +104,14 @@ long_pup <- long_all %>% filter(attempt.pupa == "Y")
 
 # A: effect of mean/fluct temp (treatment)
 A_trts = c("260-hatch", "267-hatch", "330-hatch", "337-hatch")
-A_labels <- c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
-A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
-A_colors <- c("260-hatch"="#00C2D1","267-hatch"="#1929B3", "330-hatch"="#F9C639", "337-hatch"="#710A36")
+A_labels = c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
+A_colors = c("260-hatch"="#00C2D1","267-hatch"="#1929B3", "330-hatch"="#F9C639", "337-hatch"="#710A36")
 
 
 
 # B: effect of temp x instar (trt.stage)
 B_trts = c("260-hatch", "337-hatch", "337-3rd", "337-4th")
 B_labels = c("260-hatch"="26°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th")
-B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
 B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", "337-4th"="#F3922B")
 #CD133F
 
@@ -122,9 +119,13 @@ B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", 
 # C: same DTs, different NTs
 C_trts = c("267-hatch", "419-hatch", "337-hatch", "433-hatch")
 C_labels = c("267-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
-C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 C_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
   # tbh not sure what i want to compare with here... 260 or 267?
+
+# for survival but lowkey need to edit it below
+A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
+B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
+C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 ```
 
 
@@ -515,7 +516,7 @@ instar_aa %>%
 ```
 
 
-# 4. kill curves
+# 4. survival curves
 
 ## a. prep data
 
@@ -530,17 +531,22 @@ surv_pup <-  data_all %>%
   mutate(censor = case_when(final.fate == "pmd" ~ 1,
                             TRUE ~ 0),
          timeto.exit = jdate.exit - jdate.hatch) %>%
-  select(-starts_with(c("h.", "date.", "mass.")))
+  select(-starts_with(c("h.", "date.", "mass.", "jdate.", "fate.")))
 
-# subsets
+# subsets & specify levels
 surv_temp <- surv_pup %>%
-  filter(fluctT == 0 | (fluctT == 7 & instar.enter == "hatch"))
+  filter(fluctT == 0 | (fluctT == 7 & instar.enter == "hatch")) %>%
+  mutate(trt.stage = factor(trt.stage, c("260-hatch", "267-hatch", "330-hatch", "337-hatch")))
+  
 
 surv_instar <- surv_pup %>%
-  filter((meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 0))
+  filter((meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 0)) %>%
+  mutate(trt.stage = factor(trt.stage, c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
 
 surv_NT <- surv_pup %>%
-  filter(expt.group == "C" | (meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 7))
+  filter((expt.group == "C" | (meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 7)) & instar.enter == "hatch") %>%
+  filter(trt.stage != "260-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "337-hatch", "433-hatch")))
 ```
 
 ## b. create survival objects and fits
@@ -554,8 +560,54 @@ ins_sfit <- survfit(ins_sobj ~ trt.stage, data = surv_instar)
 
 NT_sobj <- Surv(surv_NT$timeto.exit, surv_NT$censor)
 NT_sfit <- survfit(NT_sobj ~ trt.stage, data = surv_NT)
-  
 ```
+
+## c. plot survival curves
+
+```{r}
+# define palette (idk how to make the levels work)
+# A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
+# B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
+# C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
+
+# A_labels <- c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
+# B_labels = c("260-hatch"="26°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th")
+# C_labels = c("267-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
+
+
+# temps
+  # 260, 267, 330, 337
+ggsurvplot(fit = temp_sfit, data=surv_temp,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp x survival from hatching",
+           #palette = c("#00C2D1","#1929B3", "#F9C639", "#710A36"),
+           legend.title = "treatment", 
+           #legend.labs = A_labels
+           )
+
+# instar
+ggsurvplot(fit = ins_sfit, data=surv_instar,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp:instar x survival from hatching", 
+           #palette = c("#00C2D1", "#F3922B", "#C23C1E", "#710A36"),
+           legend.title = "treatment-stage entered", 
+           #legend.labs = c("26°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th", "337-hatch"="33±7°C @ hatch")
+           )
+  # 260, 3rd, 4th, hatch
+
+
+# NTs
+ggsurvplot(fit = NT_sfit, data=surv_NT,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NT x survival from hatching", 
+           #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)")
+           )
+  # 267, 337, 419, 433
+
+```
+
 
 
 
