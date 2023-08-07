@@ -217,6 +217,7 @@ instar_a$trt.stage <- factor(instar_a$trt.stage, levels = c("260-hatch", "337-ha
 
 # subset: effect of different NTs
 NT_l <- l_stats %>% filter(trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+NT_a <- a_stats %>% filter(trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
 ```
 
 
@@ -302,6 +303,19 @@ NT_l %>%
 #   geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass)) +
 #   labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg log(mass (mg))", color = "treatment") +
 #   scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+
+# adult mass/dev
+NT_a %>%
+  ggplot(aes(x = avg.daysto, y = avg.mass, shape=instar, color=trt.stage)) +
+  geom_point(size=3, alpha=0.75) +
+  #scale_shape_manual(values=c(16, 17, 15, 18)) + # use shape 8 if including 6ths
+  geom_line(aes(group = trt.stage)) +
+  facet_wrap(~sex) +
+  geom_errorbarh(aes(xmin= avg.daysto - se.daysto, xmax = avg.daysto + se.daysto), height = 175) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  labs(title = "(temp) avg larval growth", x = "days since hatching", y = "avg mass (mg)", color = "treatment") +
+  scale_color_manual(labels=C_labels, values = C_colors) + theme_bw()
+
 ```
 
 
@@ -319,6 +333,7 @@ all_alt <- data_all %>%
   mutate(timeto.3rd = jdate.3rd-jdate.hatch,
          timeto.4th = jdate.4th-jdate.hatch,
          timeto.5th = jdate.5th-jdate.hatch,
+         timeto.6th = jdate.6th-jdate.hatch,
          timeto.wander = jdate.wander-jdate.hatch,
          timeto.pupa = jdate.pupa-jdate.hatch,
          timeto.eclose = jdate.eclose-jdate.hatch) %>%
@@ -347,7 +362,7 @@ alt_sumstats <- all_alt %>%
             n=n())
 
 # fix factor levels
-alt_sumstats$instar <- factor(alt_sumstats$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+alt_sumstats$instar <- factor(alt_sumstats$instar, levels=c("3rd", "4th", "5th", "6th", "wander", "pupa", "eclose"))
 alt_sumstats$instar.enter <- factor(alt_sumstats$instar.enter, levels=c("hatch", "3rd", "4th"))
 ```
 
@@ -367,7 +382,7 @@ alt_sexstats <- all_alt %>%
             n=n())
 
 # fix factor levels
-alt_sexstats$instar <- factor(alt_sexstats$instar, levels=c("3rd", "4th", "5th", "wander", "pupa", "eclose"))
+alt_sexstats$instar <- factor(alt_sexstats$instar, levels=c("3rd", "4th", "5th", "6th", "wander", "pupa", "eclose"))
 alt_sexstats$instar.enter <- factor(alt_sexstats$instar.enter, levels=c("hatch", "3rd", "4th"))
 ```
 
