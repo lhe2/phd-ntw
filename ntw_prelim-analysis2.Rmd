@@ -24,7 +24,7 @@ TODO
 - add 6ths in to steps 2 and 3
 - add kill curves
 - check m/f ratios
-- write up better mutate: do it in R vs in excel..
+- write up better auto-mutate columns...: do it in R vs in excel..
 
 
 # 0. load in data, packages
@@ -52,7 +52,7 @@ data_all <- data_all %>%
     filter(!(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
 ### TEMP: filter out 6ths im too lazy to change it all
-data_all <- select(data_all, -ends_with(".6th"))
+#data_all <- select(data_all, -ends_with(".6th"))
 
 # extract wordier notes from data and save elsewhere
 data_notes <- select(data_all, c("treatment", "ID", "expt.group", "attempt.pupa", "got.stuck", ends_with("_ex")))
@@ -87,7 +87,7 @@ long_all <- data_all %>% select(-(starts_with("date."))) %>%
 
 # remove extra columns and add instar factor levels
 long_all <- long_all[long_all$instar != "in",] # from 'instar.in.trt'?
-long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 ```
 
 
@@ -143,9 +143,8 @@ TODO: add in calcs for 6th instar
 ### mass stats
 ```{r}
 l_mass <- long_all %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-  group_by(instar, trt.stage)
-
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "wander") %>%
+  group_by(instar, trt.stage) %>% ###
   mutate(logmass = log(mass)) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
@@ -171,19 +170,20 @@ all_devtime <- data_all %>% filter(!(final.fate == "ignore" | final.fate == "pmd
          "3rd" = jdate.3rd - jdate.hatch,
          "4th" = jdate.4th - jdate.hatch,
          "5th" = jdate.5th - jdate.hatch,
+         "6th" = jdate.6th - jdate.hatch,
          wander = jdate.wander - jdate.hatch,
          pupa = jdate.pupa - jdate.wander,
          #eclose = jdate.eclose - jdate.15
          eclose = jdate.eclose - jdate.pupa) %>%
   select(-starts_with("jdate.")) %>%
-  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "6th", "wander", "pupa", "eclose"), # pivot differences by stage
                 names_to = "instar",
                 values_to = "days.to") %>%
   drop_na(days.to)
 
 # subset larva
 l_dev <- all_devtime %>% 
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "wander") %>%
   group_by(trt.stage, instar) %>%
   summarise(avg.daysto = mean(na.omit(days.to)),
             se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))))
@@ -208,7 +208,7 @@ a_stats <- merge(a_mass, a_dev, all = T) %>%
 
 
 # subset: effect of mean/fluct temps
-temps_l <- l_stats %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th")
+temps_l <- l_stats %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
 temps_a <- a_stats %>% filter(trt.stage != "337-3rd" & trt.stage != "337-4th")
 
 # subset: effect of temp x instar (accumulation)
