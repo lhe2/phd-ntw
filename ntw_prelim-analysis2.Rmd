@@ -23,6 +23,8 @@ because my main stuff is getting tooo messy again!!!
 TODO
 - add 6ths in to steps 2 and 3
 - add kill curves
+- check m/f ratios
+- write up better mutate: do it in R vs in excel..
 
 
 # 0. load in data, packages
@@ -142,7 +144,8 @@ TODO: add in calcs for 6th instar
 ```{r}
 l_mass <- long_all %>%
   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-  group_by(instar, trt.stage) %>%
+  group_by(instar, trt.stage)
+
   mutate(logmass = log(mass)) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
@@ -198,10 +201,10 @@ a_dev <- all_devtime %>%
 ```{r}
 # combine mass/time data
 l_stats <- merge(l_mass, l_dev, all = T) %>%
-  drop_na(avg.daysto) # drop while waiting for pt C
+  drop_na(avg.daysto) # drop while waiting for pt D
 
 a_stats <- merge(a_mass, a_dev, all = T) %>%
-  drop_na(sex) # drop while waiting for pt C
+  drop_na(sex) # drop while waiting for pt D
 
 
 # subset: effect of mean/fluct temps
