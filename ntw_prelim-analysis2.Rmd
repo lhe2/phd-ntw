@@ -27,19 +27,36 @@ TODO
 - write up better auto-mutate columns...: do it in R vs in excel..
 
 
-# 0. load in data, packages
+# 0. load in packages, data
 ```{r}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(survival)
 library(survminer)
+library(googlesheets4)
 
-data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v3.csv", header = T)
+#data_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/development_v3.csv", header = T)
+```
+
+```{r}
+# larva data
+data_field <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field")
+data_labsu <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab")
+data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1")
+data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed")
+
+# tents/hatch data
+data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs")
+data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2")
+data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats")
 ```
 
 
+
 # 1. clean data
+
+## consolidate imported sheets
 
 ## remove some extra data
 ```{r}
