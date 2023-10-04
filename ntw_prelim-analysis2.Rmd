@@ -18,13 +18,6 @@ because my main stuff is getting tooo messy again!!!
   c. plot
 4. kill curves
 5. misc: old 2013 data
-  
-
-TODO
-- add 6ths in to steps 2 and 3
-- add kill curves
-- check m/f ratios
-- write up better auto-mutate columns...: do it in R vs in excel..
 
 
 # 0. load in packages, data
@@ -32,6 +25,7 @@ TODO
 library(dplyr)
 library(ggplot2)
 library(tidyr)
+library(purrr)
 library(survival)
 library(survminer)
 library(googlesheets4)
@@ -57,13 +51,25 @@ data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou
 # 1. clean data
 
 ## consolidate imported sheets
+```{r}
+# remove na lines introduced during import --> not a problem anymore with gsheets :)
+# data_all <- mutate_all(data_all, na_if, "")
+# data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
+
+# add IDs
+data_field <- mutate(data_field, src = "field")
+data_labF1 <- mutate(data_labF1, src = "F1")
+data_labsp <- mutate(data_labsp, src = "sp")
+data_labsu <- mutate(data_labsu, src = "su")
+
+data_all <- bind_rows(data_field, data_labF1, data_labsp, data_labsu)
+# ugh fix column formatting
+
+```
+
 
 ## remove some extra data
 ```{r}
-# remove na lines introduced during import
-data_all <- mutate_all(data_all, na_if, "")
-data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
-
 # filter out individuals that didnt hatch at 26C
 data_all <- data_all %>%
     filter(!(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
