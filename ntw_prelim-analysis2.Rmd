@@ -57,7 +57,6 @@ data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou
 # data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
 
 # function for column cleanup
-
 fix.columns <- function(data) {
   cleaned_data <- data %>%
     mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
@@ -67,20 +66,21 @@ fix.columns <- function(data) {
            treatment = as.character(treatment),
            trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
            grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
-    #)
   
   return(cleaned_data)
 }
 
 # add IDs
-data_field <- data_field %>% mutate(src = "field")
+data_field <- mutate(data_field, src = "field")
 data_labF1 <- mutate(data_labF1, src = "F1")
 data_labsp <- mutate(data_labsp, src = "sp")
 data_labsu <- mutate(data_labsu, src = "su")
 
 # consolidate
-clean_list <- lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns)
-data_all <- bind_rows(data_field, data_labF1, data_labsp, data_labsu) 
+#clean_list <- lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns)
+#data_all <- data.table::rbindlist(clean_list, fill = T)
+
+data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)
 
 ```
 
