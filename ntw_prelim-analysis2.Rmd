@@ -35,15 +35,15 @@ library(googlesheets4)
 
 ```{r}
 # larva data
-data_field <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field")
-data_labsu <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab")
-data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1")
-data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed")
+data_field <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field", col_types = "c")
+data_labsu <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab", col_types = "c")
+data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1", col_types = "c")
+data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c")
 
 # tents/hatch data
-data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs")
-data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2")
-data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats")
+data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c")
+data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c")
+data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c")
 ```
 
 
@@ -56,14 +56,31 @@ data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou
 # data_all <- mutate_all(data_all, na_if, "")
 # data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
 
+# function for column cleanup
+
+fix.columns <- function(data) {
+  cleaned_data <- data %>%
+    mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+    mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+    mutate(across(starts_with("jdate."), as.numeric),
+           across(starts_with("mass."), as.numeric),
+           treatment = as.character(treatment),
+           trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+           grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+    #)
+  
+  return(cleaned_data)
+}
+
 # add IDs
-data_field <- mutate(data_field, src = "field")
+data_field <- data_field %>% mutate(src = "field")
 data_labF1 <- mutate(data_labF1, src = "F1")
 data_labsp <- mutate(data_labsp, src = "sp")
 data_labsu <- mutate(data_labsu, src = "su")
 
-data_all <- bind_rows(data_field, data_labF1, data_labsp, data_labsu)
-# ugh fix column formatting
+# consolidate
+clean_list <- lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns)
+data_all <- bind_rows(data_field, data_labF1, data_labsp, data_labsu) 
 
 ```
 
