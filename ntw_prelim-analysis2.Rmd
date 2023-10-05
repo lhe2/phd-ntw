@@ -41,9 +41,9 @@ data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ay
 data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c")
 
 # tents/hatch data
-data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c")
-data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c")
-data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c")
+# data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c")
+# data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c")
+# data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c")
 ```
 
 
@@ -86,10 +86,14 @@ data_all <- data_all %>%
 
 # add survival/development binaries
 data_all <- data_all %>% mutate(
-  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y")
+  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
+  if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
+  if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
+  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7)
 )
 
 # add meanT/flucT
+data_all <- 
 
 ```
 
@@ -110,8 +114,6 @@ data_all <- select(data_all, -c("species", "from.E", "location", "date.collected
 
 ## create and reformat columns
 ```{r}
-
-
 # pivot
 long_all <- data_all %>% select(-(starts_with("date."))) %>%
                  pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
