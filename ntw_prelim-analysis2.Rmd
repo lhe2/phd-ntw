@@ -57,9 +57,9 @@ data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ay
 fix.columns <- function(data) {
   cleaned_data <- data %>%
     mutate(across(starts_with("date."),  as.Date, format = "%m/%d")) %>%
+    mutate(across(starts_with("mass."), as.numeric)) %>%
     mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
     mutate(across(starts_with("jdate."), as.numeric),
-           across(starts_with("mass."), as.numeric),
            treatment = as.character(treatment),
            trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
            grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
@@ -84,22 +84,31 @@ data_all$treatment[data_all$treatment=="426"] <- "337"
 data_all <- data_all %>%
     filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
-# add survival/development binaries
+# add columns for survival/development binaries, mean/fluc T
 data_all <- data_all %>% mutate(
+  # surv/dev binaries
   if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
   if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
   if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
-  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7)
-)
-
-# add meanT/flucT
-data_all <- 
+  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7, TRUE ~ 0),
+  
+  # temps
+  meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26
+                    treatment == 337 | treatment == 330 ~ 33
+                    treatment == 433 ~ 36.5,
+                    treatment == 419 ~ 29.5),
+  flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
+                    treatment == 267 | treatment == 337 ~ 7,
+                    treatment == 433 ~ 3.5,
+                    treatment == 419 ~ 10.5)
+  )
 
 ```
 
 
 ## further filtering
 ```{r}
+
 # filter out MQs
 data_MQ <- data_all %>% filter(species == "MQ")
 data_all <- data_all %>% filter(is.na(species))
