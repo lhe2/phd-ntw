@@ -23,9 +23,9 @@ because my main stuff is getting tooo messy again!!!
 # 0. load in packages, data
 ```{r}
 library(dplyr)
-library(ggplot2)
 library(tidyr)
 library(purrr)
+library(ggplot2)
 library(survival)
 library(survminer)
 library(googlesheets4)
@@ -50,16 +50,13 @@ data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou
 
 # 1. clean data
 
-## consolidate imported sheets
+## consolidate imported sheets + some pre-processing
 ```{r}
-# remove na lines introduced during import --> not a problem anymore with gsheets :)
-# data_all <- mutate_all(data_all, na_if, "")
-# data_all <- data_all[rowSums(is.na(data_all)) != ncol(data_all),]
-
-# function for column cleanup
+# function for column cleanup, adding some columns (imo separate the column generation to a diff fn. maybe just keep this one tho and just calc a diff one for timeto)
+# need to make sure that format is correctly set on gsheet first
 fix.columns <- function(data) {
   cleaned_data <- data %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+    mutate(across(starts_with("date."),  as.Date, format = "%m/%d")) %>%
     mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
     mutate(across(starts_with("jdate."), as.numeric),
            across(starts_with("mass."), as.numeric),
@@ -77,39 +74,42 @@ data_labsp <- mutate(data_labsp, src = "sp")
 data_labsu <- mutate(data_labsu, src = "su")
 
 # consolidate
-#clean_list <- lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns)
-#data_all <- data.table::rbindlist(clean_list, fill = T)
-
 data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)
+
+### preprocessing
+# match a column for consistency
+data_all$treatment[data_all$treatment=="426"] <- "337"
+
+# filter out individuals that didnt hatch at 26C
+data_all <- data_all %>%
+    filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
+
+# add survival/development binaries
+data_all <- data_all %>% mutate(
+  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y")
+)
+
+# add meanT/flucT
 
 ```
 
 
-## remove some extra data
+## further filtering
 ```{r}
-# filter out individuals that didnt hatch at 26C
-data_all <- data_all %>%
-    filter(!(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
+# filter out MQs
+data_MQ <- data_all %>% filter(species == "MQ")
+data_all <- data_all %>% filter(is.na(species))
 
 # extract wordier notes from data and save elsewhere
-data_notes <- select(data_all, c("treatment", "ID", "expt.group", "attempt.pupa", "got.stuck", ends_with("_ex")))
-data_all <- select(data_all, -c("from.E", ends_with("_ex")))
+data_notes <- select(data_all, c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "ignore.reason", ends_with(".stuck"), ends_with(".culled")))
+
+# remove unneeded columns
+data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
 ```
 
 
 ## create and reformat columns
 ```{r}
-# match a column
-data_all$treatment[data_all$treatment==426] <- 337
-
-# create julian date columns, additional column fixing and creation
-data_all <- data_all %>% mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
-  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-  mutate(across(starts_with("jdate."), as.numeric),
-         across(starts_with("mass."), as.numeric),
-         treatment = as.character(treatment),
-         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
-         grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
 
 
 # pivot
@@ -123,8 +123,7 @@ long_all <- data_all %>% select(-(starts_with("date."))) %>%
                  drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
 
 # remove extra columns and add instar factor levels
-long_all <- long_all[long_all$instar != "in",] # from 'instar.in.trt'?
-long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 ```
 
 
