@@ -50,20 +50,23 @@ data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ay
 
 # 1. clean data
 
-## consolidate imported sheets + some pre-processing
+## consolidate imported sheets + pre-processing
 ```{r}
 # function for column cleanup, adding some columns (imo separate the column generation to a diff fn. maybe just keep this one tho and just calc a diff one for timeto)
-# need to make sure that format is correctly set on gsheet first
+# need to make sure that format is correctly set on gsheet first >_>
 fix.columns <- function(data) {
   cleaned_data <- data %>%
     mutate(across(starts_with("date."),  as.Date, format = "%m/%d")) %>%
-    mutate(across(starts_with("mass."), as.numeric)) %>%
-    mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-    mutate(across(starts_with("jdate."), as.numeric),
-           treatment = as.character(treatment),
-           trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
-           grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+    #mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+    mutate(mutate(across(starts_with("mass."), as.numeric))
+           #,
+           # across(starts_with("jdate."), as.numeric),
+           # treatment = as.character(treatment),
+           # trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+           # grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+    )
   
+           
   return(cleaned_data)
 }
 
@@ -83,18 +86,22 @@ data_all$treatment[data_all$treatment=="426"] <- "337"
 # filter out individuals that didnt hatch at 26C
 data_all <- data_all %>%
     filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
+```
 
-# add columns for survival/development binaries, mean/fluc T
+## new column creation
+```{r}
+# survival/development binaries
 data_all <- data_all %>% mutate(
-  # surv/dev binaries
   if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
   if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
   if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
-  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7, TRUE ~ 0),
-  
-  # temps
-  meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26
-                    treatment == 337 | treatment == 330 ~ 33
+  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7, TRUE ~ 0)
+  )
+
+# mean/fluc Ts
+data_all <- data_all %>% mutate(
+  meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26,
+                    treatment == 337 | treatment == 330 ~ 33,
                     treatment == 433 ~ 36.5,
                     treatment == 419 ~ 29.5),
   flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
@@ -103,15 +110,27 @@ data_all <- data_all %>% mutate(
                     treatment == 419 ~ 10.5)
   )
 
+# trts and prep for calculating timetos (moved this out from above idk if it will work yet)
+data_all <- data_all %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric),
+         treatment = as.character(treatment),
+         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+         grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+
 ```
 
 
 ## further filtering
 ```{r}
-
 # filter out MQs
 data_MQ <- data_all %>% filter(species == "MQ")
 data_all <- data_all %>% filter(is.na(species))
+
+# indicate overly long-lived individuals: things that took > 25 days to die
+# these can be omitted later
+data_all <- data_all %>% mutate(ignore.reason = case_when(jdate.pmd-jdate.hatch > 25 ~ "slow"))
+  # check: table(data_all$ignore.reason)
 
 # extract wordier notes from data and save elsewhere
 data_notes <- select(data_all, c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "ignore.reason", ends_with(".stuck"), ends_with(".culled")))
@@ -121,7 +140,7 @@ data_all <- select(data_all, -c("species", "from.E", "location", "date.collected
 ```
 
 
-## create and reformat columns
+## pivot and final subset
 ```{r}
 # pivot
 long_all <- data_all %>% select(-(starts_with("date."))) %>%
@@ -135,12 +154,8 @@ long_all <- data_all %>% select(-(starts_with("date."))) %>%
 
 # remove extra columns and add instar factor levels
 long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
-```
 
-
-## subset data
-```{r}
-# individuals that survived to pupation (includes LPs)
+# going forward, only use individuals that survived to pupation (includes LPs)
 data_pup <- data_all %>% filter(attempt.pupa == "Y")
 long_pup <- long_all %>% filter(attempt.pupa == "Y")
 ```
