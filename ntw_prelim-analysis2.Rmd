@@ -623,46 +623,65 @@ instar_la %>%
 
 ### NT mass
 NT_la %>%
-  filter(pop == "lab") %>%
-  ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT))) +
+  ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
-  facet_wrap(~instar) +
+  facet_wrap(~instar, scales = "free") +
   theme_bw() +
-  labs(y = "temp: mass at instar (mg) - lab", color = "fluctuation") +
+  labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
-NT_la %>%
-  filter(pop == "field") %>%
-  ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT))) +
-  geom_point(size=1.5) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
-  facet_wrap(~instar) +
-  theme_bw() +
-  labs(y = "temp: mass at instar (mg) - field", color = "fluctuation") +
-  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+# NT_la %>%
+#   filter(pop == "lab") %>%
+#   ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT))) +
+#   geom_point(size=1.5) +
+#   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
+#   facet_wrap(~instar) +
+#   theme_bw() +
+#   labs(y = "temp: mass at instar (mg) - lab", color = "fluctuation") +
+#   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+# 
+# NT_la %>%
+#   filter(pop == "field") %>%
+#   ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT))) +
+#   geom_point(size=1.5) +
+#   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
+#   facet_wrap(~instar) +
+#   theme_bw() +
+#   labs(y = "temp: mass at instar (mg) - field", color = "fluctuation") +
+#   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
 
 ### NT time
 NT_la %>%
   filter(pop == "lab") %>%
-  ggplot(aes(x = meanT, y = avg.time, color=factor(flucT))) +
+  ggplot(aes(x = meanT, y = avg.time, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
   theme_bw() +
-  facet_wrap(~instar) +
-  labs(y = "temp: time to instar (days) - lab", color = "fluctuation") +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days)", color = "fluctuation") +
   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
-NT_la %>%
-  filter(pop == "field") %>%
-  ggplot(aes(x = meanT, y = avg.time, color=factor(flucT))) +
-  geom_point(size=1.5) +
-  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
-  theme_bw() +
-  facet_wrap(~instar) +
-  labs(y = "temp: time to instar (days) - field", color = "fluctuation") +
-  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+# NT_la %>%
+#   filter(pop == "lab") %>%
+#   ggplot(aes(x = meanT, y = avg.time, color=factor(flucT))) +
+#   geom_point(size=1.5) +
+#   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
+#   theme_bw() +
+#   facet_wrap(~instar) +
+#   labs(y = "temp: time to instar (days) - lab", color = "fluctuation") +
+#   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+# 
+# NT_la %>%
+#   filter(pop == "field") %>%
+#   ggplot(aes(x = meanT, y = avg.time, color=factor(flucT))) +
+#   geom_point(size=1.5) +
+#   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
+#   theme_bw() +
+#   facet_wrap(~instar) +
+#   labs(y = "temp: time to instar (days) - field", color = "fluctuation") +
+#   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 ```
 
 
@@ -696,7 +715,8 @@ jitter <- position_dodge(width=0.75)
 
 ### instar mass
 instar_aa %>%
-  ggplot(aes(x = fluctT, y = avg.mass, color = instar.enter)) +
+  filter(pop == "lab") %>%
+  ggplot(aes(x = flucT, y = avg.mass, color = instar.enter)) +
   #geom_line() +
   geom_point(aes(shape = sex), size = 2.5, position = jitter) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
@@ -706,24 +726,27 @@ instar_aa %>%
 
 ### instar time
 instar_aa %>%
-  ggplot(aes(x = fluctT, y = avg.time, color = instar.enter)) +
+  filter(pop == "lab") %>%
+  ggplot(aes(x = flucT, y = avg.time, color = instar.enter)) +
   #geom_line() +
   geom_point(aes(shape = sex), size = 2, position = jitter) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
   theme_bw() +
   facet_wrap(instar~sex, scales = "free") +
   labs(y = "instar: time to instar (days)")
+
+
+# post fixing: not sure what that 2nd dot at the bottom of everything is lol 
+ # maybe the mean T?
 ```
 
 ```{r}
-### zzzz waiting
-
 ### NT mass
 NT_aa %>%
-  ggplot(aes(x = meanT, y = avg.mass, color=factor(fluctT))) +
+  ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
-  facet_wrap(instar~sex) +
+  facet_wrap(instar~sex, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
@@ -731,11 +754,11 @@ NT_aa %>%
 
 ### NT time
 NT_aa %>%
-  ggplot(aes(x = meanT, y = avg.time, color=factor(fluctT))) +
+  ggplot(aes(x = meanT, y = avg.time, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
   theme_bw() +
-  facet_wrap(instar~sex) +
+  facet_wrap(instar~sex, scales = "free") +
   labs(y = "temp: time to instar (days)", color = "fluctuation") +
   scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 ```
