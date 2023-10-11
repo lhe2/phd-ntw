@@ -783,18 +783,37 @@ surv_pup <-  data_all %>%
 
 # subsets & specify levels
 surv_temp <- surv_pup %>%
-  filter(fluctT == 0 | (fluctT == 7 & instar.enter == "hatch")) %>%
+  filter(flucT == 0 | (flucT == 7 & instar.enter == "hatch")) %>%
   mutate(trt.stage = factor(trt.stage, c("260-hatch", "267-hatch", "330-hatch", "337-hatch")))
   
 
 surv_instar <- surv_pup %>%
-  filter((meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 0)) %>%
+  filter((meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0)) %>%
   mutate(trt.stage = factor(trt.stage, c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
 
-surv_NT <- surv_pup %>%
-  filter((expt.group == "C" | (meanT == 33 & fluctT == 7) | (meanT == 26 & fluctT == 7)) & instar.enter == "hatch") %>%
+# surv_NT <- surv_pup %>%
+#   filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) & instar.enter == "hatch") %>%
+#   filter(trt.stage != "260-hatch") %>%
+#   mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "337-hatch", "433-hatch")))
+
+# idk how to get field + lab onto one plot yet soooo
+
+surv_pupNT <- surv_pup
+
+surv_pupNT$trt.stage[surv_pupNT$trt.stage == "337-hatch"] <- "426-hatch"
+
+survf_NT <- surv_pupNT %>%
+  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) & instar.enter == "hatch") %>%
+  filter(pop == "field") %>%
   filter(trt.stage != "260-hatch") %>%
-  mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "337-hatch", "433-hatch")))
+  mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "426-hatch", "433-hatch")))
+
+survl_NT <- surv_pupNT %>%
+  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) & instar.enter == "hatch") %>%
+  filter(pop == "lab") %>%
+  filter(trt.stage != "260-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "426-hatch", "433-hatch")))
+
 ```
 
 ## b. create survival objects and fits
@@ -806,8 +825,14 @@ temp_sfit <- survfit(temp_sobj ~ trt.stage, data = surv_temp)
 ins_sobj <- Surv(surv_instar$timeto.exit, surv_instar$censor)
 ins_sfit <- survfit(ins_sobj ~ trt.stage, data = surv_instar)
 
-NT_sobj <- Surv(surv_NT$timeto.exit, surv_NT$censor)
-NT_sfit <- survfit(NT_sobj ~ trt.stage, data = surv_NT)
+# NT_sobj <- Surv(surv_NT$timeto.exit, surv_NT$censor)
+# NT_sfit <- survfit(NT_sobj ~ trt.stage, data = surv_NT)
+
+NTf_sobj <- Surv(survf_NT$timeto.exit, survf_NT$censor)
+NTf_sfit <- survfit(NTf_sobj ~ trt.stage, data = survf_NT)
+
+NTl_sobj <- Surv(survl_NT$timeto.exit, survl_NT$censor)
+NTl_sfit <- survfit(NTl_sobj ~ trt.stage, data = survl_NT)
 ```
 
 ## c. plot survival curves
@@ -850,7 +875,28 @@ ggsurvplot(fit = NT_sfit, data=surv_NT,
            title = "NT x survival from hatching", 
            #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
            legend.title = "treatment", 
-           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)")
+           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
+           #strata = pop
+           )
+
+
+# NTs
+ggsurvplot(fit = NTf_sfit, data=survf_NT,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NT x survival from hatching - field", 
+           #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
+           #strata = pop
+           )
+
+ggsurvplot(fit = NTl_sfit, data=survl_NT,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NT x survival from hatching - lab", 
+           #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
+           #strata = pop
            )
   # 267, 337, 419, 433
 
