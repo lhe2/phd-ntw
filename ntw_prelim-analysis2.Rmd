@@ -263,7 +263,7 @@ a_mass <- long_f %>%
 
 # calculate for all groups
 all_devtime <- data_f %>% 
-  filter(final.fate != "ignore" | final.fate != "pmd") %>%
+  filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
   #data_pup %>% 
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
