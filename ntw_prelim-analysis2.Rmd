@@ -20,6 +20,19 @@ because my main stuff is getting tooo messy again!!!
 5. misc: old 2013 data
 
 
+
+todo
+- work on colors
+- plot wand or pupal masses (latter is better) → as a fn of time (focus on the end pt)
+- plot individ curves
+  - plot sups separately/overlay on them (can be pulled out as a variable)
+    - int cuz its the field!!!!
+- analyses: lms for pupal dev + time as response vars
+  - do a cox ph (trt as predictor)
+- figure out to summarise
+
+- focus on pup responses for rn!
+
 # 0. load in packages, data
 ```{r message=FALSE}
 library(dplyr)
@@ -208,6 +221,13 @@ B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
 C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 ```
 
+
+# 1.5 validation lol
+
+- 260 diurnal vs 26 C
+- 25 col vs 260 ctrls generally
+- batch effects (maybe clear this in models...)
+- effects of lab diet vs TB diet in lab bugs
 
 
 # 2. look at mass gain/instar time on same plot
@@ -803,16 +823,16 @@ surv_pupNT <- surv_pup
 surv_pupNT$trt.stage[surv_pupNT$trt.stage == "337-hatch"] <- "426-hatch"
 
 survf_NT <- surv_pupNT %>%
-  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) & instar.enter == "hatch") %>%
+  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
   filter(pop == "field") %>%
-  filter(trt.stage != "260-hatch") %>%
-  mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "426-hatch", "433-hatch")))
+  #filter(trt.stage != "260-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, c("260-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 survl_NT <- surv_pupNT %>%
-  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) & instar.enter == "hatch") %>%
+  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
   filter(pop == "lab") %>%
-  filter(trt.stage != "260-hatch") %>%
-  mutate(trt.stage = factor(trt.stage, c("267-hatch", "419-hatch", "426-hatch", "433-hatch")))
+  #filter(trt.stage != "260-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, c("260-hatch", "267-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 ```
 
@@ -838,6 +858,9 @@ NTl_sfit <- survfit(NTl_sobj ~ trt.stage, data = survl_NT)
 ## c. plot survival curves
 
 ```{r}
+#### these include sups + slow pupations (no slow deaths?)
+  # add conf levels
+
 # define palette (idk how to make the levels work)
 # A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
 # B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
