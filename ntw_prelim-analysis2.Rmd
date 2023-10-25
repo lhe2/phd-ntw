@@ -271,39 +271,51 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 ```{r}
 # PROOF OF CONCEPT.. basically need to yoink this code when plotting all masses vs avg
 
-# long_devtime <- data_all %>% 
-#   filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
-#   #data_pup %>% 
-#   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
-#   mutate("2nd" = jdate.2nd - jdate.hatch,
-#          "3rd" = jdate.3rd - jdate.hatch,
-#          "4th" = jdate.4th - jdate.hatch,
-#          "5th" = jdate.5th - jdate.hatch,
-#          "6th" = jdate.6th - jdate.hatch,
-#          "7th" = jdate.7th - jdate.hatch, 
-#          wander = jdate.wander - jdate.hatch,
-#          pupa = jdate.pupa - jdate.wander,
-#          #eclose = jdate.eclose - jdate.15
-#          eclose = jdate.eclose - jdate.pupa) %>%
-#   select(-starts_with("jdate.")) %>%
-#   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
-#                 names_to = "instar",
-#                 values_to = "days.to") %>%
-#   drop_na(days.to)
-# 
-# long_mass <- long_all %>%
-#   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") 
-# # %>%
-# #   group_by(pop, instar, trt.stage) %>%
-# #   mutate(logmass = log(mass)) %>%
-# #   summarise(avg.mass = mean(na.omit(mass)),
-# #             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-# #             avg.logmass = mean(na.omit(logmass)),
-# #             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-# #             n=n())
-# 
-# long_alldev <- merge(long_devtime, long_mass, all = T)
-# long_alldev <- long_alldev %>% filter(pop!="F1") %>% filter(pop!="ctrl")
+##### ok this needs to be revisited bc the adults are breaking lol
+
+long_Ldevtime <- data_all %>%
+  filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
+  #data_pup %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         "6th" = jdate.6th - jdate.hatch,
+         "7th" = jdate.7th - jdate.hatch,
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupa - jdate.wander,
+         #eclose = jdate.eclose - jdate.15
+         eclose = jdate.eclose - jdate.pupa) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
+                names_to = "instar",
+                values_to = "days.to") %>%
+  drop_na(days.to)
+
+# this is avg'd?
+long_Lmass <- long_all %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") %>%
+  group_by(pop, instar, trt.stage) %>%
+  mutate(logmass = log(mass)) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+long_Amass <- long_all %>%
+  filter(instar == "pupa" | instar == "eclose") %>%
+  group_by(pop, sex, instar, trt.stage) %>%
+  mutate(logmass = log(mass)) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+long_Ldev <- merge(long_devtime, long_Lmass, all = T) %>% filter(pop!="F1") %>% filter(pop!="ctrl")
+long_Adev <- merge(long_devtime, long_Amass, all = T) %>% filter(pop!="F1") %>% filter(pop!="ctrl")
 # 
 # # temps_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
 # # instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
@@ -345,28 +357,31 @@ adults need to be separated out to be able to look at sex differences
 #long_alldev
 
 # separate into larv (hatch-5th) and adults
-l_devavg <- long_alldev %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-  group_by(pop, instar, trt.stage) %>%
-    summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.daysto = mean(na.omit(days.to)),
-            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
-            n=n())
+l_devavg <- long_Ldev %>% filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander")
+a_devavg <- long_Adev %>% filter(instar == "pupa" | instar == "wander")
 
-a_devavg <- long_alldev %>% 
-  group_by(pop, trt.stage, sex, instar) %>%
-  filter(instar == "pupa" | instar == "eclose") %>%
-  summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.daysto = mean(na.omit(days.to)),
-            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
-            n=n())
+# l_devavg <- long_alldev %>%
+  # filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+  # group_by(pop, instar, trt.stage) %>%
+  #   summarise(avg.mass = mean(na.omit(mass)),
+  #           se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+  #           avg.daysto = mean(na.omit(days.to)),
+  #           se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
+  #           n=n())
+# 
+# a_devavg <- long_alldev %>% 
+#   group_by(pop, trt.stage, sex, instar) %>%
+#   filter(instar == "pupa" | instar == "eclose") %>%
+#   summarise(avg.mass = mean(na.omit(mass)),
+#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+#             avg.daysto = mean(na.omit(days.to)),
+#             se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
+#             n=n())
 
 # create subsets + plot
 ## temps
 tempsL_devavg <- l_devavg %>% filter.temps()
-tempsA_devavg <- a_devavg %>% filter.temps()
+#tempsA_devavg <- a_devavg %>% filter.temps() %>% filter(instar == "pupa" | instar == "eclose")
 tempsL_alldev <- long_alldev %>% filter.temps()
 tempsA_alldev <- long_alldev %>% filter.temps() %>% filter(instar == "pupa" | instar == "eclose")
 
@@ -387,6 +402,7 @@ ggplot(tempsA_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
   geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
   #scale_color_brewer(palette="RdBu") + 
   theme_bw() + xlim(0, 25) +
+  facet_wrap(~sex) +
   scale_color_manual(values=c("#0571B0", "#92C5DE", "#F4A582", "#CA0020"), labels=A_labels) +
   labs(title="(temps) average growth (mg/day)", color="treatment")
 
