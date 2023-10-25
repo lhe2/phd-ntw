@@ -163,6 +163,25 @@ data_notes <- select(data_all, c("treatment", "ID", "expt.group", "location", "d
 
 # remove unneeded columns
 data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
+
+# write filter functions
+filter.temps <- function(data) {
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+  
+  return(filtered_data)
+}
+
+filter.accum <- function(data) {
+  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+  
+  return(filtered_data)
+}
+
+filter.NTs <-function(data){
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+  
+    return(filtered_data)
+}
 ```
 
 
@@ -194,13 +213,13 @@ at this point, `data_all` is a consolidated wide version of field, lab, and F1 i
 - survival/development binaries (to pup, if sup, which sup)
 - filtering by src pop, mean/fluct Ts
 
-this dataset still includes:
+this dataset still includes: (filter as needed)
 
 - "slow" individuals (that die eventually)
 - MQs
 - pmds
 
-*use this for doing math bt instars* 
+*use this for doing math bt instars, surv curves* 
 
 `data_long` is pivoted by instar to separate out mass, time to, and headcap status at each instar.
 
@@ -250,6 +269,8 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 
 # 2.2 all individuals vs average dev
 ```{r}
+# PROOF OF CONCEPT.. basically need to yoink this code when plotting all masses vs avg
+
 long_dev <- data_all %>% 
   filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
   #data_pup %>% 
@@ -291,21 +312,20 @@ l_statsall <- l_statsall %>% filter(pop!="F1") %>% filter(pop!="ctrl")
 ## sth about the grouping is wroooong :~)
 
 l_statsall %>% 
-  filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
+  filter.temps()%>%
   ggplot(aes(x=days.to, y=mass)) + # cant just use jdate LOL need to match stuff up. do math (time to)
-  geom_line(aes(color=treatment)) +
+  geom_line(aes(color=treatment, group=ID)) +
   scale_color_brewer(palette="BrBG") + theme_bw() +
   facet_wrap(~pop)
 
 l_statsall %>% 
-  filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>%
+  filter.accum() %>% filter(pop == "lab") %>%
   ggplot(aes(x=days.to, y=mass)) +
-  geom_line(aes(color=treatment)) +
-  scale_color_brewer(palette="BrBG") + theme_bw() +
-  facet_wrap(~pop)
+  geom_line(aes(color=trt.stage, group=ID)) +
+  scale_color_brewer(palette="BrBG") + theme_bw()
   
 l_statsall %>% 
-  filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>%
+  filter.NTs() %>%
   ggplot(aes(x=days.to, y=mass)) + 
   geom_line(aes(color=treatment, group=ID)) +
   scale_color_brewer(palette="BrBG") + theme_bw() +
@@ -322,18 +342,20 @@ l_statsall %>%
 adults need to be separated out to be able to look at sex differences
 
 ```{r}
-### pre-filtering
+### pre-filtering out messy data points
   # 231010 so the sup data still doesnt look very good...
   # this removes F1s, sups, slow things
 
 long_f <- long_all %>%
   filter(pop != "F1") %>%
-  filter(if.sup == "N") %>%
+  filter(final.fate != "pmd") %>%
+  #filter(if.sup == "N") %>%
   filter(is.na(ignore.reason))
 
 data_f <- data_all %>%
   filter(pop != "F1") %>%
-  filter(if.sup == "N") %>%
+  filter(final.fate != "pmd") %>%
+  #filter(if.sup == "N") %>%
   filter(is.na(ignore.reason))
   
 ```
