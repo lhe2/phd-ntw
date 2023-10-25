@@ -166,19 +166,19 @@ data_all <- select(data_all, -c("species", "from.E", "location", "date.collected
 
 # write filter functions
 filter.temps <- function(data) {
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>% filter(pop == "lab")
   
   return(filtered_data)
 }
 
 filter.accum <- function(data) {
-  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% filter(pop == "lab") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
   
   return(filtered_data)
 }
 
 filter.NTs <-function(data){
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
   
     return(filtered_data)
 }
@@ -248,7 +248,7 @@ B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", 
 
 # C: same DTs, different NTs
 C_trts = c("267-hatch", "419-hatch", "337-hatch", "433-hatch")
-C_labels = c("267-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
+C_labels = c("260-hatch"="26/26 (26±0°C)", "267-hatch"="33/19 (26±7°C)","419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
 C_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
   # tbh not sure what i want to compare with here... 260 or 267?
 
@@ -271,65 +271,65 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 ```{r}
 # PROOF OF CONCEPT.. basically need to yoink this code when plotting all masses vs avg
 
-long_dev <- data_all %>% 
-  filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
-  #data_pup %>% 
-  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
-  mutate("2nd" = jdate.2nd - jdate.hatch,
-         "3rd" = jdate.3rd - jdate.hatch,
-         "4th" = jdate.4th - jdate.hatch,
-         "5th" = jdate.5th - jdate.hatch,
-         "6th" = jdate.6th - jdate.hatch,
-         "7th" = jdate.7th - jdate.hatch, 
-         wander = jdate.wander - jdate.hatch,
-         pupa = jdate.pupa - jdate.wander,
-         #eclose = jdate.eclose - jdate.15
-         eclose = jdate.eclose - jdate.pupa) %>%
-  select(-starts_with("jdate.")) %>%
-  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
-                names_to = "instar",
-                values_to = "days.to") %>%
-  drop_na(days.to)
-
-long_mass <- long_all %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") 
-# %>%
-#   group_by(pop, instar, trt.stage) %>%
-#   mutate(logmass = log(mass)) %>%
-#   summarise(avg.mass = mean(na.omit(mass)),
-#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-#             avg.logmass = mean(na.omit(logmass)),
-#             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-#             n=n())
-
-l_statsall <- merge(long_dev, long_mass, all = T)
-l_statsall <- l_statsall %>% filter(pop!="F1") %>% filter(pop!="ctrl")
-
-# temps_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
-# instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
-# NT_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
-
-## sth about the grouping is wroooong :~)
-
-l_statsall %>% 
-  filter.temps()%>%
-  ggplot(aes(x=days.to, y=mass)) + # cant just use jdate LOL need to match stuff up. do math (time to)
-  geom_line(aes(color=treatment, group=ID)) +
-  scale_color_brewer(palette="BrBG") + theme_bw() +
-  facet_wrap(~pop)
-
-l_statsall %>% 
-  filter.accum() %>% filter(pop == "lab") %>%
-  ggplot(aes(x=days.to, y=mass)) +
-  geom_line(aes(color=trt.stage, group=ID)) +
-  scale_color_brewer(palette="BrBG") + theme_bw()
-  
-l_statsall %>% 
-  filter.NTs() %>%
-  ggplot(aes(x=days.to, y=mass)) + 
-  geom_line(aes(color=treatment, group=ID)) +
-  scale_color_brewer(palette="BrBG") + theme_bw() +
-  facet_wrap(~pop)
+# long_devtime <- data_all %>% 
+#   filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
+#   #data_pup %>% 
+#   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+#   mutate("2nd" = jdate.2nd - jdate.hatch,
+#          "3rd" = jdate.3rd - jdate.hatch,
+#          "4th" = jdate.4th - jdate.hatch,
+#          "5th" = jdate.5th - jdate.hatch,
+#          "6th" = jdate.6th - jdate.hatch,
+#          "7th" = jdate.7th - jdate.hatch, 
+#          wander = jdate.wander - jdate.hatch,
+#          pupa = jdate.pupa - jdate.wander,
+#          #eclose = jdate.eclose - jdate.15
+#          eclose = jdate.eclose - jdate.pupa) %>%
+#   select(-starts_with("jdate.")) %>%
+#   pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
+#                 names_to = "instar",
+#                 values_to = "days.to") %>%
+#   drop_na(days.to)
+# 
+# long_mass <- long_all %>%
+#   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") 
+# # %>%
+# #   group_by(pop, instar, trt.stage) %>%
+# #   mutate(logmass = log(mass)) %>%
+# #   summarise(avg.mass = mean(na.omit(mass)),
+# #             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+# #             avg.logmass = mean(na.omit(logmass)),
+# #             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+# #             n=n())
+# 
+# long_alldev <- merge(long_devtime, long_mass, all = T)
+# long_alldev <- long_alldev %>% filter(pop!="F1") %>% filter(pop!="ctrl")
+# 
+# # temps_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+# # instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
+# # NT_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+# 
+# ## sth about the grouping is wroooong :~)
+# 
+# long_alldev %>% 
+#   filter.temps()%>%
+#   ggplot(aes(x=days.to, y=mass)) + # cant just use jdate LOL need to match stuff up. do math (time to)
+#   geom_line(aes(color=treatment, group=ID)) +
+#   scale_color_brewer(palette="BrBG") + theme_bw() +
+#   facet_wrap(~pop)
+# 
+# long_alldev %>% 
+#   filter.accum() %>% filter(pop == "lab") %>%
+#   ggplot(aes(x=days.to, y=mass)) +
+#   geom_line(aes(color=trt.stage, group=ID)) +
+#   scale_color_brewer(palette="BrBG") + theme_bw()
+#   
+# long_alldev %>% 
+#   filter.NTs() %>%
+#   ggplot(aes(x=days.to, y=mass)) + 
+#   geom_line(aes(color=treatment, group=ID)) +
+#   scale_color_brewer(palette="BrBG") + theme_bw() +
+#   facet_wrap(~pop)
 
 ```
 
@@ -340,6 +340,92 @@ l_statsall %>%
 ## a. calculate stats for adult/larva subsets
 
 adults need to be separated out to be able to look at sex differences
+
+```{r}
+#long_alldev
+
+# separate into larv (hatch-5th) and adults
+l_devavg <- long_alldev %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
+  group_by(pop, instar, trt.stage) %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.daysto = mean(na.omit(days.to)),
+            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
+            n=n())
+
+a_devavg <- long_alldev %>% 
+  group_by(pop, trt.stage, sex, instar) %>%
+  filter(instar == "pupa" | instar == "eclose") %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.daysto = mean(na.omit(days.to)),
+            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
+            n=n())
+
+# create subsets + plot
+## temps
+tempsL_devavg <- l_devavg %>% filter.temps()
+tempsA_devavg <- a_devavg %>% filter.temps()
+tempsL_alldev <- long_alldev %>% filter.temps()
+tempsA_alldev <- long_alldev %>% filter.temps() %>% filter(instar == "pupa" | instar == "eclose")
+
+ggplot(tempsL_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
+  geom_line(lty="dashed", lwd=1.5) + geom_point() +
+  geom_line(data=tempsL_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  #scale_color_brewer(palette="RdBu") + 
+  theme_bw() + xlim(0, 25) +
+  scale_color_manual(values=c("#0571B0", "#92C5DE", "#F4A582", "#CA0020"), labels=A_labels) +
+  labs(title="(temps) average growth (mg/day)", color="treatment")
+
+ggplot(tempsA_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
+  geom_line(lty="dashed", lwd=1.5) + geom_point() +
+  geom_line(data=tempsA_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  #scale_color_brewer(palette="RdBu") + 
+  theme_bw() + xlim(0, 25) +
+  scale_color_manual(values=c("#0571B0", "#92C5DE", "#F4A582", "#CA0020"), labels=A_labels) +
+  labs(title="(temps) average growth (mg/day)", color="treatment")
+
+## accum
+accL_devavg <- l_devavg %>% filter.accum()
+accA_devavg <- a_devavg %>% filter.accum()
+accL_alldev <- long_alldev %>% filter.accum()
+
+ggplot(accL_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
+  geom_line(lty="dashed", lwd=1.5) + geom_point() +
+  geom_line(data=accL_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  scale_color_brewer(palette="PuOr") + 
+  theme_bw() + xlim(0, 25) +
+  scale_color_manual(values=c("#998EC3", "#FDB863", "#E66101", "#B35806"), labels=B_labels) +
+  labs(title="(accumulation) average growth (mg/day)", color="treatment")
+
+## NTs
+NTsL_devavg <- l_devavg %>% filter.NTs() %>% filter(trt.stage != "267-hatch")
+NTsA_devavg <- a_devavg %>% filter.NTs() %>% filter(trt.stage != "267-hatch")
+NTsL_alldev <- long_alldev %>% filter.NTs() %>% filter(trt.stage != "267-hatch")
+
+ggplot(NTsL_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
+  geom_line(lty="dashed", lwd=1.5) + geom_point() +
+  geom_line(data=NTsL_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
+  #scale_color_brewer(palette="BrBG") + 
+  theme_bw() + xlim(0, 25) +
+  facet_wrap(~pop) +
+  scale_color_manual(values=c("#018571", "#80CDC1", "#E66101", "#A6611A"), labels=C_labels) +
+  labs(title="(NTs) average growth (mg/day)", color="treatment")
+
+```
+
+
+
+(scrap stuff below here)
 
 ```{r}
 ### pre-filtering out messy data points
