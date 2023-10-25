@@ -230,6 +230,77 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 - effects of lab diet vs TB diet in lab bugs
 
 
+# 1.5 more plots
+```{r}
+long_dev <- data_all %>% 
+  filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
+  #data_pup %>% 
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("2nd" = jdate.2nd - jdate.hatch,
+         "3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         "6th" = jdate.6th - jdate.hatch,
+         "7th" = jdate.7th - jdate.hatch, 
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupa - jdate.wander,
+         #eclose = jdate.eclose - jdate.15
+         eclose = jdate.eclose - jdate.pupa) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("2nd", "3rd", "4th", "5th", "wander", "pupa", "eclose"), # pivot differences by stage
+                names_to = "instar",
+                values_to = "days.to") %>%
+  drop_na(days.to)
+
+long_mass <- long_all %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") 
+# %>%
+#   group_by(pop, instar, trt.stage) %>%
+#   mutate(logmass = log(mass)) %>%
+#   summarise(avg.mass = mean(na.omit(mass)),
+#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+#             avg.logmass = mean(na.omit(logmass)),
+#             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+#             n=n())
+
+l_statsall <- merge(long_dev, long_mass, all = T)
+l_statsall <- l_statsall %>% filter(pop!="F1") %>% filter(pop!="ctrl")
+
+# temps_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+# instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
+# NT_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+
+## sth about the grouping is wroooong :~)
+
+l_statsall %>% 
+  filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
+  ggplot(aes(x=days.to, y=mass)) + # cant just use jdate LOL need to match stuff up. do math (time to)
+  geom_line(aes(color=treatment)) +
+  scale_color_brewer(palette="BrBG") + theme_bw() +
+  facet_wrap(~pop)
+
+l_statsall %>% 
+  filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>%
+  ggplot(aes(x=days.to, y=mass)) +
+  geom_line(aes(color=treatment)) +
+  scale_color_brewer(palette="BrBG") + theme_bw() +
+  facet_wrap(~pop)
+  
+l_statsall %>% 
+  filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>%
+  ggplot(aes(x=days.to, y=mass)) + 
+  geom_line(aes(color=treatment, group=ID)) +
+  scale_color_brewer(palette="BrBG") + theme_bw() +
+  facet_wrap(~pop)
+  
+  
+
+
+
+```
+
+
+
 # 2. look at mass gain/instar time on same plot
 
 ## a. calculate stats for adult/larva subsets
