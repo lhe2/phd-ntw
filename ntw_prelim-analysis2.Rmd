@@ -852,6 +852,7 @@ instar_la %>%
 ### NT mass
 NT_la %>%
   filter(!(meanT==26.0 & flucT == 7.0)) %>%
+  filter(!(instar == "pupa" | instar == "eclose" | instar == "NA")) %>%
   ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
@@ -885,6 +886,7 @@ NT_la %>%
 ### NT time
 NT_la %>%
   filter(!(meanT==26.0 & flucT == 7.0)) %>%
+  filter(!(instar == "pupa" | instar == "eclose" | instar == "NA")) %>%
   ggplot(aes(x = meanT, y = avg.time, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
@@ -1041,15 +1043,15 @@ survf_NT <- surv_pupNT %>%
   #filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
   filter.NTs() %>%
   filter(pop == "field") %>%
-  filter(trt.stage != "260-hatch") %>%
+  filter(trt.stage == "267-hatch") %>%
   mutate(trt.stage = factor(trt.stage, c("260-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 survl_NT <- surv_pupNT %>%
   #filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
   filter.NTs() %>%
   filter(pop == "lab") %>%
-  filter(trt.stage != "260-hatch") %>%
-  mutate(trt.stage = factor(trt.stage, c("260-hatch", "267-hatch", "419-hatch", "426-hatch", "433-hatch")))
+  filter(trt.stage != "267-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, c("260-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 ```
 
@@ -1110,14 +1112,14 @@ ggsurvplot(fit = ins_sfit, data=surv_instar,
 
 
 # NTs
-ggsurvplot(fit = NT_sfit, data=surv_NT,
-           xlab = "days from hatching", ylab = "survival probability",
-           title = "NT x survival from hatching", 
-           #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
-           legend.title = "treatment", 
-           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
-           #strata = pop
-           )
+# ggsurvplot(fit = NT_sfit, data=surv_NT,
+#            xlab = "days from hatching", ylab = "survival probability",
+#            title = "NT x survival from hatching", 
+#            #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+#            legend.title = "treatment", 
+#            #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
+#            #strata = pop
+#            )
 
 
 # NTs
