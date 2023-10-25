@@ -751,16 +751,17 @@ alt_sexstats$instar.enter <- factor(alt_sexstats$instar.enter, levels=c("hatch",
 ## b. group stats by expts (temp, tempxins, NTs)
 ```{r}
 ## ugh.. wrong comparison (instar should be to 26)
+# filter.expt() doesnt work here bc trt.stage is gone lol
 
 # larva
 temps_la <- filter(alt_sumstats, ((flucT == 0 | flucT == 7) & instar.enter == "hatch"))
 instar_la <- filter(alt_sumstats, (meanT == 33 | (meanT == 26 & flucT == 0)))
-NT_la <- filter(alt_sumstats, (((meanT == 29.5 | meanT == 36.5) | flucT == 7) & instar.enter == "hatch"))
+NT_la <- filter(alt_sumstats, ((((meanT == 29.5 | meanT == 36.5) | flucT == 7) | (meanT == 26 & flucT == 0)) & instar.enter == "hatch"))
 
 # adults
 temps_aa <- filter(alt_sexstats, ((flucT == 0 | flucT == 7) & instar.enter == "hatch"))
 instar_aa <- filter(alt_sexstats, (meanT == 33 | (meanT == 26 & flucT == 0)))
-NT_aa <- filter(alt_sexstats, (((meanT == 29.5 | meanT == 36.5) | flucT == 7) & instar.enter == "hatch"))
+NT_aa <- filter(alt_sexstats, ((((meanT == 29.5 | meanT == 36.5) | flucT == 7) | (meanT == 26 & flucT == 0)) & instar.enter == "hatch"))
 ```
 
 
@@ -772,30 +773,30 @@ NT_aa <- filter(alt_sexstats, (((meanT == 29.5 | meanT == 36.5) | flucT == 7) & 
 
 ### temp mass
 temps_la %>%
-  filter(pop == "lab") %>%
+  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
   ggplot(aes(x = meanT, y = avg.mass, color = factor(flucT))) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
-  facet_wrap(pop~instar, scales = "free") +
+  facet_wrap(~instar, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg) - lab", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
   scale_color_manual(values = c("#00BFC4", "#F8766D"))
 
-temps_la %>%
-  filter(pop == "field") %>%
-  ggplot(aes(x = meanT, y = avg.mass, color = factor(flucT))) +
-  geom_line(aes(lty=factor(flucT))) +
-  geom_point(aes(shape = factor(flucT)), size=2.5) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
-  facet_wrap(pop~instar, scales = "free") +
-  theme_bw() +
-  labs(y = "temp: mass at instar (mg) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
-  scale_color_manual(values = c("#00BFC4", "#F8766D"))
+# temps_la %>%
+#   filter(pop == "field") %>% filter(instar != "pupa" & instar != "eclose") %>%
+#   ggplot(aes(x = meanT, y = avg.mass, color = factor(flucT))) +
+#   geom_line(aes(lty=factor(flucT), group=interaction(meanT, flucT))) +
+#   geom_point(aes(shape = factor(flucT)), size=2.5) +
+#   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+#   facet_wrap(pop~instar, scales = "free") +
+#   theme_bw() +
+#   labs(y = "temp: mass at instar (mg) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
+#   scale_color_manual(values = c("#00BFC4", "#F8766D"))
 
 ### temp time
 temps_la %>%
-  filter(pop == "lab") %>%
+  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
   ggplot(aes(x = meanT, y = avg.time, color = factor(flucT))) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
@@ -805,16 +806,16 @@ temps_la %>%
   labs(y = "temp: time to instar (days) - lab", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
   scale_color_manual(values = c("#00BFC4", "#F8766D"))
 
-temps_la %>%
-  filter(pop == "field") %>%
-  ggplot(aes(x = meanT, y = avg.time, color = factor(flucT))) +
-  geom_line(aes(lty=factor(flucT))) +
-  geom_point(aes(shape = factor(flucT)), size=2.5) +
-  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
-  theme_bw() +
-  facet_wrap(~instar, scales = "free") +
-  labs(y = "temp: time to instar (days) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
-  scale_color_manual(values = c("#00BFC4", "#F8766D"))
+# temps_la %>%
+#   filter(pop == "field") %>% filter(instar != "pupa" & instar != "eclose") %>%
+#   ggplot(aes(x = meanT, y = avg.time, color = factor(flucT))) +
+#   geom_line(aes(lty=factor(flucT))) +
+#   geom_point(aes(shape = factor(flucT)), size=2.5) +
+#   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+#   theme_bw() +
+#   facet_wrap(~instar, scales = "free") +
+#   labs(y = "temp: time to instar (days) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
+#   scale_color_manual(values = c("#00BFC4", "#F8766D"))
 ```
 
 ```{r}
@@ -822,10 +823,10 @@ jitter <- position_dodge(width=1)
 
 ### instar mass
 instar_la %>%
-  filter(pop == "lab") %>%
+  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
   filter(!(meanT == 33 & flucT == 0 & instar.enter == "hatch")) %>%
   ggplot(aes(x = meanT, y = avg.mass, color = instar.enter, shape = factor(flucT))) +
-  geom_line() +
+  geom_line(aes(group=interaction(meanT, flucT))) +
   geom_point(position = jitter) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
   facet_wrap(~instar, scales = "free") +
@@ -834,10 +835,10 @@ instar_la %>%
 
 ### instar time
 instar_la %>%
-  filter(pop == "lab") %>%
+  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
   filter(!(meanT == 33 & flucT == 0 & instar.enter == "hatch")) %>%
   ggplot(aes(x = meanT, y = avg.time, color = instar.enter, shape = factor(flucT))) +
-  geom_line() +
+  geom_line(aes(group=interaction(meanT, flucT))) +
   geom_point(position = jitter) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
   theme_bw() +
@@ -850,13 +851,15 @@ instar_la %>%
 
 ### NT mass
 NT_la %>%
+  filter(!(meanT==26.0 & flucT == 7.0)) %>%
   ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
   facet_wrap(~instar, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
-  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
+  scale_shape_manual(values = c(1, 16))
 
 # NT_la %>%
 #   filter(pop == "lab") %>%
@@ -881,14 +884,15 @@ NT_la %>%
 
 ### NT time
 NT_la %>%
-  filter(pop == "lab") %>%
+  filter(!(meanT==26.0 & flucT == 7.0)) %>%
   ggplot(aes(x = meanT, y = avg.time, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
   theme_bw() +
   facet_wrap(~instar, scales = "free") +
-  labs(y = "temp: time to instar (days)", color = "fluctuation") +
-  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+  labs(y = "NT: time to instar (days)", color = "fluctuation") +
+  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
+  scale_shape_manual(values = c(1, 16))
 
 # NT_la %>%
 #   filter(pop == "lab") %>%
@@ -916,22 +920,24 @@ NT_la %>%
 ```{r}
 ### temp mass
 temps_aa %>%
+  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.mass, color = sex)) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
-  facet_wrap(pop~instar, scales = "free") +
+  facet_wrap(~instar, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg)", lty = "fluctuation", shape = "fluctuation")
 
 ### temp time
 temps_aa %>%
+  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.time, color=sex)) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
   theme_bw() +
-  facet_wrap(pop~instar, scales = "free") +
+  facet_wrap(~instar, scales = "free") +
   labs(y = "temp: time to instar (days)", lty = "fluctuation", shape = "fluctuation")
 ```
 
@@ -945,7 +951,7 @@ instar_aa %>%
   filter(pop == "lab") %>%
   ggplot(aes(x = flucT, y = avg.mass, color = instar.enter)) +
   #geom_line() +
-  geom_point(aes(shape = sex), size = 2.5, position = jitter) +
+  geom_point(size = 2.5, position = jitter) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
   facet_wrap(instar~sex, scales = "free") +
   theme_bw() +
@@ -956,7 +962,7 @@ instar_aa %>%
   filter(pop == "lab") %>%
   ggplot(aes(x = flucT, y = avg.time, color = instar.enter)) +
   #geom_line() +
-  geom_point(aes(shape = sex), size = 2, position = jitter) +
+  geom_point(size = 2.5, position = jitter) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
   theme_bw() +
   facet_wrap(instar~sex, scales = "free") +
@@ -975,8 +981,9 @@ NT_aa %>%
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
   facet_wrap(instar~sex, scales = "free") +
   theme_bw() +
-  labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
-  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+  labs(y = "NT: mass at instar (mg)", color = "fluctuation") +
+  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
+  scale_shape_manual(values = c(1, 16))
 
 
 ### NT time
@@ -986,8 +993,9 @@ NT_aa %>%
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
   theme_bw() +
   facet_wrap(instar~sex, scales = "free") +
-  labs(y = "temp: time to instar (days)", color = "fluctuation") +
-  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
+  labs(y = "NT: time to instar (days)", color = "fluctuation") +
+  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
+  scale_shape_manual(values = c(1, 16))
 ```
 
 
@@ -1030,15 +1038,17 @@ surv_pupNT <- surv_pup
 surv_pupNT$trt.stage[surv_pupNT$trt.stage == "337-hatch"] <- "426-hatch"
 
 survf_NT <- surv_pupNT %>%
-  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
+  #filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
+  filter.NTs() %>%
   filter(pop == "field") %>%
-  #filter(trt.stage != "260-hatch") %>%
+  filter(trt.stage != "260-hatch") %>%
   mutate(trt.stage = factor(trt.stage, c("260-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 survl_NT <- surv_pupNT %>%
-  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
+  #filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
+  filter.NTs() %>%
   filter(pop == "lab") %>%
-  #filter(trt.stage != "260-hatch") %>%
+  filter(trt.stage != "260-hatch") %>%
   mutate(trt.stage = factor(trt.stage, c("260-hatch", "267-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 ```
