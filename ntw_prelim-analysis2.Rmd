@@ -130,7 +130,7 @@ data_all <- data_all %>% mutate(
                     treatment == 419 ~ 10.5)
   )
 
-# trts and prep for calculating timetos (moved this out from above idk if it will work yet)
+# trts and prep for calculating timetos (moved this out from above fn idk if it will work yet)
 data_all <- data_all %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric),
@@ -178,7 +178,7 @@ long_all <- data_all %>% select(-(starts_with("date."))) %>%
                  rename(molt.status = h) %>%
                  drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
 
-# remove extra columns and add instar factor levels
+# add instar factor levels
 long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 
 # going forward, only use individuals that survived to pupation (includes LPs) 
@@ -188,6 +188,24 @@ long_pup <- long_all %>% filter(if.pupa == "Y")
 
   # need to check if these work for survival analyses
 ```
+
+at this point, `data_all` is a consolidated wide version of field, lab, and F1 individuals. "commentary" columns have been removed and the following columns have been added:
+
+- survival/development binaries (to pup, if sup, which sup)
+- filtering by src pop, mean/fluct Ts
+
+this dataset still includes:
+
+- "slow" individuals (that die eventually)
+- MQs
+- pmds
+
+*use this for doing math bt instars* 
+
+`data_long` is pivoted by instar to separate out mass, time to, and headcap status at each instar.
+
+*use this for grouping by/looking at overall instar*
+
 
 
 ## define labels and aesthetics
@@ -222,7 +240,7 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 ```
 
 
-# 1.5 validation lol
+# 2.1 validations to run lol
 
 - 260 diurnal vs 26 C
 - 25 col vs 260 ctrls generally
@@ -230,7 +248,7 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 - effects of lab diet vs TB diet in lab bugs
 
 
-# 1.5 more plots
+# 2.2 all individuals vs average dev
 ```{r}
 long_dev <- data_all %>% 
   filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
@@ -292,16 +310,12 @@ l_statsall %>%
   geom_line(aes(color=treatment, group=ID)) +
   scale_color_brewer(palette="BrBG") + theme_bw() +
   facet_wrap(~pop)
-  
-  
-
-
 
 ```
 
 
 
-# 2. look at mass gain/instar time on same plot
+# 2.3 look at mass gain/instar time on same plot
 
 ## a. calculate stats for adult/larva subsets
 
@@ -323,8 +337,6 @@ data_f <- data_all %>%
   filter(is.na(ignore.reason))
   
 ```
-
-
 
 
 ```{r}
