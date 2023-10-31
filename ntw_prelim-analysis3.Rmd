@@ -6,4 +6,186 @@ output: html_notebook
 
 lol
 
+(because i am lost in the sauce again and also want to rename things)
 
+
+**overview:**
+
+0. load in data, packages
+1. clean data
+
+**todos:**
+
+
+
+# 0. load data & packages
+```{r message = FALSE}
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+# survival curve stuff
+library(survival)
+library(survminer)
+
+# to load data from gsheets
+library(googlesheets4)
+
+```
+
+```{r}
+# before importing,
+  # run cleaning macros (larva sheets)
+  # check column/row alignment + proper sorting (adult sheets)
+
+# larva data
+data_field <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field", col_types = "c")
+data_labsu <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab", col_types = "c")
+data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1", col_types = "c")
+data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c")
+
+# tents/hatch data
+# data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c")
+# data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c")
+# data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c")
+```
+## - define aesthetics
+```{r}
+#all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th", "40-19", "40-26")
+
+
+# temp: effect of mean/fluct temp (treatment)
+temp_trts = c("260-hatch", "267-hatch", "330-hatch", "337-hatch")
+temp_labels = c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
+temp_colors = c("260-hatch"="#00C2D1","267-hatch"="#1929B3", "330-hatch"="#F9C639", "337-hatch"="#710A36")
+
+
+
+# accum: effect of temp x instar (trt.stage)
+acc_trts = c("260-hatch", "337-hatch", "337-3rd", "337-4th")
+acc_labels = c("260-hatch"="26°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th")
+acc_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", "337-4th"="#F3922B")
+#CD133F
+
+
+# NTs: same DTs, different NTs 
+NT_trts = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")
+NT_labels = c("260-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
+NT_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
+  # although i think 267 is the better comparison, i have more 260s
+
+# for survival but lowkey need to edit it below
+# A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
+# B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
+# C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
+```
+
+# 1. clean data
+
+## - column fixing, consolidation, standardising, pre-filtering
+```{r}
+# function to standardise column format
+fix.columns <- function(data) {
+  cleaned_data <- data %>%
+    mutate(across(starts_with("date."),  as.Date, format = "%m/%d")) %>%
+    mutate(mutate(across(starts_with("mass."), as.numeric))
+    )
+  
+  return(cleaned_data)
+}
+
+# add IDs to imported data sheets and consolidate
+data_field <- mutate(data_field, src = "field")
+data_labF1 <- mutate(data_labF1, src = "F1")
+data_labsp <- mutate(data_labsp, src = "sp")
+data_labsu <- mutate(data_labsu, src = "su")
+
+data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)
+
+# value standardising
+data_all$treatment[data_all$treatment=="426"] <- "337" # match for consistency
+data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
+
+# filter out individuals that didnt hatch at 26C
+data_all <- data_all %>%
+    filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
+
+# remove imports env bc it gets messy fast lol
+rm(data_field, data_labF1, data_labsp, data_labsu)
+```
+
+## - column creation for addtl stats
+```{r}
+# survival/development binaries
+data_all <- data_all %>% mutate(
+  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
+  if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
+  if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
+  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7, TRUE ~ 0) # type of sup
+  )
+
+# mean/fluc Ts
+data_all <- data_all %>% mutate(
+  meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26,
+                    treatment == 337 | treatment == 330 ~ 33,
+                    treatment == 433 ~ 36.5,
+                    treatment == 419 ~ 29.5),
+  flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
+                    treatment == 267 | treatment == 337 ~ 7,
+                    treatment == 433 ~ 3.5,
+                    treatment == 419 ~ 10.5)
+  )
+
+# subdivide trts and prep for calculating timetos
+data_all <- data_all %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric),
+         treatment = as.character(treatment),
+         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+         grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+
+# indicate field or lab pops
+data_all <- data_all %>%
+  mutate(pop = case_when(location == "CC" ~ "field",
+                         src == "F1" ~ "F1",
+                         TRUE ~ "lab"))
+```
+
+## - further filtering
+```{r}
+# filter out MQs
+MQ_data <- data_all %>% filter(species == "MQ")
+data_all <- data_all %>% filter(is.na(species))
+
+# indicate overly long-lived individuals: things that took > 25 days to die
+# these can be omitted later
+data_all <- data_all %>% mutate(ignore.reason = case_when(jdate.pmd-jdate.hatch > 25 ~ "slow"))
+  # check: table(data_all$ignore.reason)
+
+# extract wordier notes from data and save elsewhere
+notes_all <- select(data_all, c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "ignore.reason", ends_with(".stuck"), ends_with(".culled")))
+
+# remove unneeded columns
+data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
+```
+
+## - pivots and renaming
+```{r}
+wide_all <- data_all
+
+long_all <- data_all %>% select(-(starts_with("date."))) %>%
+                 pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
+                        names_to = c(".value", "instar"),
+                        #names_sep = ".",
+                        values_drop_na = TRUE,
+                        names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+                 rename(molt.status = h) %>%
+                 drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
+
+# add instar factor levels
+long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+
+rm(data_all)
+
+```

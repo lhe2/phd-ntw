@@ -1755,9 +1755,254 @@ display: none;
 
 <!-- rnb-text-begin -->
 <p>lol</p>
+<p>(because i am lost in the sauce again and also want to rename
+things)</p>
+<p><strong>overview:</strong></p>
+<ol start="0" style="list-style-type: decimal">
+<li>load in data, packages</li>
+<li>clean data</li>
+</ol>
+<p><strong>todos:</strong></p>
+<div id="load-data-packages" class="section level1">
+<h1>0. load data &amp; packages</h1>
 <!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmxpYnJhcnkodGlkeXIpXG5saWJyYXJ5KHB1cnJyKVxubGlicmFyeShnZ3Bsb3QyKVxuXG4jIHN1cnZpdmFsIGN1cnZlIHN0dWZmXG5saWJyYXJ5KHN1cnZpdmFsKVxubGlicmFyeShzdXJ2bWluZXIpXG5cbiMgdG8gbG9hZCBkYXRhIGZyb20gZ3NoZWV0c1xubGlicmFyeShnb29nbGVzaGVldHM0KVxuXG5gYGAifQ== -->
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiYW5hbHlzaXMgY29kZSB2MyIKZGF0ZTogIjIwMjMtMTAtMzEiCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCmxvbAoKCg==</div>
+# survival curve stuff
+library(survival)
+library(survminer)
+
+# to load data from gsheets
+library(googlesheets4)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBiZWZvcmUgaW1wb3J0aW5nLFxuICAjIHJ1biBjbGVhbmluZyBtYWNyb3MgKGxhcnZhIHNoZWV0cylcbiAgIyBjaGVjayBjb2x1bW4vcm93IGFsaWdubWVudCArIHByb3BlciBzb3J0aW5nIChhZHVsdCBzaGVldHMpXG5cbiMgbGFydmEgZGF0YVxuZGF0YV9maWVsZCA8LSByZWFkX3NoZWV0KFwiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxXCIsIHNoZWV0ID0gXCJqdW5lIGZpZWxkXCIsIGNvbF90eXBlcyA9IFwiY1wiKVxuYGBgIn0= -->
+<pre class="r"><code># before importing,
+  # run cleaning macros (larva sheets)
+  # check column/row alignment + proper sorting (adult sheets)
+
+# larva data
+data_field &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet = &quot;june field&quot;, col_types = &quot;c&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiVGhlIGdvb2dsZXNoZWV0czQgcGFja2FnZSBpcyByZXF1ZXN0aW5nIGFjY2VzcyB0byB5b3VyIEdvb2dsZSBhY2NvdW50LlxuRW50ZXIgJzEnIHRvIHN0YXJ0IGEgbmV3IGF1dGggcHJvY2VzcyBvciBzZWxlY3QgYSBwcmUtYXV0aG9yaXplZCBhY2NvdW50LlxuMTogU2VuZCBtZSB0byB0aGUgYnJvd3NlciBmb3IgYSBuZXcgYXV0aCBwcm9jZXNzLlxuMjogbGhlMkB3ZWxsZXNsZXkuZWR1XG4ifQ== -->
+<pre><code>The googlesheets4 package is requesting access to your Google account.
+Enter &#39;1&#39; to start a new auth process or select a pre-authorized account.
+1: Send me to the browser for a new auth process.
+2: lhe2@wellesley.edu</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuMlxuYGBgIn0= -->
+<pre class="r"><code>2</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiQXV0by1yZWZyZXNoaW5nIHN0YWxlIE9BdXRoIHRva2VuLlxu4pyUIFJlYWRpbmcgZnJvbSBkZXZlbG9wbWVudCBkYXRhLlxu4pyUIFJhbmdlICcnanVuZSBmaWVsZCcnLlxuIn0= -->
+<pre><code>Auto-refreshing stale OAuth token.
+✔ Reading from development data.
+✔ Range &#39;&#39;june field&#39;&#39;.</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YV9sYWJzdSA8LSByZWFkX3NoZWV0KFwiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxXCIsIHNoZWV0PVwianVuZSAyMDIzIGxhYlwiLCBjb2xfdHlwZXMgPSBcImNcIilcbmBgYCJ9 -->
+<pre class="r"><code>data_labsu &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet=&quot;june 2023 lab&quot;, col_types = &quot;c&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoi4pyUIFJlYWRpbmcgZnJvbSBkZXZlbG9wbWVudCBkYXRhLlxu4pyUIFJhbmdlICcnanVuZSAyMDIzIGxhYicnLlxuIn0= -->
+<pre><code>✔ Reading from development data.
+✔ Range &#39;&#39;june 2023 lab&#39;&#39;.</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YV9sYWJGMSA8LSByZWFkX3NoZWV0KFwiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxXCIsIHNoZWV0PVwibGFiIEYxXCIsIGNvbF90eXBlcyA9IFwiY1wiKVxuYGBgIn0= -->
+<pre class="r"><code>data_labF1 &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet=&quot;lab F1&quot;, col_types = &quot;c&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoi4pyUIFJlYWRpbmcgZnJvbSBkZXZlbG9wbWVudCBkYXRhLlxu4pyUIFJhbmdlICcnbGFiIEYxJycuXG4ifQ== -->
+<pre><code>✔ Reading from development data.
+✔ Range &#39;&#39;lab F1&#39;&#39;.</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YV9sYWJzcCA8LSByZWFkX3NoZWV0KFwiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxXCIsIHNoZWV0PVwiY29uc29saWRhdGVkICsgdGlkeWVkXCIsIGNvbF90eXBlcyA9IFwiY1wiKVxuYGBgIn0= -->
+<pre class="r"><code>data_labsp &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet=&quot;consolidated + tidyed&quot;, col_types = &quot;c&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoi4pyUIFJlYWRpbmcgZnJvbSBkZXZlbG9wbWVudCBkYXRhLlxu4pyUIFJhbmdlICcnY29uc29saWRhdGVkICsgdGlkeWVkJycuXG4ifQ== -->
+<pre><code>✔ Reading from development data.
+✔ Range &#39;&#39;consolidated + tidyed&#39;&#39;.</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyB0ZW50cy9oYXRjaCBkYXRhXG4jIGRhdGFfbWF0ZXBhaXJzIDwtIHJlYWRfc2hlZXQoXCJodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9zcHJlYWRzaGVldHMvZC8xZFJnbWVlQ1cxT3U1YXlydFhuRUw2TkJLTEIzTGVvOVpIZWM3WTlBRmhtMC9lZGl0I2dpZD0xODg2MTg1NjFcIiwgc2hlZXQ9XCJtYXRpbmcgcGFpcnNcIiwgY29sX3R5cGVzID0gXCJjXCIpXG4jIGRhdGFfdGVudHMgPC0gcmVhZF9zaGVldChcImh0dHBzOi8vZG9jcy5nb29nbGUuY29tL3NwcmVhZHNoZWV0cy9kLzFkUmdtZWVDVzFPdTVheXJ0WG5FTDZOQktMQjNMZW85WkhlYzdZOUFGaG0wL2VkaXQjZ2lkPTE4ODYxODU2MVwiLCBzaGVldD1cInRlbnQgc3RhdHMgdjJcIiwgY29sX3R5cGVzID0gXCJjXCIpXG4jIGRhdGFfaGF0Y2hpbmcgPC0gcmVhZF9zaGVldChcImh0dHBzOi8vZG9jcy5nb29nbGUuY29tL3NwcmVhZHNoZWV0cy9kLzFkUmdtZWVDVzFPdTVheXJ0WG5FTDZOQktMQjNMZW85WkhlYzdZOUFGaG0wL2VkaXQjZ2lkPTE4ODYxODU2MVwiLCBzaGVldD1cImhhdGNoIHN0YXRzXCIsIGNvbF90eXBlcyA9IFwiY1wiKVxuYGBgIn0= -->
+<pre class="r"><code># tents/hatch data
+# data_matepairs &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet=&quot;mating pairs&quot;, col_types = &quot;c&quot;)
+# data_tents &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet=&quot;tent stats v2&quot;, col_types = &quot;c&quot;)
+# data_hatching &lt;- read_sheet(&quot;https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561&quot;, sheet=&quot;hatch stats&quot;, col_types = &quot;c&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<div id="define-aesthetics" class="section level2">
+<h2>- define aesthetics</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI2FsbF90cnRzIDwtIGMoXCIyNjAtaGF0Y2hcIiwgXCIyNjctaGF0Y2hcIiwgXCIzMzAtaGF0Y2hcIiwgXCIzMzctaGF0Y2hcIiwgXCIzMzctM3JkXCIsIFwiMzM3LTR0aFwiLCBcIjQwLTE5XCIsIFwiNDAtMjZcIilcblxuXG4jIHRlbXA6IGVmZmVjdCBvZiBtZWFuL2ZsdWN0IHRlbXAgKHRyZWF0bWVudClcbnRlbXBfdHJ0cyA9IGMoXCIyNjAtaGF0Y2hcIiwgXCIyNjctaGF0Y2hcIiwgXCIzMzAtaGF0Y2hcIiwgXCIzMzctaGF0Y2hcIilcbnRlbXBfbGFiZWxzID0gYyhcIjI2MC1oYXRjaFwiPVwiMjbCsENcIiwgXCIyNjctaGF0Y2hcIj1cIjI2wrE3wrBDXCIsIFwiMzMwLWhhdGNoXCI9XCIzM8KwQ1wiLCBcIjMzNy1oYXRjaFwiPVwiMzPCsTfCsENcIilcbnRlbXBfY29sb3JzID0gYyhcIjI2MC1oYXRjaFwiPVwiIzAwQzJEMVwiLFwiMjY3LWhhdGNoXCI9XCIjMTkyOUIzXCIsIFwiMzMwLWhhdGNoXCI9XCIjRjlDNjM5XCIsIFwiMzM3LWhhdGNoXCI9XCIjNzEwQTM2XCIpXG5cblxuXG4jIGFjY3VtOiBlZmZlY3Qgb2YgdGVtcCB4IGluc3RhciAodHJ0LnN0YWdlKVxuYWNjX3RydHMgPSBjKFwiMjYwLWhhdGNoXCIsIFwiMzM3LWhhdGNoXCIsIFwiMzM3LTNyZFwiLCBcIjMzNy00dGhcIilcbmFjY19sYWJlbHMgPSBjKFwiMjYwLWhhdGNoXCI9XCIyNsKwQyBAIGhhdGNoXCIsXCIzMzctaGF0Y2hcIj1cIjMzwrE3wrBDIEAgaGF0Y2hcIiwgXCIzMzctM3JkXCI9XCIzM8KxN8KwQyBAIDNyZFwiLCBcIjMzNy00dGhcIj1cIjMzwrE3wrBDIEAgNHRoXCIpXG5hY2NfY29sb3JzID0gYyhcIjI2MC1oYXRjaFwiPVwiIzAwQzJEMVwiLCBcIjMzNy1oYXRjaFwiPVwiIzcxMEEzNlwiLCBcIjMzNy0zcmRcIj1cIiNDMjNDMUVcIiwgXCIzMzctNHRoXCI9XCIjRjM5MjJCXCIpXG4jQ0QxMzNGXG5cblxuIyBOVHM6IHNhbWUgRFRzLCBkaWZmZXJlbnQgTlRzIFxuTlRfdHJ0cyA9IGMoXCIyNjAtaGF0Y2hcIiwgXCI0MTktaGF0Y2hcIiwgXCIzMzctaGF0Y2hcIiwgXCI0MzMtaGF0Y2hcIilcbk5UX2xhYmVscyA9IGMoXCIyNjAtaGF0Y2hcIj1cIjI2wrE3wrBDICgzMy8xOSlcIixcIjQxOS1oYXRjaFwiPVwiMjkuNcKxMTAuNcKwQyAoNDAvMTkpXCIsIFwiMzM3LWhhdGNoXCI9XCIzM8KxN8KwQyAoNDAvMjYpXCIsIFwiNDMzLWhhdGNoXCI9XCIzNi41wrEzLjXCsEMgKDQwLzMzKVwiKVxuTlRfY29sb3JzID0gYyhcIjI2Ny1oYXRjaFwiPVwiI0Y0Qjk0MlwiLCBcIjQxOS1oYXRjaFwiPVwiIzQwNTlBRFwiLCBcIjMzNy1oYXRjaFwiPVwiIzZCOUFDNFwiLCBcIjQzMy1oYXRjaFwiPVwiIzk3RDhDNFwiKVxuICAjIGFsdGhvdWdoIGkgdGhpbmsgMjY3IGlzIHRoZSBiZXR0ZXIgY29tcGFyaXNvbiwgaSBoYXZlIG1vcmUgMjYwc1xuXG4jIGZvciBzdXJ2aXZhbCBidXQgbG93a2V5IG5lZWQgdG8gZWRpdCBpdCBiZWxvd1xuIyBBX2hleCA9IGMoXCIjMDBDMkQxXCIsXCIjMTkyOUIzXCIsIFwiI0Y5QzYzOVwiLCBcIiM3MTBBMzZcIilcbiMgQl9oZXggPSBjKFwiIzAwQzJEMVwiLCBcIiM3MTBBMzZcIiwgXCIjQzIzQzFFXCIsIFwiI0YzOTIyQlwiKVxuIyBDX2hleCA9IGMoXCIjRjRCOTQyXCIsIFwiIzQwNTlBRFwiLCBcIiM2QjlBQzRcIiwgXCIjOTdEOEM0XCIpXG5gYGAifQ== -->
+<pre class="r"><code>#all_trts &lt;- c(&quot;260-hatch&quot;, &quot;267-hatch&quot;, &quot;330-hatch&quot;, &quot;337-hatch&quot;, &quot;337-3rd&quot;, &quot;337-4th&quot;, &quot;40-19&quot;, &quot;40-26&quot;)
+
+
+# temp: effect of mean/fluct temp (treatment)
+temp_trts = c(&quot;260-hatch&quot;, &quot;267-hatch&quot;, &quot;330-hatch&quot;, &quot;337-hatch&quot;)
+temp_labels = c(&quot;260-hatch&quot;=&quot;26°C&quot;, &quot;267-hatch&quot;=&quot;26±7°C&quot;, &quot;330-hatch&quot;=&quot;33°C&quot;, &quot;337-hatch&quot;=&quot;33±7°C&quot;)
+temp_colors = c(&quot;260-hatch&quot;=&quot;#00C2D1&quot;,&quot;267-hatch&quot;=&quot;#1929B3&quot;, &quot;330-hatch&quot;=&quot;#F9C639&quot;, &quot;337-hatch&quot;=&quot;#710A36&quot;)
+
+
+
+# accum: effect of temp x instar (trt.stage)
+acc_trts = c(&quot;260-hatch&quot;, &quot;337-hatch&quot;, &quot;337-3rd&quot;, &quot;337-4th&quot;)
+acc_labels = c(&quot;260-hatch&quot;=&quot;26°C @ hatch&quot;,&quot;337-hatch&quot;=&quot;33±7°C @ hatch&quot;, &quot;337-3rd&quot;=&quot;33±7°C @ 3rd&quot;, &quot;337-4th&quot;=&quot;33±7°C @ 4th&quot;)
+acc_colors = c(&quot;260-hatch&quot;=&quot;#00C2D1&quot;, &quot;337-hatch&quot;=&quot;#710A36&quot;, &quot;337-3rd&quot;=&quot;#C23C1E&quot;, &quot;337-4th&quot;=&quot;#F3922B&quot;)
+#CD133F
+
+
+# NTs: same DTs, different NTs 
+NT_trts = c(&quot;260-hatch&quot;, &quot;419-hatch&quot;, &quot;337-hatch&quot;, &quot;433-hatch&quot;)
+NT_labels = c(&quot;260-hatch&quot;=&quot;26±7°C (33/19)&quot;,&quot;419-hatch&quot;=&quot;29.5±10.5°C (40/19)&quot;, &quot;337-hatch&quot;=&quot;33±7°C (40/26)&quot;, &quot;433-hatch&quot;=&quot;36.5±3.5°C (40/33)&quot;)
+NT_colors = c(&quot;267-hatch&quot;=&quot;#F4B942&quot;, &quot;419-hatch&quot;=&quot;#4059AD&quot;, &quot;337-hatch&quot;=&quot;#6B9AC4&quot;, &quot;433-hatch&quot;=&quot;#97D8C4&quot;)
+  # although i think 267 is the better comparison, i have more 260s
+
+# for survival but lowkey need to edit it below
+# A_hex = c(&quot;#00C2D1&quot;,&quot;#1929B3&quot;, &quot;#F9C639&quot;, &quot;#710A36&quot;)
+# B_hex = c(&quot;#00C2D1&quot;, &quot;#710A36&quot;, &quot;#C23C1E&quot;, &quot;#F3922B&quot;)
+# C_hex = c(&quot;#F4B942&quot;, &quot;#4059AD&quot;, &quot;#6B9AC4&quot;, &quot;#97D8C4&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+</div>
+<div id="clean-data" class="section level1">
+<h1>1. clean data</h1>
+<div id="column-fixing-consolidation-standardising-pre-filtering" class="section level2">
+<h2>- column fixing, consolidation, standardising, pre-filtering</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBmdW5jdGlvbiB0byBzdGFuZGFyZGlzZSBjb2x1bW4gZm9ybWF0XG5maXguY29sdW1ucyA8LSBmdW5jdGlvbihkYXRhKSB7XG4gIGNsZWFuZWRfZGF0YSA8LSBkYXRhICU+JVxuICAgIG11dGF0ZShhY3Jvc3Moc3RhcnRzX3dpdGgoXCJkYXRlLlwiKSwgIGFzLkRhdGUsIGZvcm1hdCA9IFwiJW0vJWRcIikpICU+JVxuICAgIG11dGF0ZShtdXRhdGUoYWNyb3NzKHN0YXJ0c193aXRoKFwibWFzcy5cIiksIGFzLm51bWVyaWMpKVxuICAgIClcbiAgXG4gIHJldHVybihjbGVhbmVkX2RhdGEpXG59XG5cbiMgYWRkIElEcyB0byBpbXBvcnRlZCBkYXRhIHNoZWV0cyBhbmQgY29uc29saWRhdGVcbmRhdGFfZmllbGQgPC0gbXV0YXRlKGRhdGFfZmllbGQsIHNyYyA9IFwiZmllbGRcIilcbmRhdGFfbGFiRjEgPC0gbXV0YXRlKGRhdGFfbGFiRjEsIHNyYyA9IFwiRjFcIilcbmRhdGFfbGFic3AgPC0gbXV0YXRlKGRhdGFfbGFic3AsIHNyYyA9IFwic3BcIilcbmRhdGFfbGFic3UgPC0gbXV0YXRlKGRhdGFfbGFic3UsIHNyYyA9IFwic3VcIilcblxuZGF0YV9hbGwgPC0gZGF0YS50YWJsZTo6cmJpbmRsaXN0KGxhcHBseShsaXN0KGRhdGFfZmllbGQsIGRhdGFfbGFiRjEsIGRhdGFfbGFic3AsIGRhdGFfbGFic3UpLCBmaXguY29sdW1ucyksIGZpbGwgPSBUKVxuYGBgIn0= -->
+<pre class="r"><code># function to standardise column format
+fix.columns &lt;- function(data) {
+  cleaned_data &lt;- data %&gt;%
+    mutate(across(starts_with(&quot;date.&quot;),  as.Date, format = &quot;%m/%d&quot;)) %&gt;%
+    mutate(mutate(across(starts_with(&quot;mass.&quot;), as.numeric))
+    )
+  
+  return(cleaned_data)
+}
+
+# add IDs to imported data sheets and consolidate
+data_field &lt;- mutate(data_field, src = &quot;field&quot;)
+data_labF1 &lt;- mutate(data_labF1, src = &quot;F1&quot;)
+data_labsp &lt;- mutate(data_labsp, src = &quot;sp&quot;)
+data_labsu &lt;- mutate(data_labsu, src = &quot;su&quot;)
+
+data_all &lt;- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiV2FybmluZzogTkFzIGludHJvZHVjZWQgYnkgY29lcmNpb25XYXJuaW5nOiBOQXMgaW50cm9kdWNlZCBieSBjb2VyY2lvbldhcm5pbmc6IE5BcyBpbnRyb2R1Y2VkIGJ5IGNvZXJjaW9uXG4ifQ== -->
+<pre><code>Warning: NAs introduced by coercionWarning: NAs introduced by coercionWarning: NAs introduced by coercion</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyB2YWx1ZSBzdGFuZGFyZGlzaW5nXG5kYXRhX2FsbCR0cmVhdG1lbnRbZGF0YV9hbGwkdHJlYXRtZW50PT1cIjQyNlwiXSA8LSBcIjMzN1wiICMgbWF0Y2ggZm9yIGNvbnNpc3RlbmN5XG5kYXRhX2FsbCRpbnN0YXIuZW50ZXJbZGF0YV9hbGwkdHJ0LnN0YWdlID09IFwiMXN0XCJdIDwtIFwiaGF0Y2hcIiAjIGNoYW5nZSBmaWVsZCAxc3RzIHRvIGhhdGNobGluZ3NcblxuIyBmaWx0ZXIgb3V0IGluZGl2aWR1YWxzIHRoYXQgZGlkbnQgaGF0Y2ggYXQgMjZDXG5kYXRhX2FsbCA8LSBkYXRhX2FsbCAlPiVcbiAgICBmaWx0ZXIoaXMubmEoZnJvbS5FKSB8ICEoZnJvbS5FID09IDIgfCAoZnJvbS5FID09IDAgJiAodHJlYXRtZW50ID09IDMzNyB8IHRyZWF0bWVudCA9PSAzMzAgfCB0cmVhdG1lbnQgPT0gMjY3KSkpKVxuYGBgIn0= -->
+<pre class="r"><code># value standardising
+data_all$treatment[data_all$treatment==&quot;426&quot;] &lt;- &quot;337&quot; # match for consistency
+data_all$instar.enter[data_all$trt.stage == &quot;1st&quot;] &lt;- &quot;hatch&quot; # change field 1sts to hatchlings
+
+# filter out individuals that didnt hatch at 26C
+data_all &lt;- data_all %&gt;%
+    filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 &amp; (treatment == 337 | treatment == 330 | treatment == 267))))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="column-creation-for-addtl-stats" class="section level2">
+<h2>- column creation for addtl stats</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBzdXJ2aXZhbC9kZXZlbG9wbWVudCBiaW5hcmllc1xuZGF0YV9hbGwgPC0gZGF0YV9hbGwgJT4lIG11dGF0ZShcbiAgaWYuc3R1Y2sgPSBjYXNlX3doZW4oaXMubmEoZGF0ZS5zdHVjaykgfiBcIk5cIiwgVFJVRSB+IFwiWVwiKSxcbiAgaWYucHVwYSA9IGNhc2Vfd2hlbihpcy5uYShkYXRlLkxQKSAmIGlzLm5hKGRhdGUucHVwYSkgfiBcIk5cIiwgVFJVRSB+IFwiWVwiKSxcbiAgaWYuc3VwID0gY2FzZV93aGVuKGlzLm5hKGRhdGUuNnRoKSB+IFwiTlwiLCBUUlVFIH4gXCJZXCIpLFxuICBzdXAgPSBjYXNlX3doZW4oIWlzLm5hKGRhdGUuNnRoKSB+IDYsICFpcy5uYShkYXRlLjd0aCkgfiA3LCBUUlVFIH4gMCkgIyB0eXBlIG9mIHN1cFxuICApXG5cbiMgbWVhbi9mbHVjIFRzXG5kYXRhX2FsbCA8LSBkYXRhX2FsbCAlPiUgbXV0YXRlKFxuICBtZWFuVCA9IGNhc2Vfd2hlbih0cmVhdG1lbnQgPT0gMjYwIHwgdHJlYXRtZW50ID09IDI2NyB8IHRyZWF0bWVudCA9PSBcImN0cmxcIiB+IDI2LFxuICAgICAgICAgICAgICAgICAgICB0cmVhdG1lbnQgPT0gMzM3IHwgdHJlYXRtZW50ID09IDMzMCB+IDMzLFxuICAgICAgICAgICAgICAgICAgICB0cmVhdG1lbnQgPT0gNDMzIH4gMzYuNSxcbiAgICAgICAgICAgICAgICAgICAgdHJlYXRtZW50ID09IDQxOSB+IDI5LjUpLFxuICBmbHVjVCA9IGNhc2Vfd2hlbih0cmVhdG1lbnQgPT0gMjYwIHwgdHJlYXRtZW50ID09IDMzMCB+IDAsXG4gICAgICAgICAgICAgICAgICAgIHRyZWF0bWVudCA9PSAyNjcgfCB0cmVhdG1lbnQgPT0gMzM3IH4gNyxcbiAgICAgICAgICAgICAgICAgICAgdHJlYXRtZW50ID09IDQzMyB+IDMuNSxcbiAgICAgICAgICAgICAgICAgICAgdHJlYXRtZW50ID09IDQxOSB+IDEwLjUpXG4gIClcblxuIyBzdWJkaXZpZGUgdHJ0cyBhbmQgcHJlcCBmb3IgY2FsY3VsYXRpbmcgdGltZXRvc1xuZGF0YV9hbGwgPC0gZGF0YV9hbGwgJT4lXG4gIG11dGF0ZShhY3Jvc3Moc3RhcnRzX3dpdGgoXCJkYXRlLlwiKSwgZm9ybWF0LCBcIiVqXCIsIC5uYW1lcyA9IFwiansuY29sfVwiKSkgJT4lXG4gIG11dGF0ZShhY3Jvc3Moc3RhcnRzX3dpdGgoXCJqZGF0ZS5cIiksIGFzLm51bWVyaWMpLFxuICAgICAgICAgdHJlYXRtZW50ID0gYXMuY2hhcmFjdGVyKHRyZWF0bWVudCksXG4gICAgICAgICB0cnQuc3RhZ2UgPSBhcy5jaGFyYWN0ZXIocGFzdGUodHJlYXRtZW50LGluc3Rhci5lbnRlciwgc2VwID0gXCItXCIpKSwgIyB0cmVhdG1lbnQgQCBpbnN0YXJcbiAgICAgICAgIGdycC50cnQgPSBwYXN0ZShleHB0Lmdyb3VwLCB0cnQuc3RhZ2UsIHNlcCA9IFwiLVwiKSkgIyByb3VuZCBAIHRyZWF0bWVudFxuXG4jIGluZGljYXRlIGZpZWxkIG9yIGxhYiBwb3BzXG5kYXRhX2FsbCA8LSBkYXRhX2FsbCAlPiVcbiAgbXV0YXRlKHBvcCA9IGNhc2Vfd2hlbihsb2NhdGlvbiA9PSBcIkNDXCIgfiBcImZpZWxkXCIsXG4gICAgICAgICAgICAgICAgICAgICAgICAgc3JjID09IFwiRjFcIiB+IFwiRjFcIixcbiAgICAgICAgICAgICAgICAgICAgICAgICBUUlVFIH4gXCJsYWJcIikpXG5gYGAifQ== -->
+<pre class="r"><code># survival/development binaries
+data_all &lt;- data_all %&gt;% mutate(
+  if.stuck = case_when(is.na(date.stuck) ~ &quot;N&quot;, TRUE ~ &quot;Y&quot;),
+  if.pupa = case_when(is.na(date.LP) &amp; is.na(date.pupa) ~ &quot;N&quot;, TRUE ~ &quot;Y&quot;),
+  if.sup = case_when(is.na(date.6th) ~ &quot;N&quot;, TRUE ~ &quot;Y&quot;),
+  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7, TRUE ~ 0) # type of sup
+  )
+
+# mean/fluc Ts
+data_all &lt;- data_all %&gt;% mutate(
+  meanT = case_when(treatment == 260 | treatment == 267 | treatment == &quot;ctrl&quot; ~ 26,
+                    treatment == 337 | treatment == 330 ~ 33,
+                    treatment == 433 ~ 36.5,
+                    treatment == 419 ~ 29.5),
+  flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
+                    treatment == 267 | treatment == 337 ~ 7,
+                    treatment == 433 ~ 3.5,
+                    treatment == 419 ~ 10.5)
+  )
+
+# subdivide trts and prep for calculating timetos
+data_all &lt;- data_all %&gt;%
+  mutate(across(starts_with(&quot;date.&quot;), format, &quot;%j&quot;, .names = &quot;j{.col}&quot;)) %&gt;%
+  mutate(across(starts_with(&quot;jdate.&quot;), as.numeric),
+         treatment = as.character(treatment),
+         trt.stage = as.character(paste(treatment,instar.enter, sep = &quot;-&quot;)), # treatment @ instar
+         grp.trt = paste(expt.group, trt.stage, sep = &quot;-&quot;)) # round @ treatment
+
+# indicate field or lab pops
+data_all &lt;- data_all %&gt;%
+  mutate(pop = case_when(location == &quot;CC&quot; ~ &quot;field&quot;,
+                         src == &quot;F1&quot; ~ &quot;F1&quot;,
+                         TRUE ~ &quot;lab&quot;))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="further-filtering" class="section level2">
+<h2>- further filtering</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBmaWx0ZXIgb3V0IE1Rc1xuTVFfZGF0YSA8LSBkYXRhX2FsbCAlPiUgZmlsdGVyKHNwZWNpZXMgPT0gXCJNUVwiKVxuZGF0YV9hbGwgPC0gZGF0YV9hbGwgJT4lIGZpbHRlcihpcy5uYShzcGVjaWVzKSlcblxuIyBpbmRpY2F0ZSBvdmVybHkgbG9uZy1saXZlZCBpbmRpdmlkdWFsczogdGhpbmdzIHRoYXQgdG9vayA+IDI1IGRheXMgdG8gZGllXG4jIHRoZXNlIGNhbiBiZSBvbWl0dGVkIGxhdGVyXG5kYXRhX2FsbCA8LSBkYXRhX2FsbCAlPiUgbXV0YXRlKGlnbm9yZS5yZWFzb24gPSBjYXNlX3doZW4oamRhdGUucG1kLWpkYXRlLmhhdGNoID4gMjUgfiBcInNsb3dcIikpXG4gICMgY2hlY2s6IHRhYmxlKGRhdGFfYWxsJGlnbm9yZS5yZWFzb24pXG5cbiMgZXh0cmFjdCB3b3JkaWVyIG5vdGVzIGZyb20gZGF0YSBhbmQgc2F2ZSBlbHNld2hlcmVcbm5vdGVzX2FsbCA8LSBzZWxlY3QoZGF0YV9hbGwsIGMoXCJ0cmVhdG1lbnRcIiwgXCJJRFwiLCBcImV4cHQuZ3JvdXBcIiwgXCJsb2NhdGlvblwiLCBcImRhdGUuY29sbGVjdGVkXCIsIFwiZGF0ZS5zdHVja1wiLCBcInRpbWUuaW4uYXBwcm94XCIsIFwiZHZcIiwgXCJtYXNzLmRpZWRcIiwgXCJwdXBhLmRlZm9ybWl0aWVzXCIsIFwibm90ZXNcIiwgXCJpZ25vcmUucmVhc29uXCIsIGVuZHNfd2l0aChcIi5zdHVja1wiKSwgZW5kc193aXRoKFwiLmN1bGxlZFwiKSkpXG5cbiMgcmVtb3ZlIHVubmVlZGVkIGNvbHVtbnNcbmRhdGFfYWxsIDwtIHNlbGVjdChkYXRhX2FsbCwgLWMoXCJzcGVjaWVzXCIsIFwiZnJvbS5FXCIsIFwibG9jYXRpb25cIiwgXCJkYXRlLmNvbGxlY3RlZFwiLCBcImRhdGUuc3R1Y2tcIiwgXCJ0aW1lLmluLmFwcHJveFwiLCBcImR2XCIsIFwicHVwYS5kZWZvcm1pdGllc1wiLCBcIm1hc3MuZGllZFwiLCBcInRvc3MuaWZcIiwgXCJvbGQuZGF0ZS5wbWRcIiwgXCJmYXRlLmNvZGVcIiwgXCJub3Rlc1wiLCBlbmRzX3dpdGgoXCIuc3R1Y2tcIiksIGVuZHNfd2l0aChcIi5jdWxsZWRcIiksIFwiZWNsb3NlLTNcIikpXG5gYGAifQ== -->
+<pre class="r"><code># filter out MQs
+MQ_data &lt;- data_all %&gt;% filter(species == &quot;MQ&quot;)
+data_all &lt;- data_all %&gt;% filter(is.na(species))
+
+# indicate overly long-lived individuals: things that took &gt; 25 days to die
+# these can be omitted later
+data_all &lt;- data_all %&gt;% mutate(ignore.reason = case_when(jdate.pmd-jdate.hatch &gt; 25 ~ &quot;slow&quot;))
+  # check: table(data_all$ignore.reason)
+
+# extract wordier notes from data and save elsewhere
+notes_all &lt;- select(data_all, c(&quot;treatment&quot;, &quot;ID&quot;, &quot;expt.group&quot;, &quot;location&quot;, &quot;date.collected&quot;, &quot;date.stuck&quot;, &quot;time.in.approx&quot;, &quot;dv&quot;, &quot;mass.died&quot;, &quot;pupa.deformities&quot;, &quot;notes&quot;, &quot;ignore.reason&quot;, ends_with(&quot;.stuck&quot;), ends_with(&quot;.culled&quot;)))
+
+# remove unneeded columns
+data_all &lt;- select(data_all, -c(&quot;species&quot;, &quot;from.E&quot;, &quot;location&quot;, &quot;date.collected&quot;, &quot;date.stuck&quot;, &quot;time.in.approx&quot;, &quot;dv&quot;, &quot;pupa.deformities&quot;, &quot;mass.died&quot;, &quot;toss.if&quot;, &quot;old.date.pmd&quot;, &quot;fate.code&quot;, &quot;notes&quot;, ends_with(&quot;.stuck&quot;), ends_with(&quot;.culled&quot;), &quot;eclose-3&quot;))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="pivots-and-renaming" class="section level2">
+<h2>- pivots and renaming</h2>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxud2lkZV9hbGwgPC0gZGF0YV9hbGxcblxubG9uZ19hbGwgPC0gZGF0YV9hbGwgJT4lIHNlbGVjdCgtKHN0YXJ0c193aXRoKFwiZGF0ZS5cIikpKSAlPiVcbiAgICAgICAgICAgICAgICAgcGl2b3RfbG9uZ2VyKGNvbHMgPSBzdGFydHNfd2l0aChjKFwiamRhdGVcIiwgXCJtYXNzXCIsIFwiaFwiKSksXG4gICAgICAgICAgICAgICAgICAgICAgICBuYW1lc190byA9IGMoXCIudmFsdWVcIiwgXCJpbnN0YXJcIiksXG4gICAgICAgICAgICAgICAgICAgICAgICAjbmFtZXNfc2VwID0gXCIuXCIsXG4gICAgICAgICAgICAgICAgICAgICAgICB2YWx1ZXNfZHJvcF9uYSA9IFRSVUUsXG4gICAgICAgICAgICAgICAgICAgICAgICBuYW1lc19wYXR0ZXJuID0gKFwiKFthLXpdKilcXFxcLihcXFxcZCpbYS16XSopXCIpKSAlPiVcbiAgICAgICAgICAgICAgICAgcmVuYW1lKG1vbHQuc3RhdHVzID0gaCkgJT4lXG4gICAgICAgICAgICAgICAgIGRyb3BfbmEoamRhdGUpICMgZHJvcHMgTkEncyBpZiBhbiBpbmRpdmlkdWFsIGRpZG50IHJlYWNoIGEgY2VydGFpbiBzdGFnZVxuXG4jIGFkZCBpbnN0YXIgZmFjdG9yIGxldmVsc1xubG9uZ19hbGwkaW5zdGFyIDwtIGZhY3Rvcihsb25nX2FsbCRpbnN0YXIsIGMoXCJoYXRjaFwiLCBcIjJuZFwiLCBcIjNyZFwiLCBcIjR0aFwiLCBcIjV0aFwiLCBcIjZ0aFwiLCBcIjd0aFwiLCBcInN0dWNrXCIsIFwid2FuZGVyXCIsIFwiMTVcIiwgXCJwdXBhXCIsIFwiZWNsb3NlXCIsIFwiZXhpdFwiKSlcblxuYGBgIn0= -->
+<pre class="r"><code>wide_all &lt;- data_all
+
+long_all &lt;- data_all %&gt;% select(-(starts_with(&quot;date.&quot;))) %&gt;%
+                 pivot_longer(cols = starts_with(c(&quot;jdate&quot;, &quot;mass&quot;, &quot;h&quot;)),
+                        names_to = c(&quot;.value&quot;, &quot;instar&quot;),
+                        #names_sep = &quot;.&quot;,
+                        values_drop_na = TRUE,
+                        names_pattern = (&quot;([a-z]*)\\.(\\d*[a-z]*)&quot;)) %&gt;%
+                 rename(molt.status = h) %&gt;%
+                 drop_na(jdate) # drops NA&#39;s if an individual didnt reach a certain stage
+
+# add instar factor levels
+long_all$instar &lt;- factor(long_all$instar, c(&quot;hatch&quot;, &quot;2nd&quot;, &quot;3rd&quot;, &quot;4th&quot;, &quot;5th&quot;, &quot;6th&quot;, &quot;7th&quot;, &quot;stuck&quot;, &quot;wander&quot;, &quot;15&quot;, &quot;pupa&quot;, &quot;eclose&quot;, &quot;exit&quot;))
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+</div>
+</div>
+
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiYW5hbHlzaXMgY29kZSB2MyIKZGF0ZTogIjIwMjMtMTAtMzEiCm91dHB1dDogaHRtbF9ub3RlYm9vawotLS0KCmxvbAoKKGJlY2F1c2UgaSBhbSBsb3N0IGluIHRoZSBzYXVjZSBhZ2FpbiBhbmQgYWxzbyB3YW50IHRvIHJlbmFtZSB0aGluZ3MpCgoKKipvdmVydmlldzoqKgoKMC4gbG9hZCBpbiBkYXRhLCBwYWNrYWdlcwoxLiBjbGVhbiBkYXRhCgoqKnRvZG9zOioqCgoKCiMgMC4gbG9hZCBkYXRhICYgcGFja2FnZXMKYGBge3IgbWVzc2FnZSA9IEZBTFNFfQpsaWJyYXJ5KGRwbHlyKQpsaWJyYXJ5KHRpZHlyKQpsaWJyYXJ5KHB1cnJyKQpsaWJyYXJ5KGdncGxvdDIpCgojIHN1cnZpdmFsIGN1cnZlIHN0dWZmCmxpYnJhcnkoc3Vydml2YWwpCmxpYnJhcnkoc3Vydm1pbmVyKQoKIyB0byBsb2FkIGRhdGEgZnJvbSBnc2hlZXRzCmxpYnJhcnkoZ29vZ2xlc2hlZXRzNCkKCmBgYAoKYGBge3J9CiMgYmVmb3JlIGltcG9ydGluZywKICAjIHJ1biBjbGVhbmluZyBtYWNyb3MgKGxhcnZhIHNoZWV0cykKICAjIGNoZWNrIGNvbHVtbi9yb3cgYWxpZ25tZW50ICsgcHJvcGVyIHNvcnRpbmcgKGFkdWx0IHNoZWV0cykKCiMgbGFydmEgZGF0YQpkYXRhX2ZpZWxkIDwtIHJlYWRfc2hlZXQoImh0dHBzOi8vZG9jcy5nb29nbGUuY29tL3NwcmVhZHNoZWV0cy9kLzFkUmdtZWVDVzFPdTVheXJ0WG5FTDZOQktMQjNMZW85WkhlYzdZOUFGaG0wL2VkaXQjZ2lkPTE4ODYxODU2MSIsIHNoZWV0ID0gImp1bmUgZmllbGQiLCBjb2xfdHlwZXMgPSAiYyIpCmRhdGFfbGFic3UgPC0gcmVhZF9zaGVldCgiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxIiwgc2hlZXQ9Imp1bmUgMjAyMyBsYWIiLCBjb2xfdHlwZXMgPSAiYyIpCmRhdGFfbGFiRjEgPC0gcmVhZF9zaGVldCgiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxIiwgc2hlZXQ9ImxhYiBGMSIsIGNvbF90eXBlcyA9ICJjIikKZGF0YV9sYWJzcCA8LSByZWFkX3NoZWV0KCJodHRwczovL2RvY3MuZ29vZ2xlLmNvbS9zcHJlYWRzaGVldHMvZC8xZFJnbWVlQ1cxT3U1YXlydFhuRUw2TkJLTEIzTGVvOVpIZWM3WTlBRmhtMC9lZGl0I2dpZD0xODg2MTg1NjEiLCBzaGVldD0iY29uc29saWRhdGVkICsgdGlkeWVkIiwgY29sX3R5cGVzID0gImMiKQoKIyB0ZW50cy9oYXRjaCBkYXRhCiMgZGF0YV9tYXRlcGFpcnMgPC0gcmVhZF9zaGVldCgiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxIiwgc2hlZXQ9Im1hdGluZyBwYWlycyIsIGNvbF90eXBlcyA9ICJjIikKIyBkYXRhX3RlbnRzIDwtIHJlYWRfc2hlZXQoImh0dHBzOi8vZG9jcy5nb29nbGUuY29tL3NwcmVhZHNoZWV0cy9kLzFkUmdtZWVDVzFPdTVheXJ0WG5FTDZOQktMQjNMZW85WkhlYzdZOUFGaG0wL2VkaXQjZ2lkPTE4ODYxODU2MSIsIHNoZWV0PSJ0ZW50IHN0YXRzIHYyIiwgY29sX3R5cGVzID0gImMiKQojIGRhdGFfaGF0Y2hpbmcgPC0gcmVhZF9zaGVldCgiaHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vc3ByZWFkc2hlZXRzL2QvMWRSZ21lZUNXMU91NWF5cnRYbkVMNk5CS0xCM0xlbzlaSGVjN1k5QUZobTAvZWRpdCNnaWQ9MTg4NjE4NTYxIiwgc2hlZXQ9ImhhdGNoIHN0YXRzIiwgY29sX3R5cGVzID0gImMiKQpgYGAKIyMgLSBkZWZpbmUgYWVzdGhldGljcwpgYGB7cn0KI2FsbF90cnRzIDwtIGMoIjI2MC1oYXRjaCIsICIyNjctaGF0Y2giLCAiMzMwLWhhdGNoIiwgIjMzNy1oYXRjaCIsICIzMzctM3JkIiwgIjMzNy00dGgiLCAiNDAtMTkiLCAiNDAtMjYiKQoKCiMgdGVtcDogZWZmZWN0IG9mIG1lYW4vZmx1Y3QgdGVtcCAodHJlYXRtZW50KQp0ZW1wX3RydHMgPSBjKCIyNjAtaGF0Y2giLCAiMjY3LWhhdGNoIiwgIjMzMC1oYXRjaCIsICIzMzctaGF0Y2giKQp0ZW1wX2xhYmVscyA9IGMoIjI2MC1oYXRjaCI9IjI2wrBDIiwgIjI2Ny1oYXRjaCI9IjI2wrE3wrBDIiwgIjMzMC1oYXRjaCI9IjMzwrBDIiwgIjMzNy1oYXRjaCI9IjMzwrE3wrBDIikKdGVtcF9jb2xvcnMgPSBjKCIyNjAtaGF0Y2giPSIjMDBDMkQxIiwiMjY3LWhhdGNoIj0iIzE5MjlCMyIsICIzMzAtaGF0Y2giPSIjRjlDNjM5IiwgIjMzNy1oYXRjaCI9IiM3MTBBMzYiKQoKCgojIGFjY3VtOiBlZmZlY3Qgb2YgdGVtcCB4IGluc3RhciAodHJ0LnN0YWdlKQphY2NfdHJ0cyA9IGMoIjI2MC1oYXRjaCIsICIzMzctaGF0Y2giLCAiMzM3LTNyZCIsICIzMzctNHRoIikKYWNjX2xhYmVscyA9IGMoIjI2MC1oYXRjaCI9IjI2wrBDIEAgaGF0Y2giLCIzMzctaGF0Y2giPSIzM8KxN8KwQyBAIGhhdGNoIiwgIjMzNy0zcmQiPSIzM8KxN8KwQyBAIDNyZCIsICIzMzctNHRoIj0iMzPCsTfCsEMgQCA0dGgiKQphY2NfY29sb3JzID0gYygiMjYwLWhhdGNoIj0iIzAwQzJEMSIsICIzMzctaGF0Y2giPSIjNzEwQTM2IiwgIjMzNy0zcmQiPSIjQzIzQzFFIiwgIjMzNy00dGgiPSIjRjM5MjJCIikKI0NEMTMzRgoKCiMgTlRzOiBzYW1lIERUcywgZGlmZmVyZW50IE5UcyAKTlRfdHJ0cyA9IGMoIjI2MC1oYXRjaCIsICI0MTktaGF0Y2giLCAiMzM3LWhhdGNoIiwgIjQzMy1oYXRjaCIpCk5UX2xhYmVscyA9IGMoIjI2MC1oYXRjaCI9IjI2wrE3wrBDICgzMy8xOSkiLCI0MTktaGF0Y2giPSIyOS41wrExMC41wrBDICg0MC8xOSkiLCAiMzM3LWhhdGNoIj0iMzPCsTfCsEMgKDQwLzI2KSIsICI0MzMtaGF0Y2giPSIzNi41wrEzLjXCsEMgKDQwLzMzKSIpCk5UX2NvbG9ycyA9IGMoIjI2Ny1oYXRjaCI9IiNGNEI5NDIiLCAiNDE5LWhhdGNoIj0iIzQwNTlBRCIsICIzMzctaGF0Y2giPSIjNkI5QUM0IiwgIjQzMy1oYXRjaCI9IiM5N0Q4QzQiKQogICMgYWx0aG91Z2ggaSB0aGluayAyNjcgaXMgdGhlIGJldHRlciBjb21wYXJpc29uLCBpIGhhdmUgbW9yZSAyNjBzCgojIGZvciBzdXJ2aXZhbCBidXQgbG93a2V5IG5lZWQgdG8gZWRpdCBpdCBiZWxvdwojIEFfaGV4ID0gYygiIzAwQzJEMSIsIiMxOTI5QjMiLCAiI0Y5QzYzOSIsICIjNzEwQTM2IikKIyBCX2hleCA9IGMoIiMwMEMyRDEiLCAiIzcxMEEzNiIsICIjQzIzQzFFIiwgIiNGMzkyMkIiKQojIENfaGV4ID0gYygiI0Y0Qjk0MiIsICIjNDA1OUFEIiwgIiM2QjlBQzQiLCAiIzk3RDhDNCIpCmBgYAoKIyAxLiBjbGVhbiBkYXRhCgojIyAtIGNvbHVtbiBmaXhpbmcsIGNvbnNvbGlkYXRpb24sIHN0YW5kYXJkaXNpbmcsIHByZS1maWx0ZXJpbmcKYGBge3J9CiMgZnVuY3Rpb24gdG8gc3RhbmRhcmRpc2UgY29sdW1uIGZvcm1hdApmaXguY29sdW1ucyA8LSBmdW5jdGlvbihkYXRhKSB7CiAgY2xlYW5lZF9kYXRhIDwtIGRhdGEgJT4lCiAgICBtdXRhdGUoYWNyb3NzKHN0YXJ0c193aXRoKCJkYXRlLiIpLCAgYXMuRGF0ZSwgZm9ybWF0ID0gIiVtLyVkIikpICU+JQogICAgbXV0YXRlKG11dGF0ZShhY3Jvc3Moc3RhcnRzX3dpdGgoIm1hc3MuIiksIGFzLm51bWVyaWMpKQogICAgKQogIAogIHJldHVybihjbGVhbmVkX2RhdGEpCn0KCiMgYWRkIElEcyB0byBpbXBvcnRlZCBkYXRhIHNoZWV0cyBhbmQgY29uc29saWRhdGUKZGF0YV9maWVsZCA8LSBtdXRhdGUoZGF0YV9maWVsZCwgc3JjID0gImZpZWxkIikKZGF0YV9sYWJGMSA8LSBtdXRhdGUoZGF0YV9sYWJGMSwgc3JjID0gIkYxIikKZGF0YV9sYWJzcCA8LSBtdXRhdGUoZGF0YV9sYWJzcCwgc3JjID0gInNwIikKZGF0YV9sYWJzdSA8LSBtdXRhdGUoZGF0YV9sYWJzdSwgc3JjID0gInN1IikKCmRhdGFfYWxsIDwtIGRhdGEudGFibGU6OnJiaW5kbGlzdChsYXBwbHkobGlzdChkYXRhX2ZpZWxkLCBkYXRhX2xhYkYxLCBkYXRhX2xhYnNwLCBkYXRhX2xhYnN1KSwgZml4LmNvbHVtbnMpLCBmaWxsID0gVCkKCiMgdmFsdWUgc3RhbmRhcmRpc2luZwpkYXRhX2FsbCR0cmVhdG1lbnRbZGF0YV9hbGwkdHJlYXRtZW50PT0iNDI2Il0gPC0gIjMzNyIgIyBtYXRjaCBmb3IgY29uc2lzdGVuY3kKZGF0YV9hbGwkaW5zdGFyLmVudGVyW2RhdGFfYWxsJHRydC5zdGFnZSA9PSAiMXN0Il0gPC0gImhhdGNoIiAjIGNoYW5nZSBmaWVsZCAxc3RzIHRvIGhhdGNobGluZ3MKCiMgZmlsdGVyIG91dCBpbmRpdmlkdWFscyB0aGF0IGRpZG50IGhhdGNoIGF0IDI2QwpkYXRhX2FsbCA8LSBkYXRhX2FsbCAlPiUKICAgIGZpbHRlcihpcy5uYShmcm9tLkUpIHwgIShmcm9tLkUgPT0gMiB8IChmcm9tLkUgPT0gMCAmICh0cmVhdG1lbnQgPT0gMzM3IHwgdHJlYXRtZW50ID09IDMzMCB8IHRyZWF0bWVudCA9PSAyNjcpKSkpCgojIHJlbW92ZSBpbXBvcnRzIGVudiBiYyBpdCBnZXRzIG1lc3N5IGZhc3QgbG9sCnJtKGRhdGFfZmllbGQsIGRhdGFfbGFiRjEsIGRhdGFfbGFic3AsIGRhdGFfbGFic3UpCmBgYAoKIyMgLSBjb2x1bW4gY3JlYXRpb24gZm9yIGFkZHRsIHN0YXRzCmBgYHtyfQojIHN1cnZpdmFsL2RldmVsb3BtZW50IGJpbmFyaWVzCmRhdGFfYWxsIDwtIGRhdGFfYWxsICU+JSBtdXRhdGUoCiAgaWYuc3R1Y2sgPSBjYXNlX3doZW4oaXMubmEoZGF0ZS5zdHVjaykgfiAiTiIsIFRSVUUgfiAiWSIpLAogIGlmLnB1cGEgPSBjYXNlX3doZW4oaXMubmEoZGF0ZS5MUCkgJiBpcy5uYShkYXRlLnB1cGEpIH4gIk4iLCBUUlVFIH4gIlkiKSwKICBpZi5zdXAgPSBjYXNlX3doZW4oaXMubmEoZGF0ZS42dGgpIH4gIk4iLCBUUlVFIH4gIlkiKSwKICBzdXAgPSBjYXNlX3doZW4oIWlzLm5hKGRhdGUuNnRoKSB+IDYsICFpcy5uYShkYXRlLjd0aCkgfiA3LCBUUlVFIH4gMCkgIyB0eXBlIG9mIHN1cAogICkKCiMgbWVhbi9mbHVjIFRzCmRhdGFfYWxsIDwtIGRhdGFfYWxsICU+JSBtdXRhdGUoCiAgbWVhblQgPSBjYXNlX3doZW4odHJlYXRtZW50ID09IDI2MCB8IHRyZWF0bWVudCA9PSAyNjcgfCB0cmVhdG1lbnQgPT0gImN0cmwiIH4gMjYsCiAgICAgICAgICAgICAgICAgICAgdHJlYXRtZW50ID09IDMzNyB8IHRyZWF0bWVudCA9PSAzMzAgfiAzMywKICAgICAgICAgICAgICAgICAgICB0cmVhdG1lbnQgPT0gNDMzIH4gMzYuNSwKICAgICAgICAgICAgICAgICAgICB0cmVhdG1lbnQgPT0gNDE5IH4gMjkuNSksCiAgZmx1Y1QgPSBjYXNlX3doZW4odHJlYXRtZW50ID09IDI2MCB8IHRyZWF0bWVudCA9PSAzMzAgfiAwLAogICAgICAgICAgICAgICAgICAgIHRyZWF0bWVudCA9PSAyNjcgfCB0cmVhdG1lbnQgPT0gMzM3IH4gNywKICAgICAgICAgICAgICAgICAgICB0cmVhdG1lbnQgPT0gNDMzIH4gMy41LAogICAgICAgICAgICAgICAgICAgIHRyZWF0bWVudCA9PSA0MTkgfiAxMC41KQogICkKCiMgc3ViZGl2aWRlIHRydHMgYW5kIHByZXAgZm9yIGNhbGN1bGF0aW5nIHRpbWV0b3MKZGF0YV9hbGwgPC0gZGF0YV9hbGwgJT4lCiAgbXV0YXRlKGFjcm9zcyhzdGFydHNfd2l0aCgiZGF0ZS4iKSwgZm9ybWF0LCAiJWoiLCAubmFtZXMgPSAiansuY29sfSIpKSAlPiUKICBtdXRhdGUoYWNyb3NzKHN0YXJ0c193aXRoKCJqZGF0ZS4iKSwgYXMubnVtZXJpYyksCiAgICAgICAgIHRyZWF0bWVudCA9IGFzLmNoYXJhY3Rlcih0cmVhdG1lbnQpLAogICAgICAgICB0cnQuc3RhZ2UgPSBhcy5jaGFyYWN0ZXIocGFzdGUodHJlYXRtZW50LGluc3Rhci5lbnRlciwgc2VwID0gIi0iKSksICMgdHJlYXRtZW50IEAgaW5zdGFyCiAgICAgICAgIGdycC50cnQgPSBwYXN0ZShleHB0Lmdyb3VwLCB0cnQuc3RhZ2UsIHNlcCA9ICItIikpICMgcm91bmQgQCB0cmVhdG1lbnQKCiMgaW5kaWNhdGUgZmllbGQgb3IgbGFiIHBvcHMKZGF0YV9hbGwgPC0gZGF0YV9hbGwgJT4lCiAgbXV0YXRlKHBvcCA9IGNhc2Vfd2hlbihsb2NhdGlvbiA9PSAiQ0MiIH4gImZpZWxkIiwKICAgICAgICAgICAgICAgICAgICAgICAgIHNyYyA9PSAiRjEiIH4gIkYxIiwKICAgICAgICAgICAgICAgICAgICAgICAgIFRSVUUgfiAibGFiIikpCmBgYAoKIyMgLSBmdXJ0aGVyIGZpbHRlcmluZwpgYGB7cn0KIyBmaWx0ZXIgb3V0IE1RcwpNUV9kYXRhIDwtIGRhdGFfYWxsICU+JSBmaWx0ZXIoc3BlY2llcyA9PSAiTVEiKQpkYXRhX2FsbCA8LSBkYXRhX2FsbCAlPiUgZmlsdGVyKGlzLm5hKHNwZWNpZXMpKQoKIyBpbmRpY2F0ZSBvdmVybHkgbG9uZy1saXZlZCBpbmRpdmlkdWFsczogdGhpbmdzIHRoYXQgdG9vayA+IDI1IGRheXMgdG8gZGllCiMgdGhlc2UgY2FuIGJlIG9taXR0ZWQgbGF0ZXIKZGF0YV9hbGwgPC0gZGF0YV9hbGwgJT4lIG11dGF0ZShpZ25vcmUucmVhc29uID0gY2FzZV93aGVuKGpkYXRlLnBtZC1qZGF0ZS5oYXRjaCA+IDI1IH4gInNsb3ciKSkKICAjIGNoZWNrOiB0YWJsZShkYXRhX2FsbCRpZ25vcmUucmVhc29uKQoKIyBleHRyYWN0IHdvcmRpZXIgbm90ZXMgZnJvbSBkYXRhIGFuZCBzYXZlIGVsc2V3aGVyZQpub3Rlc19hbGwgPC0gc2VsZWN0KGRhdGFfYWxsLCBjKCJ0cmVhdG1lbnQiLCAiSUQiLCAiZXhwdC5ncm91cCIsICJsb2NhdGlvbiIsICJkYXRlLmNvbGxlY3RlZCIsICJkYXRlLnN0dWNrIiwgInRpbWUuaW4uYXBwcm94IiwgImR2IiwgIm1hc3MuZGllZCIsICJwdXBhLmRlZm9ybWl0aWVzIiwgIm5vdGVzIiwgImlnbm9yZS5yZWFzb24iLCBlbmRzX3dpdGgoIi5zdHVjayIpLCBlbmRzX3dpdGgoIi5jdWxsZWQiKSkpCgojIHJlbW92ZSB1bm5lZWRlZCBjb2x1bW5zCmRhdGFfYWxsIDwtIHNlbGVjdChkYXRhX2FsbCwgLWMoInNwZWNpZXMiLCAiZnJvbS5FIiwgImxvY2F0aW9uIiwgImRhdGUuY29sbGVjdGVkIiwgImRhdGUuc3R1Y2siLCAidGltZS5pbi5hcHByb3giLCAiZHYiLCAicHVwYS5kZWZvcm1pdGllcyIsICJtYXNzLmRpZWQiLCAidG9zcy5pZiIsICJvbGQuZGF0ZS5wbWQiLCAiZmF0ZS5jb2RlIiwgIm5vdGVzIiwgZW5kc193aXRoKCIuc3R1Y2siKSwgZW5kc193aXRoKCIuY3VsbGVkIiksICJlY2xvc2UtMyIpKQpgYGAKCiMjIC0gcGl2b3RzIGFuZCByZW5hbWluZwpgYGB7cn0Kd2lkZV9hbGwgPC0gZGF0YV9hbGwKCmxvbmdfYWxsIDwtIGRhdGFfYWxsICU+JSBzZWxlY3QoLShzdGFydHNfd2l0aCgiZGF0ZS4iKSkpICU+JQogICAgICAgICAgICAgICAgIHBpdm90X2xvbmdlcihjb2xzID0gc3RhcnRzX3dpdGgoYygiamRhdGUiLCAibWFzcyIsICJoIikpLAogICAgICAgICAgICAgICAgICAgICAgICBuYW1lc190byA9IGMoIi52YWx1ZSIsICJpbnN0YXIiKSwKICAgICAgICAgICAgICAgICAgICAgICAgI25hbWVzX3NlcCA9ICIuIiwKICAgICAgICAgICAgICAgICAgICAgICAgdmFsdWVzX2Ryb3BfbmEgPSBUUlVFLAogICAgICAgICAgICAgICAgICAgICAgICBuYW1lc19wYXR0ZXJuID0gKCIoW2Etel0qKVxcLihcXGQqW2Etel0qKSIpKSAlPiUKICAgICAgICAgICAgICAgICByZW5hbWUobW9sdC5zdGF0dXMgPSBoKSAlPiUKICAgICAgICAgICAgICAgICBkcm9wX25hKGpkYXRlKSAjIGRyb3BzIE5BJ3MgaWYgYW4gaW5kaXZpZHVhbCBkaWRudCByZWFjaCBhIGNlcnRhaW4gc3RhZ2UKCiMgYWRkIGluc3RhciBmYWN0b3IgbGV2ZWxzCmxvbmdfYWxsJGluc3RhciA8LSBmYWN0b3IobG9uZ19hbGwkaW5zdGFyLCBjKCJoYXRjaCIsICIybmQiLCAiM3JkIiwgIjR0aCIsICI1dGgiLCAiNnRoIiwgIjd0aCIsICJzdHVjayIsICJ3YW5kZXIiLCAiMTUiLCAicHVwYSIsICJlY2xvc2UiLCAiZXhpdCIpKQoKcm0oZGF0YV9hbGwpCgpgYGAK</div>
 
 
 
