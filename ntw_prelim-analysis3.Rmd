@@ -71,7 +71,7 @@ acc_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E"
 
 # NTs: same DTs, different NTs 
 NT_trts = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")
-NT_labels = c("260-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
+NT_labels = c("260-hatch"="26/26 (26±0°C)", "267-hatch"="33/19 (26±7°C)","419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
 NT_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
   # although i think 267 is the better comparison, i have more 260s
 
@@ -79,6 +79,30 @@ NT_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4
 # A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
 # B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
 # C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
+```
+
+
+## - define filtering functions
+```{r}
+# easier separation of trt groups from total data set
+filter.temps <- function(data) {
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+  
+  return(filtered_data)
+}
+
+filter.acc <- function(data) {
+  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+  
+  return(filtered_data)
+}
+
+
+filter.NTs <-function(data){
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+  
+    return(filtered_data)
+}
 ```
 
 # 1. clean data
