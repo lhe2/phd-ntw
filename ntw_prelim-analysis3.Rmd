@@ -18,7 +18,7 @@ lol
 
 
 
-# 0. load data & packages
+# 0.1 load data & packages
 ```{r message = FALSE}
 library(dplyr)
 library(tidyr)
@@ -105,7 +105,7 @@ filter.NTs <-function(data){
 }
 ```
 
-# 1. clean data
+# 0.2. clean data
 
 ## - column fixing, consolidation, standardising, pre-filtering
 ```{r}
@@ -135,11 +135,15 @@ data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1st
 data_all <- data_all %>%
     filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
+# filter out MQs
+MQ_data <- data_all %>% filter(species == "MQ")
+data_all <- data_all %>% filter(is.na(species))
+
 # remove imports env bc it gets messy fast lol
-rm(data_field, data_labF1, data_labsp, data_labsu)
+#rm(data_field, data_labF1, data_labsp, data_labsu)
 ```
 
-## - column creation for addtl stats
+## - column creation for addtl stats + cleanup
 ```{r}
 # survival/development binaries
 data_all <- data_all %>% mutate(
@@ -174,13 +178,6 @@ data_all <- data_all %>%
   mutate(pop = case_when(location == "CC" ~ "field",
                          src == "F1" ~ "F1",
                          TRUE ~ "lab"))
-```
-
-## - further filtering
-```{r}
-# filter out MQs
-MQ_data <- data_all %>% filter(species == "MQ")
-data_all <- data_all %>% filter(is.na(species))
 
 # indicate overly long-lived individuals: things that took > 25 days to die
 # these can be omitted later
@@ -192,6 +189,7 @@ notes_all <- select(data_all, c("treatment", "ID", "expt.group", "location", "da
 
 # remove unneeded columns
 data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
+  # need to put back 'species' if the MQ get put back in
 ```
 
 ## - pivots and renaming
@@ -210,6 +208,51 @@ long_all <- data_all %>% select(-(starts_with("date."))) %>%
 # add instar factor levels
 long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 
-rm(data_all)
+#rm(data_all)
 
 ```
+# 0.3 validation stuff lol
+
+- 260 diurnal vs 26 C
+- 25 col vs 260 ctrls generally
+- batch effects (maybe clear this in models...)
+- effects of lab diet vs TB diet in lab bugs
+
+# 1.0 overall growth trends
+
+compare overall development of all individuals compared to average growth
+
+## set up the df
+```{r}
+# pull out the normal lab + field bugs
+wide_lf <- wide_all %>% filter(pop!="F1") %>% filter(pop!="ctrl")
+long_lf <- long_all %>% filter(pop != "F1")
+
+long_timetopup <- wide_lf %>% 
+  filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         "6th" = jdate.6th - jdate.hatch,
+         "7th" = jdate.7th - jdate.hatch, 
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupa - jdate.wander) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("3rd", "4th", "5th", "wander", "pupa"), # pivot differences by stage
+                names_to = "instar",
+                values_to = "days.to") %>%
+  drop_na(days.to)
+
+long_masstopup <- long_all %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander", instar == "pupa") 
+
+devstats_labL <- merge(long_timetopup, long_masstopup, all = T)
+```
+
+
+# 2.0 plot end points and compare effects of trt
+
+# 3.0 survival to pupation
+
+# 4.0 model?
