@@ -130,7 +130,7 @@ data_all <- data_all %>% mutate(
                     treatment == 419 ~ 10.5)
   )
 
-# trts and prep for calculating timetos (moved this out from above fn idk if it will work yet)
+# trts and prep for calculating timetos (moved this out from above idk if it will work yet)
 data_all <- data_all %>%
   mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric),
@@ -163,25 +163,6 @@ data_notes <- select(data_all, c("treatment", "ID", "expt.group", "location", "d
 
 # remove unneeded columns
 data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
-
-# write filter functions
-filter.temps <- function(data) {
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>% filter(pop == "lab")
-  
-  return(filtered_data)
-}
-
-filter.accum <- function(data) {
-  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% filter(pop == "lab") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
-  
-  return(filtered_data)
-}
-
-filter.NTs <-function(data){
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
-  
-    return(filtered_data)
-}
 ```
 
 
@@ -208,24 +189,6 @@ long_pup <- long_all %>% filter(if.pupa == "Y")
   # need to check if these work for survival analyses
 ```
 
-at this point, `data_all` is a consolidated wide version of field, lab, and F1 individuals. "commentary" columns have been removed and the following columns have been added:
-
-- survival/development binaries (to pup, if sup, which sup)
-- filtering by src pop, mean/fluct Ts
-
-this dataset still includes: (filter as needed)
-
-- "slow" individuals (that die eventually)
-- MQs
-- pmds
-
-*use this for doing math bt instars, surv curves* 
-
-`data_long` is pivoted by instar to separate out mass, time to, and headcap status at each instar.
-
-*use this for grouping by/looking at overall instar*
-
-
 
 ## define labels and aesthetics
 ```{r}
@@ -248,7 +211,7 @@ B_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", 
 
 # C: same DTs, different NTs
 C_trts = c("267-hatch", "419-hatch", "337-hatch", "433-hatch")
-C_labels = c("260-hatch"="26/26 (26±0°C)", "267-hatch"="33/19 (26±7°C)","419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
+C_labels = c("267-hatch"="26±7°C (33/19)","419-hatch"="29.5±10.5°C (40/19)", "337-hatch"="33±7°C (40/26)", "433-hatch"="36.5±3.5°C (40/33)")
 C_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
   # tbh not sure what i want to compare with here... 260 or 267?
 
@@ -269,20 +232,16 @@ C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
 
 # 2.2 all individuals vs average dev
 ```{r}
-# PROOF OF CONCEPT.. basically need to yoink this code when plotting all masses vs avg
-
-##### ok this needs to be revisited bc the adults are breaking lol
-
-long_Ldevtime <- data_all %>%
+long_dev <- data_all %>% 
   filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
-  #data_pup %>%
+  #data_pup %>% 
   select(-starts_with(c("h", "date", "mass", "reason."))) %>%
   mutate("2nd" = jdate.2nd - jdate.hatch,
          "3rd" = jdate.3rd - jdate.hatch,
          "4th" = jdate.4th - jdate.hatch,
          "5th" = jdate.5th - jdate.hatch,
          "6th" = jdate.6th - jdate.hatch,
-         "7th" = jdate.7th - jdate.hatch,
+         "7th" = jdate.7th - jdate.hatch, 
          wander = jdate.wander - jdate.hatch,
          pupa = jdate.pupa - jdate.wander,
          #eclose = jdate.eclose - jdate.15
@@ -293,55 +252,46 @@ long_Ldevtime <- data_all %>%
                 values_to = "days.to") %>%
   drop_na(days.to)
 
-# this is avg'd?
-long_Lmass <- long_all %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") %>%
-  group_by(pop, instar, trt.stage) %>%
-  mutate(logmass = log(mass)) %>%
-  summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.logmass = mean(na.omit(logmass)),
-            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-            n=n())
+long_mass <- long_all %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander") 
+# %>%
+#   group_by(pop, instar, trt.stage) %>%
+#   mutate(logmass = log(mass)) %>%
+#   summarise(avg.mass = mean(na.omit(mass)),
+#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+#             avg.logmass = mean(na.omit(logmass)),
+#             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+#             n=n())
 
-long_Amass <- long_all %>%
-  filter(instar == "pupa" | instar == "eclose") %>%
-  group_by(pop, sex, instar, trt.stage) %>%
-  mutate(logmass = log(mass)) %>%
-  summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.logmass = mean(na.omit(logmass)),
-            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-            n=n())
+l_statsall <- merge(long_dev, long_mass, all = T)
+l_statsall <- l_statsall %>% filter(pop!="F1") %>% filter(pop!="ctrl")
 
-long_Ldev <- merge(long_devtime, long_Lmass, all = T) %>% filter(pop!="F1") %>% filter(pop!="ctrl")
-long_Adev <- merge(long_devtime, long_Amass, all = T) %>% filter(pop!="F1") %>% filter(pop!="ctrl")
-# 
-# # temps_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
-# # instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
-# # NT_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
-# 
-# ## sth about the grouping is wroooong :~)
-# 
-# long_alldev %>% 
-#   filter.temps()%>%
-#   ggplot(aes(x=days.to, y=mass)) + # cant just use jdate LOL need to match stuff up. do math (time to)
-#   geom_line(aes(color=treatment, group=ID)) +
-#   scale_color_brewer(palette="BrBG") + theme_bw() +
-#   facet_wrap(~pop)
-# 
-# long_alldev %>% 
-#   filter.accum() %>% filter(pop == "lab") %>%
-#   ggplot(aes(x=days.to, y=mass)) +
-#   geom_line(aes(color=trt.stage, group=ID)) +
-#   scale_color_brewer(palette="BrBG") + theme_bw()
-#   
-# long_alldev %>% 
-#   filter.NTs() %>%
-#   ggplot(aes(x=days.to, y=mass)) + 
-#   geom_line(aes(color=treatment, group=ID)) +
-#   scale_color_brewer(palette="BrBG") + theme_bw() +
-#   facet_wrap(~pop)
+# temps_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+# instar_l <- l_stats %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch")
+# NT_l <- l_stats %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+
+## sth about the grouping is wroooong :~)
+
+l_statsall %>% 
+  filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
+  ggplot(aes(x=days.to, y=mass)) + # cant just use jdate LOL need to match stuff up. do math (time to)
+  geom_line(aes(color=treatment)) +
+  scale_color_brewer(palette="BrBG") + theme_bw() +
+  facet_wrap(~pop)
+
+l_statsall %>% 
+  filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>%
+  ggplot(aes(x=days.to, y=mass)) +
+  geom_line(aes(color=treatment)) +
+  scale_color_brewer(palette="BrBG") + theme_bw() +
+  facet_wrap(~pop)
+  
+l_statsall %>% 
+  filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>%
+  ggplot(aes(x=days.to, y=mass)) + 
+  geom_line(aes(color=treatment, group=ID)) +
+  scale_color_brewer(palette="BrBG") + theme_bw() +
+  facet_wrap(~pop)
 
 ```
 
@@ -354,110 +304,18 @@ long_Adev <- merge(long_devtime, long_Amass, all = T) %>% filter(pop!="F1") %>% 
 adults need to be separated out to be able to look at sex differences
 
 ```{r}
-#long_alldev
-
-# separate into larv (hatch-5th) and adults
-l_devavg <- long_Ldev %>% filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander")
-a_devavg <- long_Adev %>% filter(instar == "pupa" | instar == "wander")
-
-# l_devavg <- long_alldev %>%
-  # filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "wander") %>%
-  # group_by(pop, instar, trt.stage) %>%
-  #   summarise(avg.mass = mean(na.omit(mass)),
-  #           se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-  #           avg.daysto = mean(na.omit(days.to)),
-  #           se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
-  #           n=n())
-# 
-# a_devavg <- long_alldev %>% 
-#   group_by(pop, trt.stage, sex, instar) %>%
-#   filter(instar == "pupa" | instar == "eclose") %>%
-#   summarise(avg.mass = mean(na.omit(mass)),
-#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-#             avg.daysto = mean(na.omit(days.to)),
-#             se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
-#             n=n())
-
-# create subsets + plot
-## temps
-tempsL_devavg <- l_devavg %>% filter.temps()
-#tempsA_devavg <- a_devavg %>% filter.temps() %>% filter(instar == "pupa" | instar == "eclose")
-tempsL_alldev <- long_alldev %>% filter.temps()
-tempsA_alldev <- long_alldev %>% filter.temps() %>% filter(instar == "pupa" | instar == "eclose")
-
-ggplot(tempsL_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
-  geom_line(lty="dashed", lwd=1.5) + geom_point() +
-  geom_line(data=tempsL_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
-  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
-  #scale_color_brewer(palette="RdBu") + 
-  theme_bw() + xlim(0, 25) +
-  scale_color_manual(values=c("#0571B0", "#92C5DE", "#F4A582", "#CA0020"), labels=A_labels) +
-  labs(title="(temps) average growth (mg/day)", color="treatment")
-
-ggplot(tempsA_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
-  geom_line(lty="dashed", lwd=1.5) + geom_point() +
-  geom_line(data=tempsA_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
-  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
-  #scale_color_brewer(palette="RdBu") + 
-  theme_bw() + xlim(0, 25) +
-  facet_wrap(~sex) +
-  scale_color_manual(values=c("#0571B0", "#92C5DE", "#F4A582", "#CA0020"), labels=A_labels) +
-  labs(title="(temps) average growth (mg/day)", color="treatment")
-
-## accum
-accL_devavg <- l_devavg %>% filter.accum()
-accA_devavg <- a_devavg %>% filter.accum()
-accL_alldev <- long_alldev %>% filter.accum()
-
-ggplot(accL_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
-  geom_line(lty="dashed", lwd=1.5) + geom_point() +
-  geom_line(data=accL_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
-  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
-  scale_color_brewer(palette="PuOr") + 
-  theme_bw() + xlim(0, 25) +
-  scale_color_manual(values=c("#998EC3", "#FDB863", "#E66101", "#B35806"), labels=B_labels) +
-  labs(title="(accumulation) average growth (mg/day)", color="treatment")
-
-## NTs
-NTsL_devavg <- l_devavg %>% filter.NTs() %>% filter(trt.stage != "267-hatch")
-NTsA_devavg <- a_devavg %>% filter.NTs() %>% filter(trt.stage != "267-hatch")
-NTsL_alldev <- long_alldev %>% filter.NTs() %>% filter(trt.stage != "267-hatch")
-
-ggplot(NTsL_devavg, aes(color=trt.stage, x=avg.daysto, y=avg.mass)) +
-  geom_line(lty="dashed", lwd=1.5) + geom_point() +
-  geom_line(data=NTsL_alldev, aes(x=days.to, y=mass, group=ID), alpha=0.1) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
-  geom_errorbarh(aes(xmin = avg.daysto - se.daysto, xmax = avg.daysto + se.daysto)) +
-  #scale_color_brewer(palette="BrBG") + 
-  theme_bw() + xlim(0, 25) +
-  facet_wrap(~pop) +
-  scale_color_manual(values=c("#018571", "#80CDC1", "#E66101", "#A6611A"), labels=C_labels) +
-  labs(title="(NTs) average growth (mg/day)", color="treatment")
-
-```
-
-
-
-(scrap stuff below here)
-
-```{r}
-### pre-filtering out messy data points
+### pre-filtering
   # 231010 so the sup data still doesnt look very good...
   # this removes F1s, sups, slow things
 
 long_f <- long_all %>%
   filter(pop != "F1") %>%
-  filter(final.fate != "pmd") %>%
-  #filter(if.sup == "N") %>%
+  filter(if.sup == "N") %>%
   filter(is.na(ignore.reason))
 
 data_f <- data_all %>%
   filter(pop != "F1") %>%
-  filter(final.fate != "pmd") %>%
-  #filter(if.sup == "N") %>%
+  filter(if.sup == "N") %>%
   filter(is.na(ignore.reason))
   
 ```
@@ -751,17 +609,16 @@ alt_sexstats$instar.enter <- factor(alt_sexstats$instar.enter, levels=c("hatch",
 ## b. group stats by expts (temp, tempxins, NTs)
 ```{r}
 ## ugh.. wrong comparison (instar should be to 26)
-# filter.expt() doesnt work here bc trt.stage is gone lol
 
 # larva
 temps_la <- filter(alt_sumstats, ((flucT == 0 | flucT == 7) & instar.enter == "hatch"))
 instar_la <- filter(alt_sumstats, (meanT == 33 | (meanT == 26 & flucT == 0)))
-NT_la <- filter(alt_sumstats, ((((meanT == 29.5 | meanT == 36.5) | flucT == 7) | (meanT == 26 & flucT == 0)) & instar.enter == "hatch"))
+NT_la <- filter(alt_sumstats, (((meanT == 29.5 | meanT == 36.5) | flucT == 7) & instar.enter == "hatch"))
 
 # adults
 temps_aa <- filter(alt_sexstats, ((flucT == 0 | flucT == 7) & instar.enter == "hatch"))
 instar_aa <- filter(alt_sexstats, (meanT == 33 | (meanT == 26 & flucT == 0)))
-NT_aa <- filter(alt_sexstats, ((((meanT == 29.5 | meanT == 36.5) | flucT == 7) | (meanT == 26 & flucT == 0)) & instar.enter == "hatch"))
+NT_aa <- filter(alt_sexstats, (((meanT == 29.5 | meanT == 36.5) | flucT == 7) & instar.enter == "hatch"))
 ```
 
 
@@ -773,30 +630,30 @@ NT_aa <- filter(alt_sexstats, ((((meanT == 29.5 | meanT == 36.5) | flucT == 7) |
 
 ### temp mass
 temps_la %>%
-  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
+  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.mass, color = factor(flucT))) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
-  facet_wrap(~instar, scales = "free") +
+  facet_wrap(pop~instar, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg) - lab", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
   scale_color_manual(values = c("#00BFC4", "#F8766D"))
 
-# temps_la %>%
-#   filter(pop == "field") %>% filter(instar != "pupa" & instar != "eclose") %>%
-#   ggplot(aes(x = meanT, y = avg.mass, color = factor(flucT))) +
-#   geom_line(aes(lty=factor(flucT), group=interaction(meanT, flucT))) +
-#   geom_point(aes(shape = factor(flucT)), size=2.5) +
-#   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
-#   facet_wrap(pop~instar, scales = "free") +
-#   theme_bw() +
-#   labs(y = "temp: mass at instar (mg) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
-#   scale_color_manual(values = c("#00BFC4", "#F8766D"))
+temps_la %>%
+  filter(pop == "field") %>%
+  ggplot(aes(x = meanT, y = avg.mass, color = factor(flucT))) +
+  geom_line(aes(lty=factor(flucT))) +
+  geom_point(aes(shape = factor(flucT)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
+  facet_wrap(pop~instar, scales = "free") +
+  theme_bw() +
+  labs(y = "temp: mass at instar (mg) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
+  scale_color_manual(values = c("#00BFC4", "#F8766D"))
 
 ### temp time
 temps_la %>%
-  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
+  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.time, color = factor(flucT))) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
@@ -806,16 +663,16 @@ temps_la %>%
   labs(y = "temp: time to instar (days) - lab", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
   scale_color_manual(values = c("#00BFC4", "#F8766D"))
 
-# temps_la %>%
-#   filter(pop == "field") %>% filter(instar != "pupa" & instar != "eclose") %>%
-#   ggplot(aes(x = meanT, y = avg.time, color = factor(flucT))) +
-#   geom_line(aes(lty=factor(flucT))) +
-#   geom_point(aes(shape = factor(flucT)), size=2.5) +
-#   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
-#   theme_bw() +
-#   facet_wrap(~instar, scales = "free") +
-#   labs(y = "temp: time to instar (days) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
-#   scale_color_manual(values = c("#00BFC4", "#F8766D"))
+temps_la %>%
+  filter(pop == "field") %>%
+  ggplot(aes(x = meanT, y = avg.time, color = factor(flucT))) +
+  geom_line(aes(lty=factor(flucT))) +
+  geom_point(aes(shape = factor(flucT)), size=2.5) +
+  geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
+  theme_bw() +
+  facet_wrap(~instar, scales = "free") +
+  labs(y = "temp: time to instar (days) - field", lty = "fluctuation", shape = "fluctuation", color = "fluctuation") +
+  scale_color_manual(values = c("#00BFC4", "#F8766D"))
 ```
 
 ```{r}
@@ -823,10 +680,10 @@ jitter <- position_dodge(width=1)
 
 ### instar mass
 instar_la %>%
-  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
+  filter(pop == "lab") %>%
   filter(!(meanT == 33 & flucT == 0 & instar.enter == "hatch")) %>%
   ggplot(aes(x = meanT, y = avg.mass, color = instar.enter, shape = factor(flucT))) +
-  geom_line(aes(group=interaction(meanT, flucT))) +
+  geom_line() +
   geom_point(position = jitter) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
   facet_wrap(~instar, scales = "free") +
@@ -835,10 +692,10 @@ instar_la %>%
 
 ### instar time
 instar_la %>%
-  filter(pop == "lab") %>% filter(instar != "pupa" & instar != "eclose") %>%
+  filter(pop == "lab") %>%
   filter(!(meanT == 33 & flucT == 0 & instar.enter == "hatch")) %>%
   ggplot(aes(x = meanT, y = avg.time, color = instar.enter, shape = factor(flucT))) +
-  geom_line(aes(group=interaction(meanT, flucT))) +
+  geom_line() +
   geom_point(position = jitter) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
   theme_bw() +
@@ -851,16 +708,13 @@ instar_la %>%
 
 ### NT mass
 NT_la %>%
-  filter(!(meanT==26.0 & flucT == 7.0)) %>%
-  filter(!(instar == "pupa" | instar == "eclose" | instar == "NA")) %>%
   ggplot(aes(x = meanT, y = avg.mass, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
   facet_wrap(~instar, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
-  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
-  scale_shape_manual(values = c(1, 16))
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
 # NT_la %>%
 #   filter(pop == "lab") %>%
@@ -885,16 +739,14 @@ NT_la %>%
 
 ### NT time
 NT_la %>%
-  filter(!(meanT==26.0 & flucT == 7.0)) %>%
-  filter(!(instar == "pupa" | instar == "eclose" | instar == "NA")) %>%
+  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.time, color=factor(flucT), shape = pop)) +
   geom_point(size=1.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
   theme_bw() +
   facet_wrap(~instar, scales = "free") +
-  labs(y = "NT: time to instar (days)", color = "fluctuation") +
-  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
-  scale_shape_manual(values = c(1, 16))
+  labs(y = "temp: time to instar (days)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
 # NT_la %>%
 #   filter(pop == "lab") %>%
@@ -922,24 +774,22 @@ NT_la %>%
 ```{r}
 ### temp mass
 temps_aa %>%
-  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.mass, color = sex)) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15) +
-  facet_wrap(~instar, scales = "free") +
+  facet_wrap(pop~instar, scales = "free") +
   theme_bw() +
   labs(y = "temp: mass at instar (mg)", lty = "fluctuation", shape = "fluctuation")
 
 ### temp time
 temps_aa %>%
-  filter(pop == "lab") %>%
   ggplot(aes(x = meanT, y = avg.time, color=sex)) +
   geom_line(aes(lty=factor(flucT))) +
   geom_point(aes(shape = factor(flucT)), size=2.5) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15) +
   theme_bw() +
-  facet_wrap(~instar, scales = "free") +
+  facet_wrap(pop~instar, scales = "free") +
   labs(y = "temp: time to instar (days)", lty = "fluctuation", shape = "fluctuation")
 ```
 
@@ -953,7 +803,7 @@ instar_aa %>%
   filter(pop == "lab") %>%
   ggplot(aes(x = flucT, y = avg.mass, color = instar.enter)) +
   #geom_line() +
-  geom_point(size = 2.5, position = jitter) +
+  geom_point(aes(shape = sex), size = 2.5, position = jitter) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.15, position = jitter) +
   facet_wrap(instar~sex, scales = "free") +
   theme_bw() +
@@ -964,7 +814,7 @@ instar_aa %>%
   filter(pop == "lab") %>%
   ggplot(aes(x = flucT, y = avg.time, color = instar.enter)) +
   #geom_line() +
-  geom_point(size = 2.5, position = jitter) +
+  geom_point(aes(shape = sex), size = 2, position = jitter) +
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 0.15, position = jitter) +
   theme_bw() +
   facet_wrap(instar~sex, scales = "free") +
@@ -983,9 +833,8 @@ NT_aa %>%
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 1) +
   facet_wrap(instar~sex, scales = "free") +
   theme_bw() +
-  labs(y = "NT: mass at instar (mg)", color = "fluctuation") +
-  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
-  scale_shape_manual(values = c(1, 16))
+  labs(y = "temp: mass at instar (mg)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 
 
 ### NT time
@@ -995,9 +844,8 @@ NT_aa %>%
   geom_errorbar(aes(ymin = avg.time - se.time, ymax = avg.time + se.time), width = 1) +
   theme_bw() +
   facet_wrap(instar~sex, scales = "free") +
-  labs(y = "NT: time to instar (days)", color = "fluctuation") +
-  scale_color_manual(values = c("#018571", "#80CDC1", "#E66101", "#A6611A")) +
-  scale_shape_manual(values = c(1, 16))
+  labs(y = "temp: time to instar (days)", color = "fluctuation") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D"))
 ```
 
 
@@ -1040,18 +888,16 @@ surv_pupNT <- surv_pup
 surv_pupNT$trt.stage[surv_pupNT$trt.stage == "337-hatch"] <- "426-hatch"
 
 survf_NT <- surv_pupNT %>%
-  #filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
-  filter.NTs() %>%
+  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
   filter(pop == "field") %>%
-  filter(trt.stage == "267-hatch") %>%
+  #filter(trt.stage != "260-hatch") %>%
   mutate(trt.stage = factor(trt.stage, c("260-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 survl_NT <- surv_pupNT %>%
-  #filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
-  filter.NTs() %>%
+  filter((meanT == 36.5 & flucT == 3.5) | (meanT == 29.5 & flucT == 10.5) | (meanT == 33 & flucT == 7) | (meanT == 26 & flucT == 7) | (meanT == 26 & flucT == 0) & instar.enter == "hatch") %>%
   filter(pop == "lab") %>%
-  filter(trt.stage != "267-hatch") %>%
-  mutate(trt.stage = factor(trt.stage, c("260-hatch", "419-hatch", "426-hatch", "433-hatch")))
+  #filter(trt.stage != "260-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, c("260-hatch", "267-hatch", "419-hatch", "426-hatch", "433-hatch")))
 
 ```
 
@@ -1112,14 +958,14 @@ ggsurvplot(fit = ins_sfit, data=surv_instar,
 
 
 # NTs
-# ggsurvplot(fit = NT_sfit, data=surv_NT,
-#            xlab = "days from hatching", ylab = "survival probability",
-#            title = "NT x survival from hatching", 
-#            #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
-#            legend.title = "treatment", 
-#            #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
-#            #strata = pop
-#            )
+ggsurvplot(fit = NT_sfit, data=surv_NT,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NT x survival from hatching", 
+           #palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           #legend.labs = c("26±7°C (33/19)", "33±7°C (40/26)", "29.5±10.5°C (40/19)", "36.5±3.5°C (40/33)"),
+           #strata = pop
+           )
 
 
 # NTs
