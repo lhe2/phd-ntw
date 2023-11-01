@@ -86,7 +86,7 @@ NT_colors = c("260-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4
 
 # 0.2. clean data
 
-## - column fixing, consolidation, standardising, pre-filtering
+## - column fixing, consolidation, standardising
 ```{r}
 # function to standardise column format
 fix.columns <- function(data) {
@@ -109,13 +109,17 @@ data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp
 # value standardising
 data_all$treatment[data_all$treatment=="426"] <- "337" # match for consistency
 data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
+```
 
+## - prefiltering
+```{r}
 # filter out individuals that didnt hatch at 26C
 data_all <- data_all %>%
     filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
 # filter random deaths
-data_all <- data_all %>% filter(is.na(ignore.reason))
+data_all <- data_all %>% filter(final.fate != "ignore")
+#data_all <- data_all %>% filter(is.na(ignore.reason))
 
 # filter out MQs
 MQ_data <- data_all %>% filter(species == "MQ")
