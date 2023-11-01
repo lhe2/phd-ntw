@@ -71,8 +71,8 @@ acc_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E"
 
 # NTs: same DTs, different NTs 
 NT_trts = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")
-NT_labels = c("260-hatch"="26/26 (26±0°C)", "267-hatch"="33/19 (26±7°C)","419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
-NT_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
+NT_labels = c("260-hatch"="26/26 (26±0°C)", "419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
+NT_colors = c("260-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
   # although i think 267 is the better comparison, i have more 260s
 
 # for survival but lowkey need to edit it below
@@ -199,16 +199,17 @@ long_all <- data_all %>% select(-(starts_with("date."))) %>%
   filter(instar != "15")
 
 # add instar factor levels
-long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit")))
+#long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 
 #rm(data_all)
 
 ```
 # 0.3 define helpful functions
 
-## - filter experiment groups
+## - filter groups
 ```{r}
-# easier separation of trt groups from total data set
+# separate experiment groups
 filter.temps <- function(data) {
   filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
   
@@ -223,19 +224,46 @@ filter.acc <- function(data) {
 
 
 filter.NTs <-function(data){
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
   
     return(filtered_data)
 }
-```
 
-## - filter instars
-```{r}
-filter.pups <- function(data) {
+# separate instars
+filter.ins.topup <- function(data) {
   filtered_data <- data %>%
-      filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
+      filter(instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
   
   return(filtered_data)
+}
+```
+
+## - adding geoms
+```{r}
+# error bars
+y_err_logmass <- function(x) {
+  list(geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass), width = x))
+}
+
+y_err_mass <- function(x) {
+  list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = x))
+}
+
+x_err_tt <- function(x){
+  list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), width = x))
+}
+
+# recoloring theme + legend
+temp_aes <- function(x)(
+  list(theme_bw(), scale_color_manual(values=temp_colors, labels=temp_labels))
+)
+
+acc_aes <- function(x){
+  list(theme_bw(), scale_color_manual(values=acc_colors, labels=acc_labels))  
+}
+
+NT_aes <- function(x){
+  list(theme_bw(), scale_color_manual(values=NT_colors, labels=NT_labels))
 }
 ```
 
@@ -275,40 +303,129 @@ pivot.ttpup <- function(wide_data) {
 
 compare overall development of all individuals compared to average growth
 
-## set up the df
+## - set up the df
 ```{r}
-# pull out the normal lab + field bugs
-wide_lf <- wide_all %>% filter(pop!="F1") %>% filter(pop!="ctrl")
-long_lf <- long_all %>% filter(pop != "F1")
+# pull out the lab bugs
+long_lf <- long_all %>% filter(pop == "lab" | pop == "field") 
 
 # individual dev stats
-long_timetopup <- wide_lf %>% 
-  filter(final.fate != "pmd")
+dev_L <- long_lf %>%
+  filter(!(final.fate == "pmd" | final.fate == "misc")) %>%
+  filter.ins.topup() %>%
+  mutate(logmass = log(mass))
 
-
-long_masstopup <- long_lf %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander", instar == "pupa") 
-
-devstats_labL <- merge(long_timetopup, long_masstopup, all = T)
-
-avgdevstats_labL <- long_lf %>%
-  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander", instar == "pupa") %>%
-  mutate(logmass = log(mass)) %>%
+devsumm_L <- dev_L %>%
   group_by(pop, trt.stage, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.daysto = mean(na.omit(days.to)),
-            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
             avg.logmass = mean(na.omit(logmass)),
             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
             n=n())
   
 ```
-## plotting
+
+## - plot temps
 ```{r}
-devstats_labL %>% 
+temps_dev <- dev_L %>% filter(pop == "lab") %>% filter.temps()
+temps_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.temps()
+
+temps_devsumm %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line() +
+  geom_point(data=temps_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.15) + 
+  geom_point(aes(shape = instar), size = 3) +
+  #y_err_logmass(0.5) + x_err_tt(1) +
+  temp_aes() +
+  labs(title = "temps: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "lab, no pmd, enter at hatch")
+
+temps_devP <- temps_dev %>% filter(instar == "pupa")
+temps_devsummP <- dev_L %>%
   filter.temps() %>%
-  ggplot(aes(x=days.to, y=mass))
+  group_by(trt.stage, sex, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt)))) %>% 
+  filter(instar == "pupa")
+
+temps_devsummP %>%
+  ggplot(aes(x=avg.tt, y=avg.mass, color=trt.stage)) +
+  geom_point(size = 2) +
+  geom_point(data=temps_devP, aes(x=tt, y=mass, color=trt.stage), alpha = 0.275) +
+  y_err_mass(0.5) + x_err_tt(1) +
+  temp_aes() + facet_wrap(~sex) +
+  labs(title = "temps: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
+```
+
+## - plot acc
+```{r}
+acc_dev <- dev_L %>% filter(pop == "lab") %>% filter.acc()
+acc_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.acc()
+
+acc_devsumm %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line() +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=acc_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  acc_aes() +
+  labs(title = "accumulation: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "lab, no pmd, at 26 +/- 0 until enter trt")
+
+acc_devP <- acc_dev %>% filter(instar == "pupa")
+acc_devsummP <- dev_L %>%
+  filter.acc() %>%
+  group_by(trt.stage, sex, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt)))) %>% 
+  filter(instar == "pupa")
+
+acc_devsummP %>%
+  ggplot(aes(x=avg.tt, y=avg.mass, color=trt.stage)) +
+  geom_point(size = 2) +
+  geom_point(data=acc_devP, aes(x=tt, y=mass, color=trt.stage), alpha = 0.275) +
+  y_err_mass(0.5) + x_err_tt(1) +
+  acc_aes() + facet_wrap(~sex) +
+  labs(title = "accumulation: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
+```
+
+## - plot NTs
+```{r}
+NT_dev <- dev_L %>% filter.NTs()
+NT_devsumm <- devsumm_L %>% filter.NTs()
+
+NT_devsumm %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line() +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(~pop) +
+  labs(title = "NTs: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch")
+
+NT_devP <- NT_dev %>% filter(instar == "pupa")
+NT_devsummP <- dev_L %>%
+  filter.NTs() %>%
+  group_by(pop, sex, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt)))) %>% 
+  filter(instar == "pupa")
+
+NT_devsummP %>%
+  ggplot(aes(x=avg.tt, y=avg.mass, color=trt.stage)) +
+  geom_point(size = 2) +
+  geom_point(data=NT_devP, aes(x=tt, y=mass, color=trt.stage), alpha = 0.275) +
+  y_err_mass(0.5) + x_err_tt(1) +
+  NT_aes() + facet_wrap(sex~pop) +
+  labs(title = "NTs: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
+
+
 
 ```
 
