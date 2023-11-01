@@ -302,6 +302,10 @@ pivot.ttpup <- function(wide_data) {
 # 1.0 super simple stats
 ```{r}
 # temps stats 
+ test <- wide_all %>% filter.temps() %>% filter(pop == "lab") %>% filter(treatment <331 & treatment > 266)
+# unique(test$treatment) 
+# test %>% group_by(treatment) %>% summarise(n=n())
+
 wide_all %>%
   filter.temps() %>% filter(pop == "lab") %>%
   group_by(treatment) %>%
@@ -309,7 +313,7 @@ wide_all %>%
             pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
             pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
-            #n.pmd = sum(final.fate == "pmd"),
+            n.pmd = sum(final.fate == "pmd"),
             pct.pmd = round(sum(final.fate == "pmd")/n, digits = 1),
             pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
 
@@ -322,7 +326,7 @@ wide_all %>%
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
             pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
             #n.pmd = sum(final.fate == "pmd"),
-            pct.pmd = round(sum(final.fate == "pmd")/n, digits = 1),
+            pct.pup = round(n-sum(final.fate == "pmd")/n, digits = 1),
             pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
 ```
 
