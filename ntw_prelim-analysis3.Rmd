@@ -113,7 +113,7 @@ data_all <- data_all %>%
     filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
 # filter random deaths
-data_all <- data_all %>% filter(final.fate != "ignore")
+data_all <- data_all %>% filter(is.na(ignore.reason))
 
 # filter out MQs
 MQ_data <- data_all %>% filter(species == "MQ")
@@ -127,10 +127,10 @@ data_all <- data_all %>% filter(is.na(species))
 ```{r}
 # survival/development binaries
 data_all <- data_all %>% mutate(
-  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
+  #if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
   if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
   if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
-  sup = case_when(!is.na(date.6th) ~ 6, !is.na(date.7th) ~ 7, TRUE ~ 0) # type of sup
+  sup = case_when(!is.na(date.7th) ~ 7, !is.na(date.6th) ~ 6, TRUE ~ 0) # type of sup
   )
 
 # mean/fluc Ts
@@ -300,6 +300,31 @@ pivot.ttpup <- function(wide_data) {
 - effects of lab diet vs TB diet in lab bugs
 
 # 1.0 super simple stats
+```{r}
+# temps stats 
+wide_all %>%
+  filter.temps() %>% filter(pop == "lab") %>%
+  group_by(treatment) %>%
+  summarise(n=n(),
+            pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
+            pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
+            #n.pmd = sum(final.fate == "pmd"),
+            pct.pmd = round(sum(final.fate == "pmd")/n, digits = 1),
+            pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
+
+# NT stats
+wide_all %>%
+  filter.NTs() %>% filter(pop == "field" | pop == "lab") %>%
+  group_by(treatment, pop) %>%
+  summarise(n=n(),
+            pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
+            pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
+            #n.pmd = sum(final.fate == "pmd"),
+            pct.pmd = round(sum(final.fate == "pmd")/n, digits = 1),
+            pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
+```
 
 
 
