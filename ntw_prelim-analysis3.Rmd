@@ -112,6 +112,9 @@ data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1st
 data_all <- data_all %>%
     filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
 
+# filter random deaths
+data_all <- data_all %>% filter(final.fate != "ignore")
+
 # filter out MQs
 MQ_data <- data_all %>% filter(species == "MQ")
 data_all <- data_all %>% filter(is.na(species))
@@ -174,13 +177,26 @@ data_all <- select(data_all, -c("species", "from.E", "location", "date.collected
 wide_all <- data_all
 
 long_all <- data_all %>% select(-(starts_with("date."))) %>%
-                 pivot_longer(cols = starts_with(c("jdate", "mass", "h")),
-                        names_to = c(".value", "instar"),
-                        #names_sep = ".",
-                        values_drop_na = TRUE,
-                        names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
-                 rename(molt.status = h) %>%
-                 drop_na(jdate) # drops NA's if an individual didnt reach a certain stage
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
+         tt.7th = jdate.7th - jdate.hatch, 
+         tt.wander = jdate.wander - jdate.hatch,
+         #tt.pupa = jdate.pupa - jdate.wander,
+         tt.pupa = jdate.pupa-jdate.hatch,
+         tt.15 = jdate.15-jdate.hatch,
+         tt.eclose = jdate.eclose-jdate.pupa,
+         tt.exit = jdate.exit - jdate.enter,
+         tt.surv = jdate.surv - jdate.hatch) %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "h", "tt")),
+               names_to = c(".value", "instar"),
+               #names_sep = ".",
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  rename(molt.status = h) %>%
+  drop_na(jdate) %>% drop_na(tt) %>% # drops NA's if an individual didnt reach a certain stage
+  filter(instar != "15")
 
 # add instar factor levels
 long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
@@ -213,7 +229,18 @@ filter.NTs <-function(data){
 }
 ```
 
-## - calc timeto (3rd-pup)
+## - filter instars
+```{r}
+filter.pups <- function(data) {
+  filtered_data <- data %>%
+      filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
+  
+  return(filtered_data)
+}
+```
+
+
+ - calc timeto (3rd-pup)
 ```{r}
 pivot.ttpup <- function(wide_data) {
   pivoted_data <- wide_data %>%
@@ -256,8 +283,7 @@ long_lf <- long_all %>% filter(pop != "F1")
 
 # individual dev stats
 long_timetopup <- wide_lf %>% 
-  filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
-  pivot.ttpup()
+  filter(final.fate != "pmd")
 
 
 long_masstopup <- long_lf %>%
@@ -266,6 +292,7 @@ long_masstopup <- long_lf %>%
 devstats_labL <- merge(long_timetopup, long_masstopup, all = T)
 
 avgdevstats_labL <- long_lf %>%
+  filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander", instar == "pupa") %>%
   mutate(logmass = log(mass)) %>%
   group_by(pop, trt.stage, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
