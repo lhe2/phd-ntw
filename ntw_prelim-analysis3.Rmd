@@ -529,6 +529,44 @@ NTl_sfit <- survfit(NTl_sobj ~ treatment, data = NTl_surv)
 
 ## - plot survival curves
 ```{r}
+ggsurvplot(fit = temps_sfit, data=temps_surv,
+           conf.int = T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "temp: survival from hatch-pup",
+           #palette = temp_colors,
+           palette = c("#00C2D1","#1929B3", "#F9C639", "#710A36"),
+           legend.title = "treatment", 
+           legend.labs = temp_labels
+           )
+
+ggsurvplot(fit = acc_sfit, data=acc_surv,
+           conf.int = T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "accumulation: survival from hatch-pup", 
+           palette = c("#00C2D1", "#F3922B", "#C23C1E", "#710A36"),
+           legend.title = "treatment-stage entered", 
+           legend.labs = c("26°C @ hatch", "337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th" )
+           )
+
+ggsurvplot(fit = NTl_sfit, data=NTl_surv,
+           conf.int=T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NTs: lab survival from hatch-pup", 
+           palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)"),
+           #strata = pop
+           )
+
+ggsurvplot(fit = NTf_sfit, data=NTf_surv,
+           conf.int=T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NTs: field survival from hatch-pup", 
+           palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)"),
+           #strata = pop
+           )
 
 ```
 
