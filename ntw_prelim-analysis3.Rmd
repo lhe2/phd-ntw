@@ -82,29 +82,6 @@ NT_colors = c("267-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4
 ```
 
 
-## - define filtering functions
-```{r}
-# easier separation of trt groups from total data set
-filter.temps <- function(data) {
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
-  
-  return(filtered_data)
-}
-
-filter.acc <- function(data) {
-  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
-  
-  return(filtered_data)
-}
-
-
-filter.NTs <-function(data){
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
-  
-    return(filtered_data)
-}
-```
-
 # 0.2. clean data
 
 ## - column fixing, consolidation, standardising, pre-filtering
@@ -211,7 +188,56 @@ long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th"
 #rm(data_all)
 
 ```
-# 0.3 validation stuff lol
+# 0.3 define helpful functions
+
+## - filter experiment groups
+```{r}
+# easier separation of trt groups from total data set
+filter.temps <- function(data) {
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+  
+  return(filtered_data)
+}
+
+filter.acc <- function(data) {
+  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+  
+  return(filtered_data)
+}
+
+
+filter.NTs <-function(data){
+  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "267-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch")
+  
+    return(filtered_data)
+}
+```
+
+## - calc timeto (3rd-pup)
+```{r}
+pivot.ttpup <- function(wide_data) {
+  pivoted_data <- wide_data %>%
+  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
+  mutate("3rd" = jdate.3rd - jdate.hatch,
+         "4th" = jdate.4th - jdate.hatch,
+         "5th" = jdate.5th - jdate.hatch,
+         "6th" = jdate.6th - jdate.hatch,
+         "7th" = jdate.7th - jdate.hatch, 
+         wander = jdate.wander - jdate.hatch,
+         pupa = jdate.pupa - jdate.wander) %>%
+  select(-starts_with("jdate.")) %>%
+  pivot_longer (cols = c("3rd", "4th", "5th", "wander", "pupa"), # pivot differences by stage
+                names_to = "instar",
+                values_to = "days.to") %>%
+  drop_na(days.to) # drop whoever didnt hit a certain stage
+  
+  return(pivoted_data)
+}
+```
+
+
+
+# 0.4 validation stuff lol
 
 - 260 diurnal vs 26 C
 - 25 col vs 260 ctrls generally
@@ -228,27 +254,37 @@ compare overall development of all individuals compared to average growth
 wide_lf <- wide_all %>% filter(pop!="F1") %>% filter(pop!="ctrl")
 long_lf <- long_all %>% filter(pop != "F1")
 
+# individual dev stats
 long_timetopup <- wide_lf %>% 
   filter(!(final.fate == "ignore" | final.fate == "pmd")) %>%
-  select(-starts_with(c("h", "date", "mass", "reason."))) %>%
-  mutate("3rd" = jdate.3rd - jdate.hatch,
-         "4th" = jdate.4th - jdate.hatch,
-         "5th" = jdate.5th - jdate.hatch,
-         "6th" = jdate.6th - jdate.hatch,
-         "7th" = jdate.7th - jdate.hatch, 
-         wander = jdate.wander - jdate.hatch,
-         pupa = jdate.pupa - jdate.wander) %>%
-  select(-starts_with("jdate.")) %>%
-  pivot_longer (cols = c("3rd", "4th", "5th", "wander", "pupa"), # pivot differences by stage
-                names_to = "instar",
-                values_to = "days.to") %>%
-  drop_na(days.to)
+  pivot.ttpup()
 
-long_masstopup <- long_all %>%
+
+long_masstopup <- long_lf %>%
   filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander", instar == "pupa") 
 
 devstats_labL <- merge(long_timetopup, long_masstopup, all = T)
+
+avgdevstats_labL <- long_lf %>%
+  mutate(logmass = log(mass)) %>%
+  group_by(pop, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.daysto = mean(na.omit(days.to)),
+            se.daysto = sd(na.omit(days.to))/sqrt(length(na.omit(days.to))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+  
 ```
+## plotting
+```{r}
+devstats_labL %>% 
+  filter.temps() %>%
+  ggplot(aes(x=days.to, y=mass))
+
+```
+
 
 
 # 2.0 plot end points and compare effects of trt
