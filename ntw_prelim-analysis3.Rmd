@@ -319,36 +319,46 @@ wide_all %>%
   filter.temps() %>% filter(pop == "lab") %>%
   group_by(treatment) %>%
   summarise(n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
             pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
-            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
-            #n.pmd = sum(final.fate == "pmd"),
-            pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1),
-            pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
+            #n.pmd = sum(final.fate == "pmd"),)
 
 # acc stats
 wide_all %>%
   filter.acc() %>% filter( pop == "lab") %>%
   group_by(trt.stage) %>%
   summarise(n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
             pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
-            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
-            #n.pmd = sum(final.fate == "pmd"),
-            pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1), # breaking... tho it was working before
-            pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
+            #n.pmd = sum(final.fate == "pmd"))
 
 # NT stats
 wide_all %>%
-  filter.NTs() %>% filter(pop == "field" | pop == "lab") %>%
-  group_by(treatment, pop) %>%
-  summarise(n=n(),
-            pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
+  filter.NTs() %>% filter(pop == "field") %>%
+  group_by(treatment) %>%
+  summarise(field_n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/field_n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
+            pct.sup = round(sum(if.sup == "Y")/field_n*100, digits = 1),
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
-            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
             #n.pmd = sum(final.fate == "pmd"),
-            pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1), # breaking... tho it was working before
-            pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1))
+
+wide_all %>%
+  filter.NTs() %>% filter(pop == "lab") %>%
+  group_by(treatment) %>%
+  summarise(lab_n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/lab_n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
+            pct.sup = round(sum(if.sup == "Y")/lab_n*100, digits = 1),
+            pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
 ```
 
 
@@ -484,5 +494,44 @@ NT_devsummP %>%
 ```
 
 # 3.0 survival to pupation
+
+## - censoring + subsetting
+```{r}
+# censor data
+surv_P <-  wide_all %>%
+  filter(final.fate != "ignore") %>%
+  mutate(censor = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         timeto.exit = jdate.exit - jdate.hatch) %>%
+  select(-starts_with(c("h.", "date.", "mass.", "jdate.", "fate.")))
+
+temps_surv <- surv_P %>% filter.temps()
+acc_surv <- surv_P %>% filter.acc()
+NTl_surv <- surv_P %>% filter(pop == "lab") %>% filter.NTs()
+NTf_surv <- surv_P %>% filter(pop == "field") %>% filter.NTs()
+```
+
+## - create survival objects and fits
+```{r}
+temps_sobj <- Surv(temps_surv$timeto.exit, temps_surv$censor)
+temps_sfit <- survfit(temps_sobj ~ treatment, data = temps_surv)
+
+acc_sobj <- Surv(acc_surv$timeto.exit, acc_surv$censor)
+acc_sfit <- survfit(acc_sobj ~ trt.stage, data = acc_surv)
+
+
+NTf_sobj <- Surv(NTf_surv$timeto.exit, NTf_surv$censor)
+NTf_sfit <- survfit(NTf_sobj ~ treatment, data = NTf_surv)
+
+NTl_sobj <- Surv(NTl_surv$timeto.exit, NTl_surv$censor)
+NTl_sfit <- survfit(NTl_sobj ~ treatment, data = NTl_surv)
+```
+
+## - plot survival curves
+```{r}
+
+```
+
+
 
 # 4.0 model?
