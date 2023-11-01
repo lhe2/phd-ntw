@@ -20,7 +20,9 @@ lol
 
 # 0.1 load data & packages
 ```{r message = FALSE}
+library(conflicted)
 library(dplyr)
+conflicts_prefer(dplyr::filter)
 library(tidyr)
 library(purrr)
 library(ggplot2)
@@ -302,7 +304,7 @@ pivot.ttpup <- function(wide_data) {
 # 1.0 super simple stats
 ```{r}
 # temps stats 
- test <- wide_all %>% filter.temps() %>% filter(pop == "lab") %>% filter(treatment <331 & treatment > 266)
+ test <- wide_all %>% filter.temps() %>% filter(pop == "lab" & expt.group=="B") #%>% filter(treatment <331 & treatment > 266)
 # unique(test$treatment) 
 # test %>% group_by(treatment) %>% summarise(n=n())
 
