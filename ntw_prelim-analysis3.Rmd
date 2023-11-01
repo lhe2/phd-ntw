@@ -299,7 +299,11 @@ pivot.ttpup <- function(wide_data) {
 - batch effects (maybe clear this in models...)
 - effects of lab diet vs TB diet in lab bugs
 
-# 1.0 overall growth trends
+# 1.0 super simple stats
+
+
+
+# 2.0 overall growth trends; end points
 
 compare overall development of all individuals compared to average growth
 
@@ -428,10 +432,6 @@ NT_devsummP %>%
 
 
 ```
-
-
-
-# 2.0 plot end points and compare effects of trt
 
 # 3.0 survival to pupation
 
