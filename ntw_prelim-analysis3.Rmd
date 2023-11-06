@@ -11,11 +11,16 @@ lol
 
 **overview:**
 
-0. load in data, packages
-1. clean data
+0. load in data, packages; cleaning
+1. validation lol
+2. overview stats
+3. overall growth plots
+4. survival plots
+5. modeling
 
 **todos:**
 
+see lab mtg ppt...
 
 
 # 0.1 load data & packages
@@ -298,14 +303,16 @@ pivot.ttpup <- function(wide_data) {
 
 
 
-# 0.4 validation stuff lol
+# 1.0 validation stuff lol
+
+(imo some of this needs to be done via the modeling lol)
 
 - 260 diurnal vs 26 C
 - 25 col vs 260 ctrls generally
 - batch effects (maybe clear this in models...)
 - effects of lab diet vs TB diet in lab bugs
 
-# 1.0 super simple stats
+# 2.0 super simple stats
 ```{r}
 # this ended up not being very simple LOL
 
@@ -363,7 +370,7 @@ wide_all %>%
 
 
 
-# 2.0 overall growth trends; end points
+# 3.0 overall growth trends; end points
 
 compare overall development of all individuals compared to average growth
 
@@ -493,7 +500,7 @@ NT_devsummP %>%
 
 ```
 
-# 3.0 survival to pupation
+# 4.0 survival to pupation
 
 ## - censoring + subsetting
 ```{r}
@@ -572,4 +579,5 @@ ggsurvplot(fit = NTf_sfit, data=NTf_surv,
 
 
 
-# 4.0 model?
+# 5.0 model?
+
