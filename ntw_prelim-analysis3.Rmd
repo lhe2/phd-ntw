@@ -44,7 +44,7 @@ wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheet
 ```
 
 
-## - pivots and renaming
+## - pivot to long
 ```{r}
 long_all <- data_all %>% select(-(starts_with("date."))) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
@@ -75,6 +75,7 @@ long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd",
 #rm(data_all)
 
 ```
+
 # 0.2 define helpful functions & aesthetics
 
 ## - filtering groups
@@ -195,6 +196,15 @@ pivot.ttpup <- function(wide_data) {
 
 # 1.0 validation stuff lol
 
+## - define factor levels
+
+```{r}
+# jk dont actually need this
+
+#wide_all$treatment <- as.factor()
+```
+
+
 (imo some of this needs to be done via the modeling lol)
 
 
@@ -205,13 +215,20 @@ pivot.ttpup <- function(wide_data) {
 ## - 260 diurnal vs other 26 C (check ctrls)
 ```{r}
 
-# check_ctrls <- wide_all %>%
-#   filter(treatment == 260)
+check_ctrls <- wide_all %>%
+  filter(treatment == 260)
 
 # working on this rn lol
 
-mod_checkctrls <- lm(mass.pupa ~ treatment*expt.group + sex, data = check_ctrls)
+mod_checkctrls <- lm(mass.pupa ~ expt.group + sex, data = check_ctrls)
+  # not sure if sex should be kept in.. including it makes grp G signif
 
+anova(mod_checkctrls)
+
+summary(mod_checkctrls)
+
+# conclusion: ....
+# (also need to toss out some of the other data from the first batch of field stuff....)
 ```
 
 
