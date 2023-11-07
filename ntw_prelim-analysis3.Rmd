@@ -11,7 +11,7 @@ lol
 
 **overview:**
 
-0. load in data, packages; cleaning
+0. load packages & stock prep
 1. validation lol
 2. overview stats
 3. overall growth plots
@@ -32,9 +32,6 @@ library(tidyr)
 library(purrr)
 library(ggplot2)
 
-# to load data from gsheets
-library(googlesheets4)
-
 # survival curve stuff
 library(survival)
 library(survminer)
@@ -42,131 +39,13 @@ library(survminer)
 # make lms
 #library(lmerTest)
 
-```
+wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets.csv", header = TRUE)
 
-```{r}
-# before importing,
-  # run cleaning macros (larva sheets)
-  # check column/row alignment + proper sorting (adult sheets)
-
-# larva data
-data_field <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field", col_types = "c")
-data_labsu <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab", col_types = "c")
-data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1", col_types = "c")
-data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c")
-
-# tents/hatch data
-# data_matepairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c")
-# data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c")
-# data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c")
-```
-
-
-# 0.2. clean data
-
-## - column fixing, consolidation, standardising
-```{r}
-# function to standardise column format
-fix.columns <- function(data) {
-  cleaned_data <- data %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d")) %>%
-    mutate(mutate(across(starts_with("mass."), as.numeric))
-    )
-  
-  return(cleaned_data)
-}
-
-# add IDs to imported data sheets and consolidate
-data_field <- mutate(data_field, src = "field")
-data_labF1 <- mutate(data_labF1, src = "F1")
-data_labsp <- mutate(data_labsp, src = "sp")
-data_labsu <- mutate(data_labsu, src = "su")
-
-data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)
-
-# value standardising
-data_all$treatment[data_all$treatment=="426"] <- "337" # match for consistency
-data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
-```
-
-## - prefiltering
-```{r}
-# filter out individuals that didnt hatch at 26C
-data_all <- data_all %>%
-    filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
-
-# filter random deaths
-data_all <- data_all %>% filter(final.fate != "ignore")
-#data_all <- data_all %>% filter(is.na(ignore.reason))
-
-# filter out MQs
-MQ_data <- data_all %>% filter(species == "MQ")
-data_all <- data_all %>% filter(is.na(species))
-
-# remove imports env bc it gets messy fast lol
-#rm(data_field, data_labF1, data_labsp, data_labsu)
-```
-
-## - column creation for addtl stats + cleanup
-```{r}
-# survival/development binaries
-data_all <- data_all %>% mutate(
-  #if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
-  if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
-  if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
-  sup = case_when(!is.na(date.7th) ~ 7, !is.na(date.6th) ~ 6, TRUE ~ 0) # type of sup
-  )
-
-# mean/fluc Ts
-data_all <- data_all %>% mutate(
-  meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26,
-                    treatment == 337 | treatment == 330 ~ 33,
-                    treatment == 433 ~ 36.5,
-                    treatment == 419 ~ 29.5),
-  flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
-                    treatment == 267 | treatment == 337 ~ 7,
-                    treatment == 433 ~ 3.5,
-                    treatment == 419 ~ 10.5)
-  )
-
-# subdivide trts and prep for calculating timetos
-data_all <- data_all %>%
-  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-  mutate(across(starts_with("jdate."), as.numeric),
-         treatment = as.character(treatment),
-         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
-         grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
-
-# indicate field or lab pops
-data_all <- data_all %>%
-  mutate(pop = case_when(location == "CC" ~ "field",
-                         src == "F1" ~ "F1",
-                         TRUE ~ "lab"))
-
-# indicate overly long-lived individuals: things that took > 25 days to die
-# these can be omitted later
-data_all <- data_all %>% mutate(ignore.reason = case_when(jdate.pmd-jdate.hatch > 25 ~ "slow"))
-  # check: table(data_all$ignore.reason)
-
-# extract wordier notes from data and save elsewhere
-notes_all <- select(data_all, c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "ignore.reason", ends_with(".stuck"), ends_with(".culled")))
-
-# remove unneeded columns
-data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
-  # need to put back 'species' if the MQ get put back in
-```
-
-# 0.3 save the output
-
-```{r}
-write.csv(data_all, file = "~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets.csv")
 ```
 
 
 ## - pivots and renaming
 ```{r}
-wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets.csv", header = TRUE)
-
 long_all <- data_all %>% select(-(starts_with("date."))) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
@@ -196,9 +75,9 @@ long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd",
 #rm(data_all)
 
 ```
-# 0.3 define helpful functions & aesthetics
+# 0.2 define helpful functions & aesthetics
 
-## - filter groups
+## - filtering groups
 ```{r}
 # separate experiment groups
 filter.temps <- function(data) {

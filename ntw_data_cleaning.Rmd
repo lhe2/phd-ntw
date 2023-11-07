@@ -78,7 +78,7 @@ data_all <- data_all %>% filter(final.fate != "ignore")
 #data_all <- data_all %>% filter(is.na(ignore.reason))
 
 # filter out MQs
-MQ_data <- data_all %>% filter(species == "MQ")
+MQ_data <- data_all %>% filter(species == "MQ") # ok this is not working lol?
 data_all <- data_all %>% filter(is.na(species))
 
 # remove imports env bc it gets messy fast lol
