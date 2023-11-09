@@ -62,7 +62,7 @@ wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheet
 
 ## - pivot to long
 ```{r}
-long_all <- data_all %>% select(-(starts_with("date."))) %>%
+long_all <- wide_all %>% select(-(starts_with("date."))) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
          tt.5th = jdate.5th - jdate.hatch,
@@ -220,50 +220,120 @@ pivot.ttpup <- function(wide_data) {
 - batch effects (maybe clear this in models...)
 - effects of lab diet vs TB diet in lab bugs
 
-## - checking controls
+## - checking 260 controls
 ### - lab
 ```{r}
 
-check_labctrls <- wide_all %>%
+check_lab260 <- wide_all %>%
   filter(treatment == 260 & pop == "lab")
 
 # working on this rn lol
 
-mod_checkctrls1 <- lm(mass.pupa ~ expt.group + sex, data = check_labctrls)
+mod_check260_1 <- lm(mass.pupa ~ expt.group + sex, data = check_lab260)
 
-anova(mod_checkctrls1)
+anova(mod_check260_1)
 
-summary(mod_checkctrls1)
+summary(mod_check260_1)
 
 # conclusion: ....
 # (also need to toss out some of the other data from the first batch of field stuff....)
 
 
-mod_checkctrls2 <- lm(mass.pupa ~ expt.group, data = check_labctrls)
+mod_check260_2 <- lm(mass.pupa ~ expt.group, data = check_lab260)
 
-anova(mod_checkctrls2)
+anova(mod_check260_2)
 
 #summary(mod_checkctrls2)
-```
 
-diurnal vs constant 26 doesnt seem to have a big effect on lab bugs (grp C maybe a little bit lol) → batches seem pretty consistent
 
-### - field
-```{r}
-check_fieldctrls <- wide_all %>%
+
+check_field260 <- wide_all %>%
   filter(treatment ==  260) %>%
   filter(pop == "field") 
 
-mod_checkctrls3 <- lm(mass.pupa ~ expt.group + sex, data = check_fieldctrls)
+mod_check260_3 <- lm(mass.pupa ~ expt.group + sex, data = check_field260)
 
-anova(mod_checkctrls3)
+anova(mod_check260_3)
   # there should be more experiment.groups...
 
-summary(mod_checkctrls3)
+summary(mod_check260_3)
 ```
 
-## - batch effects
+lab: diurnal vs constant 26 doesnt seem to have a big effect on lab bugs (grp C maybe a little bit lol) → batches seem pretty consistent
 
+field: from what survived, seems like batch didn't have an effect. that said, only 1 group really had good survivors lol (grp E)
+
+## - checking 337 ctrls
+
+```{r}
+check_lab337 <- wide_all %>%
+  filter(treatment == 337 & pop == "lab")
+
+mod_check337_1 <- lm(mass.pupa ~ expt.group + sex, data = check_lab337)
+
+anova(mod_check337_1)
+
+summary(mod_check337_1)
+
+# with sex included, expt.group isnt sig
+
+
+mod_check337_2 <- lm(mass.pupa ~ expt.group, data = check_lab337)
+
+anova(mod_check337_2)
+
+#summary(mod_check337_2)
+
+
+
+check_field337 <- wide_all %>%
+  filter(treatment ==  337) %>%
+  filter(pop == "field") 
+
+mod_check337_3 <- lm(mass.pupa ~ expt.group + sex, data = check_field337)
+
+anova(mod_check337_3)
+```
+
+expt.group not a significant contribution to pupal mass in lab or field
+
+## - checking time to pup
+```{r}
+mod_checktt_pup <- lm(jdate.pupa ~ expt.group + sex + pop + treatment, data = wide_all)
+
+anova(mod_checktt_pup)
+
+summary(mod_checktt_pup)
+
+
+# just check lab/field
+check_ttpup_lab <- wide_all %>% filter(pop == "lab")
+
+mod_checkttpup_lab <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_ttpup_lab)
+
+anova(mod_checkttpup_lab)
+
+summary(mod_checkttpup_lab)
+
+
+
+check_ttpup_field <- wide_all %>% filter(pop == "field")
+
+mod_checkttpup_field <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_ttpup_field)
+
+anova(mod_checkttpup_field)
+
+summary(mod_checkttpup_field)
+
+```
+
+
+expt group an and trt have significant effects on tt pup in lab and field...
+
+
+
+ - batch effects
+(frankly idr what this was for lol)
 ```{r}
 check_batch <- wide_all %>%
   filter(src != "F1")
