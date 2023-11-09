@@ -20,7 +20,23 @@ lol
 
 **todos:**
 
-see lab mtg ppt...
+- modeling stuff
+  - look at batch effects of the 26 and 33+/-7
+  - add additional trts as a y/n variable
+  - lms for mass/time to pup mased on addtl instars for diff trts
+  - effect of diet on lab bugs
+- for NTs: sort out the different from lab ones wrt batch effects 
+  - idr what this means lol (maybe just focus on the actual NT cohort)
+  - toss out things dying before 3rd/2nd to tidy up the survival curves...
+- dev plots
+  - plot the 6ths and 7ths individually
+  - dont calculate sups in the average
+- get ratio m/f
+- surv curves
+  - do certain instars have more mortality?
+  - is it instar or time that has more of an effect?
+- bar chart (proportions) of things that go sup
+- do cox-ph
 
 
 # 0.1 load data & packages
@@ -196,40 +212,64 @@ pivot.ttpup <- function(wide_data) {
 
 # 1.0 validation stuff lol
 
-## - define factor levels
-
-```{r}
-# jk dont actually need this
-
-#wide_all$treatment <- as.factor()
-```
-
-
 (imo some of this needs to be done via the modeling lol)
 
 
 - 25 col vs 260 ctrls generally
+  - also look at survival?
 - batch effects (maybe clear this in models...)
 - effects of lab diet vs TB diet in lab bugs
 
-## - 260 diurnal vs other 26 C (check ctrls)
+## - checking controls
+### - lab
 ```{r}
 
-check_ctrls <- wide_all %>%
-  filter(treatment == 260)
+check_labctrls <- wide_all %>%
+  filter(treatment == 260 & pop == "lab")
 
 # working on this rn lol
 
-mod_checkctrls <- lm(mass.pupa ~ expt.group + sex, data = check_ctrls)
-  # not sure if sex should be kept in.. including it makes grp G signif
+mod_checkctrls1 <- lm(mass.pupa ~ expt.group + sex, data = check_labctrls)
 
-anova(mod_checkctrls)
+anova(mod_checkctrls1)
 
-summary(mod_checkctrls)
+summary(mod_checkctrls1)
 
 # conclusion: ....
 # (also need to toss out some of the other data from the first batch of field stuff....)
+
+
+mod_checkctrls2 <- lm(mass.pupa ~ expt.group, data = check_labctrls)
+
+anova(mod_checkctrls2)
+
+#summary(mod_checkctrls2)
 ```
+
+diurnal vs constant 26 doesnt seem to have a big effect on lab bugs (grp C maybe a little bit lol) → batches seem pretty consistent
+
+### - field
+```{r}
+check_fieldctrls <- wide_all %>%
+  filter(treatment ==  260) %>%
+  filter(pop == "field") 
+
+mod_checkctrls3 <- lm(mass.pupa ~ expt.group + sex, data = check_fieldctrls)
+
+anova(mod_checkctrls3)
+  # there should be more experiment.groups...
+
+summary(mod_checkctrls3)
+```
+
+## - batch effects
+
+```{r}
+check_batch <- wide_all %>%
+  filter(src != "F1")
+```
+
+
 
 
 # 2.0 super simple stats
@@ -499,5 +539,5 @@ ggsurvplot(fit = NTf_sfit, data=NTf_surv,
 
 
 
-# 5.0 model?
+# 5.0 cox-ph survival stuff?
 
