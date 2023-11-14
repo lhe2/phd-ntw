@@ -119,8 +119,8 @@ data_all <- data_all %>%
 data_all <- data_all %>%
   mutate(pop = case_when(location == "CC" ~ "field",
                          src == "F1" ~ "F1",
-                         TRUE ~ "lab")) %>%
-  mutate(diet = case_when((expt.group == "F" | pop == "field") ~ "TB",
+                         TRUE ~ "lab"),
+         diet = case_when((expt.group == "F" | pop == "field") ~ "TB",
                           TRUE ~ "LD"))
 
 # indicate overly long-lived individuals: things that took > 25 days to die
