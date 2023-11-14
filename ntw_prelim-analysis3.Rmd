@@ -210,7 +210,7 @@ pivot.ttpup <- function(wide_data) {
 
 
 
-# 1.0 validation stuff lol
+# 1.0 lms
 
 (imo some of this needs to be done via the modeling lol)
 
@@ -220,8 +220,7 @@ pivot.ttpup <- function(wide_data) {
 - batch effects (maybe clear this in models...)
 - effects of lab diet vs TB diet in lab bugs
 
-## - checking 260 controls
-### - lab
+## - batch x 260 controls
 ```{r}
 
 check_lab260 <- wide_all %>%
@@ -263,7 +262,7 @@ lab: diurnal vs constant 26 doesnt seem to have a big effect on lab bugs (grp C 
 
 field: from what survived, seems like batch didn't have an effect. that said, only 1 group really had good survivors lol (grp E)
 
-## - checking 337 ctrls
+## - batch x 337 ctrls
 
 ```{r}
 check_lab337 <- wide_all %>%
@@ -297,7 +296,7 @@ anova(mod_check337_3)
 
 expt.group not a significant contribution to pupal mass in lab or field
 
-## - checking time to pup
+## - time to pup
 ```{r}
 mod_checktt_pup <- lm(jdate.pupa ~ expt.group + sex + pop + treatment, data = wide_all)
 
@@ -307,25 +306,56 @@ summary(mod_checktt_pup)
 
 
 # just check lab/field
-check_ttpup_lab <- wide_all %>% filter(pop == "lab")
+check_pup_lab <- wide_all %>% filter(pop == "lab")
 
-mod_checkttpup_lab <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_ttpup_lab)
+mod_checkpup_lab <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_pup_lab)
 
-anova(mod_checkttpup_lab)
+anova(mod_checkpup_lab)
 
-summary(mod_checkttpup_lab)
+summary(mod_checkpup_lab)
 
 
 
-check_ttpup_field <- wide_all %>% filter(pop == "field")
+check_pup_field <- wide_all %>% filter(pop == "field")
 
-mod_checkttpup_field <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_ttpup_field)
+mod_checkpup_field <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_pup_field)
 
-anova(mod_checkttpup_field)
+anova(mod_checkpup_field)
 
-summary(mod_checkttpup_field)
+summary(mod_checkpup_field)
 
 ```
+
+## - lab diet x dev
+
+```{r}
+
+# check effects of growth
+
+#check_pup_lab <- wide_all %>% filter(pop == "lab")
+
+mod_diet <- lm(data = check_pup_lab, mass.pupa ~ treatment + sex + diet)
+
+anova(mod_diet)
+
+summary(mod_diet)
+# seems like no major effect of lab diet on pupal mass
+
+
+# visualise
+
+wide_all %>% filter(pop == "lab") %>%
+  filter(sex != "NA") %>%
+  filter.NTs() %>%
+  ggplot(aes(y = mass.pupa, x = diet, color = trt.stage)) +
+  geom_boxplot() + 
+  facet_wrap(sex~treatment, nrow = 2, ncol = 4) +
+  labs(title = "effect of diet on pupal mass", y = "pupal mass (mg)", x = "diet type", color = "treatment") +
+  NT_aes()
+
+```
+
+
 
 
 expt group an and trt have significant effects on tt pup in lab and field...
@@ -610,4 +640,18 @@ ggsurvplot(fit = NTf_sfit, data=NTf_surv,
 
 
 # 5.0 cox-ph survival stuff?
+
+- check as variables: lab/TB diet; if.sup; if.stuck
+
+##  - if sup x to pup/eclosion
+
+```{r}
+#check_suppup <- wide_all %>% filter(if.pupa == "Y")
+
+#mod_suppup <- lm(if.pupa ~ if.sup + treatment + pop, data = check_suppup, na.action=na.omit)
+  # does this not work bc Y needs to be a # LOL
+
+# i think this shoudl be part of survival stuff
+
+```
 
