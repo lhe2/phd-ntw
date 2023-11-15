@@ -359,7 +359,7 @@ expt group an and trt have significant effects on tt pup in lab and field...
 
 ```{r}
 
-# check effects of growth
+# check effects of growth in lab animals (overall)
 
 #check_pup_lab <- wide_all %>% filter(pop == "lab")
 
@@ -382,7 +382,22 @@ wide_all %>% filter(pop == "lab") %>%
   labs(title = "effect of diet on pupal mass", y = "pupal mass (mg)", x = "diet type", color = "treatment") +
   NT_aes()
 
+
+
+# compare effect of diet in lab vs field
+
+check_diet <- wide_all %>% filter(expt.group == "E" | expt.group == "F" | expt.group == "H")
+
+mod_diet2 <- lm(mass.pupa ~ treatment + sex + pop + expt.group, data = check_diet)
+
+anova(mod_diet2)
+
+summary(mod_diet2)
+
+
 ```
+
+seems like diet doesnt have a big effect on growth overall in lab animals compared to field animals
 
 
 
@@ -477,6 +492,7 @@ wide_all %>%
 
 wide_all %>%
   filter.NTs2() %>% 
+  #filter(!(pop == "lab" & diet == "TB")) %>%
   filter(pop != "F1") %>%
   mutate(sup = factor(sup)) %>%
   ggplot(aes(x = trt.stage, fill = sup)) +
