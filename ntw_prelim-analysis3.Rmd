@@ -98,20 +98,47 @@ long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd",
 ```{r}
 # separate experiment groups
 filter.temps <- function(data) {
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+  
+  return(filtered_data)
+}
+
+filter.temps2 <- function(data) {
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
+    filter(expt.group == "A")
   
   return(filtered_data)
 }
 
 filter.acc <- function(data) {
-  filtered_data <- data %>% filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+  filtered_data <- data %>% 
+    filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+  
+  return(filtered_data)
+}
+
+filter.acc2 <- function(data) {
+  filtered_data <- data %>% 
+    filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th"))) %>%
+    filter(expt.group == "B")
   
   return(filtered_data)
 }
 
 
 filter.NTs <-function(data){
-  filtered_data <- data %>% filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
+  
+    return(filtered_data)
+}
+
+filter.NTs2 <-function(data){
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch"))) %>%
+    filter(expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H")
   
     return(filtered_data)
 }
@@ -326,6 +353,8 @@ summary(mod_checkpup_field)
 
 ```
 
+expt group an and trt have significant effects on tt pup in lab and field...
+
 ## - lab diet x dev
 
 ```{r}
@@ -346,7 +375,7 @@ summary(mod_diet)
 
 wide_all %>% filter(pop == "lab") %>%
   filter(sex != "NA") %>%
-  filter.NTs() %>%
+  filter.NTs() %>% 
   ggplot(aes(y = mass.pupa, x = diet, color = trt.stage)) +
   geom_boxplot() + 
   facet_wrap(sex~treatment, nrow = 2, ncol = 4) +
@@ -354,11 +383,6 @@ wide_all %>% filter(pop == "lab") %>%
   NT_aes()
 
 ```
-
-
-
-
-expt group an and trt have significant effects on tt pup in lab and field...
 
 
 
@@ -375,7 +399,6 @@ check_batch <- wide_all %>%
 # 2.0 super simple stats
 ```{r}
 # this ended up not being very simple LOL
-
 
 # temps stats 
  test <- wide_all %>% filter.temps() %>% filter(pop == "lab" & expt.group=="B") #%>% filter(treatment <331 & treatment > 266)
@@ -426,6 +449,43 @@ wide_all %>%
             pct.sup = round(sum(if.sup == "Y")/lab_n*100, digits = 1),
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
             pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
+
+
+```
+
+## - sup barplots
+```{r}
+# make these into barplots instead
+
+wide_all %>%
+  filter.temps2() %>% filter(pop == "lab") %>%
+  mutate(sup = factor(sup)) %>%
+  ggplot(aes(x = trt.stage, fill = sup)) +
+  geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
+  labs(title = "temps: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
+  scale_x_discrete(labels = temp_labels) +
+  theme_bw() + scale_fill_brewer(palette = "Greens")
+
+wide_all %>%
+  filter.acc2() %>% filter(pop == "lab") %>%
+  mutate(sup = factor(sup)) %>%
+  ggplot(aes(x = trt.stage, fill = sup)) +
+  geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
+  labs(title = "acc: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
+  scale_x_discrete(labels = acc_labels) +
+  theme_bw() + scale_fill_brewer(palette = "Greens")
+
+wide_all %>%
+  filter.NTs2() %>% 
+  filter(pop != "F1") %>%
+  mutate(sup = factor(sup)) %>%
+  ggplot(aes(x = trt.stage, fill = sup)) +
+  geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
+  labs(title = "NTs: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
+  scale_x_discrete(labels = NT_labels) +
+  facet_wrap(~pop) +
+  theme_bw() + scale_fill_brewer(palette = "Greens")
+  
 ```
 
 
