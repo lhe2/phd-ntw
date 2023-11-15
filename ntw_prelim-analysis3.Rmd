@@ -498,9 +498,12 @@ wide_all %>%
   ggplot(aes(x = trt.stage, fill = sup)) +
   geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
   labs(title = "NTs: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
-  scale_x_discrete(labels = NT_labels) +
+  scale_x_discrete(labels = NT_labels, guide = guide_axis(angle = 45)) +
   facet_wrap(~pop) +
-  theme_bw() + scale_fill_brewer(palette = "Greens")
+  theme_bw() + scale_fill_brewer(palette = "Greens") 
+  #theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1))
+
+# did i filter out the diet stuff...
   
 ```
 
