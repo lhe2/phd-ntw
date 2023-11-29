@@ -237,7 +237,7 @@ pivot.ttpup <- function(wide_data) {
 
 
 
-# 1.0 lms
+# 1.0 lms to check ctrls
 
 (imo some of this needs to be done via the modeling lol)
 
@@ -325,7 +325,8 @@ expt.group not a significant contribution to pupal mass in lab or field
 
 ## - time to pup
 ```{r}
-mod_checktt_pup <- lm(jdate.pupa ~ expt.group + sex + pop + treatment, data = wide_all)
+mod_checktt_pup <- lm((jdate.pupa-jdate.hatch) ~ expt.group + sex + pop + treatment, data = wide_all)
+  # oops dont just use 'jdate.pupa' lol
 
 anova(mod_checktt_pup)
 
@@ -533,6 +534,16 @@ devsumm_L <- dev_L %>%
             avg.logmass = mean(na.omit(logmass)),
             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
             n=n())
+
+devsumm_Lsups <- dev_L %>%
+  group_by(pop, sup, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
   
 ```
 
@@ -608,7 +619,10 @@ acc_devsummP %>%
 NT_dev <- dev_L %>% filter.NTs()
 NT_devsumm <- devsumm_L %>% filter.NTs()
 
+NTsups_devsumm <- devsumm_Lsups %>% filter.NTs()
+
 NT_devsumm %>%
+  #filter(!(instar == "3rd" | instar == "pupa")) %>%
   ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
   geom_line() +
   geom_point(aes(shape = instar), size = 3) +
@@ -616,6 +630,17 @@ NT_devsumm %>%
   NT_aes() + facet_wrap(~pop) +
   labs(title = "NTs: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
        caption = "L+F, no pmd, enter at hatch")
+
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(~pop) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch")
+  # 231127: hrmmmm this looks... incorrect lol
 
 NT_devP <- NT_dev %>% filter(instar == "pupa")
 NT_devsummP <- dev_L %>%
