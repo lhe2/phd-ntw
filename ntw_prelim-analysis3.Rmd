@@ -49,8 +49,8 @@ library(purrr)
 library(ggplot2)
 
 # survival curve stuff
-library(survival)
-library(survminer)
+library(survival) # for computing
+library(survminer) # for visualising
 
 # make lms
 #library(lmerTest)
@@ -97,12 +97,15 @@ long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd",
 ## - filtering groups
 ```{r}
 # separate experiment groups
-filter.temps <- function(data) {
-  filtered_data <- data %>% 
-    filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
-  
-  return(filtered_data)
-}
+
+# use more specific versions (.2) -- these group by expt cohort
+
+# filter.temps <- function(data) {
+#   filtered_data <- data %>% 
+#     filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch")
+#   
+#   return(filtered_data)
+# }
 
 filter.temps2 <- function(data) {
   filtered_data <- data %>% 
@@ -112,12 +115,12 @@ filter.temps2 <- function(data) {
   return(filtered_data)
 }
 
-filter.acc <- function(data) {
-  filtered_data <- data %>% 
-    filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
-  
-  return(filtered_data)
-}
+# filter.acc <- function(data) {
+#   filtered_data <- data %>% 
+#     filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th")))
+#   
+#   return(filtered_data)
+# }
 
 filter.acc2 <- function(data) {
   filtered_data <- data %>% 
@@ -128,12 +131,12 @@ filter.acc2 <- function(data) {
 }
 
 
-filter.NTs <-function(data){
-  filtered_data <- data %>% 
-    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
-  
-    return(filtered_data)
-}
+# filter.NTs <-function(data){
+#   filtered_data <- data %>% 
+#     filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")))
+#   
+#     return(filtered_data)
+# }
 
 filter.NTs2 <-function(data){
   filtered_data <- data %>% 
@@ -152,6 +155,43 @@ filter.ins.topup <- function(data) {
 }
 ```
 
+## - doing math
+```{r}
+# calc dev summ stats
+
+calc.devsumm.trtstg <- function(data) {
+  summary <- data %>%
+  group_by(pop, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            logmass = log(mass),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+  
+  return(summary)
+}
+
+calc.devsumm.trtstgsex <- function(data) {
+  summary <- data %>%
+  group_by(pop, sex, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            logmass = log(mass),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+  
+  return(summary)
+}
+
+```
+
+
 ## - adding geoms
 ```{r}
 # error bars
@@ -161,6 +201,10 @@ y_err_logmass <- function(x) {
 
 y_err_mass <- function(x) {
   list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = x))
+}
+
+y_err_tt <- function(x){
+  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = x))
 }
 
 x_err_tt <- function(x){
@@ -514,7 +558,7 @@ wide_all %>%
 
 compare overall development of all individuals compared to average growth
 
-## - set up the df
+## - set up the df (**)
 ```{r}
 # pull out the lab bugs
 long_lf <- long_all %>% filter(pop == "lab" | pop == "field") 
@@ -535,6 +579,7 @@ devsumm_L <- dev_L %>%
             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
             n=n())
 
+# for pulling out supernumeraries.. need to tweak
 devsumm_Lsups <- dev_L %>%
   group_by(pop, sup, trt.stage, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
@@ -719,6 +764,8 @@ ggsurvplot(fit = acc_sfit, data=acc_surv,
            legend.labs = c("26°C @ hatch", "337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th" )
            )
 
+
+# how to combine these into one?
 ggsurvplot(fit = NTl_sfit, data=NTl_surv,
            conf.int=T,
            xlab = "days from hatching", ylab = "survival probability",
@@ -739,6 +786,55 @@ ggsurvplot(fit = NTf_sfit, data=NTf_surv,
            #strata = pop
            )
 
+```
+# 4.1 NT stats
+
+```{r}
+# subset NTs
+
+check_NTstats <- wide_all %>% filter.NTs2()
+```
+
+## - trt x tt pup
+```{r}
+# model
+mod_checkNT_ttpup <- lm((jdate.pupa - jdate.hatch) ~ pop + treatment, data=check_NTstats)
+  # look into the sigif when expt.group is added...
+  # try adding pop*trt?
+
+anova(mod_checkNT_ttpup)
+
+summary(mod_checkNT_ttpup)
+
+# plot
+#devsumm_L %>% # should redo this with calcing dev only for the group...
+long_all %>%
+  filter.NTs2() %>% 
+  calc.devsumm.trtstg() %>%
+  filter(instar == "pupa") %>%
+  ggplot(aes(x = trt.stage, y = avg.tt, color = pop)) +
+  geom_point() + theme_bw() + y_err_tt(0.5) +
+  labs(title = "avg time to pupation")
+
+```
+## - trt x mass.pup
+```{r}
+# model
+mod_checkNT_masspup <- lm((mass.pupa) ~ pop + treatment + sex, data=check_NTstats)
+
+anova(mod_checkNT_masspup)
+
+summary(mod_checkNT_masspup)
+
+# plot
+long_all %>%
+  filter.NTs2() %>% 
+  calc.devsumm.trtstgsex() %>%
+  filter(instar == "pupa") %>%
+  ggplot(aes(x = trt.stage, y = avg.mass, color = pop)) +
+  geom_point() + theme_bw() + y_err_mass(0.5) +
+  facet_wrap(~sex) +
+  labs(title = "avg mass at pupation")
 ```
 
 
