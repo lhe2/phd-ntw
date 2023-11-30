@@ -715,16 +715,16 @@ NT_devsummP %>%
 ```{r}
 # censor data
 surv_P <-  wide_all %>%
-  filter(final.fate != "ignore") %>%
+  filter(!(final.fate == "ignore" | final.fate == "culled")) %>%
   mutate(censor = case_when(final.fate == "pmd" ~ 1,
                             TRUE ~ 0),
          timeto.exit = jdate.exit - jdate.hatch) %>%
   select(-starts_with(c("h.", "date.", "mass.", "jdate.", "fate.")))
 
-temps_surv <- surv_P %>% filter.temps()
-acc_surv <- surv_P %>% filter.acc()
-NTl_surv <- surv_P %>% filter(pop == "lab") %>% filter.NTs()
-NTf_surv <- surv_P %>% filter(pop == "field") %>% filter.NTs()
+temps_surv <- surv_P %>% filter.temps2()
+acc_surv <- surv_P %>% filter.acc2()
+NTl_surv <- surv_P %>% filter(pop == "lab") %>% filter.NTs2()
+NTf_surv <- surv_P %>% filter(pop == "field") %>% filter.NTs2()
 ```
 
 ## - create survival objects and fits
