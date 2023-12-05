@@ -790,6 +790,11 @@ ggsurvplot(fit = NTf_sfit, data=NTf_surv,
            )
 
 ```
+
+```{r}
+## need to redo with some of the earlier field ones yeeted too LOL
+```
+
 # 4.1 NT stats
 
 ```{r}
