@@ -592,15 +592,17 @@ devsumm_L <- dev_L %>%
             n=n())
 
 # for pulling out supernumeraries.. need to tweak
-devsumm_Lsups <- dev_L %>%
-  group_by(pop, sup, trt.stage, instar) %>%
-  summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.tt = mean(na.omit(tt)),
-            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
-            avg.logmass = mean(na.omit(logmass)),
-            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-            n=n())
+# devsumm_Lsups <- dev_L %>%
+#   group_by(pop, sup, trt.stage, instar) %>%
+#   summarise(avg.mass = mean(na.omit(mass)),
+#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+#             avg.tt = mean(na.omit(tt)),
+#             se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+#             avg.logmass = mean(na.omit(logmass)),
+#             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+#             n=n())
+
+# see 'plot NTs' under 'overall growth'
   
 ```
 
@@ -679,21 +681,40 @@ acc_devsummP %>%
 
 ## - plot NTs
 ```{r}
-NT_dev <- dev_L %>% filter.NTs()
-NT_devsumm <- devsumm_L %>% filter.NTs()
+NT_dev <- dev_L %>% filter.NTs2()
+#NT_devsumm <- devsumm_L %>% filter.NTs()
+NT_devsumm <- dev_L %>% filter.NTs2() %>% calc.devsumm.trtstg()
 
-NTsups_devsumm <- devsumm_Lsups %>% filter.NTs()
+#NTsups_devsumm <- devsumm_Lsups %>% filter.NTs2()
+NTsups_devsumm <- NT_dev %>%
+  group_by(pop, sup, trt.stage, instar) %>%
+  calc.devsumm() %>%
+  mutate(if.sup = case_when(sup == 0 ~ "N", TRUE ~ "Y"))
 
 NT_devsumm %>%
   #filter(!(instar == "3rd" | instar == "pupa")) %>%
+  filter(instar != "pupa") %>%
+  #filter(sup == 0) %>%
   ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
   geom_line() +
   geom_point(aes(shape = instar), size = 3) +
-  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  geom_point(data=(NT_dev %>% filter(instar != "pupa")), aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
   NT_aes() + facet_wrap(~pop) +
-  labs(title = "NTs: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+  labs(title = "NTs: average development from 3rd - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
        caption = "L+F, no pmd, enter at hatch")
 
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(if.sup~pop) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch")
+
+# trying this again adding "if.sup" as Y/N
+  # a little better but still hard to compare
 NTsups_devsumm %>%
   filter(!(instar == "3rd" | instar == "pupa")) %>%
   ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
@@ -703,11 +724,48 @@ NTsups_devsumm %>%
   NT_aes() + facet_wrap(~pop) +
   labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
        caption = "L+F, no pmd, enter at hatch")
-  # 231127: hrmmmm this looks... incorrect lol
+
+# try again, focusing on trt.stage's producing sups instead instead
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  #filter(if.sup == "Y") %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(if.sup~pop) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch") +
+  scale_x_continuous(expand = c(0.001, 1))
+
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  #filter(if.sup == "Y") %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(sup~pop, nrow=3) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch") +
+    scale_x_continuous(expand = c(0.001, 1))
+
+# this is it...
+  #but need to filter out the lab bugs on TB/regular diet i think
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(pop~trt.stage, ncol=4) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch") 
+
 
 NT_devP <- NT_dev %>% filter(instar == "pupa")
 NT_devsummP <- dev_L %>%
-  filter.NTs() %>%
+  filter.NTs2() %>%
   group_by(pop, sex, trt.stage, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
