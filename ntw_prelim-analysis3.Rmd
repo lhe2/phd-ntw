@@ -110,7 +110,7 @@ long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd",
 filter.temps2 <- function(data) {
   filtered_data <- data %>% 
     filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
-    filter(expt.group == "A")
+    filter(expt.group == "A" | expt.group == "B")
   
   return(filtered_data)
 }
@@ -159,32 +159,44 @@ filter.ins.topup <- function(data) {
 ```{r}
 # calc dev summ stats
 
+calc.devsumm <- function(data) {
+  summary <- data %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+              se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+              avg.tt = mean(na.omit(tt)),
+              se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+              n=n())
+  return(summary)
+}
+
 calc.devsumm.trtstg <- function(data) {
   summary <- data %>%
-  group_by(pop, trt.stage, instar) %>%
-  summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.tt = mean(na.omit(tt)),
-            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
-            logmass = log(mass),
-            avg.logmass = mean(na.omit(logmass)),
-            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-            n=n())
+    group_by(pop, trt.stage, instar) %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+              se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+              avg.tt = mean(na.omit(tt)),
+              se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              logmass = log(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+              n=n())
   
   return(summary)
 }
 
 calc.devsumm.trtstgsex <- function(data) {
   summary <- data %>%
-  group_by(pop, sex, trt.stage, instar) %>%
-  summarise(avg.mass = mean(na.omit(mass)),
-            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.tt = mean(na.omit(tt)),
-            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
-            logmass = log(mass),
-            avg.logmass = mean(na.omit(logmass)),
-            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-            n=n())
+    group_by(pop, sex, trt.stage, instar) %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+              se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+              avg.tt = mean(na.omit(tt)),
+              se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              logmass = log(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+              n=n())
   
   return(summary)
 }
@@ -594,22 +606,26 @@ devsumm_Lsups <- dev_L %>%
 
 ## - plot temps
 ```{r}
-temps_dev <- dev_L %>% filter(pop == "lab") %>% filter.temps()
-temps_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.temps()
+temps_dev <- dev_L %>% filter(pop == "lab") %>% filter.temps2()
+#temps_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.temps2()
+temps_devsumm <- dev_L %>% filter.temps2() %>% calc.devsumm.trtstg()
 
 temps_devsumm %>%
+  filter(instar != "pupa") %>%
   ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
   geom_line() +
-  geom_point(data=temps_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.15) + 
+  geom_point(data=(temps_dev %>% filter(instar != "pupa")), aes(x=tt, y=logmass, color=trt.stage), alpha = 0.15) + 
   geom_point(aes(shape = instar), size = 3) +
   #y_err_logmass(0.5) + x_err_tt(1) +
   temp_aes() +
-  labs(title = "temps: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+  labs(title = "temps: average development from 3rd - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
        caption = "lab, no pmd, enter at hatch")
 
 temps_devP <- temps_dev %>% filter(instar == "pupa")
+  # tbh can drop lol
+
 temps_devsummP <- dev_L %>%
-  filter.temps() %>%
+  filter.temps2() %>%
   group_by(trt.stage, sex, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
