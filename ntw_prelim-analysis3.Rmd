@@ -644,21 +644,23 @@ temps_devsummP %>%
 
 ## - plot acc
 ```{r}
-acc_dev <- dev_L %>% filter(pop == "lab") %>% filter.acc()
-acc_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.acc()
+acc_dev <- dev_L %>% filter(pop == "lab") %>% filter.acc2()
+#acc_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.acc2()
+acc_devsumm <- dev_L %>% filter.acc2() %>% calc.devsumm.trtstg()
 
 acc_devsumm %>%
+  filter(instar != "pupa") %>%
   ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
   geom_line() +
   geom_point(aes(shape = instar), size = 3) +
-  geom_point(data=acc_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  geom_point(data=(acc_dev %>% filter(instar != "pupa")), aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
   acc_aes() +
-  labs(title = "accumulation: average development from 3rd - pupa", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+  labs(title = "accumulation: average development from 3rd - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
        caption = "lab, no pmd, at 26 +/- 0 until enter trt")
 
 acc_devP <- acc_dev %>% filter(instar == "pupa")
 acc_devsummP <- dev_L %>%
-  filter.acc() %>%
+  filter.acc2() %>%
   group_by(trt.stage, sex, instar) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
