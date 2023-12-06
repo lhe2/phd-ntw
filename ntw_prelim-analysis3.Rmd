@@ -110,7 +110,7 @@ long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd",
 filter.temps2 <- function(data) {
   filtered_data <- data %>% 
     filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
-    filter(expt.group == "A")
+    filter(expt.group == "A" | expt.group == "B")
   
   return(filtered_data)
 }
@@ -852,6 +852,42 @@ long_all %>%
   # does this not work bc Y needs to be a # LOL
 
 # i think this shoudl be part of survival stuff
+
+```
+
+## - 231130 followups
+
+```{r}
+# binomial survival to pup
+
+check_NTstats <- check_NTstats %>% 
+  mutate(if.pupa2 = case_when(if.pupa == "Y" ~ 1, TRUE ~ 0),
+         tt.pupa = jdate.pupa - jdate.hatch)
+
+# going to try a bunch of things
+mod_checkNT_survpup1 <-  glm(if.pupa2 ~ trt.stage, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup)
+  # dont rlly know how to interpret...
+
+mod_checkNT_survpup2 <-  glm(if.pupa2 ~ trt.stage + mass.pupa + tt.pupa, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup2)
+  # algo did not converge
+
+mod_checkNT_survpup3 <- glm(if.pupa2 ~ trt.stage + mass.pupa, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup3)
+  # algo did not converge
+
+mod_checkNT_survpup4 <- glm(if.pupa2 ~ trt.stage*mass.pupa, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup4)
+  # algo did not converge
+
+mod_checkNT_survpup5 <- glm(if.pupa2 ~ meanT*flucT, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup5)
+  # this works!
+
+mod_checkNT_survpup6 <- glm(if.pupa2 ~ mass.pupa, data = check_NTstats, family = "binomial")
+  # breaks. also breaks when u try to throw sex in here so let's stop here
+
 
 ```
 
