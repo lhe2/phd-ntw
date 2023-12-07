@@ -1,0 +1,243 @@
+---
+title: "other_analyses"
+date: "2023-12-07"
+output: html_document
+---
+
+# 0.1 load data & packages
+
+```{r message = FALSE}
+library(conflicted)
+library(dplyr)
+conflicts_prefer(dplyr::filter)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+# survival curve stuff
+#library(survival) # for computing
+#library(survminer) # for visualising
+
+# make lms
+#library(lmerTest)
+
+wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets.csv", header = TRUE)
+
+```
+
+## - pivot to long
+```{r}
+long_all <- wide_all %>% select(-(starts_with("date."))) %>%
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
+         tt.7th = jdate.7th - jdate.hatch, 
+         tt.wander = jdate.wander - jdate.hatch,
+         #tt.pupa = jdate.pupa - jdate.wander,
+         tt.pupa = jdate.pupa-jdate.hatch,
+         tt.15 = jdate.15-jdate.hatch,
+         tt.eclose = jdate.eclose-jdate.pupa,
+         tt.exit = jdate.exit - jdate.enter,
+         tt.surv = jdate.surv - jdate.hatch) %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "h", "tt")),
+               names_to = c(".value", "instar"),
+               #names_sep = ".",
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  rename(molt.status = h) %>%
+  drop_na(jdate) %>% drop_na(tt) %>% # drops NA's if an individual didnt reach a certain stage
+  filter(instar != "15")
+
+# add instar factor levels
+long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit")))
+#long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+
+#rm(data_all)
+
+```
+
+# 0.2 define helpful functions & aesthetics
+
+## - filtering groups
+```{r}
+# separate instars
+filter.ins.topup <- function(data) {
+  filtered_data <- data %>%
+      filter(instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
+  
+  return(filtered_data)
+}
+```
+
+# 1.0 lms to check ctrls
+
+(imo some of this needs to be done via the modeling lol)
+
+
+- 25 col vs 260 ctrls generally
+  - also look at survival?
+- batch effects (maybe clear this in models...)
+- effects of lab diet vs TB diet in lab bugs
+
+## - batch x 260 controls
+```{r}
+
+check_lab260 <- wide_all %>%
+  filter(treatment == 260 & pop == "lab")
+
+# working on this rn lol
+
+mod_check260_1 <- lm(mass.pupa ~ expt.group + sex, data = check_lab260)
+
+anova(mod_check260_1)
+
+summary(mod_check260_1)
+
+# conclusion: ....
+# (also need to toss out some of the other data from the first batch of field stuff....)
+
+
+mod_check260_2 <- lm(mass.pupa ~ expt.group, data = check_lab260)
+
+anova(mod_check260_2)
+
+#summary(mod_checkctrls2)
+
+
+
+check_field260 <- wide_all %>%
+  filter(treatment ==  260) %>%
+  filter(pop == "field") 
+
+mod_check260_3 <- lm(mass.pupa ~ expt.group + sex, data = check_field260)
+
+anova(mod_check260_3)
+  # there should be more experiment.groups...
+
+summary(mod_check260_3)
+```
+
+lab: diurnal vs constant 26 doesnt seem to have a big effect on lab bugs (grp C maybe a little bit lol) → batches seem pretty consistent
+
+field: from what survived, seems like batch didn't have an effect. that said, only 1 group really had good survivors lol (grp E)
+
+## - batch x 337 ctrls
+
+```{r}
+check_lab337 <- wide_all %>%
+  filter(treatment == 337 & pop == "lab")
+
+mod_check337_1 <- lm(mass.pupa ~ expt.group + sex, data = check_lab337)
+
+anova(mod_check337_1)
+
+summary(mod_check337_1)
+
+# with sex included, expt.group isnt sig
+
+
+mod_check337_2 <- lm(mass.pupa ~ expt.group, data = check_lab337)
+
+anova(mod_check337_2)
+
+#summary(mod_check337_2)
+
+
+
+check_field337 <- wide_all %>%
+  filter(treatment ==  337) %>%
+  filter(pop == "field") 
+
+mod_check337_3 <- lm(mass.pupa ~ expt.group + sex, data = check_field337)
+
+anova(mod_check337_3)
+```
+
+expt.group not a significant contribution to pupal mass in lab or field
+
+## - time to pup
+```{r}
+mod_checktt_pup <- lm((jdate.pupa-jdate.hatch) ~ expt.group + sex + pop + treatment, data = wide_all)
+  # oops dont just use 'jdate.pupa' lol
+
+anova(mod_checktt_pup)
+
+summary(mod_checktt_pup)
+
+
+# just check lab/field
+check_pup_lab <- wide_all %>% filter(pop == "lab")
+
+mod_checkpup_lab <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_pup_lab)
+
+anova(mod_checkpup_lab)
+
+summary(mod_checkpup_lab)
+
+
+
+check_pup_field <- wide_all %>% filter(pop == "field")
+
+mod_checkpup_field <- lm(jdate.pupa ~ expt.group + sex + treatment, data = check_pup_field)
+
+anova(mod_checkpup_field)
+
+summary(mod_checkpup_field)
+
+```
+
+expt group an and trt have significant effects on tt pup in lab and field...
+
+## - lab diet x dev
+
+```{r}
+
+# check effects of growth in lab animals (overall)
+
+#check_pup_lab <- wide_all %>% filter(pop == "lab")
+
+mod_diet <- lm(data = check_pup_lab, mass.pupa ~ treatment + sex + diet)
+
+anova(mod_diet)
+
+summary(mod_diet)
+# seems like no major effect of lab diet on pupal mass
+
+
+# visualise
+
+wide_all %>% filter(pop == "lab") %>%
+  filter(sex != "NA") %>%
+  filter.NTs() %>% 
+  ggplot(aes(y = mass.pupa, x = diet, color = trt.stage)) +
+  geom_boxplot() + 
+  facet_wrap(sex~treatment, nrow = 2, ncol = 4) +
+  labs(title = "effect of diet on pupal mass", y = "pupal mass (mg)", x = "diet type", color = "treatment") +
+  NT_aes()
+
+
+
+# compare effect of diet in lab vs field
+
+check_diet <- wide_all %>% filter(expt.group == "E" | expt.group == "F" | expt.group == "H")
+
+mod_diet2 <- lm(mass.pupa ~ treatment + sex + pop + expt.group, data = check_diet)
+
+anova(mod_diet2)
+
+summary(mod_diet2)
+
+
+```
+
+seems like diet doesnt have a big effect on growth overall in lab animals compared to field animals
+
+
+
+ - batch effects
+(frankly idr what this was for lol)
+```{r}
+check_batch <- wide_all %>%
+  filter(src != "F1")
+```
