@@ -885,6 +885,32 @@ mod_checkNT_survpup5 <- glm(if.pupa2 ~ meanT*flucT + pop, data = check_NTstats, 
 summary(mod_checkNT_survpup5)
   # this works!
 
+# redo this with taking out the 260 group
+check_NTstats2 <- check_NTstats %>% 
+  filter(meanT != 26) %>%
+  mutate(dayT = case_when(TRUE ~ 40),
+         nightT = case_when(treatment == 419 ~ 19,
+                            treatment == 337 ~ 26,
+                            treatment == 433 ~ 33))
+
+mod_checkNT_survpup5a <- glm(if.pupa2 ~ meanT*flucT + pop, data = check_NTstats2, family = "binomial")
+summary(mod_checkNT_survpup5a)
+
+mod_checkNT_survpup5b <- glm(if.pupa2 ~ nightT + pop, data = check_NTstats2, family = "binomial")
+summary(mod_checkNT_survpup5b)
+
+# trying things w/ joel... (see that one slide)
+
+anova(mod_checkNT_survpup1, test = "Chisq") # analysis of deviance (not looking at coef; rather than variance)
+  # interp the same as an anova
+
+plot.design(if.pupa2 ~ trt.stage + pop, data = check_NTstats)
+  # coefs: how diff are they from the intercept
+  # anova: are they signif different (compare all tgt simultaneously)
+  # this is an easy way to visualise results
+
+
+
 mod_checkNT_survpup6 <- glm(if.pupa2 ~ mass.pupa, data = check_NTstats, family = "binomial")
   # breaks. also breaks when u try to throw sex in here so let's stop here
 
