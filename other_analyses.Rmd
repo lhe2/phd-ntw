@@ -1,7 +1,6 @@
 ---
 title: "other_analyses"
 date: "2023-12-07"
-output: html_document
 ---
 
 # 0.1 load data & packages
@@ -205,15 +204,22 @@ summary(mod_diet)
 # seems like no major effect of lab diet on pupal mass
 
 
-# visualise
+## visualise
+
+# filtering NTs
+NT_trtlabels = c("260"="26/26 (26±0°C)", "419"="40/19 (29.5±10.5°C)", "337"="40/26 (33±7°C)", "433"="40/33 (36.5±3.5°C)")
+NT_tstglabels = c("260-hatch"="26/26 (26±0°C)", "419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
 
 wide_all %>% filter(pop == "lab") %>%
   filter(sex != "NA") %>%
-  filter.NTs() %>% 
+  filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>%
+  mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")),
+         treatment=factor(treatment, levels = c(260, 419, 337, 433))) %>%
+  filter(expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H") %>%
   ggplot(aes(y = mass.pupa, x = diet, color = trt.stage)) +
-  geom_boxplot() + 
-  facet_wrap(sex~treatment, nrow = 2, ncol = 4) +
-  labs(title = "effect of diet on pupal mass", y = "pupal mass (mg)", x = "diet type", color = "treatment") +
+  geom_boxplot(show.legend = FALSE) + 
+  facet_wrap(sex~treatment, nrow = 2, ncol = 4, labeller = labeller(treatment = NT_trtlabels)) +
+  labs(title = "effect of diet on pupal mass", y = "pupal mass (mg)", x = "diet type") +
   NT_aes()
 
 
