@@ -78,20 +78,21 @@ filter.ins.topup <- function(data) {
 ```{r}
 # calc dev summ stats
 
-calc.devsumm <- function(data) {
-  summary <- data %>%
+calc.devsumm <- function(long_data) {
+  summary <- long_data %>%
     summarise(avg.mass = mean(na.omit(mass)),
               se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
               avg.tt = mean(na.omit(tt)),
               se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              logmass = log(mass),
               avg.logmass = mean(na.omit(logmass)),
               se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
               n=n())
   return(summary)
 }
 
-calc.devsumm.trtstg <- function(data) {
-  summary <- data %>%
+calc.devsumm.trtstg <- function(long_data) {
+  summary <- long_data %>%
     group_by(pop, trt.stage, instar) %>%
     summarise(avg.mass = mean(na.omit(mass)),
               se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
@@ -105,8 +106,8 @@ calc.devsumm.trtstg <- function(data) {
   return(summary)
 }
 
-calc.devsumm.trtstgsex <- function(data) {
-  summary <- data %>%
+calc.devsumm.trtstgsex <- function(long_data) {
+  summary <- long_data %>%
     group_by(pop, sex, trt.stage, instar) %>%
     summarise(avg.mass = mean(na.omit(mass)),
               se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
@@ -554,5 +555,86 @@ plot.design(if.pupa2 ~ trt.stage + pop, data = check_NTstats)
 
 mod_checkNT_survpup6 <- glm(if.pupa2 ~ mass.pupa, data = check_NTstats, family = "binomial")
   # breaks. also breaks when u try to throw sex in here so let's stop here
+
+```
+
+# 6.0 x=trt, y = response graphs
+
+```{r}
+# subset data
+long_NTs <- long_all %>% 
+  #filter(is.NA(ignore.reason)) %>%
+  filter.NTs2()
+  # "slows" are messing things up
+
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  filter(instar == "pupa") %>%
+  group_by(pop, sex, meanT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = meanT, y = avg.mass)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_mass(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: mean temperatures on pupal mass", caption = "NT pupa")
+
+long_NTs %>%
+  filter(instar == "pupa") %>%
+  #filter(!is.NA(ignore.reason)) %>%
+  group_by(pop, sex, flucT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = flucT, y = avg.mass)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_mass(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(caption = "NT pupa")
+  # smth is breaking bc this doesnt match the above LOL
+
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  filter(instar == "pupa") %>%
+  group_by(pop, sex, minT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = minT, y = avg.mass)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_mass(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: min temperatures on pupal mass", caption = "NT pupa")
+  # this breaks so much LOL
+
+# other y-variables
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  filter(instar == "pupa") %>%
+  group_by(pop, sex, meanT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = meanT, y = avg.tt)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_tt(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: mean temperatures on time to pupation", caption = "NT pupa")
+
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  #filter(instar == "pupa") %>%
+  #filter(sex != "NA") %>%
+  group_by(pop, meanT) %>%
+  summarise(n_all=n(),
+            n_pmd = sum(final.fate == "pmd"),
+            pct.surv = 100-round(n_pmd/n_all*100, digits = 1)) %>% 
+  ggplot(aes(x = meanT, y = pct.surv)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  #facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: mean temperatures on % survival to pupation", caption = "NT pupa")
 
 ```
