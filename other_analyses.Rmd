@@ -247,3 +247,13 @@ seems like diet doesnt have a big effect on growth overall in lab animals compar
 check_batch <- wide_all %>%
   filter(src != "F1")
 ```
+
+
+## - todo: effects of room/tent/etc on fertility
+
+# 2.0 todo?: collective data: x trt - y response
+```{r}
+
+
+```
+
