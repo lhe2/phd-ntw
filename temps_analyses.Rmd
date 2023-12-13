@@ -1,7 +1,6 @@
 ---
 title: "temps_analyses"
 date: "2023-12-07"
-output: html_notebook
 ---
 
 # 0.1 load data & packages
@@ -184,7 +183,7 @@ pivot.ttpup <- function(wide_data) {
 # 2.0 super simple stats
 ```{r}
 wide_all %>%
-  filter.temps() %>% filter(pop == "lab") %>%
+  filter.temps2() %>% filter(pop == "lab") %>%
   group_by(treatment) %>%
   summarise(n=n(),
             pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1),
@@ -338,3 +337,19 @@ ggsurvplot(fit = temps_sfit, data=temps_surv,
 # i think this shoudl be part of survival stuff
 
 ```
+
+# 6.0 x=trt, y = response graphs
+
+```{r}
+# subset data
+temps_all <- wide_all %>% filter.temps2()
+
+ggplot()
+
+
+
+
+
+
+```
+

@@ -1,7 +1,6 @@
 ---
 title: "acc_analyses"
 date: "2023-12-07"
-output: html_notebook
 ---
 
 # 0.1 load data & packages
@@ -186,7 +185,7 @@ pivot.ttpup <- function(wide_data) {
 ```{r}
 # acc stats
 wide_all %>%
-  filter.acc() %>% filter( pop == "lab") %>%
+  filter.acc2() %>% filter( pop == "lab") %>%
   group_by(trt.stage) %>%
   summarise(n=n(),
             pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1),

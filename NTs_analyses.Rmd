@@ -1,7 +1,6 @@
 ---
 title: "NTs_analyses"
 date: "2023-12-07"
-output: html_notebook
 ---
 
 # 0.1 load data & packages
@@ -185,7 +184,7 @@ pivot.ttpup <- function(wide_data) {
 ```{r}
 # NT stats
 wide_all %>%
-  filter.NTs() %>% filter(pop == "field") %>%
+  filter.NTs2() %>% filter(pop == "field") %>%
   group_by(treatment) %>%
   summarise(field_n=n(),
             pct.pmd = round(sum(final.fate == "pmd")/field_n*100, digits = 1),
@@ -196,7 +195,7 @@ wide_all %>%
             #n.pmd = sum(final.fate == "pmd"),
 
 wide_all %>%
-  filter.NTs() %>% filter(pop == "lab") %>%
+  filter.NTs2() %>% filter(pop == "lab") %>%
   group_by(treatment) %>%
   summarise(lab_n=n(),
             pct.pmd = round(sum(final.fate == "pmd")/lab_n*100, digits = 1),
