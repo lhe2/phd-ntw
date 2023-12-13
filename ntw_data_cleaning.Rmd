@@ -104,7 +104,14 @@ data_all <- data_all %>% mutate(
   flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
                     treatment == 267 | treatment == 337 ~ 7,
                     treatment == 433 ~ 3.5,
-                    treatment == 419 ~ 10.5)
+                    treatment == 419 ~ 10.5),
+  maxT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
+                   treatment == 267 | treatment == 330 ~ 33,
+                   treatment > 331 ~ 40),
+  minT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
+                   treatment == 267 | treatment == 419 ~ 19,
+                   treatment == 337 ~ 26,
+                   treatment == 433 | treatment == 330 ~ 33)
   )
 
 # subdivide trts and prep for calculating timetos
