@@ -16,7 +16,7 @@ library(ggplot2)
 library(survival) # for computing
 library(survminer) # for visualising
 
-wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets.csv", header = TRUE)
+wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets-23.csv", header = TRUE)
 
 ```
 
@@ -182,6 +182,9 @@ pivot.ttpup <- function(wide_data) {
 ```
 
 # 2.0 super simple stats
+
+goal: how many go sup? how many die early? how many are slow?
+
 ```{r}
 # NT stats
 wide_all %>%
@@ -425,9 +428,55 @@ ggsurvplot(fit = NTf_sfit, data=NTf_surv,
            )
 
 ```
+### - variations (for convenience, just the lab ones unless indicated)
+```{r}
+## adjust labels to focus on the min T and fluct
+# 
+# ggsurvplot(fit = NTl_sfit, data=NTl_surv,
+#            conf.int=T,
+#            xlab = "days from hatching", ylab = "survival probability",
+#            title = "NTs: lab survival from hatch-pup", 
+#            palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+#            legend.title = "treatment", 
+#            legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)"),
+#            #strata = pop
+#            ) +
+#   labs(caption = "(uses actual cohort; ignores 'ignores' + 'culled')")
+```
 
 ```{r}
-## need to redo with some of the earlier field ones yeeted too LOL
+## redo with some of the earlier field ones yeeted too LOL
+
+# remove individuals & refilter
+NTf_surv2 <-  wide_all %>%
+  filter(!(final.fate == "ignore" | final.fate == "culled")) %>%
+  filter(pop == "field") %>%
+  filter(!(treatment == 337 & ID < 202)) %>%
+  mutate(censor = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         timeto.exit = jdate.exit - jdate.hatch) %>%
+  select(-starts_with(c("h.", "date.", "mass.", "jdate.", "fate."))) %>%
+  filter.NTs2()
+
+# set up survival objects
+NTf_sobj2 <- Surv(NTf_surv2$timeto.exit, NTf_surv2$censor)
+NTf_sfit2 <- survfit(NTf_sobj2 ~ treatment, data = NTf_surv2)
+
+# plot
+ggsurvplot(fit = NTf_sfit, data=NTf_surv,
+           conf.int=T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NTs: field survival from hatch-pup (adj for 426)", 
+           palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)")
+           #strata = pop
+           )
+```
+
+
+```{r}
+## redo with 26 taken out (3 groups only) → just do if needed
 ```
 
 # 4.1 NT stats
