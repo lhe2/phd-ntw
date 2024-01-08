@@ -1,0 +1,213 @@
+# title: ntw_helper-functions.R
+# date: 2024-01-08
+# purpose: script of custom helper functions for ntw analyses
+
+# note that the data cleaning script still needs to be run separately 
+# BEFORE this script, if any changes get made to the gsheets!
+
+# this script should work for general packages, etc stuff needed in the ntw scripts
+# i could make a package but ngl idk how to do that yet SO!
+
+
+
+
+
+# package and data loading ------------------------------------------------
+
+# 0. load libraries & data ####
+library(conflicted)
+library(dplyr)
+conflicts_prefer(dplyr::filter)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+
+wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets-23.csv", header = TRUE)
+
+# 1.0 additional data processing ####
+
+## 1.1 pivot ####
+long_all <- wide_all %>% select(-(starts_with("date."))) %>%
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
+         tt.7th = jdate.7th - jdate.hatch, 
+         tt.wander = jdate.wander - jdate.hatch,
+         #tt.pupa = jdate.pupa - jdate.wander,
+         tt.pupa = jdate.pupa-jdate.hatch,
+         tt.15 = jdate.15-jdate.hatch,
+         tt.eclose = jdate.eclose-jdate.pupa,
+         tt.exit = jdate.exit - jdate.enter,
+         tt.surv = jdate.surv - jdate.hatch) %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "h", "tt")),
+               names_to = c(".value", "instar"),
+               #names_sep = ".",
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  rename(molt.status = h) %>%
+  drop_na(jdate) %>% drop_na(tt) %>% # drops NA's if an individual didnt reach a certain stage
+  filter(instar != "15")
+
+## 1.2 add instar factor levels ####
+long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit")))
+#long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+
+#rm(data_all)
+
+
+# define helper functions -------------------------------------------------
+
+# grouping functions ######
+
+### for temps
+filter.temps2 <- function(data) {
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage =="267-hatch" | trt.stage == "330-hatch" | trt.stage == "337-hatch") %>%
+    filter(expt.group == "A" | expt.group == "B")
+  
+  return(filtered_data)
+}
+
+
+### for acc
+filter.acc2 <- function(data) {
+  filtered_data <- data %>% 
+    filter(trt.stage != "267-hatch" & trt.stage != "330-hatch" & trt.stage != "419-hatch" & trt.stage != "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "337-hatch", "337-3rd", "337-4th"))) %>%
+    filter(expt.group == "B")
+  
+  return(filtered_data)
+}
+
+
+### for NTs
+filter.NTs2 <-function(data){
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch"))) %>%
+    filter(expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H")
+  
+  return(filtered_data)
+}
+
+
+### for larval instars (4th - pup)
+  # idk if this gets used much tho tbh
+filter.ins.topup <- function(data) {
+  filtered_data <- data %>%
+    filter(instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
+  
+  return(filtered_data)
+}
+
+
+
+# doing math ######
+
+# calc dev summ stats
+
+calc.devsumm <- function(data) {
+  summary <- data %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+              se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+              avg.tt = mean(na.omit(tt)),
+              se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+              n=n())
+  return(summary)
+}
+
+calc.devsumm.trtstg <- function(data) {
+  summary <- data %>%
+    group_by(pop, trt.stage, instar) %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+              se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+              avg.tt = mean(na.omit(tt)),
+              se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              logmass = log(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+              n=n())
+  
+  return(summary)
+}
+
+calc.devsumm.trtstgsex <- function(data) {
+  summary <- data %>%
+    group_by(pop, sex, trt.stage, instar) %>%
+    summarise(avg.mass = mean(na.omit(mass)),
+              se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+              avg.tt = mean(na.omit(tt)),
+              se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              logmass = log(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+              n=n())
+  
+  return(summary)
+}
+
+
+# adding geoms ######
+
+### error bars
+y_err_logmass <- function(x) {
+  list(geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass), width = x))
+}
+
+y_err_mass <- function(x) {
+  list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = x))
+}
+
+y_err_tt <- function(x){
+  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = x))
+}
+
+x_err_tt <- function(x){
+  list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), width = x))
+}
+
+### recoloring theme + legend
+  # i think these r dead tbh
+temp_aes <- function(x)(
+  list(theme_bw(), scale_color_manual(values=temp_colors, labels=temp_labels))
+)
+
+acc_aes <- function(x){
+  list(theme_bw(), scale_color_manual(values=acc_colors, labels=acc_labels))  
+}
+
+NT_aes <- function(x){
+  list(theme_bw(), scale_color_manual(values=NT_colors, labels=NT_labels))
+}
+
+
+# defining aesthetics ######
+
+#all_trts <- c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "337-3rd", "337-4th", "40-19", "40-26")
+
+
+# temp: effect of mean/fluct temp (treatment)
+temp_trts = c("260-hatch", "267-hatch", "330-hatch", "337-hatch")
+temp_labels = c("260-hatch"="26°C", "267-hatch"="26±7°C", "330-hatch"="33°C", "337-hatch"="33±7°C")
+temp_colors = c("260-hatch"="#00C2D1","267-hatch"="#1929B3", "330-hatch"="#F9C639", "337-hatch"="#710A36")
+
+
+
+# accum: effect of temp x instar (trt.stage)
+acc_trts = c("260-hatch", "337-hatch", "337-3rd", "337-4th")
+acc_labels = c("260-hatch"="26°C @ hatch","337-hatch"="33±7°C @ hatch", "337-3rd"="33±7°C @ 3rd", "337-4th"="33±7°C @ 4th")
+acc_colors = c("260-hatch"="#00C2D1", "337-hatch"="#710A36", "337-3rd"="#C23C1E", "337-4th"="#F3922B")
+#CD133F
+
+
+# NTs: same DTs, different NTs 
+NT_trts = c("260-hatch", "419-hatch", "337-hatch", "433-hatch")
+NT_labels = c("260-hatch"="26/26 (26±0°C)", "419-hatch"="40/19 (29.5±10.5°C)", "337-hatch"="40/26 (33±7°C)", "433-hatch"="40/33 (36.5±3.5°C)")
+NT_colors = c("260-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4", "433-hatch"="#97D8C4")
+# although i think 267 is the better comparison, i have more 260s
+
+# for survival but lowkey need to edit it below
+# A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
+# B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
+# C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
