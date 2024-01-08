@@ -1,0 +1,352 @@
+---
+title: "NTs_EDA and decriptive analyses"
+date: "2024-01-08"
+---
+
+# 0. load data, packages, helper functions
+```{r}
+source("./ntw_helper-functions.R")
+rm(list=c(acc_helpers, temps_helpers))
+```
+
+
+TODO 240108: at some point i need to reorganise this probably (idk how much of these are descriptive but not today!)
+
+
+## A. looking for sups
+
+**questions:** how many go sup? how many die early? how many are slow?
+
+### - look at summary stats and pcts
+
+```{r summ stats}
+# NT stats
+wide_all %>%
+  filter.NTs2() %>% filter(pop == "field") %>%
+  group_by(treatment) %>%
+  summarise(field_n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/field_n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
+            pct.sup = round(sum(if.sup == "Y")/field_n*100, digits = 1),
+            pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
+            #n.pmd = sum(final.fate == "pmd"),
+
+wide_all %>%
+  filter.NTs2() %>% filter(pop == "lab") %>%
+  group_by(treatment) %>%
+  summarise(lab_n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/lab_n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
+            pct.sup = round(sum(if.sup == "Y")/lab_n*100, digits = 1),
+            pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
+
+```
+
+### - visualise with barplots
+
+```{r sup barplots}
+# make these into barplots instead
+
+wide_all %>%
+  filter.NTs2() %>% 
+  #filter(!(pop == "lab" & diet == "TB")) %>%
+  filter(pop != "F1") %>%
+  mutate(sup = factor(sup)) %>%
+  ggplot(aes(x = trt.stage, fill = sup)) +
+  geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
+  labs(title = "NTs: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
+  scale_x_discrete(labels = NT_labels, guide = guide_axis(angle = 45)) +
+  facet_wrap(~pop) +
+  theme_bw() + scale_fill_brewer(palette = "Greens") 
+  #theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1))
+
+# did i filter out the diet stuff...
+  
+```
+
+## B. growth per day; end points
+
+compare overall development of all individuals compared to average growth (avg growth over time)
+
+### - (**) prep the dfs for plotting
+
+(**) calculate summary growth stats df 
+  - there's a lot of downstream code that relies on this codeblock LOL hence the (**)
+```{r calc dev_L stats df} 
+# pull out the lab bugs
+long_lf <- long_all %>% filter(pop == "lab" | pop == "field") 
+
+# individual dev stats
+dev_L <- long_lf %>%
+  filter(!(final.fate == "pmd" | final.fate == "misc")) %>%
+  filter.ins.topup() %>%
+  mutate(logmass = log(mass))
+
+# do the summary stats
+devsumm_L <- dev_L %>%
+  group_by(pop, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+# for pulling out supernumeraries.. need to tweak
+# devsumm_Lsups <- dev_L %>%
+#   group_by(pop, sup, trt.stage, instar) %>%
+#   summarise(avg.mass = mean(na.omit(mass)),
+#             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+#             avg.tt = mean(na.omit(tt)),
+#             se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+#             avg.logmass = mean(na.omit(logmass)),
+#             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+#             n=n())
+
+# see 'plot NTs' under 'overall growth'
+  
+```
+
+filter the relevant bugs out for plotting
+```{r filter out NT bugs from dev_L}
+NT_dev <- dev_L %>% filter.NTs2()
+#NT_devsumm <- devsumm_L %>% filter.NTs()
+NT_devsumm <- dev_L %>% filter.NTs2() %>% calc.devsumm.trtstg()
+```
+
+make another df with summary stats for the sup bugs for plotting:
+
+```{r another df with sups pulled out}
+#NTsups_devsumm <- devsumm_Lsups %>% filter.NTs2()
+NTsups_devsumm <- NT_dev %>%
+  group_by(pop, sup, trt.stage, instar) %>%
+  calc.devsumm() %>%
+  mutate(if.sup = case_when(sup == 0 ~ "N", TRUE ~ "Y"))
+```
+
+### - line plots
+
+#### - all bugs larval instars
+plot avg growth of all bugs (sups included in math)
+```{r avg larval growth all bugs}
+NT_devsumm %>%
+  #filter(!(instar == "3rd" | instar == "pupa")) %>%
+  filter(instar != "pupa") %>%
+  #filter(sup == 0) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line() +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=(NT_dev %>% filter(instar != "pupa")), aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(~pop) +
+  labs(title = "NTs: average development from 3rd - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch")
+```
+
+==> this is hard to separate out the sups and imo shouldnt do the math w the sups + non-sups combined, so:
+
+
+#### - sup bugs separated
+plot avg growth bugs but separate out the sups
+
+(so 3 groups total: bugs with 1-5 instars, bugs that had 6th, bugs that had 7th)
+```{r avg larval growth separate sups}
+# plot only from 4th instar onward bc 3rd looks the same, basically
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(if.sup~pop) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch")
+```
+
+
+still messy. try again but add sup as a Y/N
+```{r var}
+# trying this again adding "if.sup" as Y/N
+  # a little better but still hard to compare
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(~pop) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch")
+```
+
+try again, focusing on the trt.stages that produce sups instead
+```{r var}
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  #filter(if.sup == "Y") %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(if.sup~pop) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch") +
+  scale_x_continuous(expand = c(0.001, 1))
+```
+
+try faceting differently:
+```{r var}
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  #filter(if.sup == "Y") %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(sup~pop, nrow=3) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch") +
+    scale_x_continuous(expand = c(0.001, 1))
+```
+
+apparently i really liked this next plot
+```{r var}
+# this is it...
+  #but need to filter out the lab bugs on TB/regular diet i think
+NTsups_devsumm %>%
+  filter(!(instar == "3rd" | instar == "pupa")) %>%
+  ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
+  geom_line(aes(lty = as.factor(sup))) +
+  geom_point(aes(shape = instar), size = 3) +
+  geom_point(data=NT_dev, aes(x=tt, y=logmass, color=trt.stage), alpha = 0.25) + 
+  NT_aes() + facet_wrap(pop~trt.stage, ncol=4) +
+  labs(title = "NTs: average development from 4th - wander", color = "treatment", y = "log(mass (mg))", x = "days to instar",
+       caption = "L+F, no pmd, enter at hatch") 
+```
+
+#### - pupa/endpoints only
+
+calculate the stats
+```{r pupa dev summ stats}
+NT_devP <- NT_dev %>% filter(instar == "pupa")
+NT_devsummP <- dev_L %>%
+  filter.NTs2() %>%
+  group_by(pop, sex, trt.stage, instar) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt)))) %>% 
+  filter(instar == "pupa")
+```
+
+graph it
+```{r plot}
+NT_devsummP %>%
+  ggplot(aes(x=avg.tt, y=avg.mass, color=trt.stage)) +
+  geom_point(size = 2) +
+  geom_point(data=NT_devP, aes(x=tt, y=mass, color=trt.stage), alpha = 0.275) +
+  y_err_mass(0.5) + x_err_tt(1) +
+  NT_aes() + facet_wrap(sex~pop) +
+  labs(title = "NTs: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
+```
+
+## C. growth response as a function of treatment 
+
+prep the df:
+```{r filter NTs from larger dataset}
+# subset data
+long_NTs <- long_all %>% 
+  #filter(is.NA(ignore.reason)) %>%
+  filter.NTs2()
+  # "slows" are messing things up
+```
+
+### - mass.pup ~ meanT
+```{r}
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  filter(instar == "pupa") %>%
+  group_by(pop, sex, meanT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = meanT, y = avg.mass)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_mass(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: mean temperatures on pupal mass", caption = "NT pupa")
+```
+
+### - mass.pup ~ flucT
+
+```{r}
+long_NTs %>%
+  filter(instar == "pupa") %>%
+  #filter(!is.NA(ignore.reason)) %>%
+  group_by(pop, sex, flucT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = flucT, y = avg.mass)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_mass(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(caption = "NT pupa")
+  # smth is breaking bc this doesnt match the above LOL
+```
+
+### - mass.pup ~ minT
+
+this is the interesting one bc everyone has the same max T... altho it's lowkey the same as just plotting by `trt.stage` or something. it's more intuitive though, looking at graph-wise.
+```{r}
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  filter(instar == "pupa") %>%
+  group_by(pop, sex, minT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = minT, y = avg.mass)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_mass(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: min temperatures on pupal mass", caption = "NT pupa")
+  # this breaks so much LOL
+```
+
+### - tt.pup ~ meanT
+```{r}
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  filter(instar == "pupa") %>%
+  group_by(pop, sex, meanT) %>%
+  calc.devsumm() %>%
+  ggplot(aes(x = meanT, y = avg.tt)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  y_err_tt(x=0.5) +
+  facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: mean temperatures on time to pupation", caption = "NT pupa")
+```
+
+### - pct.surv ~ meanT
+```{r}
+long_NTs %>%
+  #filter(ignore.reason == "NA") %>%
+  #filter(instar == "pupa") %>%
+  #filter(sex != "NA") %>%
+  group_by(pop, meanT) %>%
+  summarise(n_all=n(),
+            n_pmd = sum(final.fate == "pmd"),
+            pct.surv = 100-round(n_pmd/n_all*100, digits = 1)) %>% 
+  ggplot(aes(x = meanT, y = pct.surv)) +
+  geom_point() +
+  geom_line(aes(lty = pop)) +
+  #facet_wrap(~sex) +
+  theme_bw() +
+  labs(title = "NT: mean temperatures on % survival to pupation", caption = "NT pupa")
+
+```
