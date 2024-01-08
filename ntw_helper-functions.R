@@ -211,3 +211,14 @@ NT_colors = c("260-hatch"="#F4B942", "419-hatch"="#4059AD", "337-hatch"="#6B9AC4
 # A_hex = c("#00C2D1","#1929B3", "#F9C639", "#710A36")
 # B_hex = c("#00C2D1", "#710A36", "#C23C1E", "#F3922B")
 # C_hex = c("#F4B942", "#4059AD", "#6B9AC4", "#97D8C4")
+
+
+
+# cleanup -----------------------------------------------------------------
+
+# for removing some expt-specific associated aesthetics, functions, etc
+# to use, just run rm(list=HELPER)
+
+temps_helpers <- c("temp_colors", "temp_labels", "temp_trts", "filter.temps2", "temp_aes", "temps_helpers")
+acc_helpers <- c("acc_colors", "acc_labels", "acc_trts", "filter.acc2", "acc_aes", "acc_helpers")
+NT_helpers <- c("NT_colors", "NT_labels", "NT_trts", "filter.NTs2", "NT_aes", "NT_helpers")
