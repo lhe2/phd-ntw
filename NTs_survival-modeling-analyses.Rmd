@@ -1,0 +1,348 @@
+---
+title: "NTs_survival analyses and modeling"
+date: "2024-01-08"
+---
+
+# 0. load data & packages
+```{r load, message = FALSE}
+source("./ntw_helper-functions.R")
+rm(list=c(acc_helpers, temps_helpers))
+
+# survival curve stuff
+library(survival) # for computing
+library(survminer) # for visualising
+
+# need to reorg again at some point but not today
+```
+
+# 1.0 KM survival to pupation 
+
+## A. prep data
+
+### - (**) censoring + subsetting
+```{r censor data for surv}
+# censor data
+surv_P <-  wide_all %>%
+  filter(!(final.fate == "ignore" | final.fate == "culled")) %>%
+  mutate(censor = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         timeto.exit = jdate.exit - jdate.hatch) %>%
+  select(-starts_with(c("h.", "date.", "mass.", "jdate.", "fate.")))
+```
+
+```{r filter for KM}
+NTl_surv <- surv_P %>% filter(pop == "lab") %>% filter.NTs2()
+NTf_surv <- surv_P %>% filter(pop == "field") %>% filter.NTs2()
+```
+
+### - create survival objects and fits
+```{r survfit}
+NTf_sobj <- Surv(NTf_surv$timeto.exit, NTf_surv$censor)
+NTf_sfit <- survfit(NTf_sobj ~ treatment, data = NTf_surv)
+
+NTl_sobj <- Surv(NTl_surv$timeto.exit, NTl_surv$censor)
+NTl_sfit <- survfit(NTl_sobj ~ treatment, data = NTl_surv)
+```
+
+## B. plot survival curves
+
+### - first pass at plotting 
+
+had to separate the L and F bc idk how to do them on the same one
+```{r first pass L+F KM plots}
+# how to combine these into one?
+ggsurvplot(fit = NTl_sfit, data=NTl_surv,
+           conf.int=T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NTs: lab survival from hatch-pup", 
+           palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)"),
+           #strata = pop
+           ) +
+  labs(caption = "(uses actual cohort; ignores 'ignores' + 'culled')")
+
+ggsurvplot(fit = NTf_sfit, data=NTf_surv,
+           conf.int=T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NTs: field survival from hatch-pup", 
+           palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)"),
+           #strata = pop
+           )
+
+```
+
+### - variations 
+(for convenience, just the lab ones unless indicated)
+```{r var - fix labels}
+## adjust labels to focus on the min T and fluct
+# 
+# ggsurvplot(fit = NTl_sfit, data=NTl_surv,
+#            conf.int=T,
+#            xlab = "days from hatching", ylab = "survival probability",
+#            title = "NTs: lab survival from hatch-pup", 
+#            palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+#            legend.title = "treatment", 
+#            legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)"),
+#            #strata = pop
+#            ) +
+#   labs(caption = "(uses actual cohort; ignores 'ignores' + 'culled')")
+
+# got too lazy to do this
+```
+
+```{r var - remove earlier field}
+## redo with some of the earlier field ones yeeted too LOL
+
+# remove individuals & refilter
+NTf_surv2 <-  wide_all %>%
+  filter(!(final.fate == "ignore" | final.fate == "culled")) %>%
+  filter(pop == "field") %>%
+  filter(!(treatment == 337 & ID < 202)) %>%
+  mutate(censor = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         timeto.exit = jdate.exit - jdate.hatch) %>%
+  select(-starts_with(c("h.", "date.", "mass.", "jdate.", "fate."))) %>%
+  filter.NTs2()
+
+# set up survival objects
+NTf_sobj2 <- Surv(NTf_surv2$timeto.exit, NTf_surv2$censor)
+NTf_sfit2 <- survfit(NTf_sobj2 ~ treatment, data = NTf_surv2)
+
+# plot
+ggsurvplot(fit = NTf_sfit, data=NTf_surv,
+           conf.int=T,
+           xlab = "days from hatching", ylab = "survival probability",
+           title = "NTs: field survival from hatch-pup (adj for 426)", 
+           palette = c("#F4B942", "#6B9AC4", "#4059AD", "#97D8C4"),
+           legend.title = "treatment", 
+           legend.labs = c("26/26 (26±0°C)", "40/26 (33±7°C)", "40/19 (29.5±10.5°C)", "40/33 (36.5±3.5°C)")
+           #strata = pop
+           )
+```
+
+
+```{r var - plot only 3 groups}
+## redo with 26 taken out (3 groups only) → just do if neededbc im lazy
+```
+
+# 2.0 some regression models
+
+## - data prep
+```{r subset for LM models}
+# subset NTs
+check_NTstats <- wide_all %>% filter.NTs2()
+```
+
+## - models
+
+### - lm(tt.pup ~ x)
+
+```{r model} 
+mod_checkNT_ttpup <- lm((jdate.pupa - jdate.hatch) ~ pop + treatment, data=check_NTstats)
+  # look into the sigif when expt.group is added...
+  # try adding pop*trt?
+
+anova(mod_checkNT_ttpup)
+summary(mod_checkNT_ttpup)
+```
+
+```{r plot}
+#devsumm_L %>% # should redo this with calcing dev only for the group...
+long_all %>%
+  filter.NTs2() %>% 
+  calc.devsumm.trtstg() %>%
+  filter(instar == "pupa") %>%
+  ggplot(aes(x = trt.stage, y = avg.tt, color = pop)) +
+  geom_point() + theme_bw() + y_err_tt(0.5) +
+  labs(title = "avg time to pupation")
+
+```
+
+### - lm(mass.pup ~ x)
+```{r model}
+mod_checkNT_masspup <- lm((mass.pupa) ~ pop + treatment + sex, data=check_NTstats)
+
+anova(mod_checkNT_masspup)
+summary(mod_checkNT_masspup)
+```
+
+```{r plot}
+long_all %>%
+  filter.NTs2() %>% 
+  calc.devsumm.trtstgsex() %>%
+  filter(instar == "pupa") %>%
+  ggplot(aes(x = trt.stage, y = avg.mass, color = pop)) +
+  geom_point() + theme_bw() + y_err_mass(0.5) +
+  facet_wrap(~sex) +
+  labs(title = "avg mass at pupation")
+```
+
+###  - lm(if.pupa ~ x)
+
+testing if sup x to pup/eclosion ==> this does not work as a model bc i am dumb and u cant do it this way lol
+
+```{r}
+#check_suppup <- wide_all %>% filter(if.pupa == "Y")
+
+#mod_suppup <- lm(if.pupa ~ if.sup + treatment + pop, data = check_suppup, na.action=na.omit)
+  # does this not work bc Y needs to be a # LOL
+
+# i think this shoudl be part of survival stuff
+
+```
+
+# 4.1 == binomial glm(if.pupa ~ x) ==
+
+formerly titled "binomials (glms): 231130 followups"
+
+checking survival to pup with a binomial glm
+
+## - subset
+
+```{r filter data}
+# binomial survival to pup
+
+check_NTstats <- check_NTstats %>% 
+  mutate(if.pupa2 = case_when(if.pupa == "Y" ~ 1, TRUE ~ 0),
+         tt.pupa = jdate.pupa - jdate.hatch)
+```
+
+## - model variations
+
+let's try a bunch of things
+```{r model 1}
+# going to try a bunch of things
+mod_checkNT_survpup1 <-  glm(if.pupa2 ~ trt.stage + pop, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup1)
+  # dont rlly know how to interpret these numbers...
+```
+
+```{r}
+mod_checkNT_survpup2 <-  glm(if.pupa2 ~ trt.stage + mass.pupa + tt.pupa, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup2)
+  # algo did not converge
+```
+
+```{r}
+mod_checkNT_survpup3 <- glm(if.pupa2 ~ trt.stage + mass.pupa, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup3)
+  # algo did not converge
+```
+
+```{r}
+mod_checkNT_survpup4 <- glm(if.pupa2 ~ trt.stage*mass.pupa, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup4)
+  # algo did not converge
+```
+
+```{r model 5 that works}
+mod_checkNT_survpup5 <- glm(if.pupa2 ~ meanT*flucT + pop, data = check_NTstats, family = "binomial")
+summary(mod_checkNT_survpup5)
+  # this works!
+```
+
+```{r model 5 variations}
+# redo this with taking out the 260 group
+check_NTstats2 <- check_NTstats %>% 
+  filter(meanT != 26) %>%
+  mutate(dayT = case_when(TRUE ~ 40),
+         nightT = case_when(treatment == 419 ~ 19,
+                            treatment == 337 ~ 26,
+                            treatment == 433 ~ 33))
+
+mod_checkNT_survpup5a <- glm(if.pupa2 ~ meanT*flucT + pop, data = check_NTstats2, family = "binomial")
+summary(mod_checkNT_survpup5a)
+```
+
+```{r}
+mod_checkNT_survpup5b <- glm(if.pupa2 ~ nightT + pop, data = check_NTstats2, family = "binomial")
+summary(mod_checkNT_survpup5b)
+```
+
+```{r}
+mod_checkNT_survpup6 <- glm(if.pupa2 ~ mass.pupa, data = check_NTstats, family = "binomial")
+  # breaks. also breaks when u try to throw sex in here so let's stop here
+```
+
+### (**) interpreting model outputs w/ joel
+
+just using (**) to sticky this
+```{r anova(model)}
+# trying things w/ joel... (see that one slide)
+
+anova(mod_checkNT_survpup1, test = "Chisq") # analysis of deviance (not looking at coef; rather than variance)
+  # interp the same as an anova
+```
+
+```{r plot.design}
+plot.design(if.pupa2 ~ trt.stage + pop, data = check_NTstats)
+  # coefs: how diff are they from the intercept
+  # anova: are they signif different (compare all tgt simultaneously)
+  # this is an easy way to visualise results
+```
+
+revisiting glms on 240106: 
+```{r visualise}
+# redo the glm with 3 groups only to find the predictors
+
+# look at the groups again
+plot.design(if.pupa2 ~ trt.stage + pop, data = check_NTstats2)
+  # the 426 group is significantly diff from the 419 and 433 groups (higher)
+```
+
+```{r model 7 which works}
+# look at the trt*pop interaction bt 3 groups
+mod_checkNT_survpup7 <- glm(if.pupa2 ~ trt.stage + pop + trt.stage*pop, data = check_NTstats2, family = "binomial")
+anova(mod_checkNT_survpup7, test = "Chisq")
+  # int and pop is signif but not trt?
+
+# test <- glm(if.pupa2 ~ trt.stage + pop, data = check_NTstats2, family = "binomial") # drop the int, see what happens
+# anova(test, test = "Chisq")
+  # confirms the above
+```
+
+# 5.0 == CPH survival modeling ==
+
+- things to check as variates: lab/TB diet; if.sup; if.stuck
+
+## - data prep
+```{r filter}
+NTall_surv <- surv_P %>% filter.NTs2()
+```
+
+## - model variations
+
+fit some models and look at them
+
+### - by trt only
+```{r everything model}
+# try things that i think are relevant
+mod_cox_NTsurv01 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage + pop + trt.stage*pop + sex, data = NTall_surv)
+summary(mod_cox_NTsurv01) # this dies (NAs) prob bc i dont have `sex` for all of them, so...
+```
+
+```{r}
+# drop sex from the df
+
+NTall_survsex <- NTall_surv %>% drop_na(sex)
+mod_cox_NTsurv02 <- coxph(Surv(NTall_survsex$timeto.exit, NTall_survsex$censor) ~ trt.stage + pop + trt.stage*pop + sex, data = NTall_survsex)
+summary(mod_cox_NTsurv02) # still gives me NAs LOL
+```
+
+```{r a model that works}
+# drop sex from the formula 
+
+mod_cox_NTsurv03 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage + pop + trt.stage*pop, data = NTall_surv)
+summary(mod_cox_NTsurv03) # ok word this kinda works
+```
+
+### - break trt into mean/fluct T
+
+extended variations, using mean T/flucT as predictors
+```{r}
+## WE'LL FINISH THIS LATER!
+```
+
