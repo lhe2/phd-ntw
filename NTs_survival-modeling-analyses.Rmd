@@ -379,5 +379,29 @@ mod_cox_NTsurv07 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ mean
 
 summary(mod_cox_NTsurv07)
 ```
-i've probably made enough variations atp so lets compare them all
 
+(make some simpler models to compare to)
+
+```{r}
+# additive only
+mod_cox_NTsurv08 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + pop,
+  data = NTall_surv)
+
+# no pop
+mod_cox_NTsurv09 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT,
+  data = NTall_surv)
+
+# additive with temp interaction
+mod_cox_NTsurv10 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + pop + meanT*flucT,
+  data = NTall_surv)
+
+```
+
+
+i've probably made enough variations atp so lets compare them all with `plrtest`
+
+(idk if i'm doing this right lol so need to chat with joel)
+
+#### - compare models
+
+lets compare the simple ones first LOL
