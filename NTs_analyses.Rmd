@@ -378,7 +378,7 @@ NT_devsummP %>%
 
 ```
 
-# 4.0 survival to pupation
+# 4.0 KM survival to pupation
 
 ## - censoring + subsetting
 ```{r}
@@ -529,7 +529,7 @@ long_all %>%
   labs(title = "avg mass at pupation")
 ```
 
-# 5.0 cox-ph survival stuff?
+# 5.0 CPH survival
 
 - check as variables: lab/TB diet; if.sup; if.stuck
 
@@ -618,13 +618,33 @@ mod_checkNT_survpup7 <- glm(if.pupa2 ~ trt.stage + pop + trt.stage*pop, data = c
 anova(mod_checkNT_survpup7, test = "Chisq")
   # int and pop is signif but not trt?
 
-test <- glm(if.pupa2 ~ trt.stage + pop, data = check_NTstats2, family = "binomial") # drop the int, see what happens
-anova(test, test = "Chisq")
+# test <- glm(if.pupa2 ~ trt.stage + pop, data = check_NTstats2, family = "binomial") # drop the int, see what happens
+# anova(test, test = "Chisq")
   # confirms the above
-
 
 ```
 
+## - actual coxph modeling
+```{r}
+# filter
+NTall_surv <- surv_P %>% filter.NTs2()
+
+# fit some models and look at them
+mod_cox_NTsurv01 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage + pop + trt.stage*pop + sex, data = NTall_surv)
+summary(mod_cox_NTsurv01) # this dies (NAs) prob bc i dont have `sex` for all of them, so...
+
+NTall_survsex <- NTall_surv %>% drop_na(sex)
+mod_cox_NTsurv02 <- coxph(Surv(NTall_survsex$timeto.exit, NTall_survsex$censor) ~ trt.stage + pop + trt.stage*pop + sex, data = NTall_survsex)
+summary(mod_cox_NTsurv02) # still gives me NAs LOL
+
+mod_cox_NTsurv03 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage + pop + trt.stage*pop, data = NTall_surv)
+summary(mod_cox_NTsurv03) # ok word this kinda works
+
+#try w mean T/flucT
+
+
+
+```
 
 # 6.0 x=trt, y = response graphs
 
