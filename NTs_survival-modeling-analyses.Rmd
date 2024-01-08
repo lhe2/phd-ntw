@@ -194,7 +194,7 @@ testing if sup x to pup/eclosion ==> this does not work as a model bc i am dumb 
 
 ```
 
-# 4.1 == binomial glm(if.pupa ~ x) ==
+# 4.1 binomial glm(if.pupa ~ x)
 
 formerly titled "binomials (glms): 231130 followups"
 
@@ -304,7 +304,7 @@ anova(mod_checkNT_survpup7, test = "Chisq")
   # confirms the above
 ```
 
-# 5.0 == CPH survival modeling ==
+# 5.0 CPH survival modeling 
 
 - things to check as variates: lab/TB diet; if.sup; if.stuck
 
@@ -343,6 +343,41 @@ summary(mod_cox_NTsurv03) # ok word this kinda works
 
 extended variations, using mean T/flucT as predictors
 ```{r}
-## WE'LL FINISH THIS LATER!
+mod_cox_NTsurv04 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT + pop + meanT*pop + flucT*pop,
+  data = NTall_surv)
+# not sure how to handle the interactions tbh... i'm probably doing this wrong!
+
+summary(mod_cox_NTsurv04)
+# but at least we get results...
 ```
+just population is signif?
+
+try different nesting
+
+```{r}
+# lets drop some stuff
+mod_cox_NTsurv05 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT*pop,
+  data = NTall_surv)
+
+summary(mod_cox_NTsurv05)
+  # errr this nesting right
+```
+
+change incorporation of `pop`
+
+```{r bad model maybe}
+mod_cox_NTsurv06 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT + pop,
+  data = NTall_surv)
+
+summary(mod_cox_NTsurv06) 
+```
+only `pop` is signif here. doesn't feel that right to me, so maybe we should revisit `model 5`
+
+```{r}
+mod_cox_NTsurv07 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT + pop + meanT*flucT*pop,
+  data = NTall_surv)
+
+summary(mod_cox_NTsurv07)
+```
+i've probably made enough variations atp so lets compare them all
 
