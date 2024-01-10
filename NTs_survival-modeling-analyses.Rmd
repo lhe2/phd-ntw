@@ -11,9 +11,12 @@ rm(list=c(acc_helpers, temps_helpers))
 # survival curve stuff
 library(survival) # for computing
 library(survminer) # for visualising
+library(nonnestcox) # for plrtest() to compare CPH models
 
 # need to reorg again at some point but not today
 ```
+
+
 
 # 1.0 KM survival to pupation 
 
@@ -385,18 +388,25 @@ summary(mod_cox_NTsurv07)
 ```{r}
 # additive only
 mod_cox_NTsurv08 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + pop,
-  data = NTall_surv)
+  data = NTall_surv, x=T)
 
-# no pop
-mod_cox_NTsurv09 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT,
-  data = NTall_surv)
-
-# additive with temp interaction
-mod_cox_NTsurv10 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + pop + meanT*flucT,
-  data = NTall_surv)
-
+summary(mod_cox_NTsurv08)
 ```
 
+in a naive additive way, they all matter
+
+```{r}
+# no pop
+mod_cox_NTsurv09 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + meanT*flucT,
+  data = NTall_surv, x=T)
+
+summary(mod_cox_NTsurv09)
+
+# additive with temp interaction
+# mod_cox_NTsurv10 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ meanT + flucT + pop + meanT*flucT,
+#   data = NTall_surv)
+
+```
 
 i've probably made enough variations atp so lets compare them all with `plrtest`
 
@@ -405,3 +415,15 @@ i've probably made enough variations atp so lets compare them all with `plrtest`
 #### - compare models
 
 lets compare the simple ones first LOL
+
+```{r compare simple coxph}
+# double check if these are the same LOL
+summary(mod_cox_NTsurv06)
+#summary(mod_cox_NTsurv10) # (they are)
+```
+
+```{r compare simple models}
+plrtest(mod_cox_NTsurv08, mod_cox_NTsurv09, nested = F)
+```
+
+
