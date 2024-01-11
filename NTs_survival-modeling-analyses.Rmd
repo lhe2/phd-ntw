@@ -13,7 +13,7 @@ library(survival) # for computing
 library(survminer) # for visualising
 library(nonnestcox) # for plrtest() to compare CPH models
 
-# need to reorg again at some point but not today
+# need to renumber stuff again at some point but not today
 ```
 
 
@@ -270,7 +270,7 @@ mod_checkNT_survpup6 <- glm(if.pupa2 ~ mass.pupa, data = check_NTstats, family =
   # breaks. also breaks when u try to throw sex in here so let's stop here
 ```
 
-### (**) interpreting model outputs w/ joel
+### (?) interpreting model outputs w/ joel
 
 just using (**) to sticky this
 ```{r anova(model)}
@@ -311,7 +311,7 @@ anova(mod_checkNT_survpup7, test = "Chisq")
 
 - things to check as variates: lab/TB diet; if.sup; if.stuck
 
-## - data prep
+## - (**) data prep
 ```{r filter}
 NTall_surv <- surv_P %>% filter.NTs2()
 ```
@@ -424,6 +424,48 @@ summary(mod_cox_NTsurv06)
 
 ```{r compare simple models}
 plrtest(mod_cox_NTsurv08, mod_cox_NTsurv09, nested = F)
+```
+### - redoing this and starting even simpler
+
+A. let's try just `trt.stage` and `pop` first
+
+```{r trtstage pop cox models}
+coxmod_A1 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage, data = NTall_surv)
+summary(coxmod_A1)
+```
+all trts are significant!!! idk what to make of that though. 
+
+lets try testing everything at once...
+```{r}
+# coxmod_A2 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage + pop, data = NTall_surv)
+# coxmod_A3 <- coxph(Surv(NTall_surv$timeto.exit, NTall_surv$censor) ~ trt.stage, data = NTall_surv)
+
+covariates <- c("trt.stage", "meanT", "flucT", "pop", "sex")
+multicoxfitting <- sapply(covariates, function(x) as.formula(paste('Surv(NTall_surv$timeto.exit, NTall_surv$censor)~', x)))
+multicoxmodels <- lapply(multicoxfitting, function(x){coxph(x, data = NTall_surv)})
+
+# extract results
+multicoxresults <- lapply(multicoxmodels,
+                       function(x){ 
+                          x <- summary(x)
+                          p.value<-signif(x$wald["pvalue"], digits=2)
+                          wald.test<-signif(x$wald["test"], digits=2)
+                          beta<-signif(x$coef[1], digits=2);#coeficient beta
+                          HR <-signif(x$coef[2], digits=2);#exp(beta)
+                          HR.confint.lower <- signif(x$conf.int[,"lower .95"], 2)
+                          HR.confint.upper <- signif(x$conf.int[,"upper .95"], 2)
+                          HR <- paste0(HR, " (", 
+                                       HR.confint.lower, "-", HR.confint.upper, ")")
+                          res<-c(beta, HR, wald.test, p.value)
+                          names(res)<-c("beta", "HR (95% CI for HR)", "wald.test", 
+                                        "p.value")
+                          return(res)
+                          return(exp(cbind(coef(x),confint(x))))
+                         })
+
+# put into df
+res <- t(as.data.frame(multicoxresults, check.names = FALSE))
+as.data.frame(res)
 ```
 
 
