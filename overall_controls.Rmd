@@ -1,0 +1,49 @@
+---
+title: "overall_controls"
+date: "2024-01-15"
+---
+
+purpose: checking controls over all groups. this is adding visualisations/taking some code from `other_analyses.Rmd`
+
+# 0. load data, helper fns
+```{r}
+source("./ntw_helper-functions.R")
+```
+
+# 1. checking if lab 260s across all trts are the same to each other
+```{r}
+# filter lab 260 trts
+data_lab260 <- wide_all %>%
+  filter(treatment == 260 & pop == "lab")
+
+# calculate pup summary stats
+summary_lab260 <- data_lab260 %>%
+  filter(expt.group !="C") %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
+  group_by(expt.group) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
+```
+
+```{r}
+# visualise time to pup, pupal mass, % survival to pup across expt groups
+summary_lab260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
+  geom_point() +
+  y_err_mass(y_err= 0.5) + x_err_tt(x_err = 0.5) + theme_bw() +
+  scale_color_hue(labels = c("A (n = 21)",
+                                "B (n = 16)",
+                                "D (n = 18)",
+                                "F (n = 19)")) +
+  labs(title = "avg time and mass to pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "average time to pupa from hatching", 
+       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
+```
+
+
+

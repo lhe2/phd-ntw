@@ -151,20 +151,20 @@ calc.devsumm.trtstgsex <- function(data) {
 # adding geoms ######
 
 ### error bars
-y_err_logmass <- function(x) {
-  list(geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass), width = x))
+y_err_logmass <- function(y_err) {
+  list(geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass), width = y_err))
 }
 
-y_err_mass <- function(x) {
-  list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = x))
+y_err_mass <- function(y_err) {
+  list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = y_err))
 }
 
-y_err_tt <- function(x){
-  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = x))
+y_err_tt <- function(y_err){
+  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = y_err))
 }
 
-x_err_tt <- function(x){
-  list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), width = x))
+x_err_tt <- function(x_err){
+  list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), width = x_err))
 }
 
 ### recoloring theme + legend
