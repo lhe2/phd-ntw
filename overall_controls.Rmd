@@ -18,7 +18,7 @@ library(survminer)
 # filter lab 260 trts
 data_lab260 <- wide_all %>%
   filter(treatment == 260 & pop == "lab") %>%
-  filter(expt.group !="C") %>%
+  filter(expt.group !="C") %>% # N is too small bc most of them culled
   filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
 
 # calculate pup summary stats
@@ -88,6 +88,25 @@ summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group
        x = "expt group/cohort", 
        caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
 ```
+```{r}
+# visualise survival dynamics w/ KM
+  # add survival binary & time
+data_lab260 <- data_lab260 %>% 
+  mutate(status = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         tt.exit = jdate.exit - jdate.hatch)
+
+# fit model
+kmfit.lab260 <- survfit(Surv(data_lab260$tt.exit, data_lab260$status) ~ expt.group, data = data_lab260)
+
+# plot
+ggsurvplot(fit = kmfit.lab260, data = data_lab260,
+           conf.int=T)
+  # well ... this generally fits as expected thus far lol.
+  # seems like death time is a bit more wonky under diet
+  
+```
+
 
 LOL okay rip (re: pt plot) let's model it then... (km plot for surv lol)
 
@@ -214,6 +233,7 @@ anova(mod.surv1a, test = "Chisq")
 anova(mod.surv2, test = "Chisq") # see `?anova.glm`
 anova(glm(if.pupa2 ~ diet*flucT, data = data2_lab260, family = binomial), test = "Chisq")
   # so a simpler model is better?
+
 ```
 
 ## c. summary...
@@ -228,12 +248,30 @@ how did cohort affect lab animals? mostly bc of the temp fluct/diet w/in each co
 
 - OVERALL i think this is like. an okay sign of the controls? (i.e. the mean temp wasn't messing things up.) mostly ttpup seems to be affected by all the random stuff i did -- so this'll be important to keep in mind.
 
+# 2. checking field 260s
 
-# ... checking field trts
+```{r}
+# filter field 260 trts
+data_field260 <- wide_all %>%
+  filter(treatment == 260 & pop == "field") %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
 
-# ... checking 337s
+# calculate pup summary stats
+summary_lab260 <- data_lab260 %>%
+  group_by(expt.group) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
+```
 
-(population will be addressed in NTs only!)
+
+# ... checking lab 337s
+
+(population effects will be addressed in NTs only!)
 
 
 
