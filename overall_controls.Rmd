@@ -104,7 +104,6 @@ ggsurvplot(fit = kmfit.lab260, data = data_lab260,
            conf.int=T)
   # well ... this generally fits as expected thus far lol.
   # seems like death time is a bit more wonky under diet
-  
 ```
 
 
@@ -196,7 +195,7 @@ data2_lab260 <- data2_lab260 %>%
 ```{r}
 # modeling
 
-# not sure if i should just us KM for anything with time in it...
+# not sure if i should just use KM for anything with time in it...
 mod.surv1a <- glm(if.pupa2 ~ mass.pupa*tt.exit, data = data2_lab260, family = binomial(link="logit"))
 mod.surv1b <- glm(if.pupa2 ~ mass.pupa*tt.exit, data = data2_lab260, family = binomial)
   # default link for binomial is the logit lol
@@ -234,6 +233,8 @@ anova(mod.surv2, test = "Chisq") # see `?anova.glm`
 anova(glm(if.pupa2 ~ diet*flucT, data = data2_lab260, family = binomial), test = "Chisq")
   # so a simpler model is better?
 
+# deciding to skip the cox rn bc it's pretty obvious that survival is different w/in each lab bug cohort. debateable if grp D (diurnal + LD) is diff from A/B though (const + LD)
+
 ```
 
 ## c. summary...
@@ -257,7 +258,7 @@ data_field260 <- wide_all %>%
   filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
 
 # calculate pup summary stats
-summary_lab260 <- data_lab260 %>%
+summary_field260 <- data_field260 %>%
   group_by(expt.group) %>%
   summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
@@ -266,6 +267,79 @@ summary_lab260 <- data_lab260 %>%
             n_all = n(),
             n_pmd = sum(final.fate == "pmd"), 
             pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
+```
+
+## a. visualise
+
+stealing the code from above `lab` stuff lol + adjusting variable names as needed
+
+```{r}
+# visualise time to pup, pupal mass across expt groups
+summary_field260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
+  geom_point() +
+  y_err_mass(y_err= 0.9) + x_err_tt(x_err = 0.9) + theme_bw() +
+  scale_color_hue(labels = c("E (n = 38)",
+                                "F (n = 24)",
+                                "H (n = 18)")) +
+  labs(title = "avg time to and mass at pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "average time to pupa from hatching", 
+       caption = "H = 426 topoff")
+
+# let's isolate more... just masspup
+summary_field260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
+  geom_col() +
+  y_err_mass(y_err= 0.9) + theme_bw() +
+  scale_color_hue(labels = c("E (n = 38)",
+                                "F (n = 24)",
+                                "H (n = 18)")) +
+  labs(title = "avg mass at pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "expt group", 
+       caption = "H = 426 topoff")
+
+# just tt pup
+summary_field260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
+  geom_col() +
+  y_err_tt(y_err= 0.9) + theme_bw() +
+  scale_color_hue(labels = c("E (n = 38)",
+                                "F (n = 24)",
+                                "H (n = 18)")) +
+  labs(title = "avg time to pupation for lab controls", 
+       y = "average time to pupation from hatching", 
+       x = "expt group", 
+       caption = "H = 426 topoff")
+
+# visualise % survival
+summary_field260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
+  geom_col() + theme_bw() +
+  #y_err(avg.mass, se.mass) + #SIGH
+  # scale_fill_hue(labels = c("A (n = 21)",
+  #                            "B (n = 16)",
+  #                            "D (n = 18)",
+  #                            "F (n = 19)")) +
+  geom_text(aes(label = paste0("n = ", n_all), y = 5), check_overlap = TRUE) +
+  labs(title = "% survived to pupation (incl LPI)", 
+       y = "% surviving", 
+       x = "expt group/cohort", 
+       caption = "H = 426 topoff")
+```
+
+```{r}
+# visualise survival dynamics w/ KM
+  # add survival binary & time
+data_field260 <- data_field260 %>% 
+  mutate(status = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         tt.exit = jdate.exit - jdate.hatch)
+
+# fit model
+kmfit.field260 <- survfit(Surv(data_field260$tt.exit, data_field260$status) ~ expt.group, data = data_field260)
+
+# plot
+ggsurvplot(fit = kmfit.field260, data = data_field260,
+           conf.int=T)
+  # they all have huuuuge CIs...
 ```
 
 
