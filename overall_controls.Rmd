@@ -8,6 +8,9 @@ purpose: checking controls over all groups. this is adding visualisations/taking
 # 0. load data, helper fns
 ```{r}
 source("./ntw_helper-functions.R")
+
+library(survival)
+library(survminer)
 ```
 
 # 1. checking if lab 260s across all trts are the same to each other
@@ -30,6 +33,7 @@ summary_lab260 <- data_lab260 %>%
             pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
 ```
 
+## a. visualise
 ```{r}
 # visualise time to pup, pupal mass across expt groups
 summary_lab260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
@@ -87,6 +91,7 @@ summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group
 
 LOL okay rip (re: pt plot) let's model it then... (km plot for surv lol)
 
+## b. modeling
 ```{r}
 # mass model
 mod.mass <- lm(mass.pupa ~ expt.group, data = data_lab260)
@@ -94,6 +99,18 @@ anova(mod.mass)
 
 mod.mass2 <- lm(mass.pupa ~ expt.group*sex, data = data_lab260)
 anova(mod.mass2)
+  # adding sex doesnt help
+
+mod.mass3 <- lm(mass.pupa ~ sex, data = data_lab260)
+anova(mod.mass3)
+  # but sex alone is signif, as expected
+
+
+# quick visualisation
+plot.design(mass.pupa ~ expt.group, data = data2_lab260)
+  # B is really big? mostly bc it seems like there were 9 f and 7 m though
+plot.design(mass.pupa ~ as.factor(sex), data = data2_lab260)
+  # as expected
 ```
 word no major effect. sex somewhat confirms it
 
@@ -104,6 +121,7 @@ word no major effect. sex somewhat confirms it
 mod.tt <- lm((jdate.pupa - jdate.hatch) ~ expt.group, data = data_lab260)
 anova(mod.tt)
   # oops (EG is signif by ***)
+summary(mod.tt)
 
 mod.tt2 <- lm((jdate.pupa - jdate.hatch) ~ expt.group*sex, data = data_lab260)
 anova(mod.tt2)
@@ -125,14 +143,97 @@ anova(mod.tt4)
 mod.tt5 <- lm((jdate.pupa - jdate.hatch) ~ flucT*diet, data = data2_lab260)
 anova(mod.tt5)
   # flucT and diet both signif
+summary(mod.tt5)
 
 mod.tt6 <- lm((jdate.pupa - jdate.hatch) ~ flucT*diet*sex, data = data2_lab260)
 anova(mod.tt6)
   # flucT and diet both signif; diet:sex a little sig. sex is not
 
-# do i anova these together next...??
+mod.tt7 <- lm((jdate.pupa - jdate.hatch) ~ diet, data = data2_lab260)
+anova(mod.tt7)
+summary(mod.tt7)
+  # diet and intercept model are both sig lol?
+
+# quick visualisation
+plot.design((jdate.pupa - jdate.hatch) ~ expt.group, data = data2_lab260)
+  # ... lol
+```
+errrm so group does have a big effect on ttpup, probably due to the diet + diurnal (sweats;;). see mod 5
+
+let's look at survival...
+
+```{r}
+# survival glms
+
+# add some more binaries
+data2_lab260 <- data2_lab260 %>%
+  mutate(if.pupa2 = case_when(if.pupa == "Y" ~ 0, TRUE ~ 1),
+         tt.exit = jdate.exit - jdate.hatch)
+
+# does survival depend on time? mass? diet? temp trt?
 
 ```
+
+```{r}
+# modeling
+
+# not sure if i should just us KM for anything with time in it...
+mod.surv1a <- glm(if.pupa2 ~ mass.pupa*tt.exit, data = data2_lab260, family = binomial(link="logit"))
+mod.surv1b <- glm(if.pupa2 ~ mass.pupa*tt.exit, data = data2_lab260, family = binomial)
+  # default link for binomial is the logit lol
+
+anova(mod.surv1a)
+anova(mod.surv1b)
+  # seems like mass + tt dont matter... (but they depend on temp/diet tho?)
+
+mod.surv2 <- glm(if.pupa2 ~ flucT*diet, data = data2_lab260, family = binomial)
+anova(mod.surv2)
+summary(mod.surv2)
+  # diet has a barely signif contribution to overall survival?
+  # well that's good, actually
+
+mod.surv3 <- glm(if.pupa2 ~ sex, data = data2_lab260, family = binomial)
+anova(mod.surv3)
+  # also seems like sex doesnt matter which is good!
+
+mod.surv4 <- glm(if.pupa2 ~ expt.group, data = data2_lab260, family = binomial)
+anova(mod.surv4)
+  # this is also a good sign i think
+
+# one more quick visualisation
+data2_lab260$expt.group <- as.factor(data2_lab260$expt.group)
+plot.design(if.pupa2 ~ expt.group, data = data2_lab260)
+  # you can see F is the most different and D is also a little different.
+  # idk what the numbers mean tho (ranges 0.0 to 0.4. avging 1's and 0's?)
+
+# revisit some of the old models
+anova(mod.surv1a, test = "Chisq")
+  # u get nothin. thats good i think
+
+# the only model with any signif
+anova(mod.surv2, test = "Chisq") # see `?anova.glm`
+anova(glm(if.pupa2 ~ diet*flucT, data = data2_lab260, family = binomial), test = "Chisq")
+  # so a simpler model is better?
+```
+
+## c. summary...
+
+how did cohort affect lab animals? mostly bc of the temp fluct/diet w/in each cohort ("cohort-related").
+
+- mass wasnt really rlly affected by cohort-related stuff. was significantly affected by sex, as assumed
+
+- tt.pup was significantly affected by fluct + diet in combination? maybe more fluct tho,,, see `mod.tt7`?
+
+- surv seems to be very minorly affected by diet,,, see `mod.surv2`. doesnt super seem to be bc of mass/time (that's good?)
+
+- OVERALL i think this is like. an okay sign of the controls? (i.e. the mean temp wasn't messing things up.) mostly ttpup seems to be affected by all the random stuff i did -- so this'll be important to keep in mind.
+
+
+# ... checking field trts
+
+# ... checking 337s
+
+(population will be addressed in NTs only!)
 
 
 
