@@ -14,12 +14,12 @@ source("./ntw_helper-functions.R")
 ```{r}
 # filter lab 260 trts
 data_lab260 <- wide_all %>%
-  filter(treatment == 260 & pop == "lab")
+  filter(treatment == 260 & pop == "lab") %>%
+  filter(expt.group !="C") %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
 
 # calculate pup summary stats
 summary_lab260 <- data_lab260 %>%
-  filter(expt.group !="C") %>%
-  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
   group_by(expt.group) %>%
   summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
@@ -88,8 +88,52 @@ summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group
 LOL okay rip (re: pt plot) let's model it then... (km plot for surv lol)
 
 ```{r}
+# mass model
+mod.mass <- lm(mass.pupa ~ expt.group, data = data_lab260)
+anova(mod.mass)
+
+mod.mass2 <- lm(mass.pupa ~ expt.group*sex, data = data_lab260)
+anova(mod.mass2)
+```
+word no major effect. sex somewhat confirms it
+
+```{r}
+# ttpup model
+# a note that only grp F ate TB diet lol
+
+mod.tt <- lm((jdate.pupa - jdate.hatch) ~ expt.group, data = data_lab260)
+anova(mod.tt)
+  # oops (EG is signif by ***)
+
+mod.tt2 <- lm((jdate.pupa - jdate.hatch) ~ expt.group*sex, data = data_lab260)
+anova(mod.tt2)
+  # OOPS.. (only EG is signif by ***)
+
+mod.tt3 <- lm((jdate.pupa - jdate.hatch) ~ sex, data = data_lab260)
+anova(mod.tt3)
+  # no sig
+
+# lets add the diurnal temps back in lol
+data2_lab260 <- data_lab260 %>%
+  mutate(flucT = case_when((expt.group == "D" | expt.group == "F") ~ 2.5,
+                           TRUE ~ 0))
+
+mod.tt4 <- lm((jdate.pupa - jdate.hatch) ~ flucT, data = data2_lab260)
+anova(mod.tt4)
+  # diff SS as the expt.group but same level of sig
+
+mod.tt5 <- lm((jdate.pupa - jdate.hatch) ~ flucT*diet, data = data2_lab260)
+anova(mod.tt5)
+  # flucT and diet both signif
+
+mod.tt6 <- lm((jdate.pupa - jdate.hatch) ~ flucT*diet*sex, data = data2_lab260)
+anova(mod.tt6)
+  # flucT and diet both signif; diet:sex a little sig. sex is not
+
+# do i anova these together next...??
 
 ```
+
 
 
 
