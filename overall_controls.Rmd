@@ -173,7 +173,7 @@ summary(mod.tt7)
   # diet and intercept model are both sig lol?
 
 # quick visualisation
-plot.design((jdate.pupa - jdate.hatch) ~ expt.group, data = data2_lab260)
+plot.design((jdate.pupa - jdate.hatch) ~ as.factor(expt.group), data = data2_lab260)
   # ... lol
 ```
 errrm so group does have a big effect on ttpup, probably due to the diet + diurnal (sweats;;). see mod 5
@@ -281,7 +281,7 @@ summary_field260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   scale_color_hue(labels = c("E (n = 38)",
                                 "F (n = 24)",
                                 "H (n = 18)")) +
-  labs(title = "avg time to and mass at pupation for lab controls", 
+  labs(title = "avg time to and mass at pupation for field controls", 
        y = "average pupal mass", 
        x = "average time to pupa from hatching", 
        caption = "H = 426 topoff")
@@ -293,7 +293,7 @@ summary_field260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)
   scale_color_hue(labels = c("E (n = 38)",
                                 "F (n = 24)",
                                 "H (n = 18)")) +
-  labs(title = "avg mass at pupation for lab controls", 
+  labs(title = "avg mass at pupation for field controls", 
        y = "average pupal mass", 
        x = "expt group", 
        caption = "H = 426 topoff")
@@ -305,7 +305,7 @@ summary_field260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) 
   scale_color_hue(labels = c("E (n = 38)",
                                 "F (n = 24)",
                                 "H (n = 18)")) +
-  labs(title = "avg time to pupation for lab controls", 
+  labs(title = "avg time to pupation for field controls", 
        y = "average time to pupation from hatching", 
        x = "expt group", 
        caption = "H = 426 topoff")
@@ -313,13 +313,8 @@ summary_field260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) 
 # visualise % survival
 summary_field260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
   geom_col() + theme_bw() +
-  #y_err(avg.mass, se.mass) + #SIGH
-  # scale_fill_hue(labels = c("A (n = 21)",
-  #                            "B (n = 16)",
-  #                            "D (n = 18)",
-  #                            "F (n = 19)")) +
   geom_text(aes(label = paste0("n = ", n_all), y = 5), check_overlap = TRUE) +
-  labs(title = "% survived to pupation (incl LPI)", 
+  labs(title = "% field bugs survived to pupation (incl LPI)", 
        y = "% surviving", 
        x = "expt group/cohort", 
        caption = "H = 426 topoff")
@@ -442,7 +437,7 @@ ggsurvplot(fit = kmfit.lab337, data = data_lab337,
 ```
 ## b. summary
 
-let's ignore grp A lol but not really sure what's going on in grp B and F re: tt pup and survival... tbh i think it's hard to say just bc they're really far apart in time lol soooo... bookmark this and we'll revisit later..
+let's ignore grp A lol but not really sure what's going on in grp B and F re: tt pup and survival... tbh i think it's hard to say just bc they're really far apart in time lol soooo... bookmark this and we'll revisit later.. but basically B did a lot better than F for some reason :p (shorter dev time and bette survival overall)
 
 
 
