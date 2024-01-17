@@ -3,7 +3,7 @@ title: "temps_analyses"
 date: "2023-12-07"
 ---
 
-# 0 load data & packages
+# 0. load data & packages
 ```{r}
 source("./ntw_helper-functions.R")
 rm(list=c(acc_helpers, NT_helpers))
@@ -12,7 +12,7 @@ library(survival)
 library(survminer)
 ```
 
-# 2.0 super simple stats
+# 1. pct sup
 ```{r}
 wide_all %>%
   filter.temps2() %>% filter(pop == "lab") %>%
@@ -27,7 +27,7 @@ wide_all %>%
 
 ```
 
-## - sup barplots
+## a. barplots
 ```{r}
 # make these into barplots instead
 
@@ -41,7 +41,11 @@ wide_all %>%
   theme_bw() + scale_fill_brewer(palette = "Greens")
 ```
 
-# 3.0 overall growth trends; end points
+# *** lowkey ignore ***
+
+i sorta dislike everything under here so we're kinda ignoring it rn (maybe picking + choosing tho)
+
+# overall growth trends; end points
 
 compare overall development of all individuals compared to average growth
 
@@ -136,7 +140,7 @@ temps_devP %>%
   labs(y = "average development rate (to pupa)", x = "mean temperature (°C)", shape = "fluctuation (°C)", lty = "fluctuation (°C)")
 ```
 
-# 4.0 survival to pupation
+# survival to pupation
 
 ## - censoring + subsetting
 ```{r}
@@ -171,7 +175,7 @@ ggsurvplot(fit = temps_sfit, data=temps_surv,
   labs(caption = "(uses actual cohort; ignores 'ignores' + 'culled')")
 ```
 
-# 5.0 cox-ph survival stuff?
+# cox-ph survival stuff?
 
 - check as variables: lab/TB diet; if.sup; if.stuck
 
@@ -187,18 +191,184 @@ ggsurvplot(fit = temps_sfit, data=temps_surv,
 
 ```
 
-# 6.0 x=trt, y = response graphs
+# x=trt, y = response graphs
 
 ```{r}
 # subset data
 temps_all <- wide_all %>% filter.temps2()
 
-ggplot()
-
-
-
-
-
+#ggplot()
 
 ```
+
+
+# *** ok restarting here lol ***
+
+(this mostly takes the code form `overall_controls.Rmd` LOL)
+
+# 2. visualise growth, dev, surv
+
+## - summarise data
+```{r}
+# filter out pupal stuff & the correct bugs lol
+temps_all <- wide_all %>%
+  filter.temps2() %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
+
+# calculate the pup stats we're interested in
+summary_temps <- temps_all %>%
+  group_by(meanT, flucT) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            prop.survpup = round(1-(n_pmd/n_all), digits=2))
+  # mutate(meanT = as.factor(meanT),
+  #        flucT = as.factor(flucT))
+  # # nvm lets NOT do this bc i'll forget when we do the surv stuff
+```
+
+## - plot
+
+```{r}
+# visualise time to pup, pupal mass across expt groups
+summary_temps %>% ggplot(aes(y = avg.mass, x = avg.tt, color = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2.5) +
+  y_err_mass(y_err= 0.1) + x_err_tt(x_err = 100) + theme_bw() +
+  labs(title = "2x2: avg time to and mass at pupation", 
+       y = "average pupal mass (mg)", 
+       x = "average time to pupa from hatching (days)", 
+       caption = "all lab",
+       shape = "fluctuation temp", color = "mean temp") +
+  scale_color_manual(labels = c("26°C", "33°C"), values = c("#00BFC4", "#F8766D")) +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C"))
+
+# eyeeee dk what this means honestly LOLLL (not sure how to make sense of it)
+```
+so... hotter mean = lower mass. higher fluct = longer tt pup...
+
+let's try to not plot 80 things at once and just put 1 response var on the y lol
+
+```{r}
+# avg pup mass due to temp
+summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2) + geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = as.factor(flucT), group = flucT)) +
+  y_err_mass(y_err = 0.04) + theme_bw() +
+  labs(title = "2x2: avg mass at pupation", 
+       y = "average pupal mass (mg)", 
+       x = "mean temp (°C)", 
+       caption = "all lab; N",
+       shape = "fluctuation temp", lty = "fluctuation temp") +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+  
+# avg tt pupa due to temp
+summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2) + geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = as.factor(flucT), group = flucT)) +
+  y_err_tt(y_err = 0.04) + theme_bw() +
+  labs(title = "2x2: avg time to pupation", 
+       y = "average time to pupation from hatching (days)", 
+       x = "mean temp (°C)", 
+       caption = "all lab; N",
+       shape = "fluctuation temp", lty = "fluctuation temp") +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+
+# avg surv due to temp
+summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2) + 
+  #geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter()) +
+  geom_line(aes(lty = as.factor(flucT), group = flucT)) +
+  theme_bw() + 
+  #geom_blank(aes(y=1.0095)) +
+  # expand_limits(y = c(0.87, 1.025)) +
+  labs(title = "2x2: proportion survived to pupation", 
+       y = "prop. survived to pupation", 
+       x = "mean temp (°C)", 
+       caption = "all lab; N",
+       shape = "fluctuation temp", lty = "fluctuation temp") +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+
+```
+
+```{r}
+# KM curve
+
+# add binaries and fit model
+temps_all <- temps_all %>% 
+  mutate(status = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         tt.exit = jdate.exit - jdate.hatch)
+
+# kmfit.temps <- survfit(Surv(temps_all$tt.exit, temps_all$status) ~ meanT*flucT, data = temps_all)
+  # this doesnt work bc u cant do int terms. til
+
+kmfit.temps <- survfit(Surv(temps_all$tt.exit, temps_all$status) ~ treatment, data = temps_all)
+
+# plot
+ggsurvplot(fit = kmfit.temps, data = temps_all,
+           conf.int = TRUE)
+```
+
+- this KM curve is not really interesting (everything overlaps + surv is high overall) so we'll just leave it here!
+  - altho probably of note is that the mean=33 does separate out from mean=26 (lower survival). but again the probabilies/CIs are close/overlap so.
+
+
+
+(as a followup to km plot -> model w/ glms?)
+
+
+
+
+
+(testing...)
+```{r}
+# let's isolate more... just masspup
+summary_lab260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
+  geom_col() +
+  y_err_mass(y_err= 0.9) + theme_bw() +
+  scale_fill_hue(labels = c("A (n = 21)",
+                                "B (n = 16)",
+                                "D (n = 18)",
+                                "F (n = 19)")) +
+  labs(title = "avg mass at pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "expt group", 
+       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
+
+# just tt pup
+summary_lab260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
+  geom_col() +
+  y_err_tt(y_err= 0.9) + theme_bw() +
+  scale_fill_hue(labels = c("A (n = 21)",
+                                "B (n = 16)",
+                                "D (n = 18)",
+                                "F (n = 19)")) +
+  labs(title = "avg time to pupation for lab controls", 
+       y = "average time to pupation from hatching", 
+       x = "expt group", 
+       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
+
+# visualise % survival
+summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
+  geom_col() + theme_bw() +
+  #y_err(avg.mass, se.mass) + #SIGH
+  # scale_fill_hue(labels = c("A (n = 21)",
+  #                            "B (n = 16)",
+  #                            "D (n = 18)",
+  #                            "F (n = 19)")) +
+  geom_text(aes(label = paste0("n = ", n_all), y = 10), check_overlap = TRUE) +
+  labs(title = "% survived to pupation (incl LPI)", 
+       y = "% surviving", 
+       x = "expt group/cohort", 
+       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
+```
+
+
+
 
