@@ -11,6 +11,8 @@ source("./ntw_helper-functions.R")
 
 library(survival)
 library(survminer)
+
+RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 ```
 
 # 1. checking if lab 260s across all trts are the same to each other
@@ -39,10 +41,11 @@ summary_lab260 <- data_lab260 %>%
 summary_lab260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   geom_point() +
   y_err_mass(y_err= 0.9) + x_err_tt(x_err = 0.9) + theme_bw() +
-  scale_color_hue(labels = c("A (n = 21)",
+  scale_color_manual(labels = c("A (n = 21)",
                                 "B (n = 16)",
                                 "D (n = 18)",
-                                "F (n = 19)")) +
+                                "F (n = 19)"),
+                     values = RYB) +
   labs(title = "avg time to and mass at pupation for lab controls", 
        y = "average pupal mass", 
        x = "average time to pupa from hatching", 
@@ -52,10 +55,11 @@ summary_lab260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
 summary_lab260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
   geom_col() +
   y_err_mass(y_err= 0.9) + theme_bw() +
-  scale_fill_hue(labels = c("A (n = 21)",
+  scale_fill_manual(labels = c("A (n = 21)",
                                 "B (n = 16)",
                                 "D (n = 18)",
-                                "F (n = 19)")) +
+                                "F (n = 19)"),
+                 values = RYB) +
   labs(title = "avg mass at pupation for lab controls", 
        y = "average pupal mass", 
        x = "expt group", 
@@ -65,10 +69,11 @@ summary_lab260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) 
 summary_lab260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
   geom_col() +
   y_err_tt(y_err= 0.9) + theme_bw() +
-  scale_fill_hue(labels = c("A (n = 21)",
+  scale_fill_manual(labels = c("A (n = 21)",
                                 "B (n = 16)",
                                 "D (n = 18)",
-                                "F (n = 19)")) +
+                                "F (n = 19)"),
+                 values = RYB) +
   labs(title = "avg time to pupation for lab controls", 
        y = "average time to pupation from hatching", 
        x = "expt group", 
@@ -77,6 +82,7 @@ summary_lab260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
 # visualise % survival
 summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
   geom_col() + theme_bw() +
+  scale_fill_manual(values = RYB) +
   #y_err(avg.mass, se.mass) + #SIGH
   # scale_fill_hue(labels = c("A (n = 21)",
   #                            "B (n = 16)",
@@ -101,7 +107,8 @@ kmfit.lab260 <- survfit(Surv(data_lab260$tt.exit, data_lab260$status) ~ expt.gro
 
 # plot
 ggsurvplot(fit = kmfit.lab260, data = data_lab260,
-           conf.int=T)
+           conf.int=T,
+           palette = RYB)
   # well ... this generally fits as expected thus far lol.
   # seems like death time is a bit more wonky under diet
 ```
@@ -202,6 +209,7 @@ mod.surv1b <- glm(if.pupa2 ~ mass.pupa*tt.exit, data = data2_lab260, family = bi
 
 anova(mod.surv1a)
 anova(mod.surv1b)
+summary(mod.surv1b)
   # seems like mass + tt dont matter... (but they depend on temp/diet tho?)
 
 mod.surv2 <- glm(if.pupa2 ~ flucT*diet, data = data2_lab260, family = binomial)
@@ -401,19 +409,21 @@ summary_lab337 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) 
 summary_lab337 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
   geom_col() +
   y_err_tt(y_err= 0.9) + theme_bw() +
-  scale_fill_hue(labels = c("A (n = 4)",
+  scale_fill_manual(labels = c("A (n = 4)",
                                 "B (n = 27)",
-                                "F (n = 27)")) +
-  labs(title = "avg time to and mass at pupation for lab controls", 
-       y = "average pupal mass", 
-       x = "average time to pupa from hatching", 
+                                "F (n = 27)"),
+                    values = RYB) +
+  labs(title = "avg time to pupation for lab controls (33±7)", 
+       y = "average time to pupation (days)", 
+       x = "expt group/cohort", 
        caption = "A = 24 but accidental deaths; C omitted bc of culling")
 
 # visualise % survival
 summary_lab337 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
   geom_col() + theme_bw() +
   geom_text(aes(label = paste0("n = ", n_all), y = 10), check_overlap = TRUE) +
-  labs(title = "% survived to pupation (incl LPI)", 
+  scale_fill_manual(values = RYB) +
+  labs(title = "% lab ctrls (33±7) survived to pupation (incl LPI)", 
        y = "% surviving", 
        x = "expt group/cohort", 
        caption = "A = 24 but accidental deaths; C omitted bc of culling")
@@ -432,7 +442,7 @@ kmfit.lab337 <- survfit(Surv(data_lab337$tt.exit, data_lab337$status) ~ expt.gro
 
 # plot
 ggsurvplot(fit = kmfit.lab337, data = data_lab337,
-           conf.int=T)
+           conf.int=T, palette = RYB)
 
 ```
 ## b. summary
