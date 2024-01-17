@@ -325,6 +325,8 @@ summary_field260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.gro
        caption = "H = 426 topoff")
 ```
 
+overall i care most abt group E and F matching. this generally seems to be the case which is good. don't think we'll pursue modeling these for the most part
+
 ```{r}
 # visualise survival dynamics w/ KM
   # add survival binary & time
@@ -341,11 +343,106 @@ ggsurvplot(fit = kmfit.field260, data = data_field260,
            conf.int=T)
   # they all have huuuuge CIs...
 ```
+should followup on some of those freakishly long lived things in grp E (probably sups?) but otherwise i'm also reasonably content with this
 
+## b. summary
 
-# ... checking lab 337s
+basically nothing is that surprising to me here. they seem to be similar (which is good)
+
+# 3. checking lab 337s
 
 (population effects will be addressed in NTs only!)
+
+same qns as before: do they look the "same" across trts? (also need to check removing that extra grp lol)
+
+(and once again we are just gunna copy a lot of code lol)
+
+```{r}
+# filter lab 260 trts
+data_lab337 <- wide_all %>%
+  filter(treatment == 337 & pop == "lab" & instar.enter == "hatch") %>%
+  filter(expt.group !="C") %>% # N is too small bc most of them culled
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
+
+# calculate pup summary stats
+summary_lab337 <- data_lab337 %>%
+  group_by(expt.group) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
+```
+
+## a. visualise
+```{r}
+# visualise time to pup, pupal mass across expt groups
+summary_lab337 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
+  geom_point() +
+  y_err_mass(y_err= 0.9) + x_err_tt(x_err = 0.9) + theme_bw() +
+  scale_color_hue(labels = c("A (n = 4)",
+                                "B (n = 27)",
+                                "F (n = 27)")) +
+  labs(title = "avg time to and mass at pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "average time to pupa from hatching", 
+       caption = "A = 24 but accidental deaths; C omitted bc of culling")
+
+# let's isolate more... just masspup
+summary_lab337 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
+  geom_col() +
+  y_err_mass(y_err= 0.9) + theme_bw() +
+  scale_fill_hue(labels = c("A (n = 4)",
+                                "B (n = 27)",
+                                "F (n = 27)")) +
+  labs(title = "avg time to and mass at pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "average time to pupa from hatching", 
+       caption = "A = 24 but accidental deaths; C omitted bc of culling")
+
+# just tt pup
+summary_lab337 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
+  geom_col() +
+  y_err_tt(y_err= 0.9) + theme_bw() +
+  scale_fill_hue(labels = c("A (n = 4)",
+                                "B (n = 27)",
+                                "F (n = 27)")) +
+  labs(title = "avg time to and mass at pupation for lab controls", 
+       y = "average pupal mass", 
+       x = "average time to pupa from hatching", 
+       caption = "A = 24 but accidental deaths; C omitted bc of culling")
+
+# visualise % survival
+summary_lab337 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
+  geom_col() + theme_bw() +
+  geom_text(aes(label = paste0("n = ", n_all), y = 10), check_overlap = TRUE) +
+  labs(title = "% survived to pupation (incl LPI)", 
+       y = "% surviving", 
+       x = "expt group/cohort", 
+       caption = "A = 24 but accidental deaths; C omitted bc of culling")
+```
+
+```{r}
+# visualise survival dynamics w/ KM
+  # add survival binary & time
+data_lab337 <- data_lab337 %>% 
+  mutate(status = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0),
+         tt.exit = jdate.exit - jdate.hatch)
+
+# fit model
+kmfit.lab337 <- survfit(Surv(data_lab337$tt.exit, data_lab337$status) ~ expt.group, data = data_lab337)
+
+# plot
+ggsurvplot(fit = kmfit.lab337, data = data_lab337,
+           conf.int=T)
+
+```
+## b. summary
+
+let's ignore grp A lol but not really sure what's going on in grp B and F re: tt pup and survival... tbh i think it's hard to say just bc they're really far apart in time lol soooo... bookmark this and we'll revisit later..
 
 
 
