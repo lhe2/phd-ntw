@@ -10,6 +10,8 @@ rm(list=c(acc_helpers, NT_helpers))
 
 library(survival)
 library(survminer)
+
+RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 ```
 
 # 1. pct sup
@@ -242,7 +244,8 @@ summary_temps %>% ggplot(aes(y = avg.mass, x = avg.tt, color = as.factor(meanT),
        x = "average time to pupa from hatching (days)", 
        caption = "all lab",
        shape = "fluctuation temp", color = "mean temp") +
-  scale_color_manual(labels = c("26°C", "33°C"), values = c("#00BFC4", "#F8766D")) +
+  scale_color_manual(labels = c("26°C", "33°C"), 
+                     values = c("#00BFC4", "#F8766D")) +
   scale_shape_discrete(labels = c("± 0°C", "± 7°C"))
 
 # eyeeee dk what this means honestly LOLLL (not sure how to make sense of it)
@@ -312,7 +315,8 @@ kmfit.temps <- survfit(Surv(temps_all$tt.exit, temps_all$status) ~ treatment, da
 
 # plot
 ggsurvplot(fit = kmfit.temps, data = temps_all,
-           conf.int = TRUE)
+           conf.int = TRUE,
+           palette = RYB)
 ```
 
 - this KM curve is not really interesting (everything overlaps + surv is high overall) so we'll just leave it here!
