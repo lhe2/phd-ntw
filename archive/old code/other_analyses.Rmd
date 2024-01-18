@@ -3,6 +3,8 @@ title: "other_analyses"
 date: "2023-12-07"
 ---
 
+240118: i think this was the first time i tried to do some overall EDAs of the controls. this is mostly stale now and is addressed in `overall_controls`
+
 # 0.1 load data & packages
 
 ```{r message = FALSE}
