@@ -94,7 +94,93 @@ summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group
        x = "expt group/cohort", 
        caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
 ```
-```{r}
+
+### // followup 01: per 240117-8 meetings, let's facet these graphs a bit differently (+ try a bargraph?)
+
+```{r data prep again}
+# let's test on mass pup first.
+
+# redo the summary with other groupings
+summary_lab260.2 <- data_lab260 %>%
+  mutate(flucT = case_when((expt.group == "D" | expt.group == "F") ~ 2.5,
+                           TRUE ~ 0)) %>% # add in the correct fluct lol
+  group_by(expt.group, diet, flucT) %>% # nts: dont need src
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass =  sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
+
+# add better names for the facet labels
+summary_lab260.2 <- summary_lab260.2 %>%
+  mutate(x.label = case_when(flucT == 0 ~ "0°C",
+                             TRUE ~ "2.5°C"))
+
+# column adjustments for boxplotting
+data_lab260.2 <- data_lab260 %>%
+    mutate(flucT = case_when((expt.group == "D" | expt.group == "F") ~ 2.5,
+                           TRUE ~ 0)) %>% # add in the correct fluct lol
+    mutate(x.label = case_when(flucT == 0 ~ "0°C",
+                             TRUE ~ "2.5°C"),
+           tt.pupa = jdate.pupa-jdate.hatch) %>%
+  group_by(expt.group) %>%
+  mutate(n = n()) %>%
+  ungroup()
+  
+```
+
+```{r graphing again}
+# mass.pup graph
+data_lab260.2 %>% ggplot(aes(y = mass.pupa, x = expt.group, fill = diet)) +
+  geom_boxplot() +
+  #y_err_mass(y_err= 0.9) + 
+  theme_bw() +
+  scale_fill_manual(labels = c("lab diet", "tobacco diet"),
+                    values = RYB) +
+  labs(title = "avg mass at pupation for lab controls", 
+       y = "average pupal mass (mg)", 
+       x = "expt group", 
+       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+  facet_grid(~x.label, scales = "free_x", space = "free") +
+  geom_text(aes(label = paste0("n = ", n), y = 15), check_overlap = TRUE)
+  # this is kinda interesting. let's look at the others. and not bar graphs lol
+
+# tt pup graph
+data_lab260.2 %>% ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
+  geom_boxplot() +
+  #y_err_tt(y_err= 0.9) + 
+  theme_bw() +
+  scale_fill_discrete(labels = c("lab diet", "tobacco diet")) + # cant read the font w the colors
+  labs(title = "avg time to pupation for lab controls", 
+       x = "expt group",
+       y = "average days to pupation from hatching", 
+       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+  facet_grid(~x.label, scales = "free_x", space = "free") +
+  geom_text(aes(label = paste0("n = ", n), y = 15), check_overlap = TRUE)
+
+# visualise % survival
+summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
+  geom_col() + theme_bw() +
+  scale_fill_manual(values = RYB) +
+  #y_err(avg.mass, se.mass) + #SIGH
+  # scale_fill_hue(labels = c("A (n = 21)",
+  #                            "B (n = 16)",
+  #                            "D (n = 18)",
+  #                            "F (n = 19)")) +
+  geom_text(aes(label = paste0("n = ", n_all), y = 10), check_overlap = TRUE) +
+  labs(title = "% survived to pupation (incl LPI)", 
+       y = "% surviving", 
+       x = "expt group/cohort", 
+       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+  facet_grid(~x.label, scales = "free_x", space = "free")
+  
+```
+
+
+
+```{r KM plot}
 # visualise survival dynamics w/ KM
   # add survival binary & time
 data_lab260 <- data_lab260 %>% 
@@ -117,7 +203,7 @@ ggsurvplot(fit = kmfit.lab260, data = data_lab260,
 LOL okay rip (re: pt plot) let's model it then... (km plot for surv lol)
 
 ## b. modeling
-```{r}
+```{r mass models}
 # mass model
 mod.mass <- lm(mass.pupa ~ expt.group, data = data_lab260)
 anova(mod.mass)
@@ -139,7 +225,7 @@ plot.design(mass.pupa ~ as.factor(sex), data = data2_lab260)
 ```
 word no major effect. sex somewhat confirms it
 
-```{r}
+```{r ttpup models}
 # ttpup model
 # a note that only grp F ate TB diet lol
 
@@ -187,7 +273,7 @@ errrm so group does have a big effect on ttpup, probably due to the diet + diurn
 
 let's look at survival...
 
-```{r}
+```{r survival glms prep}
 # survival glms
 
 # add some more binaries
@@ -199,7 +285,7 @@ data2_lab260 <- data2_lab260 %>%
 
 ```
 
-```{r}
+```{r survival glm-ing}
 # modeling
 
 # not sure if i should just use KM for anything with time in it...
@@ -281,7 +367,7 @@ summary_field260 <- data_field260 %>%
 
 stealing the code from above `lab` stuff lol + adjusting variable names as needed
 
-```{r}
+```{r main plots}
 # visualise time to pup, pupal mass across expt groups
 summary_field260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   geom_point() +
@@ -330,7 +416,7 @@ summary_field260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.gro
 
 overall i care most abt group E and F matching. this generally seems to be the case which is good. don't think we'll pursue modeling these for the most part
 
-```{r}
+```{r KM plot}
 # visualise survival dynamics w/ KM
   # add survival binary & time
 data_field260 <- data_field260 %>% 
@@ -380,7 +466,7 @@ summary_lab337 <- data_lab337 %>%
 ```
 
 ## a. visualise
-```{r}
+```{r main plots}
 # visualise time to pup, pupal mass across expt groups
 summary_lab337 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   geom_point() +
@@ -429,7 +515,7 @@ summary_lab337 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group
        caption = "A = 24 but accidental deaths; C omitted bc of culling")
 ```
 
-```{r}
+```{r KM plot}
 # visualise survival dynamics w/ KM
   # add survival binary & time
 data_lab337 <- data_lab337 %>% 
@@ -449,6 +535,11 @@ ggsurvplot(fit = kmfit.lab337, data = data_lab337,
 
 let's ignore grp A lol but not really sure what's going on in grp B and F re: tt pup and survival... tbh i think it's hard to say just bc they're really far apart in time lol soooo... bookmark this and we'll revisit later.. but basically B did a lot better than F for some reason :p (shorter dev time and bette survival overall)
 
+# list of followups
+ 
+ so i can keep track of these things better: they're inserted where relevant/applicable but kept track of chronologically here.
+ 
+ 1. 240118: trying different lab ctrl visualisations
 
 
 

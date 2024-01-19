@@ -167,31 +167,32 @@ x_err_tt <- function(x_err){
   list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), height = x_err))
 }
 
-# custom error bars: see 
-# https://stackoverflow.com/questions/18327466/ggplot2-error-bars-using-a-custom-function
-# default width/height is 0.9. see
-# https://stackoverflow.com/questions/28370249/correct-way-to-specifiy-optional-arguments-in-r-functions
-y_err <- function(data, y_stat, y_err, y_wid){ #ind and err are indices for the error columns
-  if(missing(y_wid)) {
-    y_wid <- 0.9
-  } else {
-    y_wid <- y_wid
-  }
-  
-  #rlang::eval_tidy(data <- data)
-  
-  #yerr_names <- c(y_stat, y_err)
-  
-  # yerr_names <- rlang::eval_tidy(data <- data) %>%
-  #   names(data)[c({{ystat_ind}}, {{yerr_ind}})]
-  
-  # y_errbars <- aes_string(ymin = paste(yerr_names, collapse = "-"),
-  #                        ymax = paste(yerr_names, collapse = "+"))
-  # 
-  # list(geom_errorbar(mapping = y_errbars), width = y_wid)
-  
-  list(geom_errorbar(data, aes(ymin = y_stat - y_err, ymax = y_stat + y_err), width = y_err))
-}
+# # custom error bars: see 
+# # https://stackoverflow.com/questions/18327466/ggplot2-error-bars-using-a-custom-function
+# # default width/height is 0.9. see
+# # https://stackoverflow.com/questions/28370249/correct-way-to-specifiy-optional-arguments-in-r-functions
+#   # 240118: not working LMAO getting the data.frame fed in isnt working
+# y_err <- function(data, y_stat, y_err, y_wid){ #ind and err are indices for the error columns
+#   if(missing(y_wid)) {
+#     y_wid <- 0.9
+#   } else {
+#     y_wid <- y_wid
+#   }
+#   
+#   #rlang::eval_tidy(data <- data)
+#   
+#   #yerr_names <- c(y_stat, y_err)
+#   
+#   # yerr_names <- rlang::eval_tidy(data <- data) %>%
+#   #   names(data)[c({{ystat_ind}}, {{yerr_ind}})]
+#   
+#   # y_errbars <- aes_string(ymin = paste(yerr_names, collapse = "-"),
+#   #                        ymax = paste(yerr_names, collapse = "+"))
+#   # 
+#   # list(geom_errorbar(mapping = y_errbars), width = y_wid)
+#   
+#   list(geom_errorbar(data, aes(ymin = y_stat - y_err, ymax = y_stat + y_err), width = y_err))
+# }
 
 ### recoloring theme + legend
   # i think these r dead tbh
