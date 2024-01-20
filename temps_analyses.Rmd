@@ -206,16 +206,17 @@ temps_all <- wide_all %>% filter.temps2()
 
 # *** ok restarting here lol ***
 
-(this mostly takes the code form `overall_controls.Rmd` LOL)
+(this mostly takes the code from `overall_controls.Rmd` LOL)
 
 # 2. visualise growth, dev, surv
 
-## - summarise data
-```{r}
+## a. calc stats
+```{r calculate stats}
 # filter out pupal stuff & the correct bugs lol
 temps_all <- wide_all %>%
   filter.temps2() %>%
-  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled")
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
+  mutate(tt.pupa = jdate.pupa - jdate.hatch)
 
 # calculate the pup stats we're interested in
 summary_temps <- temps_all %>%
@@ -229,12 +230,13 @@ summary_temps <- temps_all %>%
             prop.survpup = round(1-(n_pmd/n_all), digits=2))
   # mutate(meanT = as.factor(meanT),
   #        flucT = as.factor(flucT))
-  # # nvm lets NOT do this bc i'll forget when we do the surv stuff
+  # # nvm lets NOT do this bc i'll forget to fix when we do the surv stuff
 ```
 
-## - plot
 
-```{r}
+## b. plots
+
+```{r plot}
 # visualise time to pup, pupal mass across expt groups
 summary_temps %>% ggplot(aes(y = avg.mass, x = avg.tt, color = as.factor(meanT), shape = as.factor(flucT))) +
   geom_point(size = 2.5) +
@@ -254,7 +256,7 @@ so... hotter mean = lower mass. higher fluct = longer tt pup...
 
 let's try to not plot 80 things at once and just put 1 response var on the y lol
 
-```{r}
+```{r plot 1 response var at a time}
 # avg pup mass due to temp
 summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT))) +
   geom_point(size = 2) + geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
@@ -299,7 +301,8 @@ summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.
 
 ```
 
-```{r}
+
+```{r KM curve}
 # KM curve
 
 # add binaries and fit model
@@ -321,10 +324,71 @@ ggsurvplot(fit = kmfit.temps, data = temps_all,
 
 - this KM curve is not really interesting (everything overlaps + surv is high overall) so we'll just leave it here!
   - altho probably of note is that the mean=33 does separate out from mean=26 (lower survival). but again the probabilies/CIs are close/overlap so.
+  
+let's move into models!
+
+# 3. modeling
+
+lets confirm what our graphs suggest + look for interactions/or lack thereof.
+
+## a. pup mass
+
+graphs suggest there is no mean/fluct int: let's confirm
+
+```{r}
+mod.mass <- lm(mass.pupa ~ meanT*flucT, data = temps_all)
+anova(mod.mass)
+summary(mod.mass)
+  # meanT + flucT are sig on their own (***) and (**) but not the interaction
+  # lowkey why is SS sooo big for mean tho LOL
+
+# add sex as an additional check. sex shoooould be signif
+mod.mass2 <- lm(mass.pupa ~ meanT*flucT*sex, data = temps_all)
+anova(mod.mass2) # (it is)
+
+# since the MxF interaction isnt signif, drop it from the model
+mod.mass4 <- lm(mass.pupa ~ meanT + flucT, data = temps_all)
+anova(mod.mass4)
+summary(mod.mass4) ## use this!
+
+# is this different for those that survived to pupae?
+mod.mass5 <- lm(mass.pupa ~ meanT*flucT, 
+                data = temps_all[temps_all$if.pupa == "Y", ])
+anova(mod.mass5)
+  # not really
+```
 
 
+## b. tt pup
 
-(as a followup to km plot -> model w/ glms?)
+confirm there there is a signif interaction btwn mean/fluct
+
+```{r}
+mod.tt <- lm(tt.pupa ~ meanT*flucT, data = temps_all)
+anova(mod.tt) # fuller model is better
+summary(mod.tt) # all the things matter
+
+# let's add sex? (there shouldnt be anything)
+mod.tt2 <- lm(tt.pupa ~ meanT*flucT*sex, data = temps_all)
+summary(mod.tt2) # a little but not rly an effect of sex so w/e
+anova(mod.tt2)
+
+```
+
+
+## c. survival
+
+probably nothing of note will arise but we can add the glms in here anyway
+
+```{r}
+# what affects overall survival?
+mod.surv <- glm(status ~ meanT*flucT, data = temps_all, family = binomial)
+summary(mod.surv)
+  # in this expt, neither of these LOL
+```
+
+
+(previous nts: as a followup to km plot -> model w/ glms?)
 
 
 
