@@ -388,55 +388,5 @@ summary(mod.surv)
 ```
 
 
-(previous nts: as a followup to km plot -> model w/ glms?)
-
-
-
-
-
-(testing...)
-```{r}
-# let's isolate more... just masspup
-summary_lab260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
-  geom_col() +
-  y_err_mass(y_err= 0.9) + theme_bw() +
-  scale_fill_hue(labels = c("A (n = 21)",
-                                "B (n = 16)",
-                                "D (n = 18)",
-                                "F (n = 19)")) +
-  labs(title = "avg mass at pupation for lab controls", 
-       y = "average pupal mass", 
-       x = "expt group", 
-       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
-
-# just tt pup
-summary_lab260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
-  geom_col() +
-  y_err_tt(y_err= 0.9) + theme_bw() +
-  scale_fill_hue(labels = c("A (n = 21)",
-                                "B (n = 16)",
-                                "D (n = 18)",
-                                "F (n = 19)")) +
-  labs(title = "avg time to pupation for lab controls", 
-       y = "average time to pupation from hatching", 
-       x = "expt group", 
-       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
-
-# visualise % survival
-summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group)) +
-  geom_col() + theme_bw() +
-  #y_err(avg.mass, se.mass) + #SIGH
-  # scale_fill_hue(labels = c("A (n = 21)",
-  #                            "B (n = 16)",
-  #                            "D (n = 18)",
-  #                            "F (n = 19)")) +
-  geom_text(aes(label = paste0("n = ", n_all), y = 10), check_overlap = TRUE) +
-  labs(title = "% survived to pupation (incl LPI)", 
-       y = "% surviving", 
-       x = "expt group/cohort", 
-       caption = "C omitted bc of culling; D = diurnal, F = diurnal + TB diet")
-```
-
-
 
 
