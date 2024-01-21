@@ -7,6 +7,9 @@ date: "2024-01-08"
 ```{r}
 source("./ntw_helper-functions.R")
 rm(list=c(acc_helpers, temps_helpers))
+
+library(survival)
+library(survminer)
 ```
 
 
@@ -388,17 +391,70 @@ summary_NTs <- NTs_all %>%
 ### - plotting
 
 ```{r response vars by min temp}
-# is there a way to just pull out the 26/26 ctrls...?
-summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), shape = if.fluct)) +
+# is there a better way to just pull out the 26/26 ctrls...?
+# need to go confirm if there is effect of sex,, (see old graphs)
+
+# avg mass
+summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct)) +
   geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
   facet_wrap(~pop) + theme_bw() +
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
        x = "minimum temperature (°C)", 
        caption = "all lab",
-       shape = "fluctuating treatment?")
+       color = "fluctuating treatment?")
+
+# avg tt pup
+summary_NTs %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  facet_wrap(~pop) + theme_bw() +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "minimum temperature (°C)", 
+       caption = "all lab",
+       color = "fluctuating treatment?")
+  # HUH fascinating LOL
+
+# survival
+summary_NTs %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), color = if.fluct)) +
+  geom_point() + geom_line(aes(group = if.fluct)) +
+  facet_wrap(~pop) + theme_bw() +
+  labs(title = "NTs: survival to pupation", 
+       y = "proportion survived to pupation", 
+       x = "minimum temperature (°C)", 
+       caption = "all lab, incls LPI",
+       color = "fluctuating treatment?")
+  # not rly sure what a good way to show this one is... maybe just as a table?
 
 ```
+
+```{r KM by min temp}
+# combine pop + temp data into 1 grouping variable? (yes so we can separate out the 1 ctrl temp)
+NTs_all <- NTs_all %>%
+  mutate(treatment2 = paste(NTs_all$minT, NTs_all$if.fluct, sep = "-"))
+
+# fit model
+kmfit.byNT <- survfit(Surv(NTs_all$tt.exit, NTs_all$status) ~ treatment2, data = NTs_all)
+
+# plot
+ggsurvplot(fit = kmfit.byNT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB)
+  # hrmm ok lets try to separate out the pops...
+  # altogether, seems like 19/33 are the worst when u combine everything
+
+ggsurvplot(fit = kmfit.byNT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB,
+           facet.by = c("pop"),
+           legend.labs = c("19C", "26C", "26C diurnal", "33C"),
+           #risk.table = TRUE,
+           legend.title = "min temp",
+           xlab = "time in days")
+  # good to know,, 40/26 and 26/26 are similar in lab animals but not in field animals
+
+```
+
 
 
 
