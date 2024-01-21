@@ -111,6 +111,7 @@ calc.devsumm <- function(data) {
               se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
               avg.tt = mean(na.omit(tt)),
               se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+              logmass = log(na.omit(mass)),
               avg.logmass = mean(na.omit(logmass)),
               se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
               n=n())

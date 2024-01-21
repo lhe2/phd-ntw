@@ -66,7 +66,7 @@ wide_all %>%
   
 ```
 
-## B. growth per day; end points
+## B1. growth per day; end points
 
 compare overall development of all individuals compared to average growth (avg growth over time)
 
@@ -252,7 +252,9 @@ NT_devsummP %>%
   labs(title = "NTs: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
 ```
 
-## C. growth response as a function of treatment 
+## C1. growth response as a function of treatment 
+
+(keeping these bc theyre mostly fine but going to ignore the sex stuff a bit lol. we can get into it later. use C2 instead!
 
 prep the df:
 ```{r filter NTs from larger dataset}
@@ -263,7 +265,7 @@ long_NTs <- long_all %>%
   # "slows" are messing things up
 ```
 
-### - mass.pup ~ meanT
+- mass.pup ~ meanT
 ```{r}
 long_NTs %>%
   #filter(ignore.reason == "NA") %>%
@@ -273,13 +275,13 @@ long_NTs %>%
   ggplot(aes(x = meanT, y = avg.mass)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_mass(x=0.5) +
+  y_err_mass(y_err=0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(title = "NT: mean temperatures on pupal mass", caption = "NT pupa")
 ```
 
-### - mass.pup ~ flucT
+- mass.pup ~ flucT
 
 ```{r}
 long_NTs %>%
@@ -290,16 +292,17 @@ long_NTs %>%
   ggplot(aes(x = flucT, y = avg.mass)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_mass(x=0.5) +
+  y_err_mass(y_err=0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(caption = "NT pupa")
   # smth is breaking bc this doesnt match the above LOL
 ```
 
-### - mass.pup ~ minT
+- mass.pup ~ minT
 
 this is the interesting one bc everyone has the same max T... altho it's lowkey the same as just plotting by `trt.stage` or something. it's more intuitive though, looking at graph-wise.
+  - upon 2nd look this is wonky bc of the 26 group lol (theres' 26/26 and 40/26)
 ```{r}
 long_NTs %>%
   #filter(ignore.reason == "NA") %>%
@@ -309,14 +312,14 @@ long_NTs %>%
   ggplot(aes(x = minT, y = avg.mass)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_mass(x=0.5) +
+  y_err_mass(y_err=0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(title = "NT: min temperatures on pupal mass", caption = "NT pupa")
   # this breaks so much LOL
 ```
 
-### - tt.pup ~ meanT
+- tt.pup ~ meanT
 ```{r}
 long_NTs %>%
   #filter(ignore.reason == "NA") %>%
@@ -326,13 +329,13 @@ long_NTs %>%
   ggplot(aes(x = meanT, y = avg.tt)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_tt(x=0.5) +
+  y_err_tt(y_err=0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(title = "NT: mean temperatures on time to pupation", caption = "NT pupa")
 ```
 
-### - pct.surv ~ meanT
+- pct.surv ~ meanT
 ```{r}
 long_NTs %>%
   #filter(ignore.reason == "NA") %>%
@@ -350,3 +353,52 @@ long_NTs %>%
   labs(title = "NT: mean temperatures on % survival to pupation", caption = "NT pupa")
 
 ```
+
+
+## C2. visualise overview summ stats
+
+going to make these graphs more like the ones from `temp_analyses` (expect code borrowing lol)
+
+### - calc summ stats
+```{r}
+# subset + add some binaries for survival stuff later
+NTs_all <- wide_all %>%
+  filter.NTs2() %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
+  mutate(tt.pupa = jdate.pupa - jdate.hatch,
+         status = case_when(final.fate == "pmd" ~ 1, 
+                            TRUE ~ 0),
+         tt.exit = jdate.exit - jdate.hatch,
+         if.fluct = case_when(flucT == 0 ~ "N",
+                              TRUE ~ "Y"))
+
+# calc summ stats we're interested in
+summary_NTs <- NTs_all %>%
+  group_by(pop, meanT, flucT, minT, if.fluct) %>% 
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            prop.survpup = round(1-(n_pmd/n_all), digits=2))
+
+```
+
+### - plotting
+
+```{r response vars by min temp}
+# is there a way to just pull out the 26/26 ctrls...?
+summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), shape = if.fluct)) +
+  geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  facet_wrap(~pop) + theme_bw() +
+  labs(title = "NTs: avg pupal mass", 
+       y = "average pupal mass (mg)", 
+       x = "minimum temperature (°C)", 
+       caption = "all lab",
+       shape = "fluctuating treatment?")
+
+```
+
+
+
