@@ -454,6 +454,46 @@ ggsurvplot(fit = kmfit.byNT, data = NTs_all,
   # good to know,, 40/26 and 26/26 are similar in lab animals but not in field animals
 
 ```
+```{r sex differences?}
+# do m/f plots look different?
+
+# calc stats again
+summary_NTs2 <- NTs_all %>%
+  filter(sex != "NA") %>%
+  group_by(pop, sex, meanT, flucT, minT, if.fluct) %>% 
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            prop.survpup = round(1-(n_pmd/n_all), digits=2))
+
+
+# avg mass - not rly
+summary_NTs2 %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct)) +
+  geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  facet_wrap(pop~sex) + theme_bw() +
+  labs(title = "NTs: avg pupal mass", 
+       y = "average pupal mass (mg)", 
+       x = "minimum temperature (°C)", 
+       caption = "all lab",
+       color = "fluctuating treatment?")
+
+# avg tt pup - also not rly
+summary_NTs2 %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  facet_wrap(pop~sex) + theme_bw() +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "minimum temperature (°C)", 
+       caption = "all lab",
+       color = "fluctuating treatment?")
+
+# survival figs dont work bc can only sex them if they live to pupation (sweats;;)
+# but looking at the summary stats.. vaaaaaguely seems like there tends to be more F?
+```
+
 
 
 
