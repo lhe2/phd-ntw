@@ -388,7 +388,9 @@ summary_NTs <- NTs_all %>%
 
 ```
 
-### - plotting
+### - plotting: by NTs
+
+H: naively, if NTs are all that matters, then performance should just decrease as NT increases.
 
 ```{r response vars by min temp}
 # is there a better way to just pull out the 26/26 ctrls...?
@@ -493,8 +495,68 @@ summary_NTs2 %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) 
 # survival figs dont work bc can only sex them if they live to pupation (sweats;;)
 # but looking at the summary stats.. vaaaaaguely seems like there tends to be more F?
 ```
+### - plotting: by meanT
 
+H: naively, if mean T is all that matters, then "performance" should peak at ~33ish and then drop.
 
+```{r response var by meanT}
+# avg mass
+summary_NTs %>% ggplot(aes(y = avg.mass, x = meanT, color = if.fluct)) +
+  geom_point(size = 2) +  y_err_mass(y_err= 0.5) +
+  facet_wrap(~pop) + theme_bw() +
+  labs(title = "NTs: avg pupal mass", 
+       y = "average pupal mass (mg)", 
+       x = "mean temperature (°C)", 
+       caption = "all lab",
+       color = "fluctuating treatment?")
+  # 26/26 is sorta sameish in field, but does best in lab bugs
 
+# avg tt pup
+summary_NTs %>% ggplot(aes(y = avg.tt, x = meanT, color = if.fluct)) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  facet_wrap(~pop) + theme_bw() +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "mean temperature (°C)", 
+       caption = "all lab",
+       color = "fluctuating treatment?")
+  # field: tt goes down as mean T increases. lab: same except that goes up a lot at 28ish
+
+# survival
+summary_NTs %>% ggplot(aes(y = prop.survpup, x = meanT, color = if.fluct)) +
+  geom_point() +
+  facet_wrap(~pop) + theme_bw() +
+  labs(title = "NTs: survival to pupation", 
+       y = "proportion survived to pupation", 
+       x = "mean temperature (°C)", 
+       caption = "all lab, incls LPI",
+       color = "fluctuating treatment?")
+  # F: 26/26 is best. gets better as meanT increases
+  # L: all over the place lol
+  # imo this fig will look better with the flucts...
+```
+
+```{r KM by mean temp}
+# fit model
+kmfit.byminT <- survfit(Surv(NTs_all$tt.exit, NTs_all$status) ~ meanT, data = NTs_all)
+
+# plot
+ggsurvplot(fit = kmfit.byminT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB)
+  # hrmm ok lets try to separate out the pops...
+  # altogether, seems like 19/33 are the worst when u combine everything
+
+ggsurvplot(fit = kmfit.byminT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB,
+           facet.by = c("pop"),
+           legend.labs = c("26C diurnal", "29.5C", "33C", "36.5C"),
+           #risk.table = TRUE,
+           legend.title = "mean temp",
+           xlab = "time in days")
+
+```
+(let's ignore the potential sex differences for now bc it doesnt seem that major, based on the graphs where x = min T)
 
 
