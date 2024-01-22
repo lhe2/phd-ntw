@@ -403,7 +403,6 @@ summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct))
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
        x = "minimum temperature (°C)", 
-       caption = "all lab",
        color = "fluctuating treatment?")
 
 # avg tt pup
@@ -413,7 +412,6 @@ summary_NTs %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) +
   labs(title = "NTs: avg time to pupation from hatching", 
        y = "average time to pupation (days)", 
        x = "minimum temperature (°C)", 
-       caption = "all lab",
        color = "fluctuating treatment?")
   # HUH fascinating LOL
 
@@ -424,7 +422,7 @@ summary_NTs %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), color = if.flu
   labs(title = "NTs: survival to pupation", 
        y = "proportion survived to pupation", 
        x = "minimum temperature (°C)", 
-       caption = "all lab, incls LPI",
+       caption = "incls LPI",
        color = "fluctuating treatment?")
   # not rly sure what a good way to show this one is... maybe just as a table?
 
@@ -479,7 +477,6 @@ summary_NTs2 %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct)
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
        x = "minimum temperature (°C)", 
-       caption = "all lab",
        color = "fluctuating treatment?")
 
 # avg tt pup - also not rly
@@ -489,7 +486,6 @@ summary_NTs2 %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) 
   labs(title = "NTs: avg time to pupation from hatching", 
        y = "average time to pupation (days)", 
        x = "minimum temperature (°C)", 
-       caption = "all lab",
        color = "fluctuating treatment?")
 
 # survival figs dont work bc can only sex them if they live to pupation (sweats;;)
@@ -507,7 +503,6 @@ summary_NTs %>% ggplot(aes(y = avg.mass, x = meanT, color = if.fluct)) +
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
        x = "mean temperature (°C)", 
-       caption = "all lab",
        color = "fluctuating treatment?")
   # 26/26 is sorta sameish in field, but does best in lab bugs
 
@@ -518,7 +513,6 @@ summary_NTs %>% ggplot(aes(y = avg.tt, x = meanT, color = if.fluct)) +
   labs(title = "NTs: avg time to pupation from hatching", 
        y = "average time to pupation (days)", 
        x = "mean temperature (°C)", 
-       caption = "all lab",
        color = "fluctuating treatment?")
   # field: tt goes down as mean T increases. lab: same except that goes up a lot at 28ish
 
@@ -529,7 +523,7 @@ summary_NTs %>% ggplot(aes(y = prop.survpup, x = meanT, color = if.fluct)) +
   labs(title = "NTs: survival to pupation", 
        y = "proportion survived to pupation", 
        x = "mean temperature (°C)", 
-       caption = "all lab, incls LPI",
+       caption = "incls LPI",
        color = "fluctuating treatment?")
   # F: 26/26 is best. gets better as meanT increases
   # L: all over the place lol
@@ -545,7 +539,6 @@ ggsurvplot(fit = kmfit.byminT, data = NTs_all,
            conf.int = TRUE,
            palette = RYB)
   # hrmm ok lets try to separate out the pops...
-  # altogether, seems like 19/33 are the worst when u combine everything
 
 ggsurvplot(fit = kmfit.byminT, data = NTs_all,
            conf.int = TRUE,
@@ -557,6 +550,74 @@ ggsurvplot(fit = kmfit.byminT, data = NTs_all,
            xlab = "time in days")
 
 ```
-(let's ignore the potential sex differences for now bc it doesnt seem that major, based on the graphs where x = min T)
+(let's keep going w the other figs and ignore the potential sex differences for now bc it doesnt seem that major, based on the graphs where x = min T)
+
+### - plotting: by flucT
+
+H: naively, if fluct T is all that matters, then "performance" should decrease as fluct gets larger.
+
+```{r response var by flucT}
+# avg mass
+summary_NTs %>% ggplot(aes(y = avg.mass, x = flucT, color = as.factor(minT))) +
+  geom_point(size = 2) +  y_err_mass(y_err= 0.5) +
+  facet_wrap(~pop) + theme_bw() +
+  scale_color_manual(values = RYB) +
+  labs(title = "NTs: avg pupal mass", 
+       y = "average pupal mass (mg)", 
+       x = "fluctuation temperature (°C)",
+       color = "minimum temperature (°C)")
+  # F/L: smaller if any fluct at all. in F, range is slightly bigger with bigger fluct (L is consistent range). L is generally larger than F at all sizes.
+
+# avg tt pup
+summary_NTs %>% ggplot(aes(y = avg.tt, x = flucT, color = as.factor(minT))) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  facet_wrap(~pop) + theme_bw() +
+  scale_color_manual(values = RYB) +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "fluctuation temperature (°C)",
+       color = "minimum temperature (°C)")
+  # F/L: v shape lol. they're kinda the same times which is interesting bc the masses r so differnt
+
+# survival
+summary_NTs %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT))) +
+  geom_point() +
+  facet_wrap(~pop) + theme_bw() +
+  scale_color_manual(values = RYB) +
+  labs(title = "NTs: survival to pupation", 
+       y = "proportion survived to pupation", 
+       x = "fluctuation temperature (°C)",
+       color = "minimum temperature (°C)",
+       caption = "incls LPI")
+  # F: less surv as fluct increases. L: all over the place lol
+
+# might be worth looking into some sex differences here! (later...)
+```
+```{r KM by fluct temp}
+# fit model
+kmfit.byflucT <- survfit(Surv(NTs_all$tt.exit, NTs_all$status) ~ flucT, data = NTs_all)
+
+# plot
+ggsurvplot(fit = kmfit.byflucT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB)
+  # hrmm ok lets try to separate out the pops...
+  # generally the non-flucts r doing great lol
+
+ggsurvplot(fit = kmfit.byflucT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB,
+           facet.by = c("pop"),
+           legend.labs = c("±0", "±3.5", "±7", "±10.5"),
+           #risk.table = TRUE,
+           legend.title = "fluctuation",
+           xlab = "time in days")
+  # sigh. lots to think about here.
+
+```
+
+overall i think this is all saying that pop/fluct/min/mean(?) all have an effect! still not quite sure how to parse out "parameterising" temperature tho... (define it by fluct only? min T? meanT? etc?)
+
+clearly it's like ~at some point~/in combo with other factors, a certain min is bad, mean is bad, fluct is bad, etc etc... maybe compare with the 2x2s (sweat smile)
 
 
