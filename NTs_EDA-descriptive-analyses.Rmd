@@ -612,11 +612,20 @@ ggsurvplot(fit = kmfit.byflucT, data = NTs_all,
            #risk.table = TRUE,
            legend.title = "fluctuation",
            xlab = "time in days")
-  # sigh. lots to think about here.
+  # sigh. lots to think about here. why is the 10.5 so good in the lab lmao (see below -- add in the mean)
+
+ggsurvplot(fit = kmfit.byflucT, data = NTs_all,
+           conf.int = TRUE,
+           palette = RYB,
+           facet.by = c("pop"),
+           legend.labs = c("26±0", "36.5±3.5", "33±7", "29.5±10.5"),
+           #risk.table = TRUE,
+           legend.title = "treatment",
+           xlab = "time in days")
 
 ```
 
-overall i think this is all saying that pop/fluct/min/mean(?) all have an effect! still not quite sure how to parse out "parameterising" temperature tho... (define it by fluct only? min T? meanT? etc?)
+overall i think this is all saying that pop/fluct/min/mean(?) all have an effect! (temp effects depend on pop..?) still not quite sure how to parse out "parameterising" temperature tho... (define it by fluct only? min T? meanT? etc?)
 
 clearly it's like ~at some point~/in combo with other factors, a certain min is bad, mean is bad, fluct is bad, etc etc... maybe compare with the 2x2s (sweat smile)
 
