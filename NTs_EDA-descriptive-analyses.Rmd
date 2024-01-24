@@ -375,6 +375,9 @@ NTs_all <- wide_all %>%
          if.fluct = case_when(flucT == 0 ~ "N",
                               TRUE ~ "Y"))
 
+# fix diurnal fluct
+NTs_all$flucT[NTs_all$flucT == 0] <- 2.5 
+
 # calc summ stats we're interested in
 summary_NTs <- NTs_all %>%
   group_by(pop, meanT, flucT, minT, if.fluct) %>% 
@@ -384,7 +387,8 @@ summary_NTs <- NTs_all %>%
             se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
             n_all = n(),
             n_pmd = sum(final.fate == "pmd"), 
-            prop.survpup = round(1-(n_pmd/n_all), digits=2))
+            prop.survpup = round(1-(n_pmd/n_all), digits=2)) %>%
+  mutate(fluct.grp = case_when(if.fluct == "Y" ~ "experimental (max: 40C)", TRUE ~ "control (max: ~28C)"))
 
 ```
 
@@ -397,33 +401,38 @@ H: naively, if NTs are all that matters, then performance should just decrease a
 # need to go confirm if there is effect of sex,, (see old graphs)
 
 # avg mass
-summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct)) +
+summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
   geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  scale_shape_manual(values=c(21, 16)) +
   facet_wrap(~pop) + theme_bw() +
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
        x = "minimum temperature (°C)", 
-       color = "fluctuating treatment?")
+       #caption = "trts: ~26, 40/19, 40/26, 40/33",
+       shape = "treatment group")
 
 # avg tt pup
-summary_NTs %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) +
+summary_NTs %>% ggplot(aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
   geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  scale_shape_manual(values=c(21, 16)) +
   facet_wrap(~pop) + theme_bw() +
   labs(title = "NTs: avg time to pupation from hatching", 
        y = "average time to pupation (days)", 
        x = "minimum temperature (°C)", 
-       color = "fluctuating treatment?")
+       #caption = "trts: ~26, 40/19, 40/26, 40/33",
+       shape = "treatment group")
   # HUH fascinating LOL
 
 # survival
-summary_NTs %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), color = if.fluct)) +
+summary_NTs %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp)) +
   geom_point() + geom_line(aes(group = if.fluct)) +
   facet_wrap(~pop) + theme_bw() +
-  labs(title = "NTs: survival to pupation", 
+  scale_shape_manual(values=c(21, 16)) +
+  labs(title = "NTs: survival to pupation (incls LPI)", 
        y = "proportion survived to pupation", 
        x = "minimum temperature (°C)", 
-       caption = "incls LPI",
-       color = "fluctuating treatment?")
+       #caption = "trts: ~26, 40/19, 40/26, 40/33",
+       shape = "treatment group")
   # not rly sure what a good way to show this one is... maybe just as a table?
 
 ```
@@ -447,10 +456,10 @@ ggsurvplot(fit = kmfit.byNT, data = NTs_all,
            conf.int = TRUE,
            palette = RYB,
            facet.by = c("pop"),
-           legend.labs = c("19C", "26C", "26C diurnal", "33C"),
+           legend.labs = c("19C", "26C diurnal", "26C", "33C"),
            #risk.table = TRUE,
            legend.title = "min temp",
-           xlab = "time in days")
+           xlab = "days since hatching")
   # good to know,, 40/26 and 26/26 are similar in lab animals but not in field animals
 
 ```
@@ -497,34 +506,39 @@ H: naively, if mean T is all that matters, then "performance" should peak at ~33
 
 ```{r response var by meanT}
 # avg mass
-summary_NTs %>% ggplot(aes(y = avg.mass, x = meanT, color = if.fluct)) +
+summary_NTs %>% ggplot(aes(y = avg.mass, x = meanT, shape = fluct.grp)) +
   geom_point(size = 2) +  y_err_mass(y_err= 0.5) +
   facet_wrap(~pop) + theme_bw() +
+  scale_shape_manual(values=c(21, 16)) +
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
        x = "mean temperature (°C)", 
-       color = "fluctuating treatment?")
+       caption = "trts: 26±0, 29.5±10.5, 33±7, 36.5±3.5",
+       shape = "treatment group")
   # 26/26 is sorta sameish in field, but does best in lab bugs
 
 # avg tt pup
-summary_NTs %>% ggplot(aes(y = avg.tt, x = meanT, color = if.fluct)) +
+summary_NTs %>% ggplot(aes(y = avg.tt, x = meanT, shape = fluct.grp)) +
   geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
   facet_wrap(~pop) + theme_bw() +
+  scale_shape_manual(values=c(21, 16)) +
   labs(title = "NTs: avg time to pupation from hatching", 
        y = "average time to pupation (days)", 
        x = "mean temperature (°C)", 
-       color = "fluctuating treatment?")
+       caption = "trts: 26±0, 29.5±10.5, 33±7, 36.5±3.5",
+       shape = "treatment group")
   # field: tt goes down as mean T increases. lab: same except that goes up a lot at 28ish
 
 # survival
-summary_NTs %>% ggplot(aes(y = prop.survpup, x = meanT, color = if.fluct)) +
+summary_NTs %>% ggplot(aes(y = prop.survpup, x = meanT, shape = fluct.grp)) +
   geom_point() +
   facet_wrap(~pop) + theme_bw() +
-  labs(title = "NTs: survival to pupation", 
+  scale_shape_manual(values=c(21, 16)) +
+  labs(title = "NTs: survival to pupation (incl LPI)", 
        y = "proportion survived to pupation", 
        x = "mean temperature (°C)", 
-       caption = "incls LPI",
-       color = "fluctuating treatment?")
+       caption = "trts: 26±2.5, 29.5±10.5, 33±7, 36.5±3.5",
+       shape = "treatment group")
   # F: 26/26 is best. gets better as meanT increases
   # L: all over the place lol
   # imo this fig will look better with the flucts...
@@ -547,7 +561,7 @@ ggsurvplot(fit = kmfit.byminT, data = NTs_all,
            legend.labs = c("26C diurnal", "29.5C", "33C", "36.5C"),
            #risk.table = TRUE,
            legend.title = "mean temp",
-           xlab = "time in days")
+           xlab = "days since hatching")
 
 ```
 (let's keep going w the other figs and ignore the potential sex differences for now bc it doesnt seem that major, based on the graphs where x = min T)
@@ -618,15 +632,107 @@ ggsurvplot(fit = kmfit.byflucT, data = NTs_all,
            conf.int = TRUE,
            palette = RYB,
            facet.by = c("pop"),
-           legend.labs = c("26±0", "36.5±3.5", "33±7", "29.5±10.5"),
+           legend.labs = c("26±2.5", "36.5±3.5", "33±7", "29.5±10.5"),
            #risk.table = TRUE,
            legend.title = "treatment",
-           xlab = "time in days")
+           xlab = "days since hatching")
 
 ```
 
 overall i think this is all saying that pop/fluct/min/mean(?) all have an effect! (temp effects depend on pop..?) still not quite sure how to parse out "parameterising" temperature tho... (define it by fluct only? min T? meanT? etc?)
 
 clearly it's like ~at some point~/in combo with other factors, a certain min is bad, mean is bad, fluct is bad, etc etc... maybe compare with the 2x2s (sweat smile)
+
+### - plotting: lab bugs on TB/LD
+
+just looking at pupation/time since the ctrl analyses suggest those are the things that are mostly diff btwn them.
+
+```{r recalc dev stats}
+summary_NTs3 <- NTs_all %>%
+  filter(pop == "lab") %>%
+  group_by(diet, meanT, flucT, minT, if.fluct) %>% 
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            prop.survpup = round(1-(n_pmd/n_all), digits=2)) %>%
+  mutate(fluct.grp = case_when(if.fluct == "Y" ~ "experimental (max: 40C)", TRUE ~ "control (max: ~28C)"))
+```
+
+
+```{r by min T}
+# avg tt pup
+summary_NTs3 %>% 
+  ggplot(aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  scale_shape_manual(values=c(21, 16)) +
+  facet_wrap(~diet) + theme_bw() +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "minimum temperature (°C)", 
+       #caption = "trts: ~26, 40/19, 40/26, 40/33",
+       shape = "treatment group")
+
+# survival
+summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp)) +
+  geom_point() + geom_line(aes(group = if.fluct)) +
+  facet_wrap(~diet) + theme_bw() +
+  scale_shape_manual(values=c(21, 16)) +
+  labs(title = "NTs: survival to pupation (incls LPI)", 
+       y = "proportion survived to pupation", 
+       x = "minimum temperature (°C)", 
+       #caption = "trts: ~26, 40/19, 40/26, 40/33",
+       shape = "treatment group")
+
+```
+```{r by mean T}
+# avg tt pup
+summary_NTs3 %>% ggplot(aes(y = avg.tt, x = meanT, shape = fluct.grp)) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  facet_wrap(~diet) + theme_bw() +
+  scale_shape_manual(values=c(21, 16)) +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "mean temperature (°C)", 
+       caption = "trts: 26±0, 29.5±10.5, 33±7, 36.5±3.5",
+       shape = "treatment group")
+
+# survival
+summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = meanT, shape = fluct.grp)) +
+  geom_point() +
+  facet_wrap(~diet) + theme_bw() +
+  scale_shape_manual(values=c(21, 16)) +
+  labs(title = "NTs: survival to pupation (incl LPI)", 
+       y = "proportion survived to pupation", 
+       x = "mean temperature (°C)", 
+       caption = "trts: 26±2.5, 29.5±10.5, 33±7, 36.5±3.5",
+       shape = "treatment group")
+```
+
+```{r by flucT}
+# avg tt pup
+summary_NTs3 %>% ggplot(aes(y = avg.tt, x = flucT, color = as.factor(minT))) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  facet_wrap(~diet) + theme_bw() +
+  scale_color_manual(values = RYB) +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "fluctuation temperature (°C)",
+       color = "minimum temperature (°C)")
+
+# survival
+summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT))) +
+  geom_point() +
+  facet_wrap(~diet) + theme_bw() +
+  scale_color_manual(values = RYB) +
+  labs(title = "NTs: survival to pupation", 
+       y = "proportion survived to pupation", 
+       x = "fluctuation temperature (°C)",
+       color = "minimum temperature (°C)",
+       caption = "incls LPI")
+```
+
 
 
