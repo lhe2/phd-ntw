@@ -384,6 +384,8 @@ probably nothing of note will arise but we can add the glms in here anyway
 # what affects overall survival?
 mod.surv <- glm(status ~ meanT*flucT, data = temps_all, family = binomial)
 summary(mod.surv)
+anova(mod.surv, test="Chisq") # actually test if diffrential inclusion of terms are meaningful(?)
+anova(mod.surv) # tests overall variance
   # in this expt, neither of these LOL
 ```
 
