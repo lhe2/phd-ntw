@@ -255,7 +255,7 @@ NT_devsummP %>%
   labs(title = "NTs: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
 ```
 
-## C1. growth response as a function of treatment 
+## C1. (old) growth response as a function of treatment 
 
 (keeping these bc theyre mostly fine but going to ignore the sex stuff a bit lol. we can get into it later. use C2 instead!
 

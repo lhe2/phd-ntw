@@ -152,7 +152,8 @@ data_lab260.2 %>% ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
   geom_boxplot() +
   #y_err_tt(y_err= 0.9) + 
   theme_bw() +
-  scale_fill_discrete(labels = c("lab diet", "tobacco diet")) + # cant read the font w the colors
+  scale_fill_manual(labels = c("lab diet", "tobacco diet"),
+                      values = RYB) + 
   labs(title = "avg time to pupation for lab controls", 
        x = "expt group",
        y = "average days to pupation from hatching", 
@@ -535,7 +536,7 @@ ggsurvplot(fit = kmfit.lab337, data = data_lab337,
 
 let's ignore grp A lol but not really sure what's going on in grp B and F re: tt pup and survival... tbh i think it's hard to say just bc they're really far apart in time lol soooo... bookmark this and we'll revisit later.. but basically B did a lot better than F for some reason :p (shorter dev time and bette survival overall)
 
-# list of followups
+# chronological list of followups
  
  so i can keep track of these things better: they're inserted where relevant/applicable but kept track of chronologically here.
  
