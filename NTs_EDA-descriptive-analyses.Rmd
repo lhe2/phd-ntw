@@ -734,5 +734,22 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT)
        caption = "incls LPI")
 ```
 
+## D. modeling
+
+### data prep
+
+not REALLLY sure how to model these out. just test 1 variable at a time?
+
+### - (skipping) mass pup
+
+skipping mass for now bc that doesn't seem to be too affected generally by treatment (or at least, no big surprises)
+
+### - ttpup
+
+let's assume that generally, pop matters. which of our main temperature variables are important to/significant in predicting ttpup?
+
+```{r}
+mod.tt <- lm(tt.pup ~ minT*pop, data = NT)
+```
 
 
