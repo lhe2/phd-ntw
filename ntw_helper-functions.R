@@ -10,18 +10,19 @@
 
 
 
-
-
 # package and data loading ------------------------------------------------
 
 # 0. load libraries & data ####
+# basic data processing & viz
 library(conflicted)
-library(dplyr)
+library(tidyverse)
 conflicts_prefer(dplyr::filter)
-library(tidyr)
-library(purrr)
-library(ggplot2)
 
+# survival stats/viz
+library(survival)
+library(survminer)
+
+# cleaned data
 wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets-23.csv", header = TRUE)
 
 # 1.0 additional data processing ####
