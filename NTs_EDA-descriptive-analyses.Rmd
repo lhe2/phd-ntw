@@ -7,20 +7,26 @@ date: "2024-01-08"
 ```{r}
 source("./ntw_helper-functions.R")
 rm(list=c(acc_helpers, temps_helpers))
-
-library(survival)
-library(survminer)
 ```
 
 
 TODO 240108: at some point i need to reorganise this probably (idk how much of these are descriptive but not today!)
 
+# 0.1 questions/responses of interest
 
-## A. looking for sups
+- within the NTs, how many go sup? what's the breakdown (if any)? do certain trts lead to more sup?
+- what does overall larval growth look like? (i.e. mass gained per day?)
+- pupal response: final pupal mass? time to pup? survival to pup? survival dynamics?
+  - break it down by min T (maybe mean/flucT later...)
+  - can we use the 2x2 results to inform?
+- diet/sex effects?
+
+
+# A. looking for sups
 
 **questions:** how many go sup? how many die early? how many are slow?
 
-### - look at summary stats and pcts
+## - look at summary stats and pcts
 
 ```{r summ stats}
 # NT stats
@@ -69,11 +75,11 @@ wide_all %>%
   
 ```
 
-## B1. growth per day; end points
+# B1. growth per day; end points
 
 compare overall development of all individuals compared to average growth (avg growth over time)
 
-### - (**) prep the dfs for plotting
+## - (**) prep the dfs for plotting
 
 (**) calculate summary growth stats df 
   - there's a lot of downstream code that relies on this codeblock LOL hence the (**)
@@ -132,7 +138,7 @@ NTsups_devsumm <- NT_dev %>%
 
 ### - line plots
 
-#### - all bugs larval instars
+### - all bugs larval instars
 plot avg growth of all bugs (sups included in math)
 ```{r avg larval growth all bugs}
 NT_devsumm %>%
@@ -151,7 +157,7 @@ NT_devsumm %>%
 ==> this is hard to separate out the sups and imo shouldnt do the math w the sups + non-sups combined, so:
 
 
-#### - sup bugs separated
+### - sup bugs separated
 plot avg growth bugs but separate out the sups
 
 (so 3 groups total: bugs with 1-5 instars, bugs that had 6th, bugs that had 7th)
@@ -255,7 +261,7 @@ NT_devsummP %>%
   labs(title = "NTs: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
 ```
 
-## C1. (old) growth response as a function of treatment 
+# C1. (old) growth response as a function of treatment 
 
 (keeping these bc theyre mostly fine but going to ignore the sex stuff a bit lol. we can get into it later. use C2 instead!
 
@@ -358,11 +364,11 @@ long_NTs %>%
 ```
 
 
-## C2. visualise overview summ stats
+# C2. visualise overview summ stats
 
 going to make these graphs more like the ones from `temp_analyses` (expect code borrowing lol)
 
-### - calc summ stats
+## - calc summ stats
 ```{r}
 # subset + add some binaries for survival stuff later
 NTs_all <- wide_all %>%
@@ -392,7 +398,7 @@ summary_NTs <- NTs_all %>%
 
 ```
 
-### - plotting: by NTs
+## - plotting: by NTs
 
 H: naively, if NTs are all that matters, then performance should just decrease as NT increases.
 
@@ -500,7 +506,7 @@ summary_NTs2 %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) 
 # survival figs dont work bc can only sex them if they live to pupation (sweats;;)
 # but looking at the summary stats.. vaaaaaguely seems like there tends to be more F?
 ```
-### - plotting: by meanT
+## - plotting: by meanT
 
 H: naively, if mean T is all that matters, then "performance" should peak at ~33ish and then drop.
 
@@ -566,7 +572,7 @@ ggsurvplot(fit = kmfit.byminT, data = NTs_all,
 ```
 (let's keep going w the other figs and ignore the potential sex differences for now bc it doesnt seem that major, based on the graphs where x = min T)
 
-### - plotting: by flucT
+## - plotting: by flucT
 
 H: naively, if fluct T is all that matters, then "performance" should decrease as fluct gets larger.
 
@@ -643,7 +649,7 @@ overall i think this is all saying that pop/fluct/min/mean(?) all have an effect
 
 clearly it's like ~at some point~/in combo with other factors, a certain min is bad, mean is bad, fluct is bad, etc etc... maybe compare with the 2x2s (sweat smile)
 
-### - plotting: lab bugs on TB/LD
+## - plotting: lab bugs on TB/LD
 
 just looking at pupation/time since the ctrl analyses suggest those are the things that are mostly diff btwn them.
 
@@ -734,17 +740,30 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT)
        caption = "incls LPI")
 ```
 
-## D. modeling
+# // C3. visualise with better lab controls (240124 followups)
 
-### data prep
+based on the results by visualising effect of diet + per meeting followups, going to redo the plotting by NTs figs with the lab bugs on lab diet removed, so that diet isn't a variable in the analyses. (i.e. only differences between bugs should be temp treatment and pop. everyone's eating TB)
 
-not REALLLY sure how to model these out. just test 1 variable at a time?
 
-### - (skipping) mass pup
+
+
+# D. modeling
+
+## data prep
+
+for the analyses, drop the control group (i think i need to filter out the bugs on LD too...)
+
+```{r}
+NTs_expt <- NTs_all %>%
+  filter(treatment != 260)
+```
+
+
+## - (skipping) mass pup
 
 skipping mass for now bc that doesn't seem to be too affected generally by treatment (or at least, no big surprises)
 
-### - ttpup
+## - ttpup
 
 let's assume that generally, pop matters. which of our main temperature variables are important to/significant in predicting ttpup?
 
@@ -752,4 +771,8 @@ let's assume that generally, pop matters. which of our main temperature variable
 mod.tt <- lm(tt.pup ~ minT*pop, data = NT)
 ```
 
+# followups
 
+1. see 240124 mtg stuff → this is mostly going to be addressed in the `C3` header
+  1. but basically need check for same diet comparisons, redo the n='s, redo some figs w/o the control... maybe some other stuff where i take out the control group...
+  1. currently being worked on in: `C3. visualise with better lab controls (240124 followups)`

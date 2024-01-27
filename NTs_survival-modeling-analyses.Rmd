@@ -16,6 +16,7 @@ library(nonnestcox) # for plrtest() to compare CPH models
 # need to renumber stuff again at some point but not today
 ```
 
+(240126: so this is not quite a defunct script rn but a lot of this is moving into the NT EDAs lol)
 
 
 # 1.0 KM survival to pupation 
