@@ -379,7 +379,8 @@ NTs_all <- wide_all %>%
                             TRUE ~ 0),
          tt.exit = jdate.exit - jdate.hatch,
          if.fluct = case_when(flucT == 0 ~ "N",
-                              TRUE ~ "Y"))
+                              TRUE ~ "Y"),
+         treatment2 = paste(minT, if.fluct, sep = "-")) # for km filtering later
 
 # fix diurnal fluct
 NTs_all$flucT[NTs_all$flucT == 0] <- 2.5 
@@ -440,13 +441,13 @@ summary_NTs %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = fluct.
        #caption = "trts: ~26, 40/19, 40/26, 40/33",
        shape = "treatment group")
   # not rly sure what a good way to show this one is... maybe just as a table?
-
 ```
 
 ```{r KM by min temp}
 # combine pop + temp data into 1 grouping variable? (yes so we can separate out the 1 ctrl temp)
-NTs_all <- NTs_all %>%
-  mutate(treatment2 = paste(NTs_all$minT, NTs_all$if.fluct, sep = "-"))
+# NTs_all <- NTs_all %>%
+#   mutate(treatment2 = paste(NTs_all$minT, NTs_all$if.fluct, sep = "-"))
+  # going to add the mutate here to the main data filtering step!
 
 # fit model
 kmfit.byNT <- survfit(Surv(NTs_all$tt.exit, NTs_all$status) ~ treatment2, data = NTs_all)
@@ -740,16 +741,141 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT)
        caption = "incls LPI")
 ```
 
-# // C3. visualise with better lab controls (240124 followups)
+# // C3. revisualise with better lab controls (240124 followups)
 
-based on the results by visualising effect of diet + per meeting followups, going to redo the plotting by NTs figs with the lab bugs on lab diet removed, so that diet isn't a variable in the analyses. (i.e. only differences between bugs should be temp treatment and pop. everyone's eating TB)
+purpose: based on the results by visualising effect of diet + per meeting followups, going to redo the plotting by NTs figs with the lab bugs on lab diet removed, so that diet isn't a variable in the analyses. (i.e. only differences between bugs should be temp treatment and pop. everyone's eating TB)
 
+## - data prep
 
+```{r}
+# refilter NTs without the lab bugs on lab diet
+NTs_all2 <- wide_all %>%
+  filter.NTs2() %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
+  filter(!(pop == "lab" & diet == "LD")) %>%
+  mutate(tt.pupa = jdate.pupa - jdate.hatch,
+         status = case_when(final.fate == "pmd" ~ 1, 
+                            TRUE ~ 0),
+         tt.exit = jdate.exit - jdate.hatch,
+         if.fluct = case_when(flucT == 0 ~ "N",
+                              TRUE ~ "Y"),
+         treatment2 = paste(minT, if.fluct, sep = "-")) # for survival filtering
 
+# fix diurnal fluct
+NTs_all2$flucT[NTs_all2$flucT == 0] <- 2.5 
+
+# calc summ stats we're interested in
+summary_NTs2 <- NTs_all2 %>%
+  group_by(pop, meanT, flucT, minT, if.fluct) %>% 
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n(),
+            n.pmd = sum(final.fate == "pmd"), 
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+  mutate(fluct.grp = case_when(if.fluct == "Y" ~ "experimental (max: 40C)", TRUE ~ "control (max: ~28C)"))
+```
+we'll just focus on NTs as the input variable for the redo graphs bc the other 2 are just different ways of grouping :p
+
+## - plotting: by NTs
+
+```{r big 3 responses}
+# avg mass
+summary_NTs2 %>% 
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
+  geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  #scale_shape_manual(values=c(21, 16)) +
+  facet_wrap(~pop) + theme_bw() +
+  geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+  labs(title = "NTs: avg pupal mass", 
+       y = "average pupal mass (mg)", 
+       x = "minimum temperature (°C)", 
+       caption = "all tobacco diet, max T = 40C",
+       shape = "treatment group")
+
+# avg tt pup
+summary_NTs2 %>% 
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  ggplot(aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
+  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  #scale_shape_manual(values=c(21, 16)) +
+  facet_wrap(~pop) + theme_bw() +
+  geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+  labs(title = "NTs: avg time to pupation from hatching", 
+       y = "average time to pupation (days)", 
+       x = "minimum temperature (°C)", 
+       caption = "all tobacco diet, max T = 40C",
+       shape = "treatment group")
+
+# survival
+summary_NTs2 %>% 
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp)) +
+  geom_point(size=2) + geom_line(aes(group = if.fluct)) +
+  facet_wrap(~pop) + theme_bw() +
+  #scale_shape_manual(values=c(21, 16)) +
+  geom_text(aes(label = n.all), vjust = -1.5, hjust = -0.9) +
+  labs(title = "NTs: survival to pupation (incls LPI)", 
+       y = "proportion survived to pupation", 
+       x = "minimum temperature (°C)", 
+       caption = "all tobacco diet, max T = 40C; n = starting bugs",
+       shape = "treatment group"
+       ) +
+  ylim(c(0, 0.8))
+
+# wow these sample sizes/survival rates fuckn suck LOL
+```
+
+wow these sample sizes suck. anyway moving on
+
+```{r KM curves all}
+# first, KM curve with the control grp included
+
+# add fit
+kmfit.byNT2 <- survfit(Surv(NTs_all2$tt.exit, NTs_all2$status) ~ treatment2, data = NTs_all2)
+
+# rough plot
+ggsurvplot(fit = kmfit.byNT2, data = NTs_all2,
+           conf.int = TRUE,
+           palette = RYB)
+
+# add labels
+ggsurvplot(fit = kmfit.byNT2, data = NTs_all2,
+           conf.int = TRUE,
+           palette = RYB,
+           facet.by = c("pop"),
+           legend.labs = c("19C", "26C diurnal", "26C", "33C"),
+           legend.title = "min temp",
+           xlab = "days since hatching")
+  # lmao... whats happening to my 1 guy in the lab minT = 33 group..
+```
+
+```{r KM curves expt only}
+# plot without the ctrl group for slightly easier viz
+
+# filter and fit
+NTs_all2a <- filter(NTs_all, if.fluct == "Y")
+  
+kmfit.byNT2a <- survfit(Surv(NTs_all2a$tt.exit, NTs_all2a$status) ~ treatment2, data = NTs_all2a)
+
+# plot
+ggsurvplot(fit = kmfit.byNT2a, data = NTs_all2a,
+           conf.int = TRUE,
+           palette = RYB,
+           facet.by = c("pop"),
+           legend.labs = c("19C", "26C", "33C"),
+           legend.title = "min temp",
+           xlab = "days since hatching")
+```
 
 # D. modeling
 
-## data prep
+## - data prep
+
+(do this once you redo the viz)
 
 for the analyses, drop the control group (i think i need to filter out the bugs on LD too...)
 
@@ -771,8 +897,8 @@ let's assume that generally, pop matters. which of our main temperature variable
 mod.tt <- lm(tt.pup ~ minT*pop, data = NT)
 ```
 
-# followups
+# followups list
 
 1. see 240124 mtg stuff → this is mostly going to be addressed in the `C3` header
   1. but basically need check for same diet comparisons, redo the n='s, redo some figs w/o the control... maybe some other stuff where i take out the control group...
-  1. currently being worked on in: `C3. visualise with better lab controls (240124 followups)`
+  1. some of this is currently being worked on in: `C3. visualise with better lab controls (240124 followups)`
