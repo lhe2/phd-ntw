@@ -8,11 +8,6 @@ purpose: checking controls over all groups. this is adding visualisations/taking
 # 0. load data, helper fns
 ```{r}
 source("./ntw_helper-functions.R")
-
-library(survival)
-library(survminer)
-
-RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 ```
 
 # 1. checking if lab 260s across all trts are the same to each other
@@ -111,11 +106,9 @@ summary_lab260.2 <- data_lab260 %>%
             se.mass =  sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
             n_all = n(),
             n_pmd = sum(final.fate == "pmd"), 
-            pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
-
-# add better names for the facet labels
-summary_lab260.2 <- summary_lab260.2 %>%
-  mutate(x.label = case_when(flucT == 0 ~ "0°C",
+            n_surv = n_all - n_pmd,
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1)) %>%
+  mutate(x.label = case_when(flucT == 0 ~ "0°C", # add better names for the facet labels
                              TRUE ~ "2.5°C"))
 
 # column adjustments for boxplotting
@@ -126,7 +119,9 @@ data_lab260.2 <- data_lab260 %>%
                              TRUE ~ "2.5°C"),
            tt.pupa = jdate.pupa-jdate.hatch) %>%
   group_by(expt.group) %>%
-  mutate(n = n()) %>%
+  mutate(n = n(),
+         n_pmd = sum(final.fate == "pmd"),
+         n_surv = n - n_pmd) %>%
   ungroup()
   
 ```
@@ -144,7 +139,7 @@ data_lab260.2 %>% ggplot(aes(y = mass.pupa, x = expt.group, fill = diet)) +
        x = "expt group", 
        caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
   facet_grid(~x.label, scales = "free_x", space = "free") +
-  geom_text(aes(label = paste0("n = ", n), y = 15), check_overlap = TRUE)
+  geom_text(aes(label = paste0("n = ", n_surv), y = 15), check_overlap = TRUE)
   # this is kinda interesting. let's look at the others. and not bar graphs lol
 
 # tt pup graph
@@ -159,7 +154,7 @@ data_lab260.2 %>% ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
        y = "average days to pupation from hatching", 
        caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
   facet_grid(~x.label, scales = "free_x", space = "free") +
-  geom_text(aes(label = paste0("n = ", n), y = 15), check_overlap = TRUE)
+  geom_text(aes(label = paste0("n = ", n_surv), y = 15), check_overlap = TRUE)
 
 # visualise % survival
 summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
