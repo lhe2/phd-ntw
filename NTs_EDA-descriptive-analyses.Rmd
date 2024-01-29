@@ -741,7 +741,7 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT)
        caption = "incls LPI")
 ```
 
-# // C3. revisualise with better lab controls (240124 followups)
+# C3. revisualise with better lab controls (240124 followups)
 
 purpose: based on the results by visualising effect of diet + per meeting followups, going to redo the plotting by NTs figs with the lab bugs on lab diet removed, so that diet isn't a variable in the analyses. (i.e. only differences between bugs should be temp treatment and pop. everyone's eating TB)
 
@@ -873,32 +873,74 @@ ggsurvplot(fit = kmfit.byNT2a, data = NTs_all2a,
 
 # D. modeling
 
+based on the figs above,
+
+- are there statistical diffs in tt pup for lab/field bugs? btwn trts?
+- what are the main variables in determining tt pup?
+- are there statistical diffs in surv for lab/field bugs? btwn trts?
+- what are the main variables in determining surv? 
+- influence of pop/minT on surv and tt pup?
+  - probbb need to look at some cph models for the surv part
+
 ## - data prep
 
-(do this once you redo the viz)
-
-for the analyses, drop the control group (i think i need to filter out the bugs on LD too...)
+for the analyses, drop the diurnal grp + lab bugs on lab diet
 
 ```{r}
-NTs_expt <- NTs_all %>%
-  filter(treatment != 260)
+NTs_exptal <- NTs_all %>%
+  filter(treatment != 260) %>%
+  filter(!(pop == "lab" & diet == "LD"))
+
+# make minT a factor
+NTs_exptal2 <- NTs_exptal %>% as.factor()
 ```
 
 
-## - (skipping) mass pup
+## - (skipping for now) mass pup
 
 skipping mass for now bc that doesn't seem to be too affected generally by treatment (or at least, no big surprises)
 
 ## - ttpup
 
-let's assume that generally, pop matters. which of our main temperature variables are important to/significant in predicting ttpup?
+let's assume that generally, pop matters. which of our main temperature variables are important to/significant in predicting ttpup? (for now, mostly focusing on minT)
 
 ```{r}
-mod.tt <- lm(tt.pup ~ minT*pop, data = NT)
+# try minT as a numeric
+mod.tt_minnum <- lm(tt.pupa ~ minT*pop, data = NTs_exptal)
+
+# try minT as a factor
+mod.tt_minfact <- lm(tt.pupa ~ as.factor(minT)*pop, data = NTs_exptal)
+
+# running anovas
+anova(mod.tt_minnum) # F test: signif (***) var btwn min T's. but not btwn pops/pop:minT?
+#anova(mod.tt_minnum, test = "Chisq") # same as above lol
+#summary(mod.tt_minnum)
+anova(mod.tt_minfact) # also (***) here. even more so than as numeric
 ```
+
+## surv
+- try `poly()`
+- try minT as cofactor, numeric
+
+```{r}
+# glm with minT as numeric
+mod.surv_minnum <- glm(status ~ minT*pop, data = NTs_exptal, family = "binomial")
+
+# glm with minT as factor
+mod.surv_minfact <- glm(status ~ as.factor(minT)*pop, data = NTs_exptal, family = "binomial")
+
+# poly
+mod.surv_minpoly <- glm(status ~ poly(NTs_exptal$minT, degree = 2), data = NTs_exptal, family = "binomial")
+
+# run anovas
+anova(mod.surv_minnum, test = "Chisq") # pop ***, int .
+anova(mod.surv_minfact, test = "Chisq") # everything is at least **
+anova(mod.surv_minpoly, test = "Chisq") # idk how to interp but the overall poly is **
+```
+
 
 # followups list
 
-1. see 240124 mtg stuff → this is mostly going to be addressed in the `C3` header
-  1. but basically need check for same diet comparisons, redo the n='s, redo some figs w/o the control... maybe some other stuff where i take out the control group...
-  1. some of this is currently being worked on in: `C3. visualise with better lab controls (240124 followups)`
+1. `C3. visualise with better lab controls (240124 followups)`
+
+UP NEXT: modeling
