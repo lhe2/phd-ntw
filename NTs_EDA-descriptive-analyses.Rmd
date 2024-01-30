@@ -918,7 +918,7 @@ anova(mod.tt_minnum) # F test: signif (***) var btwn min T's. but not btwn pops/
 anova(mod.tt_minfact) # also (***) here. even more so than as numeric
 ```
 
-## surv
+## - surv
 - try `poly()`
 - try minT as cofactor, numeric
 
@@ -938,9 +938,71 @@ anova(mod.surv_minfact, test = "Chisq") # everything is at least **
 anova(mod.surv_minpoly, test = "Chisq") # idk how to interp but the overall poly is **
 ```
 
+## - cox ph
+
+this feels somewhat worth pursuing -- are there differences in the dynamics of the different pop/temp trts. gut feeling is that they all seem to die relatively early (i.e. by 3rds) and then just trickle off afterward, and that there doesn't seem to be any major differences in the dynamics.
+
+```{r an aside - if fact or num minT matters}
+# how much do i need to change around when testing minT as a factor or as numeric?
+
+# make a separate df where minT is a factor
+test <- NTs_exptal
+test$minT <- as.factor(test$minT)
+
+# fit mods: 1 where everything is a factor; one where the data is numeric but the formula is a factor
+testmod <- coxph(Surv(test$tt.exit, test$status) ~ minT*pop, data = test)
+testmod2 <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ as.factor(minT)*pop, data = NTs_exptal)
+
+# test
+anova(testmod)
+anova(testmod2)
+```
+
+outputs are the same, so looks like it doesn't matter too much how i handle the coding. (not sure why this doesn't seem to be the case for the lms tho). so, going forward, just going to run mods as numeric only (maaaaybe test on occasion with parsing out `minT` as a factor...)
+
+```{r trying full int and add models}
+# minT is numeric here. status: 1 = pmd
+
+mod.cph_full <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ minT*pop, data = NTs_exptal)
+anova(mod.cph_full, test = "Chisq") # pop: ***; minT:pop .
+# anova(mod.cph_full) # same as above
+summary(mod.cph_numfull) # poplab **; minT:poplab .
+
+# (checking if order matters - i dont think it does, at least w this model)
+mod.cph_full2 <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ pop*minT, data = NTs_exptal)
+anova(mod.cph_full2, test = "Chisq") # pop ***, pop:minT .
+
+# let's compare just an additive model?
+mod.cph_add <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ minT + pop, data = NTs_exptal)
+anova(mod.cph_add) # pop is ***
+
+# compare the models
+anova(mod.cph_add, mod.cph_full, test = "Chisq")
+```
+- from anova'ing the mods on their own, suggests that `population` might be the most important variable for determining survival here, and more minorly, their interaction with minimum temperature. this is somewhat surprising lol? (bc minT doesnt matter much at all...?)
+  - should go and see how this compares to 2x2 data...... (reframe the 2x2 as minT?) → 240129: this was done, see `temps_analyses`
+  
+- comparison of the nested models suggests that... the interaction model isnt a wholllle lot better. (see: [this](https://thomaselove.github.io/2020-432-book/cox-regression-models-for-survival-data-example-2.html) for more info about comparing?)
+
+as a final comparison, let's also compare some even simpler models
+
+```{r comparing w just minT or pop models}
+mod.cph_pop <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ pop, data = NTs_exptal)
+mod.cph_minT <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ minT, data = NTs_exptal)
+
+# nested anovas
+anova(mod.cph_pop, mod.cph_add, mod.cph_full, test = "Chisq") # mod 3 = .
+anova(mod.cph_minT, mod.cph_add, mod.cph_full) # additive mod is better
+
+# bc i dont really know what im doing
+anova(mod.cph_pop, mod.cph_minT) # i think this just says that the models are different..
+```
+
+i still dont really get how to interpret these 👍 these results are hard to compare to the original 33±7 from the `temps` expt bc those bugs did toooo well lolol... (as in, the variables that matter here don't seem to matter in the temps expt)
+
+(maybe need to not use minT? use something like meanTxflucT instead? but isn't that just changing up the grouping?)
+
 
 # followups list
 
 1. `C3. visualise with better lab controls (240124 followups)`
-
-UP NEXT: modeling
