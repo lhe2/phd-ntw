@@ -214,7 +214,13 @@ anova(mod.mass3)
 
 
 # quick visualisation
-plot.design(mass.pupa ~ expt.group, data = data2_lab260)
+
+# before that, lets add the diurnal temps back in lol
+data2_lab260 <- data_lab260 %>%
+  mutate(flucT = case_when((expt.group == "D" | expt.group == "F") ~ 2.5,
+                           TRUE ~ 0))
+
+plot.design(mass.pupa ~ as.factor(expt.group), data = data2_lab260)
   # B is really big? mostly bc it seems like there were 9 f and 7 m though
 plot.design(mass.pupa ~ as.factor(sex), data = data2_lab260)
   # as expected
@@ -238,10 +244,11 @@ mod.tt3 <- lm((jdate.pupa - jdate.hatch) ~ sex, data = data_lab260)
 anova(mod.tt3)
   # no sig
 
-# lets add the diurnal temps back in lol
-data2_lab260 <- data_lab260 %>%
-  mutate(flucT = case_when((expt.group == "D" | expt.group == "F") ~ 2.5,
-                           TRUE ~ 0))
+# # lets add the diurnal temps back in lol
+# data2_lab260 <- data_lab260 %>%
+#   mutate(flucT = case_when((expt.group == "D" | expt.group == "F") ~ 2.5,
+#                            TRUE ~ 0))
+  # moved up
 
 mod.tt4 <- lm((jdate.pupa - jdate.hatch) ~ flucT, data = data2_lab260)
 anova(mod.tt4)
@@ -443,7 +450,7 @@ same qns as before: do they look the "same" across trts? (also need to check rem
 (and once again we are just gunna copy a lot of code lol)
 
 ```{r}
-# filter lab 260 trts
+# filter lab 337 trts
 data_lab337 <- wide_all %>%
   filter(treatment == 337 & pop == "lab" & instar.enter == "hatch") %>%
   filter(expt.group !="C") %>% # N is too small bc most of them culled
@@ -531,11 +538,78 @@ ggsurvplot(fit = kmfit.lab337, data = data_lab337,
 
 let's ignore grp A lol but not really sure what's going on in grp B and F re: tt pup and survival... tbh i think it's hard to say just bc they're really far apart in time lol soooo... bookmark this and we'll revisit later.. but basically B did a lot better than F for some reason :p (shorter dev time and bette survival overall)
 
+## // followup 02: also look at diet stuff
+
+240129: based on the 260s (followup 1), there's some pretty big diffs btwn the bugs as a result of diet + temp + pop etc. -- want to followup on these before going thru with more of the NTs analyses on the NT bugs.
+
+`temps_analyses` (only on lab bugs) suggests that temp/fluct dont matter tooo much in determining ttpup/survival. 
+
+```{r}
+# recalc summary stats with diet included in grouping
+summary_lab337.2 <- data_lab337 %>%
+  filter(expt.group != "A") %>% # drop the toast group
+  group_by(expt.group, diet) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            n_surv = n_all - n_pmd,
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1))
+
+# add extra columns for boxplot
+data_lab337 <- data_lab337 %>%
+  mutate(tt.pupa = jdate.pupa - jdate.hatch) %>%
+  group_by(expt.group) %>%
+  mutate(n = n(),
+         n_pmd = sum(final.fate == "pmd"),
+         n_surv = n - n_pmd) %>%
+  ungroup()
+  
+```
+
+```{r ttpup and surv plots}
+# (mass is similar. not including the code)
+
+# tt pup graph
+data_lab337 %>% 
+  filter(expt.group != "A") %>% #drop the toast group
+  ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
+  geom_boxplot() +
+  #y_err_tt(y_err= 0.9) + 
+  theme_bw() +
+  scale_fill_manual(labels = c("lab diet", "tobacco diet"),
+                      values = RYB) + 
+  labs(title = "avg time to pupation for lab controls", 
+       x = "expt group",
+       y = "average days to pupation from hatching", 
+       caption = "reared in Mar '23 (B), Aug '23 (F)") +
+  #facet_grid(~x.label, scales = "free_x", space = "free") +
+  geom_text(aes(label = paste0("n = ", n_surv), y = 15), check_overlap = TRUE)
+
+# visualise % survival
+summary_lab337.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
+  geom_col() + theme_bw() +
+  scale_fill_manual(values = RYB) +
+  geom_text(aes(label = paste0("n = ", n_all), y = 10), check_overlap = TRUE) +
+  labs(title = "% survived to pupation (incl LPI)", 
+       y = "% surviving", 
+       x = "expt group/cohort", 
+       caption = "reared in Mar '23 (B), Aug '23 (F)")
+
+# see above for the KM plots
+
+```
+
+
+
 # chronological list of followups
  
  so i can keep track of these things better: they're inserted where relevant/applicable but kept track of chronologically here.
  
  1. 240118: trying different lab ctrl visualisations
+ 2. 240129: same but in the 337s
 
 
 

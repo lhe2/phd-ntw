@@ -325,7 +325,133 @@ ggsurvplot(fit = kmfit.temps, data = temps_all,
 - this KM curve is not really interesting (everything overlaps + surv is high overall) so we'll just leave it here!
   - altho probably of note is that the mean=33 does separate out from mean=26 (lower survival). but again the probabilies/CIs are close/overlap so.
   
-let's move into models!
+let's move into models! (240129: uhh after some followup lol)
+
+## // followup 01: reviz by minT
+
+bc im having a hard time seeing how the 2x2 results connect to the NTs results, which are all grouped by minT on the x... so we'll also just redo these viz lol
+
+```{r sum stats}
+# add in a missing minT... and other stats/things
+temps_all$minT[temps_all$treatment == 330] <- 33
+
+temps_all <- temps_all %>%
+  group_by(meanT, flucT, minT) %>%
+  mutate(n = n(),
+         n_pmd = sum(final.fate == "pmd"),
+         n_surv = n - n_pmd) %>%
+  ungroup()
+  
+# resummarise w min T as a grouping variable
+summary_temps2 <- temps_all %>%
+  group_by(meanT, flucT, minT) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"),
+            n_surv = n_all - n_pmd, 
+            prop.survpup = round(1-(n_pmd/n_all), digits=2))
+```
+
+```{r ttpup plots}
+# tt pup graph v1
+temps_all %>% ggplot(aes(y = tt.pupa, x = as.factor(minT), fill = as.factor(flucT))) +
+  geom_boxplot() +
+  #y_err_tt(y_err= 0.9) + 
+  theme_bw() +
+  scale_fill_manual(values = RYB) + 
+  labs(title = "2x2: avg time to pupation", 
+       x = "minimum T",
+       y = "average days to pupation from hatching", 
+       caption = "faceted by mean temp",
+       fill = "fluctuation temp (°C)") +
+  facet_grid(~meanT, space = "free") +
+  geom_text(aes(label = paste0("n = ", n_surv), y = 0), check_overlap = TRUE)
+
+# tt pup graph v2
+temps_all %>% ggplot(aes(y = tt.pupa, x = as.factor(minT), fill = as.factor(meanT))) +
+  geom_boxplot() +
+  #y_err_tt(y_err= 0.9) + 
+  theme_bw() +
+  scale_fill_manual(values = RYB) + 
+  labs(title = "2x2: avg time to pupation", 
+       x = "minimum T",
+       y = "average days to pupation from hatching", 
+       caption = "faceted by fluct temp",
+       fill = "mean temp (°C)") +
+  facet_grid(~flucT, space = "free") +
+  geom_text(aes(label = paste0("n = ", n_surv), y = 0), check_overlap = TRUE)
+
+# the blank spaces are sooo confusing lol. let's try a point plot?
+
+# tt pup graph v3
+summary_temps2 %>% 
+  ggplot(aes(y = avg.tt, x = as.factor(minT), shape = as.factor(flucT), color = as.factor(meanT))) +
+  geom_point(aes(), size = 2.5) +
+  geom_line(aes(group = meanT, lty = as.factor(meanT))) +
+  y_err_tt(y_err = 0.25) + 
+  theme_bw() +
+  scale_color_manual(values = RYB) + 
+  labs(title = "2x2: avg time to pupation", 
+       x = "minimum T",
+       y = "average days to pupation from hatching", 
+       #caption = "faceted by fluct temp",
+       #color = "fluct temp (°C)",
+       #shape = "fluct temp (°C)"
+       )
+  #facet_grid(~flucT, space = "free") +
+  #geom_text(aes(label = paste0("n = ", n_surv), y = 0), check_overlap = TRUE)
+
+# still... confusing lol idk how to group. lets try some faceting
+
+# tt pup graph v4 - the only saved one lol
+summary_temps2 %>% 
+  ggplot(aes(y = avg.tt, x = as.factor(minT), 
+             shape = as.factor(flucT)
+             #color = as.factor(meanT))
+         )) +
+  geom_point(aes(), size = 2.5) +
+  #geom_line(aes(group = meanT, lty = as.factor(meanT))) +
+  y_err_tt(y_err = 0.25) + 
+  theme_bw() +
+  scale_color_manual(values = RYB) + 
+  facet_wrap(~meanT) +
+  labs(title = "2x2: avg time to pupation", 
+       x = "minimum T",
+       y = "average days to pupation from hatching", 
+       caption = "faceted by mean temp",
+       #color = "fluct temp (°C)",
+       shape = "fluct temp (°C)"
+       ) +
+  #facet_grid(~flucT, space = "free") +
+  geom_text(aes(label = paste0("n = ", n_surv), y = 12), check_overlap = TRUE) +
+  ylim(c(11.75, 20))
+
+# errr i guess this works. hard to visualise this many temperature variables lol
+```
+
+```{r}
+# visualise % survival
+summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
+  geom_col() + theme_bw() +
+  scale_fill_manual(values = RYB) +
+  #y_err(avg.mass, se.mass) + #SIGH
+  # scale_fill_hue(labels = c("A (n = 21)",
+  #                            "B (n = 16)",
+  #                            "D (n = 18)",
+  #                            "F (n = 19)")) +
+  geom_text(aes(label = paste0("n = ", n_all), y = 20), check_overlap = TRUE) +
+  labs(title = "% survived to pupation (incl LPI)", 
+       y = "% surviving", 
+       x = "expt group/cohort", 
+       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+  facet_grid(~x.label, scales = "free_x", space = "free")
+
+```
+
+
 
 # 3. modeling
 
@@ -388,6 +514,12 @@ anova(mod.surv, test="Chisq") # actually test if diffrential inclusion of terms 
 anova(mod.surv) # tests overall variance
   # in this expt, neither of these LOL
 ```
+
+# 4. list of random followups
+
+(look for followup XX in the headers)
+
+1. 240129: i just wanna reframe these graphs in terms of NTs... do we notice any new patterns? (mostly bc im having a hard time translating these results into the NTs (sweats))
 
 
 
