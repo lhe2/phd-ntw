@@ -753,11 +753,9 @@ NTs_all2 <- wide_all %>%
   filter.NTs2() %>%
   filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
   filter(!(pop == "lab" & diet == "LD")) %>%
-  mutate(tt.pupa = jdate.pupa - jdate.hatch,
-         status = case_when(final.fate == "pmd" ~ 1, 
+  mutate(status = case_when(final.fate == "pmd" ~ 1, 
                             TRUE ~ 0),
-         tt.exit = jdate.exit - jdate.hatch,
-         if.fluct = case_when(flucT == 0 ~ "N",
+         if.fluct = case_when(treatment == 260 ~ "N",
                               TRUE ~ "Y"),
          treatment2 = paste(minT, if.fluct, sep = "-")) # for survival filtering
 
@@ -814,7 +812,8 @@ summary_NTs2 %>%
 summary_NTs2 %>% 
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp)) +
-  geom_point(size=2) + geom_line(aes(group = if.fluct)) +
+  geom_point(size=2) + 
+  geom_line(aes(group = if.fluct)) +
   facet_wrap(~pop) + theme_bw() +
   #scale_shape_manual(values=c(21, 16)) +
   geom_text(aes(label = n.all), vjust = -1.5, hjust = -0.9) +
@@ -857,7 +856,7 @@ ggsurvplot(fit = kmfit.byNT2, data = NTs_all2,
 # plot without the ctrl group for slightly easier viz
 
 # filter and fit
-NTs_all2a <- filter(NTs_all, if.fluct == "Y")
+NTs_all2a <- filter(NTs_all2, if.fluct == "Y")
   
 kmfit.byNT2a <- survfit(Surv(NTs_all2a$tt.exit, NTs_all2a$status) ~ treatment2, data = NTs_all2a)
 
@@ -891,8 +890,8 @@ NTs_exptal <- NTs_all %>%
   filter(treatment != 260) %>%
   filter(!(pop == "lab" & diet == "LD"))
 
-# make minT a factor
-NTs_exptal2 <- NTs_exptal %>% as.factor()
+# # make minT a factor
+# NTs_exptal2 <- NTs_exptal %>% as.factor() # i didnt figure this out lol
 ```
 
 
@@ -1006,3 +1005,4 @@ i still dont really get how to interpret these 👍 these results are hard to co
 # followups list
 
 1. `C3. visualise with better lab controls (240124 followups)`
+2. todo: redo stats as factors + new data

@@ -280,9 +280,9 @@ summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
 
 # avg surv due to temp
-summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.factor(flucT))) +
+summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), color = as.factor(flucT))) +
   geom_point(size = 2) + 
-  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
+  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter(height = 0.001)) +
   #geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter()) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   theme_bw() + 
@@ -292,9 +292,10 @@ summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.
        y = "prop. survived to pupation", 
        x = "mean temp (°C)", 
        caption = "all lab; N",
-       shape = "fluctuation temp", lty = "fluctuation temp") +
+       color = "fluctuation temp", color = "fluctuation temp") +
   scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
-  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C")) +
+  ylim(c(0.93, 1.01))
 
 ```
 
@@ -316,7 +317,8 @@ kmfit.temps <- survfit(Surv(temps_all$tt.exit, temps_all$status) ~ treatment, da
 # plot
 ggsurvplot(fit = kmfit.temps, data = temps_all,
            conf.int = TRUE,
-           palette = RYB)
+           palette = RYB,
+           xlab = "days since hatching")
 ```
 
 - this KM curve is not really interesting (everything overlaps + surv is high overall) so we'll just leave it here!
