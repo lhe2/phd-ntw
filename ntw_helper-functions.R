@@ -13,27 +13,20 @@
 # 0. package and data loading ------------------------------------------------
 
 # basic data processing & viz
-library(conflicted)
+#library(conflicted)
 library(tidyverse)
-conflicts_prefer(dplyr::filter)
+#conflicts_prefer(dplyr::filter)
 
 # survival stats/viz
 library(survival)
 library(survminer)
 
 # cleaned data
-wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets-23.csv", header = TRUE)
+wide_all <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-gsheets.csv", header = TRUE)
 
 
-# 1. addtl data processing ---------------------------------------------------
+# 1. pivot to long ---------------------------------------------------
 
-# accurately code diurnal flucts
-wide_all <- wide_all %>%
-  mutate(flucT = case_when((treatment == 260 & 
-                             (expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "G" | expt.group == "H")) ~ 2.5,
-                           TRUE ~ as.numeric(flucT)))
-
-# pivot to long
 long_all <- wide_all %>% select(-(starts_with("date."))) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
@@ -60,8 +53,6 @@ long_all <- wide_all %>% select(-(starts_with("date."))) %>%
 # add instar factor levels
 long_all$instar <- factor(long_all$instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 #long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
-
-#rm(data_all)
 
 
 # 2. define helper functions & objects ------------------------------------------
