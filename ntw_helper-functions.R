@@ -10,9 +10,8 @@
 
 
 
-# package and data loading ------------------------------------------------
+# 0. package and data loading ------------------------------------------------
 
-# 0. load libraries & data ####
 # basic data processing & viz
 library(conflicted)
 library(tidyverse)
@@ -25,9 +24,16 @@ library(survminer)
 # cleaned data
 wide_all <- read.csv("~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets-23.csv", header = TRUE)
 
-# 1.0 additional data processing ####
 
-## 1.1 pivot ####
+# 1. addtl data processing ---------------------------------------------------
+
+# accurately code diurnal flucts
+wide_all <- wide_all %>%
+  mutate(flucT = case_when((treatment == 260 & 
+                             (expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "G" | expt.group == "H")) ~ 2.5,
+                           TRUE ~ as.numeric(flucT)))
+
+# pivot to long
 long_all <- wide_all %>% select(-(starts_with("date."))) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
@@ -37,9 +43,10 @@ long_all <- wide_all %>% select(-(starts_with("date."))) %>%
          tt.wander = jdate.wander - jdate.hatch,
          #tt.pupa = jdate.pupa - jdate.wander,
          tt.pupa = jdate.pupa-jdate.hatch,
-         tt.15 = jdate.15-jdate.hatch,
+         tt.15 = jdate.15 - jdate.hatch,
          tt.eclose = jdate.eclose-jdate.pupa,
-         tt.exit = jdate.exit - jdate.enter,
+         tt.exit = jdate.exit - jdate.hatch,
+         tt.trt = jdate.exit - jdate.enter,
          tt.surv = jdate.surv - jdate.hatch) %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "h", "tt")),
                names_to = c(".value", "instar"),
@@ -50,14 +57,14 @@ long_all <- wide_all %>% select(-(starts_with("date."))) %>%
   drop_na(jdate) %>% drop_na(tt) %>% # drops NA's if an individual didnt reach a certain stage
   filter(instar != "15")
 
-## 1.2 add instar factor levels ####
-long_all <- long_all %>% mutate(instar = factor(instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit")))
+# add instar factor levels
+long_all$instar <- factor(long_all$instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 #long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 
 #rm(data_all)
 
 
-# define helper functions -------------------------------------------------
+# 2. define helper functions & objects ------------------------------------------
 
 # grouping functions ######
 
@@ -85,7 +92,7 @@ filter.acc2 <- function(data) {
 filter.NTs2 <-function(data){
   filtered_data <- data %>% 
     filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch"))) %>%
-    filter(expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H")
+    filter(expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H")
   
   return(filtered_data)
 }
