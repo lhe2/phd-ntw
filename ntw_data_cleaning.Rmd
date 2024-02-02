@@ -6,10 +6,10 @@ date: "2023-11-07"
 # roadmap
 
 1. load data & packages
-2. cleaning: fix columns, add columns, prefiltering
+2. cleaning: prefiltering, fix columns, add columns
 3. save output
 
-# 1 load data & packages
+# 1. load data & packages
 ```{r message = FALSE}
 library(conflicted)
 library(dplyr)
@@ -19,8 +19,9 @@ library(purrr)
 
 # to load data from gsheets
 library(googlesheets4)
-
 ```
+
+## - data import from gsheets
 
 ```{r}
 # before importing,
@@ -39,10 +40,8 @@ data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ay
 # data_hatching <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c")
 ```
 
+## - consolidation
 
-# 2. clean data
-
-## - column fixing, consolidation, standardising
 ```{r}
 # function to standardise column format
 fix.columns <- function(data) {
@@ -54,7 +53,7 @@ fix.columns <- function(data) {
   return(cleaned_data)
 }
 
-# add IDs to imported data sheets and consolidate
+# add IDs to imported data sheets and merge
 data_field <- mutate(data_field, src = "field")
 data_labF1 <- mutate(data_labF1, src = "F1")
 data_labsp <- mutate(data_labsp, src = "sp")
@@ -62,89 +61,136 @@ data_labsu <- mutate(data_labsu, src = "su")
 
 data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)
 
-# value standardising
-data_all$treatment[data_all$treatment=="426"] <- "337" # match for consistency
-data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
+check_raw <- data_all #for troubleshooting lol
 ```
+
+
+# 2. clean data
 
 ## - prefiltering
 ```{r}
-# filter out individuals that didnt hatch at 26C
+# filter out individuals that didnt hatch at 26C / ctrl temps
 data_all <- data_all %>%
-    filter(is.na(from.E) | !(from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267))))
+    filter(!(src == "sp" & (from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267)))))
 
-# filter random deaths
-data_all <- data_all %>% filter(final.fate != "ignore")
-#data_all <- data_all %>% filter(is.na(ignore.reason))
-
-# filter out MQs
-MQ_data <- data_all %>% filter(species == "MQ") # ok this is not working lol?
-data_all <- data_all %>% filter(is.na(species))
-
-# remove imports env bc it gets messy fast lol
-#rm(data_field, data_labF1, data_labsp, data_labsu)
+# filter random deaths (got squished/empty)
+data_all <- subset(data_all, !(ID %in% c(1002, 1007, 1017)))
+#data_all <- data_all %>% filter(is.na(reason.ignore))
 ```
 
-## - column creation for addtl stats + cleanup
+## - column/value formatting
+```{r}
+# julian date formatting
+data_all <- data_all %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric))
+
+# value standardising
+data_all$treatment[data_all$treatment=="426"] <- "337" # match for consistency
+data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
+data_all$final.fate[data_all$final.fate == "LP"] <- "LPI"
+
+# add instar.enter levels
+data_all$instar.enter <- factor(data_all$instar.enter, levels = c("hatch", "1st", "3rd", "4th"))
+```
+
+## - column creation for stats
 ```{r}
 # survival/development binaries
 data_all <- data_all %>% mutate(
-  #if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
+  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
   if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
   if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
   sup = case_when(!is.na(date.7th) ~ 7, !is.na(date.6th) ~ 6, TRUE ~ 0) # type of sup
   )
 
-# mean/fluc Ts
-data_all <- data_all %>% mutate(
-  meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26,
-                    treatment == 337 | treatment == 330 ~ 33,
-                    treatment == 433 ~ 36.5,
-                    treatment == 419 ~ 29.5),
-  flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
-                    treatment == 267 | treatment == 337 ~ 7,
-                    treatment == 433 ~ 3.5,
-                    treatment == 419 ~ 10.5),
-  maxT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
-                   treatment == 267 | treatment == 330 ~ 33,
-                   treatment > 331 ~ 40),
-  minT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
-                   treatment == 267 | treatment == 419 ~ 19,
-                   treatment == 337 ~ 26,
-                   treatment == 433 | treatment == 330 ~ 33)
-  )
-
-# subdivide trts and prep for calculating timetos
+# subdivide treatments
 data_all <- data_all %>%
-  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
-  mutate(across(starts_with("jdate."), as.numeric),
-         treatment = as.character(treatment),
+  mutate(treatment = as.character(treatment),
          trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
-         grp.trt = paste(expt.group, trt.stage, sep = "-")) # round @ treatment
+         grp.trt = paste(expt.group, trt.stage, sep = "-")) # cohort & treatment
 
-# indicate field or lab pops; diet
+# mean/fluc Ts; correction for diurnal trts
+data_all <- data_all %>%
+  mutate(meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26,
+                           treatment == 337 | treatment == 330 ~ 33,
+                           treatment == 433 ~ 36.5,
+                           treatment == 419 ~ 29.5),
+         flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
+                           treatment == 267 | treatment == 337 ~ 7,
+                           treatment == 433 ~ 3.5,
+                           treatment == 419 ~ 10.5),
+         maxT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
+                          treatment == 267 | treatment == 330 ~ 33,
+                          treatment > 331 ~ 40),
+         minT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
+                          treatment == 267 | treatment == 419 ~ 19,
+                          treatment == 337 ~ 26,
+                          treatment == 433 | treatment == 330 ~ 33)) %>%
+  mutate(flucT = case_when((treatment == 260 & 
+                              (expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "G" | expt.group == "H")) ~ 2.5,
+                           TRUE ~ as.numeric(flucT)))
+```
+
+## - column creation for notes
+```{r}
+# indicate field/lab pops, diet, parents
 data_all <- data_all %>%
   mutate(pop = case_when(location == "CC" ~ "field",
                          src == "F1" ~ "F1",
                          TRUE ~ "lab"),
          diet = case_when((expt.group == "F" | pop == "field") ~ "TB",
-                          TRUE ~ "LD"))
+                          TRUE ~ "LD"),
+         parent.tent = case_when(src == "F1" ~ as.character(parent.tent),
+                                 TRUE ~ "parent"))
 
-# indicate overly long-lived individuals: things that took > 25 days to die
-# these can be omitted later
-data_all <- data_all %>% mutate(ignore.reason = case_when(jdate.pmd-jdate.hatch > 25 ~ "slow"))
-  # check: table(data_all$ignore.reason)
+# fill in reason.ignore (optional reasons to ignore individs later when graphing/stats/etc)
+  # indicate overly long-lived individuals: things that took > 25 days to die
+data_all <- data_all %>% 
+  mutate(reason.ignore = case_when(jdate.pmd-jdate.hatch > 25 ~ "slow larva",
+                                   #jdate.eclose - jdate.pupa > 25 ~ "diapaused?",
+                                   src == "F1" & ID < 3036 ~ "early F1",
+                                   expt.group == "E" & treatment == "337" & ID < 247 ~ "early field",
+                                   #final.fate == "culled" & instar.culled == "pupa" ~ "winter culling",
+                                   final.fate == "culled" & instar.culled != "pupa" ~ "culled larva",
+                                   reason.pmd == "toast" ~ "hot larva",
+                                   TRUE ~ as.character(reason.ignore)))
 
-# extract wordier notes from data and save elsewhere
-notes_all <- select(data_all, c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "ignore.reason", ends_with(".stuck"), ends_with(".culled")))
+# check: table(data_all$reason.ignore)
 
-# remove unneeded columns
-data_all <- select(data_all, -c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "fate.code", "notes", ends_with(".stuck"), ends_with(".culled"), "eclose-3"))
-  # need to put back 'species' if the MQ get put back in
+check_newcols <- data_all
 ```
 
 # 3. save the output
 
 ```{r}
-write.csv(data_all, file = "~/Documents/repos/_not-public/1_data/ntw_data/clean-gsheets.csv")
+# MQs only
+data_all %>% 
+  filter(species == "MQ") %>% write.csv(file = "~/Documents/repos/_private/data/ntw_data/ntw_MQ_data.csv")
+
+# wordier notes
+data_all %>% select(c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled"))) %>%
+  write.csv(file = "~/Documents/repos/_private/data/ntw_data/ntw_notes.csv")
+  
+# cleaned up sexta
+check_final <- data_all %>%
+  filter(is.na(species)) %>% 
+  select(-c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", "date.stuck", ends_with(".culled"), "eclose-3"))
+
+write.csv(check_final, file = "~/Documents/repos/_private/data/ntw_data/clean-gsheets.csv")
+```
+
+## - troubleshooting
+
+```{r}
+# data_all <- check_raw
+# data_all <- check_newcols
+# data_all <- check_final
+```
+
+```{r}
+# if all goes well!
+rm(check_raw, check_newcols)
+rm(check_final, data_all)
+rm(data_field, data_labF1, data_labsp, data_labsu)
 ```
