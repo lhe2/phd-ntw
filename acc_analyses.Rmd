@@ -22,8 +22,6 @@ wide_all %>%
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
             pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
             #n.pmd = sum(final.fate == "pmd"))
-
-
 ```
 
 ## - sup barplots
@@ -41,8 +39,11 @@ wide_all %>%
 
 ```
 
-# 2.0 old growth / surv stuff
+# 2.0 (old) growth / surv stuff
+
 ## overall growth trends; end points
+
+240201: just for ref rn
 
 compare overall development of all individuals compared to average growth
 
@@ -167,3 +168,134 @@ ggsurvplot(fit = acc_sfit, data=acc_surv,
 # i think this shoudl be part of survival stuff
 
 ```
+
+# 3.0 redoing growth stats
+
+per the new analyses. aka im just copying over all the code from `temps_analyses` and replacing stuff where needed (just doing this for completion lol)
+
+## a. calc stats
+```{r}
+# filter out pupal stuff & the correct bugs lol
+acc_all <- wide_all %>%
+  ## relevel instars
+  mutate(instar.intrt = case_when(instar.enter == "hatch" ~ 5,
+                                  instar.enter == "3rd" ~ 3,
+                                  instar.enter == "4th" ~ 2)) %>%
+  filter.acc2() %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
+  ## code survival and labeling
+  mutate(status = case_when(final.fate == "pmd" ~ 1,
+                            TRUE ~ 0), 
+         trt = case_when(treatment == 260 ~ "control (26±0°C)",
+                           treatment == 337 ~ "exptal (33±7°C)")) %>%
+  ## add sample sizes
+  group_by(trt, instar.enter) %>%
+  mutate(n = n(),
+         n_pmd = sum(final.fate == "pmd"),
+         n_surv = n - n_pmd) %>%
+  ungroup()
+
+# calculate the pup stats we're interested in
+summary_acc <- acc_all %>%
+  group_by(treatment, trt, instar.enter, instar.intrt) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            n_surv = n_all - n_pmd,
+            prop.survpup = round(1-(n_pmd/n_all), digits=2))
+```
+
+## b. plot
+```{r mass and time together}
+# visualise time to pup, pupal mass across expt groups
+summary_acc %>% ggplot(aes(y = avg.mass, x = avg.tt, color = as.factor(instar.intrt), shape = trt)) +
+  geom_point(size = 2.5) +
+  y_err_mass(y_err= 0.1) + x_err_tt(x_err = 100) + theme_bw() +
+  #scale_color_manual(values = c("#619Cff", "#00BA38", "#F8766D")) +
+  scale_color_manual(values = RYB) +
+  labs(title = "acc: avg time to and mass at pupation", 
+       y = "average pupal mass (mg)", 
+       x = "average time to pupa from hatching (days)", 
+       caption = "all lab; trt = 33±7°C, 6 hr soaks",
+       color = "instars spent in treatment", shape = "treatment")
+```
+
+generally, control conditions = biggest and happiest bugs (big and fast). exptal trts are all slower and smaller. the less time spent at exptl trt, the biiiiger they are. time is generally about the same tho (not quite a hatch > 3rd > 4th tho, interestingly for the time. maybe bc hatch has a lot of time to acclimate and 4th is too much of a shock?)
+
+that said, pup time still isn't that much bigger (only about 2 more days), considering how ~stressful~ these conds are... (aka the bugs wre still healthy atp lol)
+
+```{r plot 1 response var at a time}
+# avg pup mass due to acc
+summary_acc %>% ggplot(aes(y = avg.mass, x = as.factor(instar.intrt), shape = as.factor(trt))) +
+  geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = trt, group = trt)) +
+  y_err_mass(y_err = 0.04) + theme_bw() +
+  labs(title = "acc: avg mass at pupation", 
+       y = "average pupal mass (mg)", 
+       x = "instars spent in treatment", 
+       caption = "all lab",
+       shape = "treatment", lty = "treatment")
+
+# avg tt pupa due to acc
+summary_acc %>% ggplot(aes(y = avg.tt, x=as.factor(instar.intrt), shape = as.factor(trt))) +
+  geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = trt, group = trt)) +
+  y_err_tt(y_err = 0.04) + theme_bw() +
+  labs(title = "acc: avg time to pupation", 
+       y = "avg time to pupation (days)", 
+       x = "instars spent in treatment", 
+       caption = "all lab",
+       shape = "treatment", lty = "treatment")
+
+# avg surv due to acc
+summary_acc %>% 
+  filter(treatment == 337) %>%
+  ggplot(aes(y = prop.survpup, x = as.factor(instar.intrt))) +
+  geom_point(size = 2) + 
+  geom_text(aes(label = n_all), vjust = -1, hjust = -1.1, check_overlap = TRUE) +
+  geom_line(aes(lty = trt, group = trt)) +
+  theme_bw() + 
+  #geom_blank(aes(y=1.0095)) +
+  # expand_limits(y = c(0.87, 1.025)) +
+  labs(title = "acc: proportion survived to pupation", 
+       y = "prop. survived to pupation", 
+       x = "instars spent in treatment", 
+       caption = "all lab; ctrl (n=16) all survived",
+       shape = "treatment", lty = "treatment") +
+  ylim(c(0.7, 1.05))
+```
+
+```{r KM curves}
+# fit models
+kmfit.trttime <- survfit(Surv(acc_all$tt.trt, acc_all$status) ~ trt.stage, data = acc_all)
+kmfit.devtime <- survfit(Surv(acc_all$tt.exit, acc_all$status) ~ trt.stage, data = acc_all)
+
+# base plot
+ggsurvplot(fit = kmfit.trttime, data = acc_all,
+           conf.int = TRUE,
+           palette = RYB,
+           xlab = "days since entering treatment")
+
+ggsurvplot(fit = kmfit.devtime, data = acc_all,
+           conf.int = TRUE,
+           palette = RYB,
+           xlab = "days since hatching")
+
+```
+
+# 4.0 models,, ?
+
+240201: gunna skip modeling for now lolll
+
+
+
+
+
+
+
+
+
+

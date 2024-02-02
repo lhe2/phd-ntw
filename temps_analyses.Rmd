@@ -7,11 +7,6 @@ date: "2023-12-07"
 ```{r}
 source("./ntw_helper-functions.R")
 rm(list=c(acc_helpers, NT_helpers))
-
-library(survival)
-library(survminer)
-
-RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 ```
 
 # 1. pct sup
@@ -51,7 +46,7 @@ i sorta dislike everything under here so we're kinda ignoring it rn (maybe picki
 
 compare overall development of all individuals compared to average growth
 
-## - set up the df (**)
+<!-- ## - set up the df (**) -->
 ```{r}
 # pull out the lab bugs
 long_lf <- long_all %>% filter(pop == "lab" | pop == "field") 
@@ -87,7 +82,7 @@ devsumm_L <- dev_L %>%
   
 ```
 
-## - plot temps
+<!-- ## - plot temps -->
 ```{r}
 temps_dev <- dev_L %>% filter(pop == "lab") %>% filter.temps2()
 #temps_devsumm <- devsumm_L %>% filter(pop == "lab") %>% filter.temps2()
@@ -144,7 +139,7 @@ temps_devP %>%
 
 # survival to pupation
 
-## - censoring + subsetting
+<!-- ## - censoring + subsetting -->
 ```{r}
 # censor data
 surv_P <-  wide_all %>%
@@ -157,13 +152,13 @@ surv_P <-  wide_all %>%
 temps_surv <- surv_P %>% filter.temps2()
 ```
 
-## - create survival objects and fits
+<!-- ## - create survival objects and fits -->
 ```{r}
 temps_sobj <- Surv(temps_surv$timeto.exit, temps_surv$censor)
 temps_sfit <- survfit(temps_sobj ~ treatment, data = temps_surv)
 ```
 
-## - plot survival curves
+<!-- ## - plot survival curves -->
 ```{r}
 ggsurvplot(fit = temps_sfit, data=temps_surv,
            conf.int = T,
@@ -181,7 +176,7 @@ ggsurvplot(fit = temps_sfit, data=temps_surv,
 
 - check as variables: lab/TB diet; if.sup; if.stuck
 
-##  - if sup x to pup/eclosion
+<!-- ##  - if sup x to pup/eclosion -->
 
 ```{r}
 #check_suppup <- wide_all %>% filter(if.pupa == "Y")
@@ -193,7 +188,7 @@ ggsurvplot(fit = temps_sfit, data=temps_surv,
 
 ```
 
-# x=trt, y = response graphs
+<!-- # x=trt, y = response graphs -->
 
 ```{r}
 # subset data
@@ -204,7 +199,7 @@ temps_all <- wide_all %>% filter.temps2()
 ```
 
 
-# *** ok restarting here lol ***
+** (ok restarting here lol) **
 
 (this mostly takes the code from `overall_controls.Rmd` LOL)
 
@@ -227,6 +222,7 @@ summary_temps <- temps_all %>%
             se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
             n_all = n(),
             n_pmd = sum(final.fate == "pmd"), 
+            n_surv = n_all - n_pmd, 
             prop.survpup = round(1-(n_pmd/n_all), digits=2))
   # mutate(meanT = as.factor(meanT),
   #        flucT = as.factor(flucT))
@@ -259,7 +255,7 @@ let's try to not plot 80 things at once and just put 1 response var on the y lol
 ```{r plot 1 response var at a time}
 # avg pup mass due to temp
 summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT))) +
-  geom_point(size = 2) + geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
+  geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   y_err_mass(y_err = 0.04) + theme_bw() +
   labs(title = "2x2: avg mass at pupation", 
@@ -272,7 +268,7 @@ summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.fact
   
 # avg tt pupa due to temp
 summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor(flucT))) +
-  geom_point(size = 2) + geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
+  geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   y_err_tt(y_err = 0.04) + theme_bw() +
   labs(title = "2x2: avg time to pupation", 
@@ -286,6 +282,7 @@ summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor
 # avg surv due to temp
 summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.factor(flucT))) +
   geom_point(size = 2) + 
+  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5) +
   #geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter()) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   theme_bw() + 
@@ -430,6 +427,29 @@ summary_temps2 %>%
   ylim(c(11.75, 20))
 
 # errr i guess this works. hard to visualise this many temperature variables lol
+
+# tt pup graph v5 - also saved
+summary_temps2 %>% 
+  ggplot(aes(y = avg.tt, x = as.factor(meanT), 
+             #shape = as.factor(flucT)
+             color = as.factor(flucT))
+         ) +
+  geom_point(aes(), size = 2.5) +
+  #geom_line(aes(group = meanT, lty = as.factor(meanT))) +
+  y_err_tt(y_err = 0.25) + 
+  theme_bw() +
+  scale_color_manual(values = RYB) + 
+  facet_wrap(~minT) +
+  labs(title = "2x2: avg time to pupation", 
+       x = "mean T",
+       y = "average days to pupation from hatching", 
+       caption = "faceted by min temp",
+       color = "fluct temp (°C)"
+       #shape = "fluct temp (°C)"
+       ) +
+  #facet_grid(~flucT, space = "free") +
+  geom_text(aes(label = paste0("n = ", n_surv), y = 12), check_overlap = TRUE, color = "black") +
+  ylim(c(11.75, 20))
 ```
 
 ```{r}
