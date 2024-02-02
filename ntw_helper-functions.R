@@ -25,9 +25,10 @@ library(survminer)
 wide_all <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-gsheets.csv", header = TRUE)
 
 
-# 1. pivot to long ---------------------------------------------------
+# 1. calculations & pivoting ---------------------------------------------------
 
-long_all <- wide_all %>% select(-(starts_with("date."))) %>%
+# calculate instar lengths
+wide_all <- wide_all %>% select(-(starts_with("date."))) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
          tt.5th = jdate.5th - jdate.hatch,
@@ -37,10 +38,13 @@ long_all <- wide_all %>% select(-(starts_with("date."))) %>%
          #tt.pupa = jdate.pupa - jdate.wander,
          tt.pupa = jdate.pupa-jdate.hatch,
          tt.15 = jdate.15 - jdate.hatch,
-         tt.eclose = jdate.eclose-jdate.pupa,
-         tt.exit = jdate.exit - jdate.hatch,
-         tt.trt = jdate.exit - jdate.enter,
-         tt.surv = jdate.surv - jdate.hatch) %>%
+         tt.eclose = jdate.eclose - jdate.pupa,
+         tt.exit = jdate.exit - jdate.hatch, # time to dev outcome
+         tt.surv = jdate.surv - jdate.eclose, # time spent as adult
+         tt.trt = jdate.exit - jdate.enter) # time spent in temp trt
+
+# pivot
+long_all <- wide_all %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "h", "tt")),
                names_to = c(".value", "instar"),
                #names_sep = ".",
@@ -51,7 +55,7 @@ long_all <- wide_all %>% select(-(starts_with("date."))) %>%
   filter(instar != "15")
 
 # add instar factor levels
-long_all$instar <- factor(long_all$instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
+long_all$instar <- factor(long_all$instar, levels=c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit", "trt", "surv"))
 #long_all$instar <- factor(long_all$instar, c("hatch", "2nd", "3rd", "4th", "5th", "6th", "7th", "stuck", "wander", "15", "pupa", "eclose", "exit"))
 
 
