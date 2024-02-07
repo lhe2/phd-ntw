@@ -764,7 +764,7 @@ NTs_all2$flucT[NTs_all2$flucT == 0] <- 2.5
 
 # calc summ stats we're interested in
 summary_NTs2 <- NTs_all2 %>%
-  group_by(pop, meanT, flucT, minT, if.fluct) %>% 
+  group_by(pop, meanT, flucT, minT, if.fluct, .add = TRUE) %>% 
   summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
             avg.mass = mean(na.omit(mass.pupa)),
@@ -786,7 +786,8 @@ summary_NTs2 %>%
   ggplot(aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
   geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
   #scale_shape_manual(values=c(21, 16)) +
-  facet_wrap(~pop) + theme_bw() +
+  #facet_wrap(~pop) + 
+  theme_bw() +
   geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
@@ -869,6 +870,86 @@ ggsurvplot(fit = kmfit.byNT2a, data = NTs_all2a,
            legend.title = "min temp",
            xlab = "days since hatching")
 ```
+smush plots together: [separate with group_split](https://stackoverflow.com/questions/67555257/repeat-a-ggplot-for-each-value-of-a-variable-in-the-dataframe), [grid.arrange](https://cran.r-project.org/web/packages/egg/vignettes/Ecosystem.html)
+
+## - combined plots 
+```{r make lists}
+plots.mass <- summary_NTs2 %>% 
+  ungroup() %>%
+  #as_tibble() %>%
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  group_split(pop) %>%
+  #split(summary_NTs2$pop) %>%
+  map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
+        geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+        #facet_wrap(~pop) + 
+        theme_bw() +
+        theme(legend.position="none") +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        labs(
+          #title = "NTs: avg pupal mass", 
+             y = "average pupal mass (mg)", 
+             x = "minimum temperature (°C)" 
+             #caption = "all tobacco diet, max T = 40C",
+             #shape = "treatment group"
+             )
+      )
+
+plots.tt <- summary_NTs2 %>% 
+  ungroup() %>%
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  group_split(pop) %>%
+  map(~ggplot(data = ., aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
+        geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+        #facet_wrap(~pop) + 
+        theme_bw() +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        theme(legend.position="none") +
+        labs(
+          #title = "NTs: avg time to pupation from hatching", 
+             y = "average time to pupation (days)", 
+             x = "minimum temperature (°C)" 
+             #caption = "all tobacco diet, max T = 40C",
+             #shape = "treatment group"
+             )
+      )
+
+plots.prop <- summary_NTs2 %>% 
+  ungroup() %>%
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  group_split(pop) %>%
+  map(~ggplot(data = ., aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp)) +
+        geom_point(size=2) + 
+        geom_line(aes(group = if.fluct)) +
+        #facet_wrap(~pop) + 
+        theme_bw() +
+        geom_text(aes(label = n.all), vjust = -1.5, hjust = -0.9) +
+        labs(
+          #title = "NTs: survival to pupation (incls LPI)", 
+             y = "proportion survived to pupation", 
+             x = "minimum temperature (°C)" 
+             #caption = "all tobacco diet, max T = 40C; n = starting bugs",
+             #shape = "treatment group"
+        ) +
+        theme(legend.position="none") +
+        ylim(c(0, 0.8)))
+
+```
+
+```{r arrange}
+grid.arrange(plots.mass[[1]], plots.tt[[1]], plots.prop[[1]], nrow = 1,
+             top = text_grob("field responses to varying min T",
+                             size = 15),
+             bottom = text_grob("max T = 40C",
+                               size = 8, hjust = -1.5))
+
+grid.arrange(plots.mass[[2]], plots.tt[[2]], plots.prop[[2]], nrow = 1,
+             top = text_grob("lab responses to varying min T",
+                             size = 15),
+             bottom = text_grob("all tobacco diet, max T = 40C",
+                               size = 8, hjust = -1.5))
+```
+
 
 # D1. modeling
 
@@ -1019,7 +1100,7 @@ anova(mod.cph_pop, mod.cph_minT) # i think this just says that the models are di
 
 i still dont really get how to interpret these 👍 these results are hard to compare to the original 33±7 from the `temps` expt bc those bugs did toooo well lolol... (as in, the variables that matter here don't seem to matter in the temps expt)
 
-(maybe need to not use minT? use something like meanTxflucT instead? but isn't that just changing up the grouping?) s
+(maybe need to not use minT? use something like meanTxflucT instead? but isn't that just changing up the grouping?)
 
 
 # followups list
