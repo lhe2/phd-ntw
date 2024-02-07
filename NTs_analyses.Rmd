@@ -136,9 +136,9 @@ NTsups_devsumm <- NT_dev %>%
   mutate(if.sup = case_when(sup == 0 ~ "N", TRUE ~ "Y"))
 ```
 
-### - line plots
+<!-- ### - line plots -->
 
-### - all bugs larval instars
+<!-- ### - all bugs larval instars -->
 plot avg growth of all bugs (sups included in math)
 ```{r avg larval growth all bugs}
 NT_devsumm %>%
@@ -157,7 +157,7 @@ NT_devsumm %>%
 ==> this is hard to separate out the sups and imo shouldnt do the math w the sups + non-sups combined, so:
 
 
-### - sup bugs separated
+<!-- ### - sup bugs separated -->
 plot avg growth bugs but separate out the sups
 
 (so 3 groups total: bugs with 1-5 instars, bugs that had 6th, bugs that had 7th)
@@ -235,7 +235,7 @@ NTsups_devsumm %>%
        caption = "L+F, no pmd, enter at hatch") 
 ```
 
-#### - pupa/endpoints only
+<!-- #### - pupa/endpoints only -->
 
 calculate the stats
 ```{r pupa dev summ stats}
@@ -364,11 +364,11 @@ long_NTs %>%
 ```
 
 
-# C2. visualise overview summ stats
+# C2. (old) visualise overview summ stats
 
 going to make these graphs more like the ones from `temp_analyses` (expect code borrowing lol)
 
-## - calc summ stats
+- calc summ stats
 ```{r}
 # subset + add some binaries for survival stuff later
 NTs_all <- wide_all %>%
@@ -399,7 +399,7 @@ summary_NTs <- NTs_all %>%
 
 ```
 
-## - plotting: by NTs
+- plotting: by NTs
 
 H: naively, if NTs are all that matters, then performance should just decrease as NT increases.
 
@@ -507,7 +507,7 @@ summary_NTs2 %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) 
 # survival figs dont work bc can only sex them if they live to pupation (sweats;;)
 # but looking at the summary stats.. vaaaaaguely seems like there tends to be more F?
 ```
-## - plotting: by meanT
+- plotting: by meanT
 
 H: naively, if mean T is all that matters, then "performance" should peak at ~33ish and then drop.
 
@@ -573,7 +573,7 @@ ggsurvplot(fit = kmfit.byminT, data = NTs_all,
 ```
 (let's keep going w the other figs and ignore the potential sex differences for now bc it doesnt seem that major, based on the graphs where x = min T)
 
-## - plotting: by flucT
+- plotting: by flucT
 
 H: naively, if fluct T is all that matters, then "performance" should decrease as fluct gets larger.
 
@@ -650,7 +650,7 @@ overall i think this is all saying that pop/fluct/min/mean(?) all have an effect
 
 clearly it's like ~at some point~/in combo with other factors, a certain min is bad, mean is bad, fluct is bad, etc etc... maybe compare with the 2x2s (sweat smile)
 
-## - plotting: lab bugs on TB/LD
+ - plotting: lab bugs on TB/LD
 
 just looking at pupation/time since the ctrl analyses suggest those are the things that are mostly diff btwn them.
 
@@ -745,7 +745,7 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = flucT, color = as.factor(minT)
 
 purpose: based on the results by visualising effect of diet + per meeting followups, going to redo the plotting by NTs figs with the lab bugs on lab diet removed, so that diet isn't a variable in the analyses. (i.e. only differences between bugs should be temp treatment and pop. everyone's eating TB)
 
-## - data prep
+## - (**) data prep
 
 ```{r}
 # refilter NTs without the lab bugs on lab diet
@@ -870,7 +870,7 @@ ggsurvplot(fit = kmfit.byNT2a, data = NTs_all2a,
            xlab = "days since hatching")
 ```
 
-# D. modeling
+# D1. modeling
 
 based on the figs above,
 
@@ -881,21 +881,26 @@ based on the figs above,
 - influence of pop/minT on surv and tt pup?
   - probbb need to look at some cph models for the surv part
 
-## - data prep
+## - (**) data prep
 
 for the analyses, drop the diurnal grp + lab bugs on lab diet
 
 ```{r}
-NTs_exptal <- NTs_all %>%
-  filter(treatment != 260) %>%
-  filter(!(pop == "lab" & diet == "LD"))
+# NTs_exptal <- NTs_all %>%
+#   filter(treatment != 260) %>%
+#   filter(!(pop == "lab" & diet == "LD"))
 
 # # make minT a factor
 # NTs_exptal2 <- NTs_exptal %>% as.factor() # i didnt figure this out lol
+
+NTs_exptal <- NTs_all2 %>%
+  filter(treatment != 260) %>%
+  filter(!(pop == "lab" & diet == "LD")) %>%
+  mutate(minT == as.factor(minT))
 ```
 
 
-## - (skipping for now) mass pup
+## - mass pup (skipping for now)
 
 skipping mass for now bc that doesn't seem to be too affected generally by treatment (or at least, no big surprises)
 
@@ -914,8 +919,13 @@ mod.tt_minfact <- lm(tt.pupa ~ as.factor(minT)*pop, data = NTs_exptal)
 anova(mod.tt_minnum) # F test: signif (***) var btwn min T's. but not btwn pops/pop:minT?
 #anova(mod.tt_minnum, test = "Chisq") # same as above lol
 #summary(mod.tt_minnum)
+summary(mod.tt_minfact) # 40-33 has the biggest effect. pop doesnt matter nor does the interaction. the R squared sucks
 anova(mod.tt_minfact) # also (***) here. even more so than as numeric
 ```
+`factor(minT)` mod:
+
+- effect sizes are not stellar... you're faster(?) at 40-26 and even faster at 40-33. popn doesnt rlly matter and neither does the interaction
+- just the minT predicts anything here
 
 ## - surv
 - try `poly()`
@@ -931,11 +941,21 @@ mod.surv_minfact <- glm(status ~ as.factor(minT)*pop, data = NTs_exptal, family 
 # poly
 mod.surv_minpoly <- glm(status ~ poly(NTs_exptal$minT, degree = 2), data = NTs_exptal, family = "binomial")
 
+# effect sizes
+summary(mod.surv_minfact)
+
 # run anovas
 anova(mod.surv_minnum, test = "Chisq") # pop ***, int .
 anova(mod.surv_minfact, test = "Chisq") # everything is at least **
 anova(mod.surv_minpoly, test = "Chisq") # idk how to interp but the overall poly is **
 ```
+
+- `factor(minT)` mod:
+
+  - being at 40-33 and from the lab matters i guess..
+  - all the variables matter! isn't that surprising, considering the graphs.
+  
+
 
 ## - cox ph
 
@@ -999,10 +1019,11 @@ anova(mod.cph_pop, mod.cph_minT) # i think this just says that the models are di
 
 i still dont really get how to interpret these 👍 these results are hard to compare to the original 33±7 from the `temps` expt bc those bugs did toooo well lolol... (as in, the variables that matter here don't seem to matter in the temps expt)
 
-(maybe need to not use minT? use something like meanTxflucT instead? but isn't that just changing up the grouping?)
+(maybe need to not use minT? use something like meanTxflucT instead? but isn't that just changing up the grouping?) s
 
 
 # followups list
 
 1. `C3. visualise with better lab controls (240124 followups)`
-2. todo: redo stats as factors + new data
+2. redo stats as factors (for minT) + new data per 240131 joel mtg: this is scattered thruout the analyses
+3. todo: combine figs

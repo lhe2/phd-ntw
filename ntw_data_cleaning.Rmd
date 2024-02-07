@@ -166,18 +166,18 @@ check_newcols <- data_all
 ```{r}
 # MQs only
 data_all %>% 
-  filter(species == "MQ") %>% write.csv(file = "~/Documents/repos/_private/data/ntw_data/ntw_MQ_data.csv")
+  filter(species == "MQ") %>% write.csv(file = "~/Documents/repos/_private/data/ntw_data/ntw_MQ_data.csv", row.names = FALSE)
 
 # wordier notes
 data_all %>% select(c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled"))) %>%
-  write.csv(file = "~/Documents/repos/_private/data/ntw_data/ntw_notes.csv")
+  write.csv(file = "~/Documents/repos/_private/data/ntw_data/ntw_notes.csv", row.names = FALSE)
   
 # cleaned up sexta
 check_final <- data_all %>%
   filter(is.na(species)) %>% 
   select(-c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", "date.stuck", ends_with(".culled"), "eclose-3"))
 
-write.csv(check_final, file = "~/Documents/repos/_private/data/ntw_data/clean-gsheets.csv")
+write.csv(check_final, file = "~/Documents/repos/_private/data/ntw_data/clean-gsheets.csv", row.names = FALSE)
 ```
 
 ## - troubleshooting
