@@ -892,7 +892,8 @@ plots.mass <- summary_NTs2 %>%
              x = "minimum temperature (°C)" 
              #caption = "all tobacco diet, max T = 40C",
              #shape = "treatment group"
-             )
+             ) +
+        ylim(c(2100, 4750))
       )
 
 plots.tt <- summary_NTs2 %>% 
@@ -911,7 +912,8 @@ plots.tt <- summary_NTs2 %>%
              x = "minimum temperature (°C)" 
              #caption = "all tobacco diet, max T = 40C",
              #shape = "treatment group"
-             )
+             ) +
+        ylim(c(20, 35))
       )
 
 plots.prop <- summary_NTs2 %>% 

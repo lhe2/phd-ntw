@@ -473,8 +473,6 @@ summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
 
 ```
 
-
-
 # 3. modeling
 
 lets confirm what our graphs suggest + look for interactions/or lack thereof.
@@ -542,7 +540,5 @@ anova(mod.surv) # tests overall variance
 (look for followup XX in the headers)
 
 1. 240129: i just wanna reframe these graphs in terms of NTs... do we notice any new patterns? (mostly bc im having a hard time translating these results into the NTs (sweats))
-
-
 
 

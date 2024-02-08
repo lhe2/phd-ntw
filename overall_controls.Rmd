@@ -602,6 +602,115 @@ summary_lab337.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
 
 ```
 
+# // followup 03: smush plots together
+
+want to put 2x2 and NT data on the same panels
+
+```{r filter data}
+# refilter NTs without the lab bugs on lab diet
+NTs <- wide_all %>%
+  filter.NTs2() %>%
+  filter(!(pop == "lab" & diet == "LD")) %>%
+  filter(pop == "lab") %>% # only keep lab for comparison to 2x2
+  mutate(expt = "NTs") %>% # for survival filtering
+
+# filter temps
+temps <- wide_all %>%
+  filter.temps2() %>%
+  mutate(expt = "temps")
+
+# combine
+smush <- rbind(NTs, temps) %>%
+  mutate(status = case_when(final.fate == "pmd" ~ 1, 
+                            TRUE ~ 0),
+         if.fluct = case_when(treatment == 260 | treatment == 330 ~ "N",
+                              TRUE ~ "Y"),
+         treatment2 = paste(minT, if.fluct, sep = "-")) %>%
+  filter((expt == "NTs" & if.fluct == "Y") | expt == "temps")
+
+
+# calc summ stats we're interested in
+summary_smush <- smush %>%
+  group_by(expt, meanT, flucT, minT, maxT, if.fluct, .add = TRUE) %>% 
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n(),
+            n.pmd = sum(final.fate == "pmd"),
+            n.pmd = case_when(is.na(n.pmd) ~ 0, TRUE ~ as.numeric(n.pmd)),
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+  mutate(label = case_when(expt == "temps" ~ "2x2",
+                           expt == "NTs" ~ "min temps (max 40C)"))
+
+
+```
+```{r test fig}
+summary_smush %>%
+  ggplot(aes(y = avg.mass, x = as.factor(meanT), color = as.factor(minT), shape = label)) +
+  geom_point(size = 2) + y_err_mass(y_err = 0.25) +
+  geom_text(aes(label = n.surv), hjust = -0.5) +
+  #geom_line(aes(group = interaction(expt, meanT, flucT))) +
+  facet_wrap(~flucT, nrow = 1) +
+  labs(color = "min temp (C)", shape = "expt", 
+       y = "average pupal mass (mg)", x = "mean T",
+       title = "pupal mass in response to varying mean/fluct temps",
+       caption = "facet = flucts; lab bugs only; NTs on TB") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D")) +
+  theme_bw()
+
+summary_smush %>%
+  ggplot(aes(y = avg.tt, x = as.factor(meanT), color = as.factor(minT), shape = label)) +
+  geom_point(size = 2) + y_err_tt(y_err = 0.25) +
+  geom_text(aes(label = n.surv), hjust = -0.5) +
+  facet_wrap(~flucT, nrow = 1) +
+  labs(color = "min temp (C)", shape = "expt", 
+       y = "avg time to pupation (days since hatching)", x = "mean T",
+       title = "time to pupation in response to varying mean/fluct temps",
+       caption = "facet = flucts; lab bugs only; NTs on TB") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D")) +
+  theme_bw()
+
+summary_smush %>%
+  ggplot(aes(y = prop.survpup, x = as.factor(meanT), color = as.factor(minT), shape = label)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n.all), hjust = -0.5) +
+  facet_wrap(~flucT, nrow = 1) +
+  labs(color = "min temp (C)", shape = "expt", 
+       y = "proportion survival", x = "mean T",
+       title = "survival to pupation in response to varying mean/fluct temps",
+       caption = "facet = flucts; lab bugs only; NTs on TB") +
+  scale_color_manual(values = c("#619CFF", "#00BA38", "#F8766D")) +
+  #scale_color_manual(values = RYB) +
+  theme_bw()
+
+```
+
+
+
+```{r make lists}
+plots.mass <- summary_smush %>% 
+  ungroup() %>%
+  group_split(expt) %>%
+  map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(meanT), color = as.factor(minT), shape = as.factor(expt))) +
+        geom_point(size = 2) +  
+        y_err_mass(y_err= 0.25) +
+        theme_bw() +
+        facet_wrap(~flucT) %>%
+        theme(legend.position="none") +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        labs(
+             y = "average pupal mass (mg)", 
+             x = "minimum temperature (°C)" 
+             )
+        # ylim(c(2100, 4750))
+      )
+
+plots.mass[[1]]
+
+```
+
 
 
 # chronological list of followups
@@ -610,6 +719,7 @@ summary_lab337.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
  
  1. 240118: trying different lab ctrl visualisations
  2. 240129: same but in the 337s
+ 3. smushing plots together (idk dont know where to put this rn)
 
 
 
