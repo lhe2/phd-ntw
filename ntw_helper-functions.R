@@ -87,9 +87,22 @@ filter.acc2 <- function(data) {
 ### for NTs
 filter.NTs2 <-function(data){
   filtered_data <- data %>% 
-    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch"))) %>%
+    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% 
+    mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch"))) %>%
     filter(expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H")
   
+  return(filtered_data)
+}
+
+### for fertility (compare kids to parents)
+filter.F1s <- function(data) {
+  filtered_data <- data %>% 
+    filter(trt.stage == "260-hatch" | trt.stage == "337-hatch" | trt.stage == "419-hatch" | trt.stage == "433-hatch") %>% 
+    mutate(trt.stage = factor(trt.stage, levels = c("260-hatch", "419-hatch", "337-hatch", "433-hatch"))) %>%
+    filter(ID > 1170)
+    #filter(expt.group %in% c("C", "D", "E", "F", "G", "H"))
+    #filter(expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "G" | expt.group == "H" | expt.group == "I")
+    
   return(filtered_data)
 }
 
@@ -258,3 +271,4 @@ RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 temps_helpers <- c("temp_colors", "temp_labels", "temp_trts", "filter.temps2", "temp_aes", "temps_helpers")
 acc_helpers <- c("acc_colors", "acc_labels", "acc_trts", "filter.acc2", "acc_aes", "acc_helpers")
 NT_helpers <- c("NT_colors", "NT_labels", "NT_trts", "filter.NTs2", "NT_aes", "NT_helpers")
+other_helpers <- list(temps_helpers, acc_helpers, NT_helpers, "other_helpers")

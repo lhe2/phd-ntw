@@ -1,0 +1,128 @@
+---
+title: "F1 analyses"
+date: "2024-02-08"
+---
+
+purpose: comparing F1s to parents
+
+# 0. load data, helper fns
+```{r}
+source("./ntw_helper-functions.R")
+# map(other_helpers, ~discard(., .p = ~all))
+  # working on it: https://stackoverflow.com/questions/63533428/in-r-remove-list-of-list-based-on-name
+```
+
+# 1. subsetting
+```{r}
+F1s <- wide_all %>% filter.F1s()
+unique(F1s$parent.tent)
+
+# tent_301I <- subset(F1s, parent.tent == "301-I" | ID %in% c(1186, 1188, 1195, 1192, 1262, 1290, 1264, 1248))
+# tent_301F <- subset(F1s, parent.tent == "301-F" | ID %in% c(1193, 1184, 1287, 1180))
+# tent_107C <- subset(F1s, parent.tent == "107-C" | ID %in% c(1353, 1344, 1349, 1345, 1389))
+
+F1s <- F1s %>%
+  mutate(tent = case_when(parent.tent == "301-I" | ID %in% c(1186, 1188, 1195, 1192, 1262, 1290, 1264, 1248) ~ "301-I",
+                          parent.tent == "301-F" | ID %in% c(1193, 1184, 1287, 1180) ~ "301-F",
+                          parent.tent == "107-C" | ID %in% c(1353, 1344, 1349, 1345, 1389) ~ "107-C"),
+         parent.trt = case_when(tent == "301-I" ~ "m/f @ 40-19C",
+                                tent == "301-F" ~ "f @ 40-19C",
+                                tent == "107-C" ~ "f @ 40-33C"),
+         pop = case_when(pop == "lab" ~ "parent",
+                         TRUE ~ as.character(pop)),
+         pop = factor(F1s$pop, levels = c("parent","F1"))) %>%
+  drop_na(tent)
+```
+
+
+# 2. summary plots
+
+```{r summarise}
+summary_F1s <- F1s %>%
+  group_by(tent, parent.trt, pop, treatment) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n(),
+            n.pmd = sum(final.fate == "pmd"), # need to do this diff for the parents. (just copy the # lol)
+            n.pmd = case_when(is.na(n.pmd) ~ 0, TRUE ~ as.numeric(n.pmd)),
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+  # mutate(prop.survpup = case_when(pop == "parent" & treatment == 260, ~ "x",
+  #                                 TRUE ~ as.numeric(prop.survpup)))
+```
+
+```{r}
+plots.mass <- summary_F1s %>% 
+  ungroup() %>%
+  group_split(parent.trt) %>%
+  map(~ggplot(data = ., aes(y = avg.mass, x = pop, color = treatment)) +
+        geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+        theme_bw() +
+        scale_color_manual(values = c("#00BFC4", "#F8766D")) +
+        theme(legend.position="none") +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        labs(y = "average pupal mass (mg)", 
+             x = "generation") 
+      #+
+       # ylim(c(2100, 4750))
+      )
+
+plots.tt <- summary_F1s %>% 
+  ungroup() %>%
+  group_split(parent.trt) %>%
+  map(~ggplot(data = ., aes(y = avg.tt, x = pop, color = treatment)) +
+        geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+        theme_bw() +
+        scale_color_manual(values = c("#00BFC4", "#F8766D")) +
+        theme(legend.position="none") +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        labs(y = "average time to pupation (days since hatching)", 
+             x = "generation") 
+      #+
+       # ylim(c(2100, 4750))
+      )
+
+plots.propsurv <- summary_F1s %>% 
+  ungroup() %>%
+  group_split(parent.trt) %>%
+  map(~ggplot(data = ., aes(y = prop.survpup, x = pop, color = treatment)) +
+        geom_point(size = 2 
+                   #position = "jitter"
+                   ) +
+        theme_bw() +
+        scale_color_manual(values = c("#00BFC4", "#F8766D")) +
+        theme(legend.position="none") +
+        geom_text(aes(label = n.all), vjust = -1.1, hjust = -0.5) +
+        labs(y = "proportion survival to pupation", 
+             x = "generation") +
+        ylim(c(0, 1.05))
+      )
+```
+
+```{r merge plots}
+grid.arrange(plots.mass[[1]], plots.tt[[1]], plots.propsurv[[1]], nrow = 1,
+             top = text_grob("parents: F @ 40-19C, ctrl M",
+                             size = 15),
+             bottom = text_grob("red = non-control temps",
+                                size = 8, hjust = -2)
+)
+
+grid.arrange(plots.mass[[2]], plots.tt[[2]], plots.propsurv[[2]], nrow = 1,
+             top = text_grob("parents: F @ 40-33C, ctrl M",
+                             size = 15),
+             bottom = text_grob("red = non-control temps",
+                                size = 8, hjust = -2)
+             )
+
+grid.arrange(plots.mass[[3]], plots.tt[[3]], plots.propsurv[[3]], nrow = 1,
+             top = text_grob("parents: M/F @ 40-19C",
+                             size = 15),
+             bottom = text_grob("red = non-control temps",
+                                size = 8, hjust = -2)
+             )
+```
+
+
+
