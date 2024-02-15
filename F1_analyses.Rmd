@@ -15,7 +15,7 @@ source("./ntw_helper-functions.R")
 # 1. subsetting
 ```{r}
 F1s <- wide_all %>% filter.F1s()
-unique(F1s$parent.tent)
+#unique(F1s$parent.tent)
 
 # tent_301I <- subset(F1s, parent.tent == "301-I" | ID %in% c(1186, 1188, 1195, 1192, 1262, 1290, 1264, 1248))
 # tent_301F <- subset(F1s, parent.tent == "301-F" | ID %in% c(1193, 1184, 1287, 1180))
@@ -28,12 +28,12 @@ F1s <- F1s %>%
          parent.trt = case_when(tent == "301-I" ~ "m/f @ 40-19C",
                                 tent == "301-F" ~ "f @ 40-19C",
                                 tent == "107-C" ~ "f @ 40-33C"),
-         pop = case_when(pop == "lab" ~ "parent",
-                         TRUE ~ as.character(pop)),
-         pop = factor(F1s$pop, levels = c("parent","F1"))) %>%
+         pop = case_when(src == "su" ~ "parent",
+                         src == "F1" ~ "F1")) %>%
   drop_na(tent)
-```
 
+F1s$pop <- factor(F1s$pop, levels = c("parent","F1"))
+```
 
 # 2. summary plots
 
@@ -48,10 +48,42 @@ summary_F1s <- F1s %>%
             n.pmd = sum(final.fate == "pmd"), # need to do this diff for the parents. (just copy the # lol)
             n.pmd = case_when(is.na(n.pmd) ~ 0, TRUE ~ as.numeric(n.pmd)),
             n.surv = n.all - n.pmd, 
-            prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+            prop.survpup = round(1-(n.pmd/n.all), digits=2))
   # mutate(prop.survpup = case_when(pop == "parent" & treatment == 260, ~ "x",
   #                                 TRUE ~ as.numeric(prop.survpup)))
 ```
+```{r fix parent surv.prop numbers}
+# numbers are based off running code from summary_NTs2 with lab bugs on LD only
+
+# refilter NTs: just the lab bugs on lab diet
+NTs_all2 <- wide_all %>%
+  filter.NTs2() %>%
+  filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
+  filter((pop == "lab" & diet == "LD")) %>%
+  mutate(if.fluct = case_when(treatment == 260 ~ "N",
+                              TRUE ~ "Y"))
+
+# calc summ stats we're interested in
+summary_NTs2 <- NTs_all2 %>%
+  group_by(pop, meanT, flucT, minT, if.fluct) %>% 
+  summarise(n.all = n(),
+            n.pmd = sum(final.fate == "pmd"), 
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2))
+
+# add into F1s df
+summary_F1s <- summary_F1s %>%
+  mutate(prop.survpup = case_when(pop == "parent" & treatment == 260 ~ 0.81,
+                                  pop == "parent" & treatment == 419 ~ 0.55,
+                                  pop == "parent" & treatment == 433 ~ 0.62,
+                                  TRUE ~ as.numeric(prop.survpup)),
+         n.all.orig = case_when(pop == "parent" & treatment == 260 ~ 21,
+                                pop == "parent" & treatment == 419 ~ 56,
+                                pop == "parent" & treatment == 433 ~ 55,
+                                TRUE ~ as.numeric(n.all)))
+
+```
+
 
 ```{r}
 plots.mass <- summary_F1s %>% 
@@ -94,7 +126,7 @@ plots.propsurv <- summary_F1s %>%
         theme_bw() +
         scale_color_manual(values = c("#00BFC4", "#F8766D")) +
         theme(legend.position="none") +
-        geom_text(aes(label = n.all), vjust = -1.1, hjust = -0.5) +
+        geom_text(aes(label = n.all.orig), vjust = -1.1, hjust = -0.5) +
         labs(y = "proportion survival to pupation", 
              x = "generation") +
         ylim(c(0, 1.05))
