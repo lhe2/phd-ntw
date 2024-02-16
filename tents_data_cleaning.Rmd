@@ -1,0 +1,127 @@
+---
+title: "tents_data_cleaning"
+date: "2023-02-15"
+---
+
+# roadmap
+
+1. load data & packages
+2. cleaning: prefiltering, fix columns, add columns
+3. save output
+
+# 1. load data & packages
+```{r message = FALSE}
+library(conflicted)
+library(dplyr)
+conflicts_prefer(dplyr::filter)
+library(tidyr)
+library(purrr)
+
+# to load data from gsheets
+library(googlesheets4)
+```
+
+## - data import from gsheets
+
+```{r}
+# before importing,
+  # run cleaning macros,
+  # check column/row alignment + proper sorting
+
+# tents/hatch data
+data_pairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c", na = c("#N/A", "NA", "--", "", "#REF!"))
+data_tstats <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:P", na = c("#N/A", "NA", "--", "", "#REF!", "unk"))
+data_hatch <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c", range = "A:F", na = c("#N/A", "NA", "--", "", "#REF!"))
+```
+
+# 2. cleaning
+
+matepairs:
+- drop extra na rows
+- drop hidden columns(?)
+- *replace #N/A with actual NAs*
+- replace "col" and "lab" with actual # values, change column format
+- fill in other tents (i.e cages) w/ sth
+- standardise column names
+
+## - add/drop columns
+```{r}
+# drop unneeded columns
+data_pairs <- select(data_pairs, -c("sex_A", "sex_B", "id_F2", "id_M2", "id_A-orig", "id_B-orig", "combo2"))
+data_tstats <- select(data_tstats, -starts_with(c("total", "lifetime")))
+
+# add IDs
+data_pairs <- mutate(data_pairs, src = "pairs")
+data_tstats <- mutate(data_tstats, src = "tstats")
+data_hatch <- mutate(data_hatch, src = "hatch")
+```
+
+## - standardise column names, row trimming
+```{r}
+data_hatch <- data_hatch %>%
+  rename(date.hatched = date.hatchlings,
+         id.tent = "tent id",
+         id.coll = "coll-tent", # collection id (date-tent)
+         n.hatched = hatched,
+         notes.hatch = notes)
+
+data_pairs <- data_pairs %>%
+  rename(trt.pair = combo,
+         id.tent = tent_id,
+         id.pair = pair_id,
+         room = location,
+         date.paired = date_paired,
+         id.f = id_F,
+         date.fdied = died_F,
+         if.m = id_M,
+         date.mdied = died_M,
+         trt.f = trt_F,
+         date.fec = eclose_F,
+         track.f = purpose_F,
+         trt.m = trt_M,
+         date.mec = eclose_M,
+         track.m = purpose_B)
+
+data_tstats <- data_tstats %>%
+  rename(date.tent = date,
+         id.tent = tent.ID,
+         n.eggs = "eggs collected",
+         n.new.f = "females added",
+         n.curr.f = "females alive current",
+         n.died.f = "females dead",
+         n.new.m = "males added",
+         n.curr.m = "males alive",
+         n.died.m = "males dead",
+         notes.tents = notes)
+
+# drop empty rows
+data_pairs <- drop_na(data_pairs, id.tent)
+data_hatch <- drop_na(data_hatch, id.tent)
+```
+
+
+## - consolidation
+```{r}
+# function to standardise column format
+fix.columns <- function(data) {
+  cleaned_data <- data %>%
+    mutate(across(starts_with("date."),  as.Date, format = "%m/%d"),
+           across(starts_with("n."), as.numeric),
+    )
+  
+  return(cleaned_data)
+}
+
+# standardise column format, consolidate
+data_tents <- data.table::rbindlist(lapply(list(data_tstats, data_hatch), fix.columns), fill = T)
+
+data_pairs <- data_pairs %>%
+  fix.columns() %>%
+  mutate(id.pair = as.numeric(id.pair),
+         room = as.numeric(room))
+  
+```
+
+## fix values
+
+(nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
