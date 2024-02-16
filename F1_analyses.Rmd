@@ -134,21 +134,21 @@ plots.propsurv <- summary_F1s %>%
 ```
 
 ```{r merge plots}
-grid.arrange(plots.mass[[1]], plots.tt[[1]], plots.propsurv[[1]], nrow = 1,
+grid.arrange(plots.propsurv[[1]], plots.mass[[1]], plots.tt[[1]], nrow = 1,
              top = text_grob("parents: F @ 40-19C, ctrl M",
                              size = 15),
              bottom = text_grob("red = non-control temps",
                                 size = 8, hjust = -2)
 )
 
-grid.arrange(plots.mass[[2]], plots.tt[[2]], plots.propsurv[[2]], nrow = 1,
+grid.arrange(plots.propsurv[[2]], plots.mass[[2]], plots.tt[[2]], nrow = 1,
              top = text_grob("parents: F @ 40-33C, ctrl M",
                              size = 15),
              bottom = text_grob("red = non-control temps",
                                 size = 8, hjust = -2)
              )
 
-grid.arrange(plots.mass[[3]], plots.tt[[3]], plots.propsurv[[3]], nrow = 1,
+grid.arrange(plots.propsurv[[3]], plots.mass[[3]], plots.tt[[3]], nrow = 1,
              top = text_grob("parents: M/F @ 40-19C",
                              size = 15),
              bottom = text_grob("red = non-control temps",
@@ -156,5 +156,5 @@ grid.arrange(plots.mass[[3]], plots.tt[[3]], plots.propsurv[[3]], nrow = 1,
              )
 ```
 
-
+# 3. KM plots(?)
 

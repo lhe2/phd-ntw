@@ -952,6 +952,68 @@ grid.arrange(plots.mass[[2]], plots.tt[[2]], plots.prop[[2]], nrow = 1,
                                size = 8, hjust = -1.5))
 ```
 
+## - combined plots v2
+
+TODO: fix the margin sizes... i give up lol
+
+```{r}
+plots.NT_mass2 <- summary_NTs2 %>% 
+  ungroup() %>%
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  group_split(if.fluct) %>%
+  map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp, color = pop)) +
+        geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+        theme_bw() +
+        theme(legend.position="none", axis.title.x = element_blank(), axis.title.y = element_text(size = 8)) +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        labs(y = "average pupal mass (mg)", 
+             x = "minimum temperature (°C)" 
+             ) +
+        ylim(c(2100, 4750))
+      )
+
+plots.NT_tt2 <- summary_NTs2 %>% 
+  ungroup() %>%
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  group_split(if.fluct) %>%
+  map(~ggplot(data = ., aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp, color = pop)) +
+        geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+        theme_bw() +
+        geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
+        theme(legend.position="none", axis.title.x = element_blank(), axis.title.y = element_text(size = 8)) +
+        labs(y = "average time to pupation (days)", 
+             x = "minimum temperature (°C)" 
+             ) +
+        ylim(c(20, 35))
+      )
+
+plots.NT_prop2 <- summary_NTs2 %>% 
+  ungroup() %>%
+  filter(if.fluct == "Y") %>% # to view w/o ctrl grp
+  group_split(if.fluct) %>%
+  map(~ggplot(data = ., aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp, color = pop)) +
+        geom_point(size=2) + 
+        theme_bw() +
+        geom_text(aes(label = n.all), vjust = -1.5, hjust = -0.9) +
+        labs(y = "proportion survived to pupation", 
+             x = "minimum temperature (°C)" 
+        ) +
+        theme(legend.position="none", axis.title.x = element_blank(), axis.title.y = element_text(size = 8))+
+        ylim(c(0, 0.8)))
+
+```
+
+```{r arrange}
+grid.arrange(plots.NT_mass2[[1]], plots.NT_tt2[[1]], plots.NT_prop2[[1]], 
+             nrow = 3, ncol = 1,
+             #heights = 3,
+             top = text_grob("lab & field responses to varying min T",
+                             size = 15),
+             bottom = text_grob("max T = 40C",
+                               size = 8, hjust = -4.5),
+             left = text_grob("response", rot = 90))
+```
+
 
 # D1. modeling
 
@@ -1109,4 +1171,4 @@ i still dont really get how to interpret these 👍 these results are hard to co
 
 1. `C3. visualise with better lab controls (240124 followups)`
 2. redo stats as factors (for minT) + new data per 240131 joel mtg: this is scattered thruout the analyses
-3. todo: combine figs
+3. todo: combine figs better (stack...)
