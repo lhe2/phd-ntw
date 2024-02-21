@@ -78,7 +78,7 @@ data_all <- subset(data_all, !(ID %in% c(1002, 1007, 1017)))
 #data_all <- data_all %>% filter(is.na(reason.ignore))
 ```
 
-## - column/value formatting
+## - column/value formatting, other fixes
 ```{r}
 # julian date formatting
 data_all <- data_all %>%
@@ -92,6 +92,11 @@ data_all$final.fate[data_all$final.fate == "LP"] <- "LPI"
 
 # add instar.enter levels
 data_all$instar.enter <- factor(data_all$instar.enter, levels = c("hatch", "1st", "3rd", "4th"))
+
+# add in late dead pupa
+data_all <- data_all %>%
+  mutate(final.fate = case_when(!is.na(date.exit) & is.na(final.fate) ~ "pupa",
+                                TRUE ~ as.character(final.fate)))
 ```
 
 ## - column creation for stats
