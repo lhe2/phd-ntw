@@ -37,12 +37,12 @@ data_hatch <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ay
 # 2. cleaning
 
 matepairs:
-- drop extra na rows
-- drop hidden columns(?)
+- *drop extra na rows*
+- *drop hidden columns(?)*
 - *replace #N/A with actual NAs*
-- replace "col" and "lab" with actual # values, change column format
+- *replace "col" and "lab" with actual # values, change column format*
 - fill in other tents (i.e cages) w/ sth
-- standardise column names
+- *standardise column names*
 
 ## - add/drop columns
 ```{r}
@@ -51,9 +51,9 @@ data_pairs <- select(data_pairs, -c("sex_A", "sex_B", "id_F2", "id_M2", "id_A-or
 data_tstats <- select(data_tstats, -starts_with(c("total", "lifetime")))
 
 # add IDs
-data_pairs <- mutate(data_pairs, src = "pairs")
-data_tstats <- mutate(data_tstats, src = "tstats")
-data_hatch <- mutate(data_hatch, src = "hatch")
+# data_pairs <- mutate(data_pairs, src = "pairs")
+# data_tstats <- mutate(data_tstats, src = "tstats")
+# data_hatch <- mutate(data_hatch, src = "hatch")
 ```
 
 ## - standardise column names, row trimming
@@ -62,7 +62,7 @@ data_hatch <- data_hatch %>%
   rename(date.hatched = date.hatchlings,
          id.tent = "tent id",
          id.coll = "coll-tent", # collection id (date-tent)
-         n.hatched = hatched,
+         n.hatched = n.hatchlings,
          notes.hatch = notes)
 
 data_pairs <- data_pairs %>%
@@ -73,7 +73,7 @@ data_pairs <- data_pairs %>%
          date.paired = date_paired,
          id.f = id_F,
          date.fdied = died_F,
-         if.m = id_M,
+         id.m = id_M,
          date.mdied = died_M,
          trt.f = trt_F,
          date.fec = eclose_F,
@@ -83,7 +83,7 @@ data_pairs <- data_pairs %>%
          track.m = purpose_B)
 
 data_tstats <- data_tstats %>%
-  rename(date.tent = date,
+  rename(date.coll = date,
          id.tent = tent.ID,
          n.eggs = "eggs collected",
          n.new.f = "females added",
@@ -100,28 +100,104 @@ data_hatch <- drop_na(data_hatch, id.tent)
 ```
 
 
-## - consolidation
+## - consolidation, fixing column format + values
+
+(values to fix: nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
 ```{r}
+# consolidate
+data_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
+  #%>%
+  #fix.columns()
+
+tentlist <- list(data_tents, data_pairs)
+
 # function to standardise column format
-fix.columns <- function(data) {
-  cleaned_data <- data %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d"),
+# fix.columns <- function(data) {
+#   cleaned_data <- data %>%
+#     mutate(across(starts_with("date."),  as.Date, format = "%m/%d"),
+#            across(starts_with("n."), as.numeric),
+#     )
+#   
+#   return(cleaned_data)
+# }
+
+# function to fix values, column format
+fix.values <- function(data) {
+  #data <- fix.columns(data)
+  data <- data %>%
+    mutate(# fix column format
+           across(starts_with("date."),  as.Date, format = "%m/%d"),
            across(starts_with("n."), as.numeric),
-    )
+           
+           # fix values
+           trt.m = case_when(trt.m == "col" ~ 999,
+                             trt.m == "ctrl" ~ 900,
+                             TRUE ~ as.numeric(trt.m)),
+           trt.f = case_when(trt.f == "col" ~ 999,
+                             trt.f == "ctrl" ~ 900,
+                             TRUE ~ as.numeric(trt.f))
+           )
   
-  return(cleaned_data)
+  # data[trt.m == "col" | trt.f == "col"] <- 999
+  # data[trt.m == "ctrl" | trt.f == "ctrl"] <- 900
 }
 
-# standardise column format, consolidate
-data_tents <- data.table::rbindlist(lapply(list(data_tstats, data_hatch), fix.columns), fill = T)
+tentlist_clean <- lapply(tentlist, fix.values)
+data_tents <- tentlist_clean[[1]]
+data_pairs <- tentlist_clean[[2]]
 
+# per df value fixing & cleaning
 data_pairs <- data_pairs %>%
-  fix.columns() %>%
   mutate(id.pair = as.numeric(id.pair),
-         room = as.numeric(room))
-  
+         room = as.numeric(room),
+         tent = case_when(is.na(tent) ~ "cage",
+                          TRUE ~ as.character(tent)),
+         id.tent = paste(room, tent, sep = "-")) %>% # diff from paste(x1, "-", x2) lol idky
+  naniar::replace_with_na_all(condition = ~.x %in% c("unk", "na"))
+
+data_tents <- data_tents %>%
+  filter(is.na(if.ignore)) 
 ```
 
-## fix values
+# 3. extracting notes & saving outputs
 
-(nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
+```{r}
+# save notes elsewhere
+notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
+
+notes_tents <- select(data_tents, id.tent, date.coll, id.coll, notes.tents, date.hatched, notes.hatch)
+
+write.csv(notes_pairs, "~/Documents/repos/_private/data/ntw_data/notes_tentpairs.csv", row.names = FALSE)
+write.csv(notes_tents, "~/Documents/repos/_private/data/ntw_data/notes_tentstats.csv", row.names = FALSE)
+
+# drop from main dfs
+data_pairs <- select(data_pairs, -notes)
+data_tents <- select(data_tents, -c(notes.tents, id.coll, notes.hatch, if.ignore))
+
+# save cleaned dfs
+write.csv(data_tents, "~/Documents/repos/_private/data/ntw_data/clean-tentstats.csv", row.names = FALSE)
+write.csv(data_pairs, "~/Documents/repos/_private/data/ntw_data/clean-pairs.csv", row.names = FALSE)
+```
+
+
+```{r}
+# ref code on running fns across a list lol
+
+# formatear <- function(eq){
+#   eq$Volume <- NULL
+#   eq$Date <- as.Date(eq$Date)
+#   
+#   nt <- eq$Adj.Close[1:nrow(eq)-1]
+#   nt1 <- eq$Adj.Close[2:nrow(eq)]
+#   eq$return <- percent(c(NA, nt1/nt-1), accuracy = 0.0001)
+#   return(eq) 
+# }
+
+#You can use mget to get list of dataframes and apply the function with lapply.
+
+# clean_list_data <- lapply(mget(dfs), formatear)
+# clean_list_data[[1]]
+```
+
+
+
