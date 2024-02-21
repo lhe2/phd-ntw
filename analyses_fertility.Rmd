@@ -1,0 +1,19 @@
+---
+title: "fertility analyses"
+date: "2024-02-15"
+---
+
+purpose: looking at fertility stats
+
+# 0. load data, helper fns
+```{r}
+source("./ntw_helper-functions.R")
+# map(other_helpers, ~discard(., .p = ~all))
+  # working on it: https://stackoverflow.com/questions/63533428/in-r-remove-list-of-list-based-on-name
+```
+
+# rough stats for meeting LOL
+```{r}
+
+```
+
