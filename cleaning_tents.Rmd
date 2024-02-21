@@ -32,6 +32,9 @@ library(googlesheets4)
 data_pairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c", na = c("#N/A", "NA", "--", "", "#REF!"))
 data_tstats <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:P", na = c("#N/A", "NA", "--", "", "#REF!", "unk"))
 data_hatch <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c", range = "A:F", na = c("#N/A", "NA", "--", "", "#REF!"))
+
+# for when i mess up!
+ogtents <- list(data_pairs, data_tstats, data_hatch)
 ```
 
 # 2. cleaning
@@ -59,10 +62,10 @@ data_tstats <- select(data_tstats, -starts_with(c("total", "lifetime")))
 ## - standardise column names, row trimming
 ```{r}
 data_hatch <- data_hatch %>%
-  rename(date.hatched = date.hatchlings,
+  rename(date.hatch = date.hatchlings,
          id.tent = "tent id",
          id.coll = "coll-tent", # collection id (date-tent)
-         n.hatched = n.hatchlings,
+         n.hatch = n.hatchlings,
          notes.hatch = notes)
 
 data_pairs <- data_pairs %>%
@@ -85,7 +88,7 @@ data_pairs <- data_pairs %>%
 data_tstats <- data_tstats %>%
   rename(date.coll = date,
          id.tent = tent.ID,
-         n.eggs = "eggs collected",
+         n.coll = "eggs collected",
          n.new.f = "females added",
          n.curr.f = "females alive current",
          n.died.f = "females dead",
@@ -102,12 +105,24 @@ data_hatch <- drop_na(data_hatch, id.tent)
 
 ## - consolidation, fixing column format + values
 
+bc i majorly messed up with how i did my hatch data collection so now i am paying the price 👍
+```{r}
+test_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
+
+test_hatchinfo <- select(test_tents, c(id.tent, date.hatch, n.hatch, id.coll, notes.hatch))
+
+test_tents <- select(test_tents, -c(date.hatch, n.hatch, id.coll, notes.hatch))
+
+test <- left_join(test_tents, test_hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE)
+```
+
+
 (values to fix: nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
 ```{r}
 # consolidate
 #data_hatch <- select(data_hatch, -date.coll)
 
-data_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
+# data_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
 
 # data_tents <- left_join(data_tstats, data_hatch, by = c("date.coll" = "date.hatched", "id.tent"), all = TRUE) 
 
