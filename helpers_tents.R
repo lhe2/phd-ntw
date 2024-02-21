@@ -100,5 +100,7 @@ data_longevity$trt <- factor(data_longevity$trt, levels = c(260, 419, 426, 433))
 
 rm(ntwadults, tentadults, finfo, minfo, 
    data_ntw, data_tpairs, 
-   tenthelpers, tenthelpers_clean, 
+   tenthelpers_clean, 
    mod.dates)
+
+rm(tenthelpers)

@@ -126,7 +126,19 @@ hatchinfo <- data_hatch %>%
 # data_tents <- select(data_tentstats, -c(date.hatch, n.hatch, id.coll, notes.hatch)) %>%
 #   distinct()
 
-data_tents <- left_join(data_tentstats, hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE)
+data_tents <- 
+  full_join(data_tentstats, hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE) %>%
+  group_by(id.tent) %>% # fill in missing parent trt info
+  fill(c(trt.f, trt.m), .direction = "updown") %>%
+  ungroup() %>%
+  mutate(trt.f = case_when(id.tent == "301-Z" ~ 260,
+                           TRUE ~ as.numeric(trt.f)),
+         trt.m = case_when(id.tent == "107-H" ~ 260,
+                           #id.tent == "107-I" ~ ,
+                           #id.tent == "301-T" ~ ,
+                           id.tent == "301-U" ~ 260,
+                           TRUE ~ as.numeric(trt.m)))
+
 ```
 
 (values to fix: nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
@@ -187,13 +199,15 @@ data_tents <- data_tents %>%
 ```
 
 
-```{r add addtl room info}
-roominfo <- data_pairs %>%
-  select(id.tent, room, tent, tent.loc) %>%
+```{r add addtl room, pop info}
+moreinfo <- data_pairs %>%
+  select(id.tent, room, tent, tent.loc, pop) %>%
+  mutate(pop = case_when(pop == "lab + col ctrl" | pop == "lab + 260 ctrl" ~ "lab",
+                         TRUE ~ as.character(pop))) %>%
   distinct()
 
-data_tents <- left_join(data_tents, roominfo, by = "id.tent", all = TRUE)
-data_tents <- data_tents[, c(1, 15:16, 2, 17, 3:14)]
+data_tents <- left_join(data_tents, moreinfo, by = "id.tent", all = TRUE)
+data_tents <- data_tents[, c(1, 15:16, 2, 17, 3, 14, 4:13, 18)]
 ```
 
 # 3. extracting notes & saving outputs
@@ -221,8 +235,10 @@ write.csv(data_hatch, "~/Documents/repos/_private/data/ntw_data/clean-hatchstats
 # cleanup
 rm(data_tents, data_pairs, data_hatch, data_tentstats, 
    notes_pairs, notes_tents,
-   ogtents, tentlist, tentlist_clean,
-   fix.values, hatchinfo, roominfo)
+   tentlist, tentlist_clean,
+   fix.values, hatchinfo, moreinfo)
+
+rm(ogtents)
 ```
 
 
