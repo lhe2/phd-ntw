@@ -107,13 +107,13 @@ data_hatch <- drop_na(data_hatch, id.tent)
 
 bc i majorly messed up with how i did my hatch data collection so now i am paying the price 👍
 ```{r}
-test_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
+data_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
 
-test_hatchinfo <- select(test_tents, c(id.tent, date.hatch, n.hatch, id.coll, notes.hatch))
+hatchinfo <- select(data_tents, c(id.tent, date.hatch, n.hatch, id.coll, notes.hatch))
 
-test_tents <- select(test_tents, -c(date.hatch, n.hatch, id.coll, notes.hatch))
+data_tents <- select(data_tents, -c(date.hatch, n.hatch, id.coll, notes.hatch))
 
-test <- left_join(test_tents, test_hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE)
+data_tents <- left_join(data_tents, hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE)
 ```
 
 
@@ -161,8 +161,7 @@ data_pairs <- data_pairs %>%
 
 data_tents <- data_tents %>%
   filter(is.na(if.ignore)) %>%
-  rename(#date = date.coll,
-          n.coll = n.eggs)
+  rename(date = date.coll)
 ```
 
 # 3. extracting notes & saving outputs
@@ -171,7 +170,7 @@ data_tents <- data_tents %>%
 # save notes elsewhere
 notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
 
-notes_tents <- select(data_tents, id.tent, date.coll, id.coll, notes.tents, date.hatched, notes.hatch)
+notes_tents <- select(data_tents, date, id.tent, id.coll, notes.tents, notes.hatch)
 
 write.csv(notes_pairs, "~/Documents/repos/_private/data/ntw_data/notes_tentpairs.csv", row.names = FALSE)
 write.csv(notes_tents, "~/Documents/repos/_private/data/ntw_data/notes_tentstats.csv", row.names = FALSE)
