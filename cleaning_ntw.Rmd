@@ -41,7 +41,7 @@ data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ay
 # function to standardise column format
 fix.columns <- function(data) {
   cleaned_data <- data %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d")) %>%
+    mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
     mutate(mutate(across(starts_with("mass."), as.numeric))
     )
   
