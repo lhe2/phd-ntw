@@ -72,14 +72,14 @@ data_pairs <- data_pairs %>%
          room = location,
          date.paired = date_paired,
          id.f = id_F,
-         date.fdied = died_F,
+         date.f.died = died_F,
          id.m = id_M,
-         date.mdied = died_M,
+         date.m.died = died_M,
          trt.f = trt_F,
-         date.fec = eclose_F,
+         date.f.ec = eclose_F,
          track.f = purpose_F,
          trt.m = trt_M,
-         date.mec = eclose_M,
+         date.m.ec = eclose_M,
          track.m = purpose_B)
 
 data_tstats <- data_tstats %>%
@@ -105,28 +105,20 @@ data_hatch <- drop_na(data_hatch, id.tent)
 (values to fix: nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
 ```{r}
 # consolidate
+#data_hatch <- select(data_hatch, -date.coll)
+
 data_tents <- merge(data_tstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
-  #%>%
-  #fix.columns()
+
+# data_tents <- left_join(data_tstats, data_hatch, by = c("date.coll" = "date.hatched", "id.tent"), all = TRUE) 
 
 tentlist <- list(data_tents, data_pairs)
 
-# function to standardise column format
-# fix.columns <- function(data) {
-#   cleaned_data <- data %>%
-#     mutate(across(starts_with("date."),  as.Date, format = "%m/%d"),
-#            across(starts_with("n."), as.numeric),
-#     )
-#   
-#   return(cleaned_data)
-# }
-
 # function to fix values, column format
 fix.values <- function(data) {
-  #data <- fix.columns(data)
+  
   data <- data %>%
     mutate(# fix column format
-           across(starts_with("date."),  as.Date, format = "%m/%d"),
+           across(starts_with("date."),  as.Date, format = "%m/%d/%y"),
            across(starts_with("n."), as.numeric),
            
            # fix values
@@ -137,9 +129,6 @@ fix.values <- function(data) {
                              trt.f == "ctrl" ~ 900,
                              TRUE ~ as.numeric(trt.f))
            )
-  
-  # data[trt.m == "col" | trt.f == "col"] <- 999
-  # data[trt.m == "ctrl" | trt.f == "ctrl"] <- 900
 }
 
 tentlist_clean <- lapply(tentlist, fix.values)
@@ -156,7 +145,9 @@ data_pairs <- data_pairs %>%
   naniar::replace_with_na_all(condition = ~.x %in% c("unk", "na"))
 
 data_tents <- data_tents %>%
-  filter(is.na(if.ignore)) 
+  filter(is.na(if.ignore)) %>%
+  rename(#date = date.coll,
+          n.coll = n.eggs)
 ```
 
 # 3. extracting notes & saving outputs
@@ -176,7 +167,7 @@ data_tents <- select(data_tents, -c(notes.tents, id.coll, notes.hatch, if.ignore
 
 # save cleaned dfs
 write.csv(data_tents, "~/Documents/repos/_private/data/ntw_data/clean-tentstats.csv", row.names = FALSE)
-write.csv(data_pairs, "~/Documents/repos/_private/data/ntw_data/clean-pairs.csv", row.names = FALSE)
+write.csv(data_pairs, "~/Documents/repos/_private/data/ntw_data/clean-tentpairs.csv", row.names = FALSE)
 ```
 
 
