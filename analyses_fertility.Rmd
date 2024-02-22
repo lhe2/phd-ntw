@@ -32,18 +32,147 @@ source("./helpers_tents.R")
 # 1. analyses hodgepodge
 
 ## - overall hatch rates
-```{r}
-hrate_summ <- data_tstats %>%
+
+```{r calc stats & add other filter criteria}
+summ_hatch <- data_tstats %>%
   group_by(#id.tent,
            trt.f, trt.m, pop
            ) %>%
   summarise(n.tents = n_distinct(id.tent),
             n.collected = sum(n.coll, na.rm = TRUE),
+            se.coll = sd(na.omit(n.coll))/sqrt(length(na.omit(n.coll))),
             n.hatched = sum(n.tothatch, na.rm = TRUE),
+            se.hatched = sd(na.omit(n.tothatch))/sqrt(length(na.omit(n.tothatch))),
+            n.females = sum(n.new.f, na.rm = TRUE),
             #start = first(jdate), end = last(jdate),
-            t.duration = max(jdate) - min(jdate)
+            t.duration = max(jdate) - min(jdate),
+            rate.hatch = n.hatched/n.collected,
+            se.hatch = sqrt(rate.hatch*(1-rate.hatch)/n.collected),  # check ???
+            rate.f = round(n.collected/n.females, digits = 1)
             ) %>%
-  drop_na(trt.m) # drop tents w/o males
+  drop_na(trt.m) %>% # drop tents w/o males
+  mutate(trt.pair = case_when(trt.f < 400 & trt.f == trt.m ~ "ct F + ct M",
+                              trt.f > 400 & trt.f == trt.m ~ "hs F + hs M",
+                              trt.f < trt.m ~ "ct F + hs M",
+                              trt.f > trt.m ~ "hs F + ct M",
+                              TRUE ~ "err"),
+         min.f = case_when(trt.f == 260 | trt.f == 426 ~ 26,
+                            trt.f == 419 ~ 19,
+                            trt.f == 433 ~ 33), 
+         min.m = case_when(trt.m == 260 | trt.m == 426 ~ 26,
+                            trt.m == 419 ~ 19,
+                            trt.m == 433 ~ 33),
+         trt.parent = case_when(trt.f == 260 & trt.m == 260 ~ 260,
+                                trt.f == 419 | trt.m == 419 ~ 419,
+                                trt.f == 426 | trt.m == 426 ~ 426,
+                                trt.f == 433 | trt.m == 433 ~ 433),
+         trt.combo = paste0(trt.f, "-", trt.m),
+         min.combo = paste0(min.f, "-", min.m))
 
+# idk if im doing se of a proportion correctly (per meggan's graphs)
+  # https://stats.stackexchange.com/questions/266442/standard-error-for-proportion-with-small-sample-size
+
+```
+
+# plot
+```{r create subsets}
+data_h_win <- filter(summ_hatch, pop == "lab" & (trt.pair == "ct F + ct M" | trt.pair == "hs F + hs M"))
+data_h_trtf <- filter(summ_hatch, pop == "lab" & trt.pair == "ct F + hs M")
+data_h_trtm <- filter(summ_hatch, pop == "lab" & trt.pair == "hs F + ct M")
+data_h_field <- filter(summ_hatch, pop == "field")
+```
+
+```{r}
+#RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
+
+summ_hatch %>%
+  filter(#pop == "lab" & 
+           (trt.pair == "ct F + ct M" | trt.pair == "hs F + hs M")) %>%
+  ggplot(aes(y = rate.hatch, x = n.collected, color = trt.combo, fill = trt.pair, shape = pop)) +
+  geom_point(size = 2.5) +
+  y_err_hrate(err = 50) + 
+  #x_err_ncoll(0.005) + # not worth including lol
+  theme_bw() +
+  scale_color_manual(labels = c("260-260" = "26 (26C day)",
+                                "419-419" = "19",
+                                "426-426" = "26 (40C day)",
+                                "433-433" = "33"), 
+                     values = RYB) +
+  # scale_shape_manual(values = c(21, 23)) +
+  #scale_shape_manual(values = c(1, 16)) + # revisit this lol i give up
+  scale_shape_manual(values = c(16, 18)) + 
+  # scale_fill_manual(values = c("white", "black"),
+  #                   labels = c("ct F + ct M" = "control (26C day)",
+  #                              "hs F + hs M" = "exptl (40C day)")) +
+  labs(title = "within trt hatch rates",
+       y = "hatch proportion",
+       x = "total eggs",
+       color = "parent min temp",
+       shape = "population",
+       #fill = "parent trt"
+       ) +
+  guides(fill = "none") +
+  ylim(c(0,0.25))
+  
+summ_hatch %>%
+  filter(pop == "lab" & (trt.pair == "ct F + hs M" | trt.pair == "hs F + ct M")) %>%
+  ggplot(aes(y = rate.hatch, x = n.collected, color = as.factor(trt.parent), shape = trt.pair)) +
+  geom_point(size = 2) +
+  y_err_hrate(err = 50) + 
+  theme_bw() +
+  scale_color_manual(values = c("#acd2bb", "#f1c363", "#a51122"),
+                     labels = c("419" = "19",
+                                "426" = "26",
+                                "433" = "33")) +
+  scale_shape_manual(values = c(15, 17),
+                     labels = c("ct F + hs M" = "exptl M", 
+                                "hs F + ct M" = "exptl F")) +
+  labs(title = "lab: exptl F/M hatch rates",
+       y = "hatch proportion",
+       x = "total eggs",
+       color = "parental min temp (C)",
+       shape = "parent trt") +
+  ylim(c(0,0.25))  
+
+# summ_hatch %>%
+#   filter(pop == "field") %>%
+#   ggplot(aes(y = rate.hatch, x = n.collected, color = trt.combo, shape = trt.pair)) +
+#   geom_point(size = 2) +
+#   theme_bw() +
+#   scale_color_manual(labels = c("260-260" = "26 (26C day)",
+#                                 "419-419" = "19",
+#                                 "426-426" = "26 (40C day)",
+#                                 "433-433" = "33"), 
+#                      values = RYB) +
+#   scale_shape_manual(values = c(1, 16),
+#                      labels = c("ct F + ct M" = "control (26C day)", 
+#                                 "hs F + hs M" = "exptl (40C day)")) +
+#   labs(title = "field: within trt hatch rates",
+#        y = "hatch proportion",
+#        x = "total eggs",
+#        color = "parent min temp (C)",
+#        shape = "trt conditions") +
+#   ylim(c(0,0.25))
+
+summ_hatch %>%
+  filter(rate.hatch > 0) %>%
+  ggplot(aes(y = rate.hatch, x = n.collected, color = as.factor(trt.parent), shape = trt.pair)) +
+  geom_point(size = 2) +
+  y_err_hrate(err = 50) + 
+  theme_bw() +
+  scale_color_manual(values = c("#324DA0", "#acd2bb", "#a51122"),
+                     labels = c("260" = "26 (ctrl)",
+                                "419" = "19",
+                                "433" = "33")) +
+  scale_shape_manual(values = c(1, 17, 16),
+                       labels = c("ct F + ct M" = "ctrl (26°C day)",
+                                  "hs F + ct M" = "exptl F", 
+                                  "hs F + hs M" = "exptl (40°C day)")) +
+  labs(title = "lab: trts w/ hatchlings",
+       y = "hatch proportion",
+       x = "total eggs",
+       color = "parental min temp (C)",
+       shape = "parent trt") +
+  ylim(c(0,0.25))  
 ```
 
