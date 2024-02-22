@@ -5,15 +5,45 @@ date: "2024-02-15"
 
 purpose: looking at fertility stats
 
+*roadmap:*
+0. load data, pckgs
+1. ...
+
+*questions:*
+- fertility
+  - overall hatch rates per trt/tent? factors contributing to hatch rates?
+  - which trts lead to hatching?
+  - controls: how do expt compare to controls?
+  - daily avg hatch rate
+  - running avg of egg production
+  - time btwn coll vs hatching?
+  - sex diffs?
+
+- longevity
+  - time to ec? what are contributing factors?
+  - survival post ec? what factors? (affected by time in 4C?)
+
 # 0. load data, helper fns
 ```{r}
-source("./ntw_helper-functions.R")
+source("./helpers_tents.R")
 # map(other_helpers, ~discard(., .p = ~all))
   # working on it: https://stackoverflow.com/questions/63533428/in-r-remove-list-of-list-based-on-name
 ```
+# 1. analyses hodgepodge
 
-# rough stats for meeting LOL
+## - overall hatch rates
 ```{r}
+hrate_summ <- data_tstats %>%
+  group_by(#id.tent,
+           trt.f, trt.m, pop
+           ) %>%
+  summarise(n.tents = n_distinct(id.tent),
+            n.collected = sum(n.coll, na.rm = TRUE),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            #start = first(jdate), end = last(jdate),
+            t.duration = max(jdate) - min(jdate)
+            ) %>%
+  drop_na(trt.m) # drop tents w/o males
 
 ```
 

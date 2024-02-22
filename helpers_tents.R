@@ -96,6 +96,9 @@ data_tstats$trt.m <- factor(data_tstats$trt.m, levels = c(260, 419, 426, 433))
 
 data_longevity$trt <- factor(data_longevity$trt, levels = c(260, 419, 426, 433))
 
+# remove dups
+data_tstats <- data_tstats[-c(144, 223), ]
+
 # 4. cleanup --------------------------------------------------------------
 
 rm(ntwadults, tentadults, finfo, minfo, 

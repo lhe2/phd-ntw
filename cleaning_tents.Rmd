@@ -128,6 +128,8 @@ hatchinfo <- data_hatch %>%
 
 data_tents <- 
   full_join(data_tentstats, hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE) %>%
+  mutate(trt.f = case_when(trt.f == "ctrl" ~ 900, # bc 107-I gets yeeted
+                           TRUE ~ as.numeric(trt.f))) %>%
   group_by(id.tent) %>% # fill in missing parent trt info
   fill(c(trt.f, trt.m), .direction = "updown") %>%
   ungroup() %>%
