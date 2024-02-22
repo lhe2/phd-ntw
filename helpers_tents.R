@@ -18,8 +18,21 @@ data_tpairs <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-tentpair
 data_hatch <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-hatchstats.csv")
 data_ntw <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-ntw.csv")
 
+
+# 0.1 objects and functions -----------------------------------------------
+
 # aesthetic objects
 RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
+
+
+# ggplot functions
+y_err_hrate <- function(err = 0.9){
+  list(geom_errorbar(aes(ymin = rate.hatch - se.hatch, ymax = rate.hatch + se.hatch), width = err))
+}
+
+x_err_ncoll <- function(err = 0.9){
+  list(geom_errorbarh(aes(xmin = n.collected - se.coll, xmax = n.collected + se.coll), height = err))
+}
 
 # 1. generate adult longevity stats ---------------------------------------
 
@@ -90,16 +103,24 @@ data_longevity <- tenthelpers_clean[[2]]
 data_hatch <- tenthelpers_clean[[3]]
 
 
-# add trt levels
-data_tstats$trt.f <- factor(data_tstats$trt.f, levels = c(260, 419, 426, 433, 900))
-data_tstats$trt.m <- factor(data_tstats$trt.m, levels = c(260, 419, 426, 433))
+# 4. final touches --------------------------------------------------------
 
-data_longevity$trt <- factor(data_longevity$trt, levels = c(260, 419, 426, 433))
+# add trt levels
+#data_tstats$trt.f <- factor(data_tstats$trt.f, levels = c(260, 419, 426, 433, 900))
+#data_tstats$trt.m <- factor(data_tstats$trt.m, levels = c(260, 419, 426, 433, 900))
+
+#data_longevity$trt <- factor(data_longevity$trt, levels = c(260, 419, 426, 433))
 
 # remove dups
 data_tstats <- data_tstats[-c(144, 223), ]
 
-# 4. cleanup --------------------------------------------------------------
+# remove bad individuals
+  # 301G: only 1 F
+  # 301J: rm 1 male
+data_tstats[191, 8] <- 1
+data_tstats[229, 11] <- 0
+
+# 5. cleanup --------------------------------------------------------------
 
 rm(ntwadults, tentadults, finfo, minfo, 
    data_ntw, data_tpairs, 

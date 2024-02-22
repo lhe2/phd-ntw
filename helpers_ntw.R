@@ -169,20 +169,20 @@ calc.devsumm.trtstgsex <- function(data) {
 # adding geoms ######
 
 ### error bars
-y_err_logmass <- function(y_err) {
-  list(geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass), width = y_err))
+y_err_logmass <- function(err = 0.9) {
+  list(geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass), width = err))
 }
 
-y_err_mass <- function(y_err) {
-  list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = y_err))
+y_err_mass <- function(err = 0.9) {
+  list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = err))
 }
 
-y_err_tt <- function(y_err){
-  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = y_err))
+y_err_tt <- function(err = 0.9){
+  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = err))
 }
 
-x_err_tt <- function(x_err){
-  list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), height = x_err))
+x_err_tt <- function(err = 0.9){
+  list(geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), height = err))
 }
 
 # # custom error bars: see 
