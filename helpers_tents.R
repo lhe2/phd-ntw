@@ -12,6 +12,9 @@ library(survival)
 library(survminer)
 #library(gridExtra)
 
+library(lme4)
+library(lmerTest)
+
 # cleaned data
 data_tstats <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-tentstats.csv")
 data_tpairs <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-tentpairs.csv")

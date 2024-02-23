@@ -74,13 +74,7 @@ summ_hatch <- data_tstats %>%
 
 ```
 
-# plot
-```{r create subsets}
-data_h_win <- filter(summ_hatch, pop == "lab" & (trt.pair == "ct F + ct M" | trt.pair == "hs F + hs M"))
-data_h_trtf <- filter(summ_hatch, pop == "lab" & trt.pair == "ct F + hs M")
-data_h_trtm <- filter(summ_hatch, pop == "lab" & trt.pair == "hs F + ct M")
-data_h_field <- filter(summ_hatch, pop == "field")
-```
+### - plots
 
 ```{r}
 #RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
@@ -176,3 +170,57 @@ summ_hatch %>%
   ylim(c(0,0.25))  
 ```
 
+### - modeling
+
+```{r get stats}
+summ_eggmod <- data_tstats %>%
+  mutate(room = as.factor(room),
+         id.tent = as.factor(id.tent),
+         trt.f = as.factor(trt.f),
+         trt.m = as.factor(trt.m)) %>%
+  group_by(id.tent, room, tent.loc, trt.f, trt.m, pop) %>%
+  summarise(n.tents = n_distinct(id.tent),
+            n.collected = sum(n.coll, na.rm = TRUE),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            n.females = sum(n.new.f, na.rm = TRUE),
+            rate.hatch = n.hatched/n.collected,
+            rate.f = round(n.collected/n.females, digits = 1))
+
+```
+
+```{r}
+mod.eggs <- glm(n.collected ~ trt.f + trt.m + pop + n.females, 
+                data = summ_eggmod, family = poisson)
+
+summary(mod.eggs) # everything has an effect
+anova(mod.eggs) # lmao nothing is important tho!
+```
+
+- all the vars have a small but significant effect, but none of the variables matter
+- AIC: 5235.5
+
+drop the `n.females` bc idk if that matters tbh.... (it does)
+```{r}
+mod.eggs2 <- glm(n.collected ~ trt.f + trt.m + pop, 
+                data = summ_eggmod, family = poisson)
+
+summary(mod.eggs2)
+anova(mod.eggs2)
+```
+similar results, but AIC = 8073.5
+
+look for random effects:
+
+```{r}
+mod.eggs3 <- lme4::lmer(n.coll ~ trt.f + trt.m + n.curr.f + pop + (1|id.tent), 
+                data = data_tstats, 
+                #family = "poisson"
+                )
+
+summary(mod.eggs3)
+anova(mod.eggs3)
+```
+
+with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 231
+
+with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
