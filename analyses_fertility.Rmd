@@ -224,3 +224,60 @@ anova(mod.eggs3)
 with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 231
 
 with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
+
+## - daily laying rate
+
+```{r calculate}
+# calculate # of currently ovipositing females
+summ_rate <- data_tstats %>%
+  mutate_at(c(6:13), ~replace_na(., 0)) %>%
+  group_by(id.tent) %>%
+  mutate(jdate.rel = jdate - first(jdate)) %>%
+  ungroup() %>%
+  group_by(id.tent, trt.f, trt.m, pop, jdate.rel) %>%
+  arrange(jdate.rel, .by_group = TRUE) %>%
+  mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
+         n.lay = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
+  ungroup()
+  # mutate_at(n.laying == 0 & n.coll > 0, "n.laying" = lag(n.laying))
+  # summarise()
+
+# where n.ovipositing females = 0 but n.collected > 0, add the # collected to the day before
+# first, figure out the rows
+cond <- (summ_rate$n.coll > 0 & summ_rate$n.lay == 0)
+summ_rate %>%
+  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
+  subset(cond | lead(cond) | lead(cond, n=2)) %>%
+  View()
+rm(cond)
+
+# edit values
+summ_rate$n.coll[c(55, 66, 73, 115, 152, 210)] <- 1
+summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
+
+# calculate daily hatch rate per tent and per trt  
+summ_rate_pertent <- summ_rate %>%
+  group_by(id.tent, trt.f, trt.m, pop, jdate.rel) %>%
+  summarise(rate.pertent = n.coll/n.lay,
+            n.tents = n(),
+            n.ovi.pertent = sum(n.lay)) %>%
+  replace(is.na(.), 0)
+
+summ_rate_overall <- summ_rate_pertent %>%
+  group_by(trt.f, trt.m, pop, jdate.rel) %>%
+  arrange(jdate.rel, .by_group = TRUE) %>%
+  summarise(rate.overall = mean(rate.pertent),
+            n.tents = n(),
+            n.ovi.overall = sum(n.ovi.pertent)) %>%
+    replace(is.na(.), 0)
+```
+
+```{r plotting trt overall}
+summ_rate %>%
+  group_by(trt.f, trt.m, pop, jdate.rel) %>%
+  summarise(rate.overall = n.coll/n.lay)
+  
+
+```
+
+
