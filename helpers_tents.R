@@ -108,6 +108,13 @@ data_hatch <- tenthelpers_clean[[3]]
 
 # 4. final touches --------------------------------------------------------
 
+# add extra columns
+data_tstats <- data_tstats %>%
+  mutate(trt.type = case_when(trt.f == trt.m ~ "within",
+                              trt.f > trt.m ~ "sex-f",
+                              trt.f < trt.m ~ "sex-m",
+                              is.na(trt.m) ~ "f only"))
+
 # add trt levels
 #data_tstats$trt.f <- factor(data_tstats$trt.f, levels = c(260, 419, 426, 433, 900))
 #data_tstats$trt.m <- factor(data_tstats$trt.m, levels = c(260, 419, 426, 433, 900))

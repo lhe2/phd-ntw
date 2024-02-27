@@ -234,7 +234,7 @@ summ_rate <- data_tstats %>%
   group_by(id.tent) %>%
   mutate(jdate.rel = jdate - first(jdate)) %>%
   ungroup() %>%
-  group_by(id.tent, trt.f, trt.m, pop, jdate.rel) %>%
+  group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
   arrange(jdate.rel, .by_group = TRUE) %>%
   mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
          n.lay = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
@@ -247,8 +247,8 @@ summ_rate <- data_tstats %>%
 cond <- (summ_rate$n.coll > 0 & summ_rate$n.lay == 0)
 summ_rate %>%
   mutate(index = as.numeric(rownames(.)), .before = 1) %>%
-  subset(cond | lead(cond) | lead(cond, n=2)) %>%
-  View()
+  subset(cond | lead(cond) | lead(cond, n=2)) # %>%
+  #View()
 rm(cond)
 
 # edit values
@@ -257,27 +257,87 @@ summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
 
 # calculate daily hatch rate per tent and per trt  
 summ_rate_pertent <- summ_rate %>%
-  group_by(id.tent, trt.f, trt.m, pop, jdate.rel) %>%
+  group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
   summarise(rate.pertent = n.coll/n.lay,
             n.tents = n(),
             n.ovi.pertent = sum(n.lay)) %>%
   replace(is.na(.), 0)
+# how to include se for rate? -- see meggan?
 
 summ_rate_overall <- summ_rate_pertent %>%
-  group_by(trt.f, trt.m, pop, jdate.rel) %>%
+  group_by(trt.f, trt.m, pop, trt.type, jdate.rel) %>%
   arrange(jdate.rel, .by_group = TRUE) %>%
   summarise(rate.overall = mean(rate.pertent),
             n.tents = n(),
             n.ovi.overall = sum(n.ovi.pertent)) %>%
-    replace(is.na(.), 0)
+    replace(is.na(.), 0) %>%
+  mutate(trt.pair = paste0(trt.f, "-", trt.m),
+         label.facet = case_when(trt.f == 260 ~ "26-26",
+                                 trt.f == 419 ~ "40-19",
+                                 trt.f == 426 ~ "40-26",
+                                 trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ 26-26,
+                              trt.f == trt.m & trt.f == 419 ~ 40-19,
+                              trt.f == trt.m & trt.f == 426 ~ 40-26,
+                              trt.f == trt.m & trt.f == 433 ~ 40-33,
+                              trt.f < trt.m ~ as.numeric(trt.m),
+                              trt.f > trt.m ~ as.numeric(trt.f))
+         #pop = factor(pop, levels = c("lab", "field"))
+         )
 ```
 
 ```{r plotting trt overall}
-summ_rate %>%
-  group_by(trt.f, trt.m, pop, jdate.rel) %>%
-  summarise(rate.overall = n.coll/n.lay)
-  
+# summ_rate %>%
+#   group_by(trt.f, trt.m, pop, jdate.rel) %>%
+#   summarise(rate.overall = n.coll/n.lay)
 
+# notes
+  # need some more built in labels for the trt types... idk where to put that in tho
+  # custom scale labels per layer: https://stackoverflow.com/questions/18394391/custom-legend-for-multiple-layer-ggplot
+  
+summ_rate_overall %>%
+  filter(trt.type == "within") %>%
+  ggplot(aes(x = jdate.rel, 
+             lty = pop, 
+             color = as.factor(trt.f) # want this to be RYB tho
+             )) +
+  facet_wrap(~ label.facet,
+             nrow = 1) +
+  geom_point(aes(y = rate.overall)) + 
+  geom_line(aes(y = rate.overall)) +
+  geom_line(aes(y = n.ovi.overall), color = "black", alpha = 0.55) +
+  scale_linetype_manual(values = c("lab" = "solid", "field" = "dashed"),
+                        #values = c("solid", "dashed")
+                        ) +
+  # scale_color_identity(name = "# females", guide = "legend") +
+  theme_bw() +
+  labs(title = "within treatment daily egg laying rate",
+       y = "# eggs laid/female",
+       x = "days since tent start"
+       #color = 
+         )
+
+  
+summ_rate_overall %>%
+  filter(trt.type == "sex-f" | trt.type == "sex-m") %>%
+  ggplot(aes(x = jdate.rel, 
+             color = as.factor(trt.btwn) # want this to be RYB tho
+             )) +
+  facet_wrap(trt.type ~ trt.pair,
+             nrow = 2, ncol = 3) +
+  geom_point(aes(y = rate.overall)) + 
+  geom_line(aes(y = rate.overall)) +
+  geom_line(aes(y = n.ovi.overall), color = "black", alpha = 0.55) +
+  scale_linetype_manual(values = c("lab" = "solid", "field" = "dashed"),
+                        #values = c("solid", "dashed")
+                        ) +
+  # scale_color_identity(name = "# females", guide = "legend") +
+  theme_bw() +
+  labs(title = "btwn treatment daily egg laying rate",
+       y = "# eggs laid/female",
+       x = "days since tent start",
+       color = "parent trt"
+         )  
 ```
 
 
