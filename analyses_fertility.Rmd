@@ -170,60 +170,14 @@ summ_hatch %>%
   ylim(c(0,0.25))  
 ```
 
-### - modeling
-
-```{r get stats}
-summ_eggmod <- data_tstats %>%
-  mutate(room = as.factor(room),
-         id.tent = as.factor(id.tent),
-         trt.f = as.factor(trt.f),
-         trt.m = as.factor(trt.m)) %>%
-  group_by(id.tent, room, tent.loc, trt.f, trt.m, pop) %>%
-  summarise(n.tents = n_distinct(id.tent),
-            n.collected = sum(n.coll, na.rm = TRUE),
-            n.hatched = sum(n.tothatch, na.rm = TRUE),
-            n.females = sum(n.new.f, na.rm = TRUE),
-            rate.hatch = n.hatched/n.collected,
-            rate.f = round(n.collected/n.females, digits = 1))
-
-```
+### - modeling: hatch rates
 
 ```{r}
-mod.coll <- glm(n.collected ~ trt.f + trt.m + pop + n.females, 
-                data = summ_eggmod, family = poisson)
-
-summary(mod.coll) # everything has an effect
-anova(mod.coll) # lmao nothing is important tho!
+summ_hatchmod <- data_tstats %>%
+  
 ```
 
-- all the vars have a small but significant effect, but none of the variables matter
-- AIC: 5235.5
 
-drop the `n.females` bc idk if that matters tbh.... (it does)
-```{r}
-mod.coll2 <- glm(n.collected ~ trt.f + trt.m + pop, 
-                data = summ_eggmod, family = poisson)
-
-summary(mod.coll2)
-anova(mod.coll2)
-```
-similar results, but AIC = 8073.5
-
-look for random effects:
-
-```{r}
-mod.coll3 <- lme4::lmer(n.coll ~ trt.f + trt.m + n.curr.f + pop + (1|id.tent), 
-                data = data_tstats, 
-                #family = "poisson"
-                )
-
-summary(mod.coll3)
-anova(mod.coll3)
-```
-
-with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 231
-
-with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
 
 ## B. daily laying rate
 
@@ -403,7 +357,7 @@ summ_rate_overall %>%
        color = "parent trt"
          )  
 ```
-### - combined plots?
+### - overlaid plots
 
 ```{r calc stats}
 # test <- merge(summ_rate_overall, 
@@ -515,14 +469,107 @@ summ_rates_all %>%
   )  
 
 ```
+### - modeling: # collected
 
-### - modeling...
+```{r get stats}
+summ_eggmod <- data_tstats %>%
+  mutate(room = as.factor(room),
+         id.tent = as.factor(id.tent),
+         trt.f = as.factor(trt.f),
+         trt.m = as.factor(trt.m)) %>%
+  group_by(id.tent, room, tent.loc, trt.f, trt.m, pop) %>%
+  summarise(n.tents = n_distinct(id.tent),
+            n.collected = sum(n.coll, na.rm = TRUE),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            n.females = sum(n.new.f, na.rm = TRUE),
+            rate.hatch = n.hatched/n.collected,
+            rate.f = round(n.collected/n.females, digits = 1))
 
-- what's the right response variable for this?
-  - and then, what factors? (depends on the level? overall or per tent? random effs?)
+```
 
 ```{r}
-mod.lay <- glm(rate.overall ~ )
+mod.coll <- glm(n.collected ~ trt.f + trt.m + pop + n.females, 
+                data = summ_eggmod, family = poisson)
+
+summary(mod.coll) # everything has an effect
+anova(mod.coll) # lmao nothing is important tho!
+```
+
+- all the vars have a small but significant effect, but none of the variables matter
+- AIC: 5235.5
+
+drop the `n.females` bc idk if that matters tbh.... (it does)
+```{r}
+mod.coll2 <- glm(n.collected ~ trt.f + trt.m + pop, 
+                data = summ_eggmod, family = poisson)
+
+summary(mod.coll2)
+anova(mod.coll2)
+```
+similar results, but AIC = 8073.5
+
+look for random effects:
+
+```{r}
+mod.coll3 <- lme4::lmer(n.coll ~ trt.f + trt.m + n.curr.f + pop + (1|id.tent), 
+                data = data_tstats, 
+                #family = "poisson"
+                )
+
+summary(mod.coll3)
+anova(mod.coll3)
+```
+
+with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 231
+
+with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
+
+
+### - modeling: hatch rate
+
+qns before going in: 
+- what's the right response variable for this? (rate? overall eggs?)
+  - and then, what factors? (depends on the level? overall or per tent? random effs?)
+  
+first pass mod: looking for relevant variables...
+
+```{r warning=FALSE}
+mod.lay <- glm(rate.overall ~ 
+                 as.factor(trt.f) + as.factor(trt.m) + pop + 
+                 n.ovi.overall + n.tents.overall + jdate.rel,
+               data = summ_rates_all,
+               family = poisson)
+  # getting a TON of non-integer warnings lolol
+
+summary(mod.lay) # everything matters (minorly) except trt.f = 900 and trt.m (***). AIC = Inf LOL
+anova(mod.lay) # nothing matters!!
+```
+so we can probably drop the `trt.m` term which makes sense tbh! (bc `trt.m` shouldn't have an effect on if females lay lol). we can try it: 
+
+```{r warning=FALSE}
+mod.lay2 <- glm(rate.overall ~ 
+                 as.factor(trt.f) + pop + 
+                 n.ovi.overall + n.tents.overall + jdate.rel,
+               data = summ_rates_all,
+               family = poisson)
+  # getting a TON of non-integer warnings again
+
+summary(mod.lay2) # everything matters (minorly) except trt.f = 900. AIC = Inf
+anova(mod.lay2) # nothing rlly matters again tho 🫠..
+```
+
+it's hard to say if this model is rlly that meaningful since there's no AIC info... anyway. time to add in some random effects:
+
+```{r}
+mod.lay3 <- lme4::lmer(rate.overall ~ 
+                        as.factor(trt.f) + as.factor(trt.m) + pop + 
+                        n.ovi.overall + n.tents.overall + jdate.rel +
+                        (1|id.tent),
+                      data = summ_rates_all,
+                      )
+
+summary(mod.lay3) # residual = 109 over 434 obs and 35 tent groups
+anova(mod.lay3) # also nothing matters 👍
 ```
 
 
