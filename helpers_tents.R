@@ -27,6 +27,10 @@ data_ntw <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-ntw.csv")
 # aesthetic objects
 RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 
+# labels
+labels.wintrt <- c("26-26", "40-19", "40-26", "40-33")
+labels.btwntrt <- c("40-19", "40-26", "40-33")
+
 
 # ggplot functions
 y_err_hrate <- function(err = 0.9){
@@ -110,7 +114,8 @@ data_hatch <- tenthelpers_clean[[3]]
 
 # add extra columns
 data_tstats <- data_tstats %>%
-  mutate(trt.type = case_when(trt.f == trt.m ~ "within",
+  mutate(trt.type = case_when(trt.f == trt.m & trt.f < 400 ~ "ctrl",
+                              trt.f == trt.m & trt.f > 400 ~ "within",
                               trt.f > trt.m ~ "sex-f",
                               trt.f < trt.m ~ "sex-m",
                               is.na(trt.m) ~ "f only"))

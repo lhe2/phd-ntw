@@ -31,7 +31,7 @@ source("./helpers_tents.R")
 ```
 # 1. analyses hodgepodge
 
-## - overall hatch rates
+## A. overall hatch rates
 
 ```{r calc stats & add other filter criteria}
 summ_hatch <- data_tstats %>%
@@ -189,11 +189,11 @@ summ_eggmod <- data_tstats %>%
 ```
 
 ```{r}
-mod.eggs <- glm(n.collected ~ trt.f + trt.m + pop + n.females, 
+mod.coll <- glm(n.collected ~ trt.f + trt.m + pop + n.females, 
                 data = summ_eggmod, family = poisson)
 
-summary(mod.eggs) # everything has an effect
-anova(mod.eggs) # lmao nothing is important tho!
+summary(mod.coll) # everything has an effect
+anova(mod.coll) # lmao nothing is important tho!
 ```
 
 - all the vars have a small but significant effect, but none of the variables matter
@@ -201,32 +201,33 @@ anova(mod.eggs) # lmao nothing is important tho!
 
 drop the `n.females` bc idk if that matters tbh.... (it does)
 ```{r}
-mod.eggs2 <- glm(n.collected ~ trt.f + trt.m + pop, 
+mod.coll2 <- glm(n.collected ~ trt.f + trt.m + pop, 
                 data = summ_eggmod, family = poisson)
 
-summary(mod.eggs2)
-anova(mod.eggs2)
+summary(mod.coll2)
+anova(mod.coll2)
 ```
 similar results, but AIC = 8073.5
 
 look for random effects:
 
 ```{r}
-mod.eggs3 <- lme4::lmer(n.coll ~ trt.f + trt.m + n.curr.f + pop + (1|id.tent), 
+mod.coll3 <- lme4::lmer(n.coll ~ trt.f + trt.m + n.curr.f + pop + (1|id.tent), 
                 data = data_tstats, 
                 #family = "poisson"
                 )
 
-summary(mod.eggs3)
-anova(mod.eggs3)
+summary(mod.coll3)
+anova(mod.coll3)
 ```
 
 with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 231
 
 with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
 
-## - daily laying rate
+## B. daily laying rate
 
+### - calcs
 ```{r calculate}
 # calculate # of currently ovipositing females
 summ_rate <- data_tstats %>%
@@ -256,13 +257,82 @@ summ_rate$n.coll[c(55, 66, 73, 115, 152, 210)] <- 1
 summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
 
 # calculate daily hatch rate per tent and per trt  
+
+   # (moved to respective sections)
+  # how to include se for rate? -- see meggan?
+
+```
+### - plot per tent
+
+```{r}
 summ_rate_pertent <- summ_rate %>%
   group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
   summarise(rate.pertent = n.coll/n.lay,
             n.tents = n(),
             n.ovi.pertent = sum(n.lay)) %>%
-  replace(is.na(.), 0)
-# how to include se for rate? -- see meggan?
+  replace(is.na(.), 0) %>%
+  mutate(trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ 26-26,
+                              trt.f == trt.m & trt.f == 419 ~ 40-19,
+                              trt.f == trt.m & trt.f == 426 ~ 40-26,
+                              trt.f == trt.m & trt.f == 433 ~ 40-33,
+                              trt.f < trt.m ~ as.numeric(trt.m),
+                              trt.f > trt.m ~ as.numeric(trt.f)))
+
+
+summ_rate_pertent %>%
+  filter((trt.type == "within" | trt.type == "ctrl")
+         & pop == "lab"
+         ) %>% 
+  ggplot(aes(#lty = pop,
+             x = jdate.rel, # custom cutoffs per trt?
+             group = id.tent,
+             color = as.factor(trt.f)
+             )) +
+  geom_point(aes(y = rate.pertent)) +
+  geom_line(aes(y = rate.pertent)) +
+  facet_wrap(#pop 
+             ~ trt.f,
+             ncol = 4, nrow = 2) + # custom scales for field?
+  theme_bw() +
+  labs(title = "within trt per tent egg laying rate",
+       y = "# eggs laid/female",
+       x = "days since tent setup",
+       color = "treatment") +
+  scale_color_manual(values = RYB,
+                      labels = labels.wintrt)
+
+
+summ_rate_pertent %>%
+  filter(#trt.type == "ctrl" | 
+           trt.type == "sex-m" | trt.type == "sex-f") %>% 
+  ggplot(aes(#lty = pop,
+             x = jdate.rel, # custom cutoffs per trt?
+             group = id.tent,
+             color = as.factor(trt.btwn)
+             )) +
+  geom_point(aes(y = rate.pertent)) +
+  geom_line(aes(y = rate.pertent)) +
+  facet_wrap(trt.type ~ trt.btwn,
+             ncol = 3, nrow = 2
+             ) + # custom scales for field?
+  theme_bw() +
+  labs(title = "btwn trt per tent egg laying rate",
+       y = "# eggs laid/female",
+       x = "days since tent setup",
+       color = "treatment") +
+  scale_color_manual(values =  c("#acd2bb", "#f1c363", "#a51122"),
+                      labels = labels.btwntrt)
+
+
+```
+
+
+
+### - plot trt overall
+```{r plotting trt overall}
+# summ_rate %>%
+#   group_by(trt.f, trt.m, pop, jdate.rel) %>%
+#   summarise(rate.overall = n.coll/n.lay)
 
 summ_rate_overall <- summ_rate_pertent %>%
   group_by(trt.f, trt.m, pop, trt.type, jdate.rel) %>%
@@ -284,19 +354,13 @@ summ_rate_overall <- summ_rate_pertent %>%
                               trt.f > trt.m ~ as.numeric(trt.f))
          #pop = factor(pop, levels = c("lab", "field"))
          )
-```
-
-```{r plotting trt overall}
-# summ_rate %>%
-#   group_by(trt.f, trt.m, pop, jdate.rel) %>%
-#   summarise(rate.overall = n.coll/n.lay)
 
 # notes
   # need some more built in labels for the trt types... idk where to put that in tho
   # custom scale labels per layer: https://stackoverflow.com/questions/18394391/custom-legend-for-multiple-layer-ggplot
   
 summ_rate_overall %>%
-  filter(trt.type == "within") %>%
+  filter(trt.type == "within" | trt.type == "ctrl") %>%
   ggplot(aes(x = jdate.rel, 
              lty = pop, 
              color = as.factor(trt.f) # want this to be RYB tho
@@ -339,5 +403,131 @@ summ_rate_overall %>%
        color = "parent trt"
          )  
 ```
+### - combined plots?
+
+```{r calc stats}
+# test <- merge(summ_rate_overall, 
+#          cbind(#summ_rate_pertent$id.tent, 
+#                summ_rate_pertent$trt.f, summ_rate_pertent$trt.m, 
+#                summ_rate_pertent$jdate.rel, summ_rate_pertent$pop, summ_rate_pertent$rate.pertent,
+#                summ_rate_pertent$n.ovi.pertent), 
+#          by = c("trt.f", "trt.m", "pop", "jdate.rel"), 
+#          all = TRUE)
+
+summ_rates_all <- summ_rate %>%
+  group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
+  summarise(rate.pertent = n.coll/n.lay,
+            #se.pertent = sd(na.omit(rate.pertent))/sqrt(n()),
+            #se.pertent = sqrt(rate.pertent*(1-rate.pertent)/sum(n.lay)),
+            n.tents.pertent = n(),
+            n.ovi.pertent = sum(n.lay)) %>%
+  replace(is.na(.), 0) %>%
+  ungroup() %>% 
+  group_by(trt.f, trt.m, pop, #trt.type, 
+           jdate.rel) %>%
+  #arrange(jdate.rel, .by_group = TRUE) %>%
+  mutate(rate.overall = mean(rate.pertent),
+         n.tents.overall = n(),
+         n.ovi.overall = sum(n.ovi.pertent)
+         #se.overall = sqrt(rate.overall*(1-rate.overall)/n.ovi.overall),
+         #se.overall = sd(na.omit(rate.overall))/sqrt(n())
+         ) %>%
+  replace(is.na(.), 0) %>%
+  ungroup() %>%
+  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == 419 ~ "40-19",
+                             trt.f == 426 ~ "40-26",
+                             trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(#trt.f == trt.m & trt.f == 260 ~ "26-26",
+           #trt.f == trt.m & trt.f == 419 ~ "40-19",
+           #trt.f == trt.m & trt.f == 426 ~ "40-26",
+           #trt.f == trt.m & trt.f == 433 ~ "40-33",
+           trt.type == "ctrl" ~ 260,        
+           trt.type == "sex-m" ~ as.numeric(trt.m),
+           trt.type == "sex-f" ~ as.numeric(trt.f)
+           #trt.f < trt.m ~ as.numeric(trt.m),
+           #trt.f > trt.m ~ as.numeric(trt.f)
+         )
+  )
+  
+```
 
 
+```{r testing facet_manual}
+design <- "
+abcd
+#efg
+" 
+
+summ_rates_all %>%
+  filter(trt.type == "ctrl" | trt.type == "within") %>%
+  ggplot(aes(x = jdate.rel, color = trt.win 
+             #group = id.tent
+             )) +
+  facet_grid(pop~trt.win,
+             scales = "free_y"
+             #rows = 2, cols  = 4
+             ) +
+  #geom_point(aes(y = rate.pertent), alpha = 0.5, show.legend = FALSE) +
+  geom_line(aes(y = rate.pertent, group = id.tent), alpha= 0.25, show.legend = FALSE
+            ) +
+  geom_line(aes(y = rate.overall), show.legend = FALSE
+            ) +
+  geom_line(aes(y = n.ovi.overall), lty = "dashed", color = "black", alpha = 0.7) +
+  theme_bw() +
+  scale_color_manual(values = RYB) +
+  scale_linetype_manual(values = c("solid", "dashed"), #idk how to get this to work
+                        labels = c("lay rate", "# ovipositing females")) +
+  labs(title = "within treatment hatch rates",
+       y = "# eggs/female per day",
+       x = "days since initial tent setup",
+       lty = "rate")
+
+```
+
+```{r other attempt}
+summ_rates_all %>%
+  ungroup() %>%
+  filter(trt.type == "ctrl" | trt.type == "sex-f" | trt.type == "sex-m") %>%
+  ggplot(aes(x = jdate.rel, 
+             color = as.factor(trt.btwn) # want this to be RYB tho
+  )) +
+  # facet_wrap(trt.type ~ trt.pair,
+  #            nrow = 2, ncol = 3) +
+  ggh4x::facet_manual(#~facet,
+                      trt.type ~ trt.btwn,
+                      design = design) +
+  #geom_point(aes(y = rate.overall)) + 
+  geom_line(aes(y = rate.pertent, group = id.tent), alpha = 0.3) +
+  geom_line(aes(y = rate.overall)) +
+  #geom_line(aes(y = n.ovi.overall), color = "black", alpha = 0.7, lty = "dashed") +
+  # scale_linetype_manual(values = c("lab" = "solid", "field" = "dashed"),
+  #                       #values = c("solid", "dashed")
+  # ) +
+  # scale_color_identity(name = "# females", guide = "legend") +
+  scale_color_manual(values = RYB,
+                     labels = labels.wintrt) +
+  theme_bw() +
+  labs(title = "btwn treatment daily egg laying rate",
+       y = "# eggs laid/female per day",
+       x = "days since tent start",
+       color = "parent trt"
+  )  
+
+```
+
+### - modeling...
+
+- what's the right response variable for this?
+  - and then, what factors? (depends on the level? overall or per tent? random effs?)
+
+```{r}
+mod.lay <- glm(rate.overall ~ )
+```
+
+
+
+
+# to do
+
+- better overlaid overall/per tent rate 
