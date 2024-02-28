@@ -172,11 +172,79 @@ summ_hatch %>%
 
 ### - modeling: hatch rates
 
-```{r}
+```{r calc stats}
 summ_hatchmod <- data_tstats %>%
+  replace(is.na(.), 0) %>%
+  group_by(id.tent) %>%
+  mutate(jdate.rel = jdate - first(jdate)) %>%
+  group_by(jdate.rel) %>%
+  mutate(n.tothatch.pertent = sum(n.tothatch),
+         n.coll.pertent = sum(n.coll)) %>%
+  ungroup() %>%
+  group_by(trt.f, trt.m, pop) %>%
+  mutate(n.tothatch.overall = sum(n.tothatch),
+         n.coll.overall = sum(n.coll),
+         #n.duration.overall = jdate-first(jdate)
+         ) %>%
+  filter(n.tothatch.overall > 0)
   
 ```
 
+trying a bunch!
+
+```{r}
+mod.hatch <- glm(n.tothatch.overall ~ 
+                   as.factor(trt.f) + as.factor(trt.m) + #pop +
+                   n.coll.pertent,
+                 data = summ_hatchmod,
+                 family = poisson)
+  # Warning: glm.fit: fitted rates numerically 0 occurred
+
+# unfiltered:
+summary(mod.hatch) # (***) for trt.f = 419, 433; (*) for n.coll.pertent. AIC = 12347
+anova(mod.hatch) # nothing matters zzzzzz
+
+# filtered:
+summary(mod.hatch) # (***) for all trts. AIC = 1055.7
+anova(mod.hatch) # nothing matters!
+```
+try dropping `n.coll` from the model
+
+```{r}
+mod.hatch2 <- glm(n.tothatch.overall ~ 
+                   as.factor(trt.f) + as.factor(trt.m) 
+                  #+ pop
+                  ,
+                 data = summ_hatchmod,
+                 family = poisson)
+  # Warning: glm.fit: fitted rates numerically 0 occurred
+
+# unfiltered:
+summary(mod.hatch2) # AIC = 12350 (very slightly worse...)
+anova(mod.hatch2) # nothing matters still 👍
+
+# filtered:
+summary(mod.hatch2) # AIC = 1053.7 (slightly better model)
+anova(mod.hatch2) # nothin matters!!!
+```
+
+look at random effects: 
+
+```{r}
+mod.hatch3 <- lme4::lmer(n.tothatch.overall ~ 
+                           as.factor(trt.f) + as.factor(trt.m) + #pop +
+                           #n.coll.pertent + 
+                           (1|id.tent),
+                         data = summ_hatchmod,
+                         #family = poisson
+                         )
+  # doesnt work w/ unfiltered data: 
+    # "Error in eval_f(x, ...) : Downdated VtV is not positive definite"
+  # w/ filtered: model fails to converge
+
+summary(mod.hatch3) # res = 1e-27, # obs = 166, # id.tent grps = 11
+anova(mod.hatch3) # nothin matters!!!
+```
 
 
 ## B. daily laying rate
@@ -471,6 +539,8 @@ summ_rates_all %>%
 ```
 ### - modeling: # collected
 
+OOOOp big mistake. dont do this per day LOL (but prob at least overall tent duration?)
+
 ```{r get stats}
 summ_eggmod <- data_tstats %>%
   mutate(room = as.factor(room),
@@ -535,8 +605,10 @@ first pass mod: looking for relevant variables...
 
 ```{r warning=FALSE}
 mod.lay <- glm(rate.overall ~ 
-                 as.factor(trt.f) + as.factor(trt.m) + pop + 
-                 n.ovi.overall + n.tents.overall + jdate.rel,
+                 as.factor(trt.f) + #as.factor(trt.m) + 
+                 pop + 
+                 n.ovi.overall + n.tents.overall #+ jdate.rel
+               ,
                data = summ_rates_all,
                family = poisson)
   # getting a TON of non-integer warnings lolol
@@ -549,7 +621,8 @@ so we can probably drop the `trt.m` term which makes sense tbh! (bc `trt.m` shou
 ```{r warning=FALSE}
 mod.lay2 <- glm(rate.overall ~ 
                  as.factor(trt.f) + pop + 
-                 n.ovi.overall + n.tents.overall + jdate.rel,
+                 n.ovi.overall + n.tents.overall #+ jdate.rel
+                ,
                data = summ_rates_all,
                family = poisson)
   # getting a TON of non-integer warnings again
@@ -563,7 +636,8 @@ it's hard to say if this model is rlly that meaningful since there's no AIC info
 ```{r}
 mod.lay3 <- lme4::lmer(rate.overall ~ 
                         as.factor(trt.f) + as.factor(trt.m) + pop + 
-                        n.ovi.overall + n.tents.overall + jdate.rel +
+                        n.ovi.overall + n.tents.overall + 
+                         #jdate.rel +
                         (1|id.tent),
                       data = summ_rates_all,
                       )
@@ -577,4 +651,5 @@ anova(mod.lay3) # also nothing matters 👍
 
 # to do
 
-- better overlaid overall/per tent rate 
+- better overlaid overall/per tent rate plots (fix # ovi females)
+- fix mods: need to not batch by jdate lol
