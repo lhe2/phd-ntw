@@ -644,6 +644,11 @@ mod.lay3 <- lme4::lmer(rate.overall ~
 
 summary(mod.lay3) # residual = 109 over 434 obs and 35 tent groups
 anova(mod.lay3) # also nothing matters 👍
+
+# looking at distributions with joel
+with(summ_rates_all, density(rate.overall))
+plot.density(summ_rates_all$rate.overall)
+summary(summ_rates_all$rate.overall)
 ```
 
 
