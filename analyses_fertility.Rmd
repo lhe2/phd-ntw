@@ -35,8 +35,20 @@ source("./helpers_tents.R")
 
 ```{r calc stats & add other filter criteria}
 summ_hatch <- data_tstats %>%
+  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == trt.m & trt.f == 419 ~ "40-19",
+                             trt.f == trt.m & trt.f == 426 ~ "40-26",
+                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
+                              (trt.type == "sex-f" | trt.type == "sex-m") & (trt.f == 419 | trt.m == 419) ~ "40-19",
+                              (trt.type == "sex-f" | trt.type == "sex-m") & (trt.f == 426 | trt.m == 426) ~ "40-26",
+                              (trt.type == "sex-f" | trt.type == "sex-m") & (trt.f == 433 | trt.m == 433) ~ "40-33",
+                              #trt.type == "sex-m" ~ as.numeric(trt.m),
+                              #trt.type == "sex-f" ~ as.numeric(trt.f)
+                              )) %>%
   group_by(#id.tent,
-           trt.f, trt.m, pop
+           trt.f, trt.m, pop,
+           trt.win, trt.btwn, trt.type
            ) %>%
   summarise(n.tents = n_distinct(id.tent),
             n.collected = sum(n.coll, na.rm = TRUE),
@@ -57,11 +69,11 @@ summ_hatch <- data_tstats %>%
                               trt.f > trt.m ~ "hs F + ct M",
                               TRUE ~ "err"),
          min.f = case_when(trt.f == 260 | trt.f == 426 ~ 26,
-                            trt.f == 419 ~ 19,
-                            trt.f == 433 ~ 33), 
+                           trt.f == 419 ~ 19,
+                           trt.f == 433 ~ 33), 
          min.m = case_when(trt.m == 260 | trt.m == 426 ~ 26,
-                            trt.m == 419 ~ 19,
-                            trt.m == 433 ~ 33),
+                           trt.m == 419 ~ 19,
+                           trt.m == 433 ~ 33),
          trt.parent = case_when(trt.f == 260 & trt.m == 260 ~ 260,
                                 trt.f == 419 | trt.m == 419 ~ 419,
                                 trt.f == 426 | trt.m == 426 ~ 426,
@@ -77,20 +89,29 @@ summ_hatch <- data_tstats %>%
 ### - plots
 
 ```{r}
+# todo: 
+# - better temp trt labeling & legend labeling (make consistent)
+# - get rid of x error bar stubs
+
+
 #RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 
 summ_hatch %>%
   filter(#pop == "lab" & 
-           (trt.pair == "ct F + ct M" | trt.pair == "hs F + hs M")) %>%
-  ggplot(aes(y = rate.hatch, x = n.collected, color = trt.combo, fill = trt.pair, shape = pop)) +
+           #(trt.pair == "ct F + ct M" | trt.pair == "hs F + hs M")
+           !is.na(trt.win)) %>%
+  ggplot(aes(y = rate.hatch, x = n.collected, #color = trt.combo,
+             color = trt.win,
+             fill = trt.pair, shape = pop)) +
   geom_point(size = 2.5) +
   y_err_hrate(err = 50) + 
   #x_err_ncoll(0.005) + # not worth including lol
   theme_bw() +
-  scale_color_manual(labels = c("260-260" = "26 (26C day)",
-                                "419-419" = "19",
-                                "426-426" = "26 (40C day)",
-                                "433-433" = "33"), 
+  scale_color_manual(
+                     # labels = c("260-260" = "26 (26C day)",
+                     #            "419-419" = "19",
+                     #            "426-426" = "26 (40C day)",
+                     #            "433-433" = "33"), 
                      values = RYB) +
   # scale_shape_manual(values = c(21, 23)) +
   #scale_shape_manual(values = c(1, 16)) + # revisit this lol i give up
@@ -98,35 +119,48 @@ summ_hatch %>%
   # scale_fill_manual(values = c("white", "black"),
   #                   labels = c("ct F + ct M" = "control (26C day)",
   #                              "hs F + hs M" = "exptl (40C day)")) +
-  labs(title = "within trt hatch rates",
+  labs(title = "hatch rates: within treatment",
        y = "hatch proportion",
-       x = "total eggs",
-       color = "parent min temp",
+       x = "total eggs laid",
+       #color = "parent min temp",
+       color = "temp trt",
        shape = "population",
        #fill = "parent trt"
        ) +
   guides(fill = "none") +
-  ylim(c(0,0.25))
+  ylim(c(0,0.20))
   
 summ_hatch %>%
-  filter(pop == "lab" & (trt.pair == "ct F + hs M" | trt.pair == "hs F + ct M")) %>%
-  ggplot(aes(y = rate.hatch, x = n.collected, color = as.factor(trt.parent), shape = trt.pair)) +
+  filter(#pop == "lab" & (trt.pair == "ct F + hs M" | trt.pair == "hs F + ct M")
+         !is.na(trt.btwn) & pop == "lab") %>%
+  ggplot(aes(y = rate.hatch, x = n.collected, #color = as.factor(trt.parent), 
+             color = trt.btwn,
+             shape = trt.type
+             #shape = trt.pair
+             )) +
   geom_point(size = 2) +
   y_err_hrate(err = 50) + 
   theme_bw() +
-  scale_color_manual(values = c("#acd2bb", "#f1c363", "#a51122"),
-                     labels = c("419" = "19",
-                                "426" = "26",
-                                "433" = "33")) +
-  scale_shape_manual(values = c(15, 17),
-                     labels = c("ct F + hs M" = "exptl M", 
-                                "hs F + ct M" = "exptl F")) +
-  labs(title = "lab: exptl F/M hatch rates",
+  scale_color_manual(values = RYB,
+  #                    # values = c("#acd2bb", "#f1c363", "#a51122"),
+  #                    # labels = c("419" = "19",
+  #                    #            "426" = "26",
+  #                    #            "433" = "33")
+                     ) +
+  # scale_shape_manual(values = c(15, 17),
+  #                    labels = c("ct F + hs M" = "exptl M", 
+  #                               "hs F + ct M" = "exptl F")) +
+  scale_shape_discrete(labels = c("ctrl female/ctrl male",
+                                "HS female/ctrl male",
+                                "ctrl female/HS male")) +
+  labs(title = "hatch rates: btwn treatments",
        y = "hatch proportion",
-       x = "total eggs",
-       color = "parental min temp (C)",
-       shape = "parent trt") +
-  ylim(c(0,0.25))  
+       x = "total eggs laid",
+       #color = "parental min temp (C)",
+       color = "temp trt",
+       shape = "parent trt",
+       caption = "lab only") +
+  ylim(c(0,0.20))  
 
 # summ_hatch %>%
 #   filter(pop == "field") %>%
@@ -155,19 +189,23 @@ summ_hatch %>%
   y_err_hrate(err = 50) + 
   theme_bw() +
   scale_color_manual(values = c("#324DA0", "#acd2bb", "#a51122"),
-                     labels = c("260" = "26 (ctrl)",
-                                "419" = "19",
-                                "433" = "33")) +
-  scale_shape_manual(values = c(1, 17, 16),
-                       labels = c("ct F + ct M" = "ctrl (26°C day)",
-                                  "hs F + ct M" = "exptl F", 
-                                  "hs F + hs M" = "exptl (40°C day)")) +
-  labs(title = "lab: trts w/ hatchlings",
+                     labels = c("260" = "26-26",
+                                "419" = "40-19",
+                                "433" = "40-33")
+                     ) +
+  scale_shape_manual(values = c(1, 17, 16), # todo: make consistent w the other one
+                       # labels = c("ct F + ct M" = "ctrl (26°C day)",
+                       #            "hs F + ct M" = "exptl F", 
+                       #            "hs F + hs M" = "exptl (40°C day)")
+                     ) +
+  labs(title = "hatch rates: trts with hatchlings only",
        y = "hatch proportion",
-       x = "total eggs",
-       color = "parental min temp (C)",
-       shape = "parent trt") +
-  ylim(c(0,0.25))  
+       x = "total eggs laid",
+       #color = "parental min temp (C)",
+       color = "temp trt",
+       shape = "parent trt",
+       caption = "lab only") +
+  ylim(c(0,0.20))  
 ```
 
 ### - modeling: hatch rates
@@ -658,3 +696,7 @@ summary(summ_rates_all$rate.overall)
 
 - better overlaid overall/per tent rate plots (fix # ovi females)
 - fix mods: need to not batch by jdate lol
+- longevity
+- response var: standardise by tent
+
+
