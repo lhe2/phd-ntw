@@ -327,8 +327,8 @@ summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
 ```{r}
 summ_rate_pertent <- summ_rate %>%
   group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
-  summarise(rate.pertent = n.coll/n.lay,
-            n.tents = n(),
+  summarise(n.tents = n(),
+            rate.pertent = n.coll/n.lay,
             n.ovi.pertent = sum(n.lay)) %>%
   replace(is.na(.), 0) %>%
   mutate(trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ 26-26,
@@ -488,6 +488,8 @@ summ_rates_all <- summ_rate %>%
   #arrange(jdate.rel, .by_group = TRUE) %>%
   mutate(rate.overall = mean(rate.pertent),
          n.tents.overall = n(),
+         rate2 = rate.pertent/n.tents.overall,
+         rate3 = rate.overall/n.tents.overall,
          n.ovi.overall = sum(n.ovi.pertent)
          #se.overall = sqrt(rate.overall*(1-rate.overall)/n.ovi.overall),
          #se.overall = sd(na.omit(rate.overall))/sqrt(n())
@@ -509,6 +511,13 @@ summ_rates_all <- summ_rate %>%
            #trt.f > trt.m ~ as.numeric(trt.f)
          )
   )
+
+# checking: am i doing the math right...
+test <- summ_rates_all %>%
+  select(id.tent, pop, trt.win, trt.btwn, jdate.rel,
+         starts_with("rate"), n.tents.pertent, n.tents.overall) %>%
+  rename(pertent_n = rate2,
+         meantent_n = rate3)
   
 ```
 
@@ -688,6 +697,46 @@ with(summ_rates_all, density(rate.overall))
 plot.density(summ_rates_all$rate.overall)
 summary(summ_rates_all$rate.overall)
 ```
+
+
+# C. fertility
+
+### - plots
+
+```{r calc avg longevity}
+
+data_longevity <- data_longevity %>%
+  mutate(surv = jdate.died - jdate.ec)
+
+summ_longevity <- data_longevity %>%
+  drop_na(jdate.died) %>%
+  group_by(trt, sex, pop) %>%
+  summarise(avg.surv = mean(surv),
+            se.surv = sd(na.omit(surv))/sqrt(length(na.omit(surv))),
+            n = n())
+
+```
+
+```{r}
+summ_longevity %>%
+  ggplot(aes(y = avg.surv, x = as.factor(trt), color = as.factor(trt), shape = sex)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymax = avg.surv + se.surv, ymin = avg.surv - se.surv,
+                    width = 0.5)) +
+  facet_wrap(~pop) +
+  geom_text(aes(label = n), hjust = -1, show.legend = FALSE) +
+  theme_bw() +
+  scale_color_manual(values = RYB,
+                     labels = labels.wintrt,) +
+  scale_x_discrete(labels = labels.wintrt) +
+  labs(title = "avg adult longevity",
+       y = "average survival post-eclosion (days)",
+       x = "temperature trt (day-night, °C )") +
+  guides(color = "none")
+
+# what about when theyve been in the fridge lol?
+```
+
 
 
 
