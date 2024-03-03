@@ -28,8 +28,8 @@ data_ntw <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-ntw.csv")
 RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 
 # labels
-labels.wintrt <- c("26-26", "40-19", "40-26", "40-33")
-labels.btwntrt <- c("40-19", "40-26", "40-33")
+labels.alltrts <- c("26-26", "40-19", "40-26", "40-33")
+labels.exptrts <- c("40-19", "40-26", "40-33")
 
 
 # ggplot functions
@@ -116,9 +116,23 @@ data_hatch <- tenthelpers_clean[[3]]
 data_tstats <- data_tstats %>%
   mutate(trt.type = case_when(trt.f == trt.m & trt.f < 400 ~ "ctrl",
                               trt.f == trt.m & trt.f > 400 ~ "within",
-                              trt.f > trt.m ~ "sex-f",
-                              trt.f < trt.m ~ "sex-m",
-                              is.na(trt.m) ~ "f only"))
+                              trt.f > trt.m ~ "hs F",
+                              trt.f < trt.m ~ "hs M",
+                              is.na(trt.m) ~ "f only"),
+         trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == trt.m & trt.f == 419 ~ "40-19",
+                             trt.f == trt.m & trt.f == 426 ~ "40-26",
+                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 419 | trt.m == 419) ~ "40-19",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 426 | trt.m == 426) ~ "40-26",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 433 | trt.m == 433) ~ "40-33"),
+         trt.pair = case_when(trt.f < 400 & trt.f == trt.m ~ "ct F + ct M",
+                              trt.f > 400 & trt.f == trt.m ~ "hs F + hs M",
+                              trt.f < trt.m ~ "ct F + hs M",
+                              trt.f > trt.m ~ "hs F + ct M",
+                              TRUE ~ "err")
+  )
 
 # add trt levels
 #data_tstats$trt.f <- factor(data_tstats$trt.f, levels = c(260, 419, 426, 433, 900))

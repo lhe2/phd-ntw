@@ -35,20 +35,10 @@ source("./helpers_tents.R")
 
 ```{r calc stats & add other filter criteria}
 summ_hatch <- data_tstats %>%
-  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
-                             trt.f == trt.m & trt.f == 419 ~ "40-19",
-                             trt.f == trt.m & trt.f == 426 ~ "40-26",
-                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
-         trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
-                              (trt.type == "sex-f" | trt.type == "sex-m") & (trt.f == 419 | trt.m == 419) ~ "40-19",
-                              (trt.type == "sex-f" | trt.type == "sex-m") & (trt.f == 426 | trt.m == 426) ~ "40-26",
-                              (trt.type == "sex-f" | trt.type == "sex-m") & (trt.f == 433 | trt.m == 433) ~ "40-33",
-                              #trt.type == "sex-m" ~ as.numeric(trt.m),
-                              #trt.type == "sex-f" ~ as.numeric(trt.f)
-                              )) %>%
   group_by(#id.tent,
            trt.f, trt.m, pop,
-           trt.win, trt.btwn, trt.type
+           trt.win, trt.btwn, trt.type,
+           trt.pair
            ) %>%
   summarise(n.tents = n_distinct(id.tent),
             n.collected = sum(n.coll, na.rm = TRUE),
@@ -63,11 +53,7 @@ summ_hatch <- data_tstats %>%
             rate.f = round(n.collected/n.females, digits = 1)
             ) %>%
   drop_na(trt.m) %>% # drop tents w/o males
-  mutate(trt.pair = case_when(trt.f < 400 & trt.f == trt.m ~ "ct F + ct M",
-                              trt.f > 400 & trt.f == trt.m ~ "hs F + hs M",
-                              trt.f < trt.m ~ "ct F + hs M",
-                              trt.f > trt.m ~ "hs F + ct M",
-                              TRUE ~ "err"),
+  mutate(
          min.f = case_when(trt.f == 260 | trt.f == 426 ~ 26,
                            trt.f == 419 ~ 19,
                            trt.f == 433 ~ 33), 
@@ -79,7 +65,8 @@ summ_hatch <- data_tstats %>%
                                 trt.f == 426 | trt.m == 426 ~ 426,
                                 trt.f == 433 | trt.m == 433 ~ 433),
          trt.combo = paste0(trt.f, "-", trt.m),
-         min.combo = paste0(min.f, "-", min.m))
+         min.combo = paste0(min.f, "-", min.m)
+         )
 
 # idk if im doing se of a proportion correctly (per meggan's graphs)
   # https://stats.stackexchange.com/questions/266442/standard-error-for-proportion-with-small-sample-size
@@ -97,8 +84,7 @@ summ_hatch <- data_tstats %>%
 #RYB <- c("#324DA0", "#acd2bb", "#f1c363", "#a51122")
 
 summ_hatch %>%
-  filter(#pop == "lab" & 
-           #(trt.pair == "ct F + ct M" | trt.pair == "hs F + hs M")
+  filter(#pop == "lab" &
            !is.na(trt.win)) %>%
   ggplot(aes(y = rate.hatch, x = n.collected, #color = trt.combo,
              color = trt.win,
@@ -108,10 +94,6 @@ summ_hatch %>%
   #x_err_ncoll(0.005) + # not worth including lol
   theme_bw() +
   scale_color_manual(
-                     # labels = c("260-260" = "26 (26C day)",
-                     #            "419-419" = "19",
-                     #            "426-426" = "26 (40C day)",
-                     #            "433-433" = "33"), 
                      values = RYB) +
   # scale_shape_manual(values = c(21, 23)) +
   #scale_shape_manual(values = c(1, 16)) + # revisit this lol i give up
@@ -359,12 +341,12 @@ summ_rate_pertent %>%
        x = "days since tent setup",
        color = "treatment") +
   scale_color_manual(values = RYB,
-                      labels = labels.wintrt)
+                      labels = labels.alltrts)
 
 
 summ_rate_pertent %>%
   filter(#trt.type == "ctrl" | 
-           trt.type == "sex-m" | trt.type == "sex-f") %>% 
+           trt.type == "hs M" | trt.type == "hs F") %>% 
   ggplot(aes(#lty = pop,
              x = jdate.rel, # custom cutoffs per trt?
              group = id.tent,
@@ -381,7 +363,7 @@ summ_rate_pertent %>%
        x = "days since tent setup",
        color = "treatment") +
   scale_color_manual(values =  c("#acd2bb", "#f1c363", "#a51122"),
-                      labels = labels.btwntrt)
+                      labels = labels.exptrts)
 
 
 ```
@@ -443,7 +425,7 @@ summ_rate_overall %>%
 
   
 summ_rate_overall %>%
-  filter(trt.type == "sex-f" | trt.type == "sex-m") %>%
+  filter(trt.type == "hs F" | trt.type == "hs M") %>%
   ggplot(aes(x = jdate.rel, 
              color = as.factor(trt.btwn) # want this to be RYB tho
              )) +
@@ -505,8 +487,8 @@ summ_rates_all <- summ_rate %>%
            #trt.f == trt.m & trt.f == 426 ~ "40-26",
            #trt.f == trt.m & trt.f == 433 ~ "40-33",
            trt.type == "ctrl" ~ 260,        
-           trt.type == "sex-m" ~ as.numeric(trt.m),
-           trt.type == "sex-f" ~ as.numeric(trt.f)
+           trt.type == "hs M" ~ as.numeric(trt.m),
+           trt.type == "hs F" ~ as.numeric(trt.f)
            #trt.f < trt.m ~ as.numeric(trt.m),
            #trt.f > trt.m ~ as.numeric(trt.f)
          )
@@ -557,7 +539,7 @@ summ_rates_all %>%
 ```{r other attempt}
 summ_rates_all %>%
   ungroup() %>%
-  filter(trt.type == "ctrl" | trt.type == "sex-f" | trt.type == "sex-m") %>%
+  filter(trt.type == "ctrl" | trt.type == "hs F" | trt.type == "hs M") %>%
   ggplot(aes(x = jdate.rel, 
              color = as.factor(trt.btwn) # want this to be RYB tho
   )) +
@@ -575,7 +557,7 @@ summ_rates_all %>%
   # ) +
   # scale_color_identity(name = "# females", guide = "legend") +
   scale_color_manual(values = RYB,
-                     labels = labels.wintrt) +
+                     labels = labels.alltrts) +
   theme_bw() +
   labs(title = "btwn treatment daily egg laying rate",
        y = "# eggs laid/female per day",
@@ -694,7 +676,7 @@ anova(mod.lay3) # also nothing matters 👍
 
 # looking at distributions with joel
 with(summ_rates_all, density(rate.overall))
-plot.density(summ_rates_all$rate.overall)
+#plot.density(summ_rates_all$rate.overall)
 summary(summ_rates_all$rate.overall)
 ```
 
@@ -727,8 +709,8 @@ summ_longevity %>%
   geom_text(aes(label = n), hjust = -1, show.legend = FALSE) +
   theme_bw() +
   scale_color_manual(values = RYB,
-                     labels = labels.wintrt,) +
-  scale_x_discrete(labels = labels.wintrt) +
+                     labels = labels.alltrts,) +
+  scale_x_discrete(labels = labels.alltrts) +
   labs(title = "avg adult longevity",
        y = "average survival post-eclosion (days)",
        x = "temperature trt (day-night, °C )") +
