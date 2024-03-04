@@ -37,12 +37,13 @@ source("./helpers_tents.R")
 summ_hatch <- data_tstats %>%
   group_by(#id.tent,
            trt.f, trt.m, pop,
-           trt.win, trt.btwn, trt.type,
+           #trt.win, trt.btwn, 
+           trt.type,
            trt.pair
            ) %>%
   summarise(n.tents = n_distinct(id.tent),
             n.collected = sum(n.coll, na.rm = TRUE),
-            se.coll = sd(na.omit(n.coll))/sqrt(length(na.omit(n.coll))),
+            se.coll =  sd(na.omit(n.coll))/sqrt(length(na.omit(n.coll))),
             n.hatched = sum(n.tothatch, na.rm = TRUE),
             se.hatched = sd(na.omit(n.tothatch))/sqrt(length(na.omit(n.tothatch))),
             n.females = sum(n.new.f, na.rm = TRUE),
@@ -53,19 +54,26 @@ summ_hatch <- data_tstats %>%
             rate.f = round(n.collected/n.females, digits = 1)
             ) %>%
   drop_na(trt.m) %>% # drop tents w/o males
-  mutate(
-         min.f = case_when(trt.f == 260 | trt.f == 426 ~ 26,
-                           trt.f == 419 ~ 19,
-                           trt.f == 433 ~ 33), 
-         min.m = case_when(trt.m == 260 | trt.m == 426 ~ 26,
-                           trt.m == 419 ~ 19,
-                           trt.m == 433 ~ 33),
+  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == trt.m & trt.f == 419 ~ "40-19",
+                             trt.f == trt.m & trt.f == 426 ~ "40-26",
+                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 419 | trt.m == 419) ~ "40-19",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 426 | trt.m == 426) ~ "40-26",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 433 | trt.m == 433) ~ "40-33"),
+         # min.f = case_when(trt.f == 260 | trt.f == 426 ~ 26,
+         #                   trt.f == 419 ~ 19,
+         #                   trt.f == 433 ~ 33), 
+         # min.m = case_when(trt.m == 260 | trt.m == 426 ~ 26,
+         #                   trt.m == 419 ~ 19,
+         #                   trt.m == 433 ~ 33),
          trt.parent = case_when(trt.f == 260 & trt.m == 260 ~ 260,
                                 trt.f == 419 | trt.m == 419 ~ 419,
                                 trt.f == 426 | trt.m == 426 ~ 426,
                                 trt.f == 433 | trt.m == 433 ~ 433),
-         trt.combo = paste0(trt.f, "-", trt.m),
-         min.combo = paste0(min.f, "-", min.m)
+         # trt.combo = paste0(trt.f, "-", trt.m),
+         # min.combo = paste0(min.f, "-", min.m)
          )
 
 # idk if im doing se of a proportion correctly (per meggan's graphs)
@@ -298,6 +306,8 @@ rm(cond)
 summ_rate$n.coll[c(55, 66, 73, 115, 152, 210)] <- 1
 summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
 
+## todo: cut out the lags (when there's no F)
+
 # calculate daily hatch rate per tent and per trt  
 
    # (moved to respective sections)
@@ -310,15 +320,21 @@ summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
 summ_rate_pertent <- summ_rate %>%
   group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
   summarise(n.tents = n(),
-            rate.pertent = n.coll/n.lay,
+            rate.pertent = n.coll/n.lay/n.tents,
             n.ovi.pertent = sum(n.lay)) %>%
   replace(is.na(.), 0) %>%
-  mutate(trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ 26-26,
-                              trt.f == trt.m & trt.f == 419 ~ 40-19,
-                              trt.f == trt.m & trt.f == 426 ~ 40-26,
-                              trt.f == trt.m & trt.f == 433 ~ 40-33,
-                              trt.f < trt.m ~ as.numeric(trt.m),
-                              trt.f > trt.m ~ as.numeric(trt.f)))
+  mutate(trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 419 | trt.m == 419) ~ "40-19",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 426 | trt.m == 426) ~ "40-26",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 433 | trt.m == 433) ~ "40-33"),
+    # trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ 26-26,
+    #                           trt.f == trt.m & trt.f == 419 ~ 40-19,
+    #                           trt.f == trt.m & trt.f == 426 ~ 40-26,
+    #                           trt.f == trt.m & trt.f == 433 ~ 40-33,
+    #                           trt.f < trt.m ~ as.numeric(trt.m),
+    #                           trt.f > trt.m ~ as.numeric(trt.f))
+    ) #%>%
+  #drop_na()
 
 
 summ_rate_pertent %>%
