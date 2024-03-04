@@ -716,13 +716,17 @@ summ_longevity <- data_longevity %>%
 ```
 
 ```{r}
+pd = position_dodge(-0.5)
+
 summ_longevity %>%
   ggplot(aes(y = avg.surv, x = as.factor(trt), color = as.factor(trt), shape = sex)) +
-  geom_point(size = 2) +
+  geom_point(size = 2, position = pd) +
   geom_errorbar(aes(ymax = avg.surv + se.surv, ymin = avg.surv - se.surv,
-                    width = 0.5)) +
+                    width = 0.5),
+                position = pd) +
   facet_wrap(~pop) +
-  geom_text(aes(label = n), hjust = -1, show.legend = FALSE) +
+  geom_text(aes(label = n), hjust = -1, show.legend = FALSE,
+            position = pd) +
   theme_bw() +
   scale_color_manual(values = RYB,
                      labels = labels.alltrts,) +
