@@ -308,12 +308,14 @@ summ_rate$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
 
 ## todo: cut out the lags (when there's no F)
 
-# calculate daily hatch rate per tent and per trt  
+# calculate daily hatch rate per tent and per trt  -- see followup
 
    # (moved to respective sections)
   # how to include se for rate? -- see meggan?
 
 ```
+
+
 ### - plot per tent
 
 ```{r}
@@ -695,6 +697,112 @@ with(summ_rates_all, density(rate.overall))
 #plot.density(summ_rates_all$rate.overall)
 summary(summ_rates_all$rate.overall)
 ```
+# // B2: 240304 redo above, per tent
+
+things we want to fix:
+
+- PER tent calcs
+- check for lagging 0s
+
+### - calc ovipositing F
+
+```{r}
+summ_rate2 <- data_tstats %>%
+  mutate_at(c(6:13), ~replace_na(., 0)) %>% #
+  group_by(id.tent) %>%
+  mutate(jdate.rel = jdate - first(jdate)) %>%
+  ungroup() %>%
+  group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
+  arrange(jdate.rel, .by_group = TRUE) %>%
+  mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
+         n.ovi = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
+  ungroup()
+  # mutate_at(n.laying == 0 & n.coll > 0, "n.laying" = lag(n.laying))
+  # summarise()
+
+# where n.ovipositing females = 0 but n.collected > 0, add the # collected to the day before:
+# first, figure out the rows
+cond <- (summ_rate2$n.coll > 0 & summ_rate2$n.ovi == 0)
+summ_rate2 %>%
+  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
+  subset(cond | lead(cond) | lead(cond, n=2))  #%>%
+  #View()
+rm(cond)
+
+# edit values
+summ_rate2$n.coll[c(55, 66, 73, 115, 152, 210)] <- 1
+summ_rate2$n.coll[c(56, 67, 75, 116, 153, 211)] <- 0
+
+# additional modifications to make the math(?) right:
+# remove 0's
+summ_rate2 <- summ_rate2 %>%
+  filter(!(n.coll == 0 & n.ovi == 0))
+
+```
+
+#### - checks for other df mods
+
+- check 1: check where eggs and ovipositing females stop
+
+```{r}
+summ_rate2 %>%
+  mutate(ind = rownames(.), .before = 1) %>%
+  group_by(id.tent) %>%
+  mutate(last = last(jdate.rel), .after = "jdate.rel") %>%
+  filter(n.coll == 0 & n.ovi == 0
+         & jdate.rel > 0
+         & jdate.rel != last(jdate.rel)
+         ) %>% View()
+  # so i should filter out these values?
+  # 89 for: coll = ovi = 0
+  
+summ_rate2 %>%
+  filter(id.tent == "301-X") %>% # example tent
+  # filter(trt.pair != "err" &
+  #          pop == "lab" &
+  #          trt.pair == "ct F + hs M") %>% # View()
+  ggplot(aes(x = jdate.rel, color = trt.pair, group = id.tent)) +
+  geom_line(aes(y = n.ovi), lty = "dashed", show.legend = FALSE) +
+  geom_line(aes(y = n.coll), show.legend = FALSE) +
+  facet_grid(~ id.tent, scales = "free") +
+  # xlim(c(9, 13))
+  theme_bw()
+  
+```
+
+so i'll filter out where `n.ovi` and `n.coll` = 0 and also change `xlim` to probably day 1 then
+
+### - overlaid plots
+
+```{r}
+# check if the n.tents.overall is actually counted right...:
+# summ_all_rates2 %>%
+#   filter(trt.f == 260 & trt.m == 260 & pop == "field") %>%
+
+summ_all_rates2 <- summ_rate2 %>%
+  group_by(id.tent, trt.f, trt.m, pop, jdate.rel) %>%
+  summarise(n.tents.pertent = n(),
+            rate.pertent = sum(n.coll)/sum(n.ovi),
+            n.ovi.pertent = sum(n.ovi)) %>%
+  ungroup() %>%
+  group_by(trt.f, trt.m, pop, jdate.rel) %>%
+  mutate(n.tents.overall = n(),
+         rate.overall = rate.pertent/n.tents.overall,
+         rate.test = rate.pertent/n(),
+         n.ovi.overall = sum(n.ovi.pertent)) %>%
+  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == trt.m & trt.f == 419 ~ "40-19",
+                             trt.f == trt.m & trt.f == 426 ~ "40-26",
+                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                              (trt.f > trt.m & trt.f == 419) | (trt.m > trt.f & trt.m == 419) ~ "40-19",
+                              (trt.f > trt.m & trt.f == 426) | (trt.m > trt.f & trt.m == 426) ~ "40-26",
+                              (trt.f > trt.m & trt.f == 433) | (trt.m > trt.f & trt.m == 433) ~ "40-33"))
+
+# UMM i think this is okay
+
+  
+```
 
 
 # C. fertility
@@ -750,4 +858,7 @@ summ_longevity %>%
 - longevity
 - response var: standardise by tent
 
+# followups
+
+1. 240304: B2 - recalc egg laying + redo mods
 
