@@ -293,7 +293,7 @@ summ_rate <- data_tstats %>%
 
 # where n.ovipositing females = 0 but n.collected > 0, add the # collected to the day before
 # first, figure out the rows
-cond <- (summ_rate$n.coll > 0 & summ_rate$n.lay == 0)
+cond <- (summ_rate$n.coll > 0 & summ_rate$n.ovi == 0)
 summ_rate %>%
   mutate(index = as.numeric(rownames(.)), .before = 1) %>%
   subset(cond | lead(cond) | lead(cond, n=2)) # %>%
@@ -328,8 +328,8 @@ summ_rate <- summ_rate %>%
 summ_rate_pertent <- summ_rate %>%
   group_by(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel) %>%
   summarise(n.tents = n(),
-            rate.pertent = n.coll/n.lay/n.tents,
-            n.ovi.pertent = sum(n.lay)) %>%
+            rate.pertent = n.coll/n.ovi/n.tents,
+            n.ovi.pertent = sum(n.ovi)) %>%
   replace(is.na(.), 0) %>%
   mutate(trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
                               (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 419 | trt.m == 419) ~ "40-19",
@@ -398,7 +398,7 @@ summ_rate_pertent %>%
 ```{r plotting trt overall}
 # summ_rate %>%
 #   group_by(trt.f, trt.m, pop, jdate.rel) %>%
-#   summarise(rate.overall = n.coll/n.lay)
+#   summarise(rate.overall = n.coll/n.ovi)
 
 summ_rate_overall <- summ_rate_pertent %>%
   group_by(trt.f, trt.m, pop, trt.type, jdate.rel) %>%
@@ -469,7 +469,7 @@ summ_rate_overall %>%
        color = "parent trt"
          )  
 ```
-### - overlaid plots
+### - (**) overlaid plots
 
 ```{r calc stats}
 summ_rates_all <- summ_rate %>%
@@ -568,7 +568,7 @@ abcd
 summ_rates_all %>%
   filter(!is.na(trt.btwn) & pop == "lab") %>%
   ggplot(aes(x = jdate.rel, 
-             color = as.factor(trt.btwn) # want this to be RYB tho
+             color = as.factor(trt.btwn)
   )) +
   # facet_wrap(trt.type ~ trt.pair,
   #            nrow = 2, ncol = 3) +
@@ -612,7 +612,7 @@ summ_rates_all %>%
 # ALSO GOOD ENOUGH! 
 
 ```
-### - modeling: # collected
+### - modeling: # collected (try 1)
 
 OOOOp big mistake. dont do this per day LOL (but prob at least overall tent duration?)
 
@@ -670,7 +670,7 @@ with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 2
 with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
 
 
-### - modeling: hatch rate
+### - modeling: lay rate (i.e. coll rate, try 2)
 
 qns before going in: 
 - what's the right response variable for this? (rate? overall eggs?)
@@ -725,7 +725,70 @@ with(summ_rates_all, density(rate.overall))
 #plot.density(summ_rates_all$rate.overall)
 summary(summ_rates_all$rate.overall)
 ```
-# B2: 240304 redo above, per tent
+
+### // - modeling: lay rate (try 3)
+
+
+```{r warning=FALSE}
+# try as a non-mixed mod first
+mod3.lay <- glm(rate.overall ~ 
+                 as.factor(trt.f) + as.factor(trt.m) + pop + 
+                 n.ovi.overall + n.tents.overall + 
+                  id.tent + jdate.rel,
+               data = summ_rates_all,
+               family = poisson)
+  # getting a TON of non-integer warnings lolol
+
+summary(mod3.lay) # there are some diffs in what is signif...; AIC = Inf
+anova(mod3.lay, test = "Chisq") # JKKKK everything matters.....
+```
+summary results:
+
+- without adding in `n.tents.overall`:
+  - *: f = 426, jdate
+  - **: tent = 107-C, 107-D
+  - ***: poplab, n.ovi, n.tents
+
+- including `n.tents.overall`:
+  - ***: f  = 426, 433; poplab, n.tents
+  - * 301-P, ** 107-C, *** 107-D
+  
+- regardless if `n.tents.overall` is included or not, all vars aside from `j.date` are `***` in `anova(test = "Chisq")`
+
+```{r warning = FALSE}
+# try with mixed effs
+mod3.lay2 <- lme4::glmer(rate.overall ~
+                          as.factor(trt.f) + as.factor(trt.m) + pop +
+                          n.ovi.overall + n.tents.overall +
+                          (1|id.tent) + (1|jdate.rel),
+                        data = summ_rates_all,
+                        family = poisson
+                        )
+  # insane non-int warnings
+
+#summary(mod3.lay2) # sooo many non-ints. not actually useful at all
+anova(mod3.lay2, test = "Chisq") # big F values: n.tents (77.18), n.ovi (65.36), pop (18.4)
+
+
+mod3.lay2a <- lme4::glmer(rate.overall ~
+                          as.factor(trt.f) + as.factor(trt.m) + pop +
+                          n.ovi.overall + n.tents.overall +
+                          (1|id.tent) + #(1|jdate.rel)
+                            jdate.rel,
+                        data = summ_rates_all,
+                        family = poisson
+                        ) 
+  # probably a ton of non-integer warnings lol
+summary(mod3.lay2a) # sooo many non-ints. not actually useful at all
+anova(mod3.lay2a, test = "Chisq") # big F values: n.tents (77.18), n.ovi (65.36), pop (18.4)
+```
+
+
+
+
+# B2: 240304 redo plotting, per tent
+
+**for the most part these changes have been incorporated into the code now, but is retained here for troubleshooting**
 
 things we want to fix:
 
@@ -966,8 +1029,18 @@ next
 
 ### // - checking residual distibutions
 
+(reusing the models from above...) → which in particular?
+
 ```{r}
 
+```
+
+
+### // - other distribution checks...
+
+```{r}
+summary(summ_rate_zeros$n.coll)
+summary(summ_rate$n.coll)
 ```
 
 
