@@ -669,6 +669,8 @@ with `lme4::lmer`, no major effects/no sig variables. residual for `id.tent` = 2
 
 with `lmerTest::lmer`, `trt.f` is `*` and `curr.f` is `***` for both effect size and importance. residual for `id.tent` = 231 also
 
+**summary:** did not quite calculate the stats/response for this right (i.e. `rate` isn't using the right "unit") -- so moving on to try 2
+
 
 ### - modeling: lay rate (i.e. coll rate, try 2)
 
@@ -726,8 +728,12 @@ with(summ_rates_all, density(rate.overall))
 summary(summ_rates_all$rate.overall)
 ```
 
-### // - modeling: lay rate (try 3)
+**summary:** response is more correct now, but there's a lot of 0's in the data that should be addressed first
 
+
+### - modeling: lay rate (try 3)
+
+(addressed the 0 ovipositing females thing, have a better idea of what to include as explanatory variables/what im doing with random effects too!)
 
 ```{r warning=FALSE}
 # try as a non-mixed mod first
@@ -766,7 +772,7 @@ mod3.lay2 <- lme4::glmer(rate.overall ~
                         )
   # insane non-int warnings
 
-#summary(mod3.lay2) # sooo many non-ints. not actually useful at all
+#summary(mod3.lay2) # u get results but lots of non-ints
 anova(mod3.lay2, test = "Chisq") # big F values: n.tents (77.18), n.ovi (65.36), pop (18.4)
 
 
@@ -779,11 +785,11 @@ mod3.lay2a <- lme4::glmer(rate.overall ~
                         family = poisson
                         ) 
   # probably a ton of non-integer warnings lol
-summary(mod3.lay2a) # sooo many non-ints. not actually useful at all
+#summary(mod3.lay2a) # lots of reslts but also lots of non-ints
 anova(mod3.lay2a, test = "Chisq") # big F values: n.tents (77.18), n.ovi (65.36), pop (18.4)
 ```
 
-
+**summary:** 
 
 
 # B2: 240304 redo plotting, per tent
@@ -1027,28 +1033,31 @@ next
 - do other checks joel told me to do
 - model
 
-### // - checking residual distibutions
+- checking residual distibutions
 
-(reusing the models from above...) → which in particular?
+(reusing the models from above ... (i.e try 3 ish)) → which models to look at for in particular?
 
-```{r}
-
-```
+**summary:** (okay we are ignoring this bc using non-integers in poisson makes R mad.)
 
 
-### // - other distribution checks...
+### - other distribution checks...
+
+(are there still tails in the data? how does it look after getting rid of some of the zeroes?)
 
 ```{r}
 summary(summ_rate_zeros$n.coll)
 summary(summ_rate$n.coll)
 ```
 
+**summary:** the data is still asymmetrical!
 
-# C. fertility
+# C. longevity
 
 ### - plots
 
 ```{r calc avg longevity}
+
+# TODO: did i get rid of the fridge ones
 
 data_longevity <- data_longevity %>%
   mutate(surv = jdate.died - jdate.ec)
@@ -1086,13 +1095,12 @@ summ_longevity %>%
 # what about when theyve been in the fridge lol?
 ```
 
-
-
+// TODO: currently not planning on running stats! (maybe just a quick anova lol?)
 
 
 # to do
 
-- better overlaid overall/per tent rate plots (fix # ovi females)
+- ~~better overlaid overall/per tent rate plots (fix # ovi females)~~
 - fix mods: need to not batch by jdate lol
 - longevity
 - response var: standardise by tent
@@ -1100,4 +1108,5 @@ summ_longevity %>%
 # followups
 
 1. 240304: B2 - recalc egg laying + redo mods
+  - also checked data distributions
 
