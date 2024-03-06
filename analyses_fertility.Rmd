@@ -774,22 +774,23 @@ so i'll filter out where `n.ovi` and `n.coll` = 0 and also change `xlim` to prob
 
 ### - overlaid plots
 
-```{r}
+```{r calcs}
 # check if the n.tents.overall is actually counted right...:
 # summ_all_rates2 %>%
 #   filter(trt.f == 260 & trt.m == 260 & pop == "field") %>%
 
 summ_all_rates2 <- summ_rate2 %>%
   group_by(id.tent, trt.f, trt.m, pop, jdate.rel) %>%
-  summarise(n.tents.pertent = n(),
+  mutate(n.tents.pertent = n(),
             rate.pertent = sum(n.coll)/sum(n.ovi),
             n.ovi.pertent = sum(n.ovi)) %>%
   ungroup() %>%
   group_by(trt.f, trt.m, pop, jdate.rel) %>%
   mutate(n.tents.overall = n(),
-         rate.overall = rate.pertent/n.tents.overall,
-         rate.test = rate.pertent/n(),
+         rate.overall = sum(n.coll)/sum(n.ovi)/n.tents.overall,
+         #rate.test = rate.pertent/n(), # this doesnt work bc rate.pertent is diff per tent lol
          n.ovi.overall = sum(n.ovi.pertent)) %>%
+  select(c(id.tent, trt.f, trt.m, pop, trt.type, jdate.rel, ends_with("pertent"), ends_with("overall"))) %>%
   mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
                              trt.f == trt.m & trt.f == 419 ~ "40-19",
                              trt.f == trt.m & trt.f == 426 ~ "40-26",
@@ -797,11 +798,148 @@ summ_all_rates2 <- summ_rate2 %>%
          trt.btwn = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
                               (trt.f > trt.m & trt.f == 419) | (trt.m > trt.f & trt.m == 419) ~ "40-19",
                               (trt.f > trt.m & trt.f == 426) | (trt.m > trt.f & trt.m == 426) ~ "40-26",
-                              (trt.f > trt.m & trt.f == 433) | (trt.m > trt.f & trt.m == 433) ~ "40-33"))
+                              (trt.f > trt.m & trt.f == 433) | (trt.m > trt.f & trt.m == 433) ~ "40-33")) %>%
+  ungroup()
 
 # UMM i think this is okay
-
   
+```
+
+- check that the per day per tent stats are right...
+
+```{r}
+summ_all_rates2 %>%
+  filter(trt.m == 426 & trt.f == 426 & pop == "lab") #%>%
+  #filter(!duplicated(rate.overall)) %>% 
+  #View()
+
+```
+
+```{r win trts}
+# within trts
+summ_all_rates2 %>%
+  filter(!is.na(trt.win)) %>%
+  ggplot(aes(x = jdate.rel, color = trt.win 
+             #group = id.tent
+             )) +
+  facet_grid(pop~trt.win,
+             scales = "free_y"
+             #rows = 2, cols  = 4
+             ) +
+  #geom_point(aes(y = rate.pertent), alpha = 0.5, show.legend = FALSE) +
+  geom_line(aes(y = rate.pertent, group = id.tent, #alpha = 0.25, 
+                lty = "solid"
+                ), 
+            alpha= 0.25,
+            # lty = "solid",
+            # show.legend = FALSE
+            ) +
+  geom_line(aes(y = rate.overall, group = interaction(trt.f, trt.m, pop), 
+                lty = "solid", #alpha = 1
+                ), 
+            # lty = "solid",
+            alpha = 1,
+            # show.legend = FALSE
+            ) +
+  geom_line(aes(y = n.ovi.overall, #alpha = 0.7, 
+                color = "black", 
+                lty = "dashed"
+                ),
+            # lty = "dashed", 
+             #color = "black",
+             alpha = 0.65,
+             show.legend = FALSE
+            ) +
+  theme_bw() +
+    # scale_color_manual(values = c(RYB),
+    #                  labels = c(labels.alltrts),
+    #                  name = "temperature treatments") +
+  scale_color_manual(values = c(RYB, "black"),
+                     labels = c(labels.alltrts, "females"),
+                     name = "temperature treatments") +
+  scale_linetype_manual(values = c("dashed", "solid"),
+                        labels = c("# ovipositing females", "lay rate"),
+                        name = "rate") +
+  # scale_alpha_manual(values = c("overall lay rate" = as.factor(1), "oviposition" = as.factor(0.7), "per tent lay rate"= as.factor(0.25)),
+  #                    #labels = c("per trt", "per tent"),
+  #                    name = "statistic") +
+  labs(title = "within treatment hatch rates",
+       #y = "# eggs/female per day",
+       y = "rate/count",
+       x = "days since initial tent setup",
+       #lty = "rate"
+       ) +
+  xlim(c(1, 23)) +
+  guides(color = "none",
+         lty = "none")
+  
+# GOOD ENOUGH idk how to get rid of the females line in R lol
+  
+```
+
+```{r btwn trts}
+design <- "
+aefg
+#bcd
+" 
+
+summ_all_rates2 %>%
+  filter(!is.na(trt.btwn) & pop == "lab") %>%
+  ggplot(aes(x = jdate.rel, 
+             color = as.factor(trt.btwn) # want this to be RYB tho
+  )) +
+  # facet_wrap(trt.type ~ trt.pair,
+  #            nrow = 2, ncol = 3) +
+  ggh4x::facet_manual(#~facet,
+                      trt.type ~ trt.btwn,
+                      design = design,
+                      #scales = "free_x"
+                      ) +
+  #geom_point(aes(y = rate.overall)) + 
+  geom_line(aes(y = rate.pertent, group = id.tent,
+                lty = "solid"
+                ), 
+            alpha = 0.3,
+            show.legend = FALSE) +
+  geom_line(aes(y = rate.overall,
+                lty = "solid"),
+            alpha = 1,
+            show.legend = FALSE) +
+  geom_line(aes(y = n.ovi.overall,
+                color = "black",
+                lty = "dashed"
+                ), 
+            alpha = 0.7,
+            show.legend = FALSE) +
+  scale_color_manual(values = c(RYB, "black"),
+                     labels = c(labels.alltrts, "# females"),
+                     name = "trts") +
+  scale_linetype_manual(values = c("dashed", "solid"),
+                        labels = c("# ovipositing females", "lay rate"),
+                        name = "rate") +
+  theme_bw() +
+  labs(title = "btwn treatment daily egg laying rate",
+       y = "rate/count",
+       x = "days since tent start",
+       #color = "parent trt"
+  )  +
+  xlim(c(1,41)) +
+  guides(color = "none",
+         lty = "none")
+
+# ALSO GOOD ENOUGH!
+```
+
+
+next
+- plot
+- do other checks joel told me to do
+- model
+
+### // - checking residual distibutions
+
+```{r}
+
 ```
 
 
