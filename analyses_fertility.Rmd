@@ -24,10 +24,13 @@ purpose: looking at fertility stats
   - survival post ec? what factors? (affected by time in 4C?)
 
 # 0. load data, helper fns
-```{r}
+```{r message=FALSE}
 source("./helpers_tents.R")
 # map(other_helpers, ~discard(., .p = ~all))
   # working on it: https://stackoverflow.com/questions/63533428/in-r-remove-list-of-list-based-on-name
+
+# etc
+library(ggfortify) # qqplots
 ```
 # 1. analyses hodgepodge
 
@@ -567,6 +570,10 @@ abcd
 
 summ_rates_all %>%
   filter(!is.na(trt.btwn) & pop == "lab") %>%
+  mutate(trt.type = case_when(trt.type == "hs F" ~ "F",
+                              trt.type == "hs M" ~ "M",
+                              trt.type == "ctrl" ~ "ctrl F & M",
+                              TRUE ~ as.character(trt.type))) %>%
   ggplot(aes(x = jdate.rel, 
              color = as.factor(trt.btwn)
   )) +
@@ -745,7 +752,7 @@ mod3.lay <- glm(rate.overall ~
                family = poisson)
   # getting a TON of non-integer warnings lolol
 
-summary(mod3.lay) # there are some diffs in what is signif...; AIC = Inf
+#summary(mod3.lay) # there are some diffs in what is signif...; AIC = Inf
 anova(mod3.lay, test = "Chisq") # JKKKK everything matters.....
 ```
 summary results:
@@ -789,7 +796,200 @@ mod3.lay2a <- lme4::glmer(rate.overall ~
 anova(mod3.lay2a, test = "Chisq") # big F values: n.tents (77.18), n.ovi (65.36), pop (18.4)
 ```
 
+**summary:** do not use non-ints with poisson lol
+
+### - // 240308: redoing mods again
+
+going to log transform first bc shit keeps breaking and poisson is mad
+
+```{r transform data}
+summ_rates_all <- summ_rates_all %>%
+  mutate(lt.overall = log(rate.overall + 1),
+         lt.pertent = log(rate.pertent + 1))
+```
+
+and quickly visualise...
+
+```{r}
+summ_rates_all %>%
+  filter(pop == "lab" &
+           !is.na(trt.win)) %>% 
+  ggplot(aes(x = jdate.rel,
+             y = lt.overall,
+             color = trt.win)) +
+  geom_line() 
+
+summ_rates_all %>%
+  filter(pop == "lab" &
+           !is.na(trt.btwn) & trt.type != "ctrl") %>%
+  ggplot(aes(x = jdate.rel,
+             y = lt.overall,
+             color = trt.btwn,
+             group = trt.btwn)) +
+  geom_line() +
+  facet_wrap(~ trt.type)
+
+```
+they look okay, i guess? 😬 nothing looks horribly wrong...
+
+now model again.. with the log transformed data
+
+```{r}
+mod4.lay <- lm(lt.overall ~ as.factor(trt.f) + as.factor(trt.m) + pop + jdate.rel,
+               data = summ_rates_all)
+summary(mod4.lay)
+anova(mod4.lay, test = "Chisq")
+AIC(mod4.lay)
+```
+- from summary: the f/m trts are varyingly signif... pop is `***` and `jdate` is `***`.
+  - adj R sq is 0.3174
+- from anova: `f`, `pop`, `jdate` are `***` and `m` is `**`
+- AIC: 889.5077
+
+Response: lt.overall
+                  Df  Sum Sq Mean Sq F value    Pr(>F)    
+as.factor(trt.f)   3  36.138  12.046 15.0540 3.353e-09 ***
+as.factor(trt.m)   3   9.561   3.187  3.9829  0.008278 ** 
+pop                1  62.967  62.967 78.6903 < 2.2e-16 ***
+jdate.rel          1  22.409  22.409 28.0042 2.223e-07 ***
+Residuals        327 261.662   0.800 
+
+let's see a mixed model:
+
+```{r}
+mod4.lay2 <- lme4::lmer(lt.overall ~ as.factor(trt.f) + as.factor(trt.m) + pop + (1|jdate.rel),
+               data = summ_rates_all)
+summary(mod4.lay2)
+anova(mod4.lay2, test = "Chisq")
+lmerTest::ranova(mod4.lay2, test = "Chisq")
+AIC(mod4.lay2)
+```
+- summary: no significant fixed effs LOL
+- anova (F-values): `trt.f` = 13, `pop` = 77.5320.
+- AIC = 876.3347 → so this is a marginally better model for the `rate.overall` data
+
+                 npar Sum Sq Mean Sq F value
+as.factor(trt.f)    3 25.614   8.538 13.8019
+as.factor(trt.m)    3  6.096   2.032  3.2847
+pop                 1 47.962  47.962 77.5320
+
+
 **summary:** 
+- am i doing this right.. (should i be using `lm()` for this?) → even after log-transforming, there's still non-ints so can't use poisson...
+- according to AIC, the mixed effect model seems to be a bit better for modeling `rate.overall`
+
+
+
+now, look at the `pertent` models
+
+```{r}
+mod4.lay3 <- lm(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
+                  n.ovi.pertent + id.tent + jdate.rel,
+               data = summ_rates_all)
+summary(mod4.lay3)
+anova(mod4.lay3, test = "Chisq")
+AIC(mod4.lay3)
+```
+- summary:
+  - some actual tents are signif (from `*` to `***` but the effect sizes aren't that big)
+  - pop, parent trt varyingly matter
+  - jdate is `*`; `n.ovi` is `***`
+  - adj R-sq is 0.4784
+- anova: everything vaguely matters
+
+Response: lt.pertent
+                  Df  Sum Sq Mean Sq F value    Pr(>F)    
+as.factor(trt.f)   3  36.455  12.152 13.4600 2.891e-08 ***
+as.factor(trt.m)   3  14.215   4.738  5.2485  0.001524 ** 
+pop                1  76.396  76.396 84.6208 < 2.2e-16 ***
+n.ovi.pertent      1   5.162   5.162  5.7180  0.017406 *  
+id.tent           25 170.706   6.828  7.5634 < 2.2e-16 ***
+jdate.rel          1   5.179   5.179  5.7370  0.017222 *  
+Residuals        301 271.743   0.903  
+
+- AIC: 954.2095
+
+
+now try with random effs...
+
+```{r}
+mod4.lay4 <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_all)
+summary(mod4.lay4)
+anova(mod4.lay4, test = "Chisq")
+lmerTest::ranova(mod4.lay4, test = "Chisq")
+AIC(mod4.lay4)
+```
+- summary
+  - none of the fixed effs matter lawl
+- very meh anova
+                 npar Sum Sq Mean Sq F value
+as.factor(trt.f)    3 1.4662  0.4887  0.6271
+as.factor(trt.m)    3 2.7994  0.9331  1.1973
+pop                 1 8.6211  8.6211 11.0614
+n.ovi.pertent       1 6.4242  6.4242  8.2426
+
+- AIC:988.0647
+
+
+and what if we drop `jdate.rel` as a random effect?
+
+```{r}
+mod4.lay5 <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
+                  n.ovi.pertent + (1|id.tent) + jdate.rel,
+               data = summ_rates_all)
+summary(mod4.lay5)
+anova(mod4.lay5, test = "Chisq")
+lmerTest::ranova(mod4.lay5, test = "Chisq")
+AIC(mod4.lay5)
+```
+- summary: no fixed effs matter
+- anova: similar to when date is an RE
+- AIC: 1006.285 → so this is deffo a worse model. exclude this in the distributions checking
+
+### - checking distributions/qq plots
+QQ plot time!!!!
+```{r}
+autoplot(mod4.lay, which = 1:2) # overall
+autoplot(mod4.lay3, which = 1:2) # pertent
+
+# does not work for lmers
+#autoplot(mod4.lay2, which = 1:2)
+#autoplot(mod4.lay4, which = 1:2)
+```
+lol idk how to interp these tbh! let's use base R instead:
+
+(from: https://stats.stackexchange.com/questions/125856/r-lmer-model-diagnosis-qqnorm)
+
+```{r}
+# (run these lines tgt)
+
+# overall
+qqnorm(resid(mod4.lay), main = "QQ plot: lm rate.overall")
+qqline(resid(mod4.lay))
+
+# pertent
+qqnorm(resid(mod4.lay3), main = "QQ plot: lm rate.pertent")
+qqline(resid(mod4.lay3))
+```
+// TODO: revist the interp of this LOL
+
+
+but now time to look up qq plots for mixed eff models... 
+
+```{r}
+# overall
+qqnorm(resid(mod4.lay2), main = "QQ plot: lmer rate.overall")
+qqline(resid(mod4.lay2))
+
+# pertent
+qqnorm(resid(mod4.lay4), main = "QQ plot: lmer rate.pertent")
+qqline(resid(mod4.lay4))
+
+```
+
+// TODO: interp
 
 
 # B2: 240304 redo plotting, per tent
@@ -1109,4 +1309,4 @@ summ_longevity %>%
 
 1. 240304: B2 - recalc egg laying + redo mods
   - also checked data distributions
-
+2. 240308: redoing mods again
