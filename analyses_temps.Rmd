@@ -5,7 +5,7 @@ date: "2023-12-07"
 
 # 0. load data & packages
 ```{r}
-source("./ntw_helper-functions.R")
+source("./helpers_ntw.R")
 rm(list=c(acc_helpers, NT_helpers))
 ```
 
@@ -33,7 +33,7 @@ wide_all %>%
   mutate(sup = factor(sup)) %>%
   ggplot(aes(x = trt.stage, fill = sup)) +
   geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
-  labs(title = "temps: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
+  labs(title = "temps: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "proportion supernumerary") +
   scale_x_discrete(labels = temp_labels) +
   theme_bw() + scale_fill_brewer(palette = "Greens")
 ```
@@ -236,7 +236,7 @@ summary_temps <- temps_all %>%
 # visualise time to pup, pupal mass across expt groups
 summary_temps %>% ggplot(aes(y = avg.mass, x = avg.tt, color = as.factor(meanT), shape = as.factor(flucT))) +
   geom_point(size = 2.5) +
-  y_err_mass(y_err= 0.1) + x_err_tt(x_err = 100) + theme_bw() +
+  y_err_mass(err= 0.1) + x_err_tt(err = 100) + theme_bw() +
   labs(title = "2x2: avg time to and mass at pupation", 
        y = "average pupal mass (mg)", 
        x = "average time to pupa from hatching (days)", 
@@ -257,7 +257,7 @@ let's try to not plot 80 things at once and just put 1 response var on the y lol
 summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT))) +
   geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
-  y_err_mass(y_err = 0.04) + theme_bw() +
+  y_err_mass(err = 0.04) + theme_bw() +
   labs(title = "2x2: avg mass at pupation", 
        y = "average pupal mass (mg)", 
        x = "mean temp (°C)", 
@@ -270,7 +270,7 @@ summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.fact
 summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor(flucT))) +
   geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
-  y_err_tt(y_err = 0.04) + theme_bw() +
+  y_err_tt(err = 0.04) + theme_bw() +
   labs(title = "2x2: avg time to pupation", 
        y = "average time to pupation from hatching (days)", 
        x = "mean temp (°C)", 
@@ -280,9 +280,13 @@ summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
 
 # avg surv due to temp
-summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), color = as.factor(flucT))) +
+summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), #color = as.factor(flucT)
+                             )) +
   geom_point(size = 2) + 
-  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter(height = 0.001)) +
+  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5,
+            position = position_dodge(0.1)
+            #position = position_jitter(height = 0.001)
+            ) +
   #geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter()) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   theme_bw() + 
@@ -292,10 +296,12 @@ summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), color = as.
        y = "prop. survived to pupation", 
        x = "mean temp (°C)", 
        caption = "all lab; N",
-       color = "fluctuation temp", color = "fluctuation temp") +
-  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+       # color = "fluctuation temp", 
+       lty = "fluctuation temp") +
+  # scale_color_manual(values = c( "#00BFC4", "#F8766D"),
+  #                      labels = c("± 0°C", "± 7°C")) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C")) +
-  ylim(c(0.93, 1.01))
+  ylim(c(0.87, 1.03))
 
 ```
 
@@ -358,7 +364,7 @@ summary_temps2 <- temps_all %>%
 # tt pup graph v1
 temps_all %>% ggplot(aes(y = tt.pupa, x = as.factor(minT), fill = as.factor(flucT))) +
   geom_boxplot() +
-  #y_err_tt(y_err= 0.9) + 
+  #y_err_tt(err= 0.25) + 
   theme_bw() +
   scale_fill_manual(values = RYB) + 
   labs(title = "2x2: avg time to pupation", 
@@ -372,7 +378,7 @@ temps_all %>% ggplot(aes(y = tt.pupa, x = as.factor(minT), fill = as.factor(fluc
 # tt pup graph v2
 temps_all %>% ggplot(aes(y = tt.pupa, x = as.factor(minT), fill = as.factor(meanT))) +
   geom_boxplot() +
-  #y_err_tt(y_err= 0.9) + 
+  #y_err_tt(err= 0.9) + 
   theme_bw() +
   scale_fill_manual(values = RYB) + 
   labs(title = "2x2: avg time to pupation", 
@@ -390,15 +396,16 @@ summary_temps2 %>%
   ggplot(aes(y = avg.tt, x = as.factor(minT), shape = as.factor(flucT), color = as.factor(meanT))) +
   geom_point(aes(), size = 2.5) +
   geom_line(aes(group = meanT, lty = as.factor(meanT))) +
-  y_err_tt(y_err = 0.25) + 
+  y_err_tt(err = 0.25) + 
   theme_bw() +
   scale_color_manual(values = RYB) + 
   labs(title = "2x2: avg time to pupation", 
        x = "minimum T",
        y = "average days to pupation from hatching", 
        #caption = "faceted by fluct temp",
-       #color = "fluct temp (°C)",
-       #shape = "fluct temp (°C)"
+       color = "mean temp (°C)",
+       shape = "fluct temp (°C)",
+       lty = "mean temp (°C)"
        )
   #facet_grid(~flucT, space = "free") +
   #geom_text(aes(label = paste0("n = ", n_surv), y = 0), check_overlap = TRUE)
@@ -413,7 +420,7 @@ summary_temps2 %>%
          )) +
   geom_point(aes(), size = 2.5) +
   #geom_line(aes(group = meanT, lty = as.factor(meanT))) +
-  y_err_tt(y_err = 0.25) + 
+  y_err_tt(err = 0.25) + 
   theme_bw() +
   scale_color_manual(values = RYB) + 
   facet_wrap(~meanT) +
@@ -438,7 +445,7 @@ summary_temps2 %>%
          ) +
   geom_point(aes(), size = 2.5) +
   #geom_line(aes(group = meanT, lty = as.factor(meanT))) +
-  y_err_tt(y_err = 0.25) + 
+  y_err_tt(err = 0.25) + 
   theme_bw() +
   scale_color_manual(values = RYB) + 
   facet_wrap(~minT) +
@@ -455,8 +462,21 @@ summary_temps2 %>%
 ```
 
 ```{r}
+# this df is from analyses_ntw-ctrls
+
 # visualise % survival
-summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
+summary_lab260.2 %>% 
+  mutate(x.label = case_when(x.label == "0°C" ~ "26±0°C",
+                             x.label == "2.5°C"~ "26±2.5°C (diurnal)"),
+         diet = case_when(diet == "LD" ~ "lab diet",
+                           diet == "TB" ~ "tobacco"),
+         expt.group = case_when(expt.group == "A" ~ "Feb '23",
+                                expt.group == "B" ~ "Mar '23",
+                                expt.group == "D" ~ "Jul '23",
+                                expt.group == "F" ~ "Aug '23"),
+         expt.group = factor(expt.group, levels = c("Feb '23", "Mar '23", "Jul '23", "Aug '23")),
+         ) %>%
+  ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
   geom_col() + theme_bw() +
   scale_fill_manual(values = RYB) +
   #y_err(avg.mass, se.mass) + #SIGH
@@ -467,8 +487,9 @@ summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
   geom_text(aes(label = paste0("n = ", n_all), y = 20), check_overlap = TRUE) +
   labs(title = "% survived to pupation (incl LPI)", 
        y = "% surviving", 
-       x = "expt group/cohort", 
-       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+       x = "expt cohort", 
+       #caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)"
+       ) +
   facet_grid(~x.label, scales = "free_x", space = "free")
 
 ```
@@ -484,15 +505,19 @@ graphs suggest there is no mean/fluct int: let's confirm
 ```{r}
 mod.mass <- lm(mass.pupa ~ meanT*flucT, data = temps_all)
 anova(mod.mass)
+anova(mod.mass, test = "Chisq")
 summary(mod.mass)
   # meanT + flucT are sig on their own (***) and (**) but not the interaction
   # lowkey why is SS sooo big for mean tho LOL
 
 # add sex as an additional check. sex shoooould be signif
-mod.mass2 <- lm(mass.pupa ~ meanT*flucT*sex, data = temps_all)
+mod.mass2 <- lm(mass.pupa ~ meanT*flucT*sex, data = temps_all[temps_all$sex %in% c("m", "f"),])
 anova(mod.mass2) # (it is)
+anova(mod.mass2, test = "Chisq")
+summary(mod.mass2)
 
 # since the MxF interaction isnt signif, drop it from the model
+  # 240308: idk why i said that bc sex IS significant lmfaoo do NOT use this model. use # 2
 mod.mass4 <- lm(mass.pupa ~ meanT + flucT, data = temps_all)
 anova(mod.mass4)
 summary(mod.mass4) ## use this!
@@ -501,8 +526,10 @@ summary(mod.mass4) ## use this!
 mod.mass5 <- lm(mass.pupa ~ meanT*flucT, 
                 data = temps_all[temps_all$if.pupa == "Y", ])
 anova(mod.mass5)
+summary(mod.mass5)
   # not really
 ```
+240308: use mod.2
 
 
 ## b. tt pup
