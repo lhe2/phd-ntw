@@ -7,7 +7,7 @@ purpose: checking controls over all groups. this is adding visualisations/taking
 
 # 0. load data, helper fns
 ```{r}
-source("./ntw_helper-functions.R")
+source("./helpers_ntw.R")
 ```
 
 # 1. checking if lab 260s across all trts are the same to each other
@@ -35,7 +35,7 @@ summary_lab260 <- data_lab260 %>%
 # visualise time to pup, pupal mass across expt groups
 summary_lab260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   geom_point() +
-  y_err_mass(y_err= 0.9) + x_err_tt(x_err = 0.9) + theme_bw() +
+  y_err_mass(err = 0.9) + x_err_tt(err = 0.9) + theme_bw() +
   scale_color_manual(labels = c("A (n = 21)",
                                 "B (n = 16)",
                                 "D (n = 18)",
@@ -49,7 +49,7 @@ summary_lab260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
 # let's isolate more... just masspup
 summary_lab260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
   geom_col() +
-  y_err_mass(y_err= 0.9) + theme_bw() +
+  y_err_mass(err = 0.9) + theme_bw() +
   scale_fill_manual(labels = c("A (n = 21)",
                                 "B (n = 16)",
                                 "D (n = 18)",
@@ -63,7 +63,7 @@ summary_lab260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) 
 # just tt pup
 summary_lab260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
   geom_col() +
-  y_err_tt(y_err= 0.9) + theme_bw() +
+  y_err_tt(err = 0.9) + theme_bw() +
   scale_fill_manual(labels = c("A (n = 21)",
                                 "B (n = 16)",
                                 "D (n = 18)",
@@ -130,7 +130,7 @@ data_lab260.2 <- data_lab260 %>%
 # mass.pup graph
 data_lab260.2 %>% ggplot(aes(y = mass.pupa, x = expt.group, fill = diet)) +
   geom_boxplot() +
-  #y_err_mass(y_err= 0.9) + 
+  #y_err_mass(err = 0.9) + 
   theme_bw() +
   scale_fill_manual(labels = c("lab diet", "tobacco diet"),
                     values = RYB) +
@@ -145,7 +145,7 @@ data_lab260.2 %>% ggplot(aes(y = mass.pupa, x = expt.group, fill = diet)) +
 # tt pup graph
 data_lab260.2 %>% ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
   geom_boxplot() +
-  #y_err_tt(y_err= 0.9) + 
+  #y_err_tt(err = 0.9) + 
   theme_bw() +
   scale_fill_manual(labels = c("lab diet", "tobacco diet"),
                       values = RYB) + 
@@ -374,7 +374,7 @@ stealing the code from above `lab` stuff lol + adjusting variable names as neede
 # visualise time to pup, pupal mass across expt groups
 summary_field260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   geom_point() +
-  y_err_mass(y_err= 0.9) + x_err_tt(x_err = 0.9) + theme_bw() +
+  y_err_mass(err = 0.9) + x_err_tt(err = 0.9) + theme_bw() +
   scale_color_hue(labels = c("E (n = 38)",
                                 "F (n = 24)",
                                 "H (n = 18)")) +
@@ -386,7 +386,7 @@ summary_field260 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
 # let's isolate more... just masspup
 summary_field260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
   geom_col() +
-  y_err_mass(y_err= 0.9) + theme_bw() +
+  y_err_mass(err = 0.9) + theme_bw() +
   scale_color_hue(labels = c("E (n = 38)",
                                 "F (n = 24)",
                                 "H (n = 18)")) +
@@ -398,7 +398,7 @@ summary_field260 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)
 # just tt pup
 summary_field260 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
   geom_col() +
-  y_err_tt(y_err= 0.9) + theme_bw() +
+  y_err_tt(err = 0.9) + theme_bw() +
   scale_color_hue(labels = c("E (n = 38)",
                                 "F (n = 24)",
                                 "H (n = 18)")) +
@@ -473,7 +473,7 @@ summary_lab337 <- data_lab337 %>%
 # visualise time to pup, pupal mass across expt groups
 summary_lab337 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
   geom_point() +
-  y_err_mass(y_err= 0.9) + x_err_tt(x_err = 0.9) + theme_bw() +
+  y_err_mass(err = 0.9) + x_err_tt(err = 0.9) + theme_bw() +
   scale_color_hue(labels = c("A (n = 4)",
                                 "B (n = 27)",
                                 "F (n = 27)")) +
@@ -485,7 +485,7 @@ summary_lab337 %>% ggplot(aes(y = avg.mass, x = avg.tt, color = expt.group)) +
 # let's isolate more... just masspup
 summary_lab337 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) +
   geom_col() +
-  y_err_mass(y_err= 0.9) + theme_bw() +
+  y_err_mass(err = 0.9) + theme_bw() +
   scale_fill_hue(labels = c("A (n = 4)",
                                 "B (n = 27)",
                                 "F (n = 27)")) +
@@ -497,7 +497,7 @@ summary_lab337 %>% ggplot(aes(y = avg.mass, x = expt.group, fill = expt.group)) 
 # just tt pup
 summary_lab337 %>% ggplot(aes(y = avg.tt, x = expt.group, fill = expt.group)) +
   geom_col() +
-  y_err_tt(y_err= 0.9) + theme_bw() +
+  y_err_tt(err = 0.9) + theme_bw() +
   scale_fill_manual(labels = c("A (n = 4)",
                                 "B (n = 27)",
                                 "F (n = 27)"),
@@ -577,7 +577,7 @@ data_lab337 %>%
   filter(expt.group != "A") %>% #drop the toast group
   ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
   geom_boxplot() +
-  #y_err_tt(y_err= 0.9) + 
+  #y_err_tt(err = 0.9) + 
   theme_bw() +
   scale_fill_manual(labels = c("lab diet", "tobacco diet"),
                       values = RYB) + 
@@ -612,7 +612,7 @@ NTs <- wide_all %>%
   filter.NTs2() %>%
   filter(!(pop == "lab" & diet == "LD")) %>%
   filter(pop == "lab") %>% # only keep lab for comparison to 2x2
-  mutate(expt = "NTs") %>% # for survival filtering
+  mutate(expt = "NTs") # for survival filtering
 
 # filter temps
 temps <- wide_all %>%
@@ -649,7 +649,7 @@ summary_smush <- smush %>%
 ```{r test fig}
 summary_smush %>%
   ggplot(aes(y = avg.mass, x = as.factor(meanT), color = as.factor(minT), shape = label)) +
-  geom_point(size = 2) + y_err_mass(y_err = 0.25) +
+  geom_point(size = 2) + y_err_mass(err = 0.25) +
   geom_text(aes(label = n.surv), hjust = -0.5) +
   #geom_line(aes(group = interaction(expt, meanT, flucT))) +
   facet_wrap(~flucT, nrow = 1) +
@@ -662,7 +662,7 @@ summary_smush %>%
 
 summary_smush %>%
   ggplot(aes(y = avg.tt, x = as.factor(meanT), color = as.factor(minT), shape = label)) +
-  geom_point(size = 2) + y_err_tt(y_err = 0.25) +
+  geom_point(size = 2) + y_err_tt(err = 0.25) +
   geom_text(aes(label = n.surv), hjust = -0.5) +
   facet_wrap(~flucT, nrow = 1) +
   labs(color = "min temp (C)", shape = "expt", 
@@ -695,9 +695,9 @@ plots.mass <- summary_smush %>%
   group_split(expt) %>%
   map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(meanT), color = as.factor(minT), shape = as.factor(expt))) +
         geom_point(size = 2) +  
-        y_err_mass(y_err= 0.25) +
+        y_err_mass(err = 0.25) +
         theme_bw() +
-        facet_wrap(~flucT) %>%
+        facet_wrap(~flucT) +
         theme(legend.position="none") +
         geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
         labs(
