@@ -982,10 +982,13 @@ but now time to look up qq plots for mixed eff models...
 # overall
 qqnorm(resid(mod4.lay2), main = "QQ plot: lmer rate.overall")
 qqline(resid(mod4.lay2))
+  # joel says this is lovely!!!
 
 # pertent
 qqnorm(resid(mod4.lay4), main = "QQ plot: lmer rate.pertent")
 qqline(resid(mod4.lay4))
+
+# so basically since lt.overall is N-dist itll prob be a little more agnostic to.. whatver stat bs stuff
 
 ```
 
@@ -1105,10 +1108,10 @@ so i'll filter out where `n.ovi` and `n.coll` = 0 and also change `xlim` to prob
 - check that the per day per tent stats are right...
 
 ```{r}
-summ_all_rates2 %>%
-  filter(trt.m == 426 & trt.f == 426 & pop == "lab") #%>%
-  #filter(!duplicated(rate.overall)) %>% 
-  #View()
+# summ_all_rates2 %>%
+#   filter(trt.m == 426 & trt.f == 426 & pop == "lab") #%>%
+#   #filter(!duplicated(rate.overall)) %>% 
+#   #View()
 
 ```
 
@@ -1292,8 +1295,10 @@ summ_longevity %>%
        x = "temperature trt (day-night, °C )") +
   guides(color = "none")
 
-# what about when theyve been in the fridge lol?
+# TODO: what about when theyve been in the fridge lol?
 ```
+
+TODO: add adult mass plots
 
 // TODO: currently not planning on running stats! (maybe just a quick anova lol?)
 

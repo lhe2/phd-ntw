@@ -93,6 +93,15 @@ summary_lab260 %>% ggplot(aes(y = pct.survpup, fill = expt.group, x = expt.group
 ### // followup 01: per 240117-8 meetings, let's facet these graphs a bit differently (+ try a bargraph?)
 
 ```{r data prep again}
+data_lab260 <- data_lab260 %>%
+    mutate(expt.group = case_when(expt.group == "A" ~ "Feb '23",
+                                expt.group == "B" ~ "Mar '23",
+                                expt.group == "D" ~ "Jul '23",
+                                expt.group == "F" ~ "Aug '23"),
+         expt.group = factor(expt.group, levels = c("Feb '23", "Mar '23", "Jul '23", "Aug '23")),
+         diet = case_when(diet == "LD" ~ "lab",
+                          diet == "TB" ~ "tobacco"))
+
 # let's test on mass pup first.
 
 # redo the summary with other groupings
@@ -132,32 +141,36 @@ data_lab260.2 %>% ggplot(aes(y = mass.pupa, x = expt.group, fill = diet)) +
   geom_boxplot() +
   #y_err_mass(err = 0.9) + 
   theme_bw() +
-  scale_fill_manual(labels = c("lab diet", "tobacco diet"),
+  scale_fill_manual(labels = c("lab", "tobacco"),
                     values = RYB) +
   labs(title = "avg mass at pupation for lab controls", 
        y = "average pupal mass (mg)", 
        x = "expt group", 
-       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+       #caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)"
+       ) +
   facet_grid(~x.label, scales = "free_x", space = "free") +
   geom_text(aes(label = paste0("n = ", n_surv), y = 15), check_overlap = TRUE)
   # this is kinda interesting. let's look at the others. and not bar graphs lol
 
 # tt pup graph
-data_lab260.2 %>% ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
+data_lab260.2 %>% 
+  ggplot(aes(y = tt.pupa, x = expt.group, fill = diet)) +
   geom_boxplot() +
   #y_err_tt(err = 0.9) + 
   theme_bw() +
-  scale_fill_manual(labels = c("lab diet", "tobacco diet"),
+  scale_fill_manual(labels = c("lab", "tobacco"),
                       values = RYB) + 
   labs(title = "avg time to pupation for lab controls", 
        x = "expt group",
        y = "average days to pupation from hatching", 
-       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+       #caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)"
+       ) +
   facet_grid(~x.label, scales = "free_x", space = "free") +
   geom_text(aes(label = paste0("n = ", n_surv), y = 15), check_overlap = TRUE)
 
 # visualise % survival
-summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
+summary_lab260.2 %>% 
+  ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
   geom_col() + theme_bw() +
   scale_fill_manual(values = RYB) +
   #y_err(avg.mass, se.mass) + #SIGH
@@ -169,7 +182,8 @@ summary_lab260.2 %>% ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
   labs(title = "% survived to pupation (incl LPI)", 
        y = "% surviving", 
        x = "expt group/cohort", 
-       caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)") +
+       #caption = "reared during: Jan-Mar '23 (A, B), Jul '23 (D), Aug '23 (F)"
+       ) +
   facet_grid(~x.label, scales = "free_x", space = "free")
   
 ```

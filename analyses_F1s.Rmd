@@ -7,7 +7,7 @@ purpose: comparing F1s to parents
 
 # 0. load data, helper fns
 ```{r}
-source("./ntw_helper-functions.R")
+source("./helpers_ntw.R")
 # map(other_helpers, ~discard(., .p = ~all))
   # working on it: https://stackoverflow.com/questions/63533428/in-r-remove-list-of-list-based-on-name
 ```
@@ -90,7 +90,7 @@ plots.mass <- summary_F1s %>%
   ungroup() %>%
   group_split(parent.trt) %>%
   map(~ggplot(data = ., aes(y = avg.mass, x = pop, color = treatment)) +
-        geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+        geom_point(size = 2) +  y_err_mass(err = 0.1) +
         theme_bw() +
         scale_color_manual(values = c("#00BFC4", "#F8766D")) +
         theme(legend.position="none") +
@@ -105,7 +105,7 @@ plots.tt <- summary_F1s %>%
   ungroup() %>%
   group_split(parent.trt) %>%
   map(~ggplot(data = ., aes(y = avg.tt, x = pop, color = treatment)) +
-        geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+        geom_point(size = 2) +  y_err_tt(err = 0.1) +
         theme_bw() +
         scale_color_manual(values = c("#00BFC4", "#F8766D")) +
         theme(legend.position="none") +

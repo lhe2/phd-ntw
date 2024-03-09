@@ -122,7 +122,7 @@ temps_devsummP %>%
 
 ### plot with response on the y (for the pupated only)
 # survival vs mean/fluc T
-temps_dev
+#temps_dev
   
 
 
@@ -132,7 +132,7 @@ temps_devP %>%
   group_by(meanT, flucT, sex) %>%
   summarise(avg.devrate = mean(devrate)) %>%
   ggplot(aes(y=avg.devrate, x = meanT, shape = as.factor(flucT), lty = as.factor(flucT))) +
-  geom_point() + geom_line() +
+  geom_point(size = 2) + geom_line() +
   facet_wrap(~sex) + theme_bw() +
   labs(y = "average development rate (to pupa)", x = "mean temperature (°C)", shape = "fluctuation (°C)", lty = "fluctuation (°C)")
 ```

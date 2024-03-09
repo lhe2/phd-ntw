@@ -5,7 +5,7 @@ date: "2023-12-07"
 
 # 0.1 load data & packages
 ```{r message = FALSE}
-source("./ntw_helper-functions.R")
+source("./helpers_ntw.R")
 rm(list=c(temps_helpers, NT_helpers))
 ```
 
@@ -213,7 +213,7 @@ summary_acc <- acc_all %>%
 # visualise time to pup, pupal mass across expt groups
 summary_acc %>% ggplot(aes(y = avg.mass, x = avg.tt, color = as.factor(instar.intrt), shape = trt)) +
   geom_point(size = 2.5) +
-  y_err_mass(y_err= 0.1) + x_err_tt(x_err = 100) + theme_bw() +
+  y_err_mass(err = 0.1) + x_err_tt(err = 100) + theme_bw() +
   #scale_color_manual(values = c("#619Cff", "#00BA38", "#F8766D")) +
   scale_color_manual(values = RYB) +
   labs(title = "acc: avg time to and mass at pupation", 
@@ -232,7 +232,7 @@ that said, pup time still isn't that much bigger (only about 2 more days), consi
 summary_acc %>% ggplot(aes(y = avg.mass, x = as.factor(instar.intrt), shape = as.factor(trt))) +
   geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = trt, group = trt)) +
-  y_err_mass(y_err = 0.04) + theme_bw() +
+  y_err_mass(err = 0.04) + theme_bw() +
   labs(title = "acc: avg mass at pupation", 
        y = "average pupal mass (mg)", 
        x = "instars spent in treatment", 
@@ -243,7 +243,7 @@ summary_acc %>% ggplot(aes(y = avg.mass, x = as.factor(instar.intrt), shape = as
 summary_acc %>% ggplot(aes(y = avg.tt, x=as.factor(instar.intrt), shape = as.factor(trt))) +
   geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = trt, group = trt)) +
-  y_err_tt(y_err = 0.04) + theme_bw() +
+  y_err_tt(err = 0.04) + theme_bw() +
   labs(title = "acc: avg time to pupation", 
        y = "avg time to pupation (days)", 
        x = "instars spent in treatment", 
@@ -256,7 +256,7 @@ summary_acc %>%
   ggplot(aes(y = prop.survpup, x = as.factor(instar.intrt))) +
   geom_point(size = 2) + 
   geom_text(aes(label = n_all), vjust = -1, hjust = -1.1, check_overlap = TRUE) +
-  geom_line(aes(lty = trt, group = trt)) +
+  geom_line(aes(lty = trt, group = trt), lty = "dashed") +
   theme_bw() + 
   #geom_blank(aes(y=1.0095)) +
   # expand_limits(y = c(0.87, 1.025)) +

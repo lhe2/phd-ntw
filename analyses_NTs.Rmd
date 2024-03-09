@@ -5,7 +5,7 @@ date: "2024-01-08"
 
 # 0. load data, packages, helper functions
 ```{r}
-source("./ntw_helper-functions.R")
+source("./helpers_ntw.R")
 rm(list=c(acc_helpers, temps_helpers))
 ```
 
@@ -61,17 +61,17 @@ wide_all %>%
 wide_all %>%
   filter.NTs2() %>% 
   #filter(!(pop == "lab" & diet == "TB")) %>%
-  filter(pop != "F1") %>%
+  filter(pop != "F1" & diet == "TB") %>%
   mutate(sup = factor(sup)) %>%
   ggplot(aes(x = trt.stage, fill = sup)) +
   geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
-  labs(title = "NTs: supernumerary fates", fill = "supernumerary stage", x = "treatment", y = "percent") +
-  scale_x_discrete(labels = NT_labels, guide = guide_axis(angle = 45)) +
+  labs(title = "NTs: supernumerary fates", fill = "supernumerary stage", x = "treatment (D-N)", y = "proportion") +
+  scale_x_discrete(#labels = NT_labels,
+                   labels = c("26-26", "40-19", "40-26", "40-33"),
+                   guide = guide_axis(angle = 45)) +
   facet_wrap(~pop) +
   theme_bw() + scale_fill_brewer(palette = "Greens") 
   #theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1))
-
-# did i filter out the diet stuff...
   
 ```
 
@@ -85,11 +85,12 @@ compare overall development of all individuals compared to average growth (avg g
   - there's a lot of downstream code that relies on this codeblock LOL hence the (**)
 ```{r calc dev_L stats df} 
 # pull out the lab bugs
-long_lf <- long_all %>% filter(pop == "lab" | pop == "field") 
+long_lf <- long_all %>% filter(pop == "lab" | pop == "field") %>% filter(diet == "TB")
 
 # individual dev stats
 dev_L <- long_lf %>%
   filter(!(final.fate == "pmd" | final.fate == "misc")) %>%
+  #filter(diet == "TB") %>%
   filter.ins.topup() %>%
   mutate(logmass = log(mass))
 
@@ -261,7 +262,7 @@ NT_devsummP %>%
   labs(title = "NTs: average development to pupa", color = "treatment", y = "mass (mg)", x = "days to instar")
 ```
 
-# C1. (old) growth response as a function of treatment 
+C1. (old) growth response as a function of treatment 
 
 (keeping these bc theyre mostly fine but going to ignore the sex stuff a bit lol. we can get into it later. use C2 instead!
 
@@ -284,7 +285,8 @@ long_NTs %>%
   ggplot(aes(x = meanT, y = avg.mass)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_mass(y_err=0.5) +
+  y_err_mass(#err = 0.5
+    ) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(title = "NT: mean temperatures on pupal mass", caption = "NT pupa")
@@ -301,7 +303,7 @@ long_NTs %>%
   ggplot(aes(x = flucT, y = avg.mass)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_mass(y_err=0.5) +
+  y_err_mass(err =0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(caption = "NT pupa")
@@ -321,7 +323,7 @@ long_NTs %>%
   ggplot(aes(x = minT, y = avg.mass)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_mass(y_err=0.5) +
+  y_err_mass(err =0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(title = "NT: min temperatures on pupal mass", caption = "NT pupa")
@@ -338,7 +340,7 @@ long_NTs %>%
   ggplot(aes(x = meanT, y = avg.tt)) +
   geom_point() +
   geom_line(aes(lty = pop)) +
-  y_err_tt(y_err=0.5) +
+  y_err_tt(err =0.5) +
   facet_wrap(~sex) +
   theme_bw() +
   labs(title = "NT: mean temperatures on time to pupation", caption = "NT pupa")
@@ -364,7 +366,7 @@ long_NTs %>%
 ```
 
 
-# C2. (old) visualise overview summ stats
+C2. (old) visualise overview summ stats
 
 going to make these graphs more like the ones from `temp_analyses` (expect code borrowing lol)
 
@@ -373,6 +375,7 @@ going to make these graphs more like the ones from `temp_analyses` (expect code 
 # subset + add some binaries for survival stuff later
 NTs_all <- wide_all %>%
   filter.NTs2() %>%
+  filter(diet == "TB") %>%
   filter(final.fate != "misc" & final.fate != "accidental" & final.fate != "culled") %>%
   mutate(tt.pupa = jdate.pupa - jdate.hatch,
          status = case_when(final.fate == "pmd" ~ 1, 
@@ -409,7 +412,7 @@ H: naively, if NTs are all that matters, then performance should just decrease a
 
 # avg mass
 summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_mass(err = 0.1) +
   scale_shape_manual(values=c(21, 16)) +
   facet_wrap(~pop) + theme_bw() +
   labs(title = "NTs: avg pupal mass", 
@@ -420,7 +423,7 @@ summary_NTs %>% ggplot(aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)
 
 # avg tt pup
 summary_NTs %>% ggplot(aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_tt(err = 0.1) +
   scale_shape_manual(values=c(21, 16)) +
   facet_wrap(~pop) + theme_bw() +
   labs(title = "NTs: avg time to pupation from hatching", 
@@ -463,7 +466,8 @@ ggsurvplot(fit = kmfit.byNT, data = NTs_all,
            conf.int = TRUE,
            palette = RYB,
            facet.by = c("pop"),
-           legend.labs = c("19C", "26C diurnal", "26C", "33C"),
+           legend.labs = c("19C", #"26C diurnal", 
+                           "26C", "33C"),
            #risk.table = TRUE,
            legend.title = "min temp",
            xlab = "days since hatching")
@@ -488,7 +492,7 @@ summary_NTs2 <- NTs_all %>%
 
 # avg mass - not rly
 summary_NTs2 %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct)) +
-  geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_mass(err = 0.1) +
   facet_wrap(pop~sex) + theme_bw() +
   labs(title = "NTs: avg pupal mass", 
        y = "average pupal mass (mg)", 
@@ -497,7 +501,7 @@ summary_NTs2 %>% ggplot(aes(y = avg.mass, x = as.factor(minT), color = if.fluct)
 
 # avg tt pup - also not rly
 summary_NTs2 %>% ggplot(aes(y = avg.tt, x = as.factor(minT), color = if.fluct)) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_tt(err = 0.1) +
   facet_wrap(pop~sex) + theme_bw() +
   labs(title = "NTs: avg time to pupation from hatching", 
        y = "average time to pupation (days)", 
@@ -514,7 +518,7 @@ H: naively, if mean T is all that matters, then "performance" should peak at ~33
 ```{r response var by meanT}
 # avg mass
 summary_NTs %>% ggplot(aes(y = avg.mass, x = meanT, shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_mass(y_err= 0.5) +
+  geom_point(size = 2) +  y_err_mass(err = 0.5) +
   facet_wrap(~pop) + theme_bw() +
   scale_shape_manual(values=c(21, 16)) +
   labs(title = "NTs: avg pupal mass", 
@@ -526,7 +530,7 @@ summary_NTs %>% ggplot(aes(y = avg.mass, x = meanT, shape = fluct.grp)) +
 
 # avg tt pup
 summary_NTs %>% ggplot(aes(y = avg.tt, x = meanT, shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  geom_point(size = 2) +  y_err_tt(err = 0.5) +
   facet_wrap(~pop) + theme_bw() +
   scale_shape_manual(values=c(21, 16)) +
   labs(title = "NTs: avg time to pupation from hatching", 
@@ -580,7 +584,7 @@ H: naively, if fluct T is all that matters, then "performance" should decrease a
 ```{r response var by flucT}
 # avg mass
 summary_NTs %>% ggplot(aes(y = avg.mass, x = flucT, color = as.factor(minT))) +
-  geom_point(size = 2) +  y_err_mass(y_err= 0.5) +
+  geom_point(size = 2) +  y_err_mass(err = 0.5) +
   facet_wrap(~pop) + theme_bw() +
   scale_color_manual(values = RYB) +
   labs(title = "NTs: avg pupal mass", 
@@ -591,7 +595,7 @@ summary_NTs %>% ggplot(aes(y = avg.mass, x = flucT, color = as.factor(minT))) +
 
 # avg tt pup
 summary_NTs %>% ggplot(aes(y = avg.tt, x = flucT, color = as.factor(minT))) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  geom_point(size = 2) +  y_err_tt(err = 0.5) +
   facet_wrap(~pop) + theme_bw() +
   scale_color_manual(values = RYB) +
   labs(title = "NTs: avg time to pupation from hatching", 
@@ -673,7 +677,7 @@ summary_NTs3 <- NTs_all %>%
 # avg tt pup
 summary_NTs3 %>% 
   ggplot(aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_tt(err = 0.1) +
   scale_shape_manual(values=c(21, 16)) +
   facet_wrap(~diet) + theme_bw() +
   labs(title = "NTs: avg time to pupation from hatching", 
@@ -697,7 +701,7 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = fluct
 ```{r by mean T}
 # avg tt pup
 summary_NTs3 %>% ggplot(aes(y = avg.tt, x = meanT, shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  geom_point(size = 2) +  y_err_tt(err = 0.5) +
   facet_wrap(~diet) + theme_bw() +
   scale_shape_manual(values=c(21, 16)) +
   labs(title = "NTs: avg time to pupation from hatching", 
@@ -721,7 +725,7 @@ summary_NTs3 %>% ggplot(aes(y = prop.survpup, x = meanT, shape = fluct.grp)) +
 ```{r by flucT}
 # avg tt pup
 summary_NTs3 %>% ggplot(aes(y = avg.tt, x = flucT, color = as.factor(minT))) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.5) +
+  geom_point(size = 2) +  y_err_tt(err = 0.5) +
   facet_wrap(~diet) + theme_bw() +
   scale_color_manual(values = RYB) +
   labs(title = "NTs: avg time to pupation from hatching", 
@@ -784,9 +788,9 @@ we'll just focus on NTs as the input variable for the redo graphs bc the other 2
 summary_NTs2 %>% 
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   ggplot(aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_mass(err = 0.1) +
   #scale_shape_manual(values=c(21, 16)) +
-  #facet_wrap(~pop) + 
+  facet_wrap(~pop) + 
   theme_bw() +
   geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
   labs(title = "NTs: avg pupal mass", 
@@ -799,7 +803,7 @@ summary_NTs2 %>%
 summary_NTs2 %>% 
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   ggplot(aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
-  geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  geom_point(size = 2) +  y_err_tt(err = 0.1) +
   #scale_shape_manual(values=c(21, 16)) +
   facet_wrap(~pop) + theme_bw() +
   geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
@@ -881,7 +885,7 @@ plots.mass <- summary_NTs2 %>%
   group_split(pop) %>%
   #split(summary_NTs2$pop) %>%
   map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp)) +
-        geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+        geom_point(size = 2) +  y_err_mass(err = 0.1) +
         #facet_wrap(~pop) + 
         theme_bw() +
         theme(legend.position="none") +
@@ -901,7 +905,7 @@ plots.tt <- summary_NTs2 %>%
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   group_split(pop) %>%
   map(~ggplot(data = ., aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp)) +
-        geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+        geom_point(size = 2) +  y_err_tt(err = 0.1) +
         #facet_wrap(~pop) + 
         theme_bw() +
         geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
@@ -957,49 +961,54 @@ grid.arrange(plots.mass[[2]], plots.tt[[2]], plots.prop[[2]], nrow = 1,
 TODO: fix the margin sizes... i give up lol
 
 ```{r}
+pd <- position_dodge(-0.5)
+
 plots.NT_mass2 <- summary_NTs2 %>% 
   ungroup() %>%
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   group_split(if.fluct) %>%
-  map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp, color = pop)) +
-        geom_point(size = 2) +  y_err_mass(y_err= 0.1) +
+  map(~ggplot(data = ., aes(y = avg.mass, x = as.factor(minT), shape = fluct.grp, color = pop), position = pd) +
+        geom_point(size = 2) +  y_err_mass(err = 0.1) +
         theme_bw() +
         theme(legend.position="none", axis.title.x = element_blank(), axis.title.y = element_text(size = 8)) +
         geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
-        labs(y = "average pupal mass (mg)", 
+        labs(y = "avg pup mass (mg)", 
              x = "minimum temperature (°C)" 
              ) +
-        ylim(c(2100, 4750))
+        scale_color_manual(values = c("#D55E00", "#0072B2")) +
+        ylim(c(2100, 5250))
       )
 
 plots.NT_tt2 <- summary_NTs2 %>% 
   ungroup() %>%
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   group_split(if.fluct) %>%
-  map(~ggplot(data = ., aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp, color = pop)) +
-        geom_point(size = 2) +  y_err_tt(y_err= 0.1) +
+  map(~ggplot(data = ., aes(y = avg.tt, x = as.factor(minT), shape = fluct.grp, color = pop), position = pd) +
+        geom_point(size = 2) +  y_err_tt(err = 0.1) +
         theme_bw() +
         geom_text(aes(label = n.surv), vjust = -1.1, hjust = -0.5) +
         theme(legend.position="none", axis.title.x = element_blank(), axis.title.y = element_text(size = 8)) +
-        labs(y = "average time to pupation (days)", 
+        labs(y = "avg pup time (days)", 
              x = "minimum temperature (°C)" 
              ) +
-        ylim(c(20, 35))
+        scale_color_manual(values = c("#D55E00", "#0072B2")) +
+        ylim(c(20, 37))
       )
 
 plots.NT_prop2 <- summary_NTs2 %>% 
   ungroup() %>%
   filter(if.fluct == "Y") %>% # to view w/o ctrl grp
   group_split(if.fluct) %>%
-  map(~ggplot(data = ., aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp, color = pop)) +
+  map(~ggplot(data = ., aes(y = prop.survpup, x = as.factor(minT), shape = fluct.grp, color = pop),) +
         geom_point(size=2) + 
         theme_bw() +
         geom_text(aes(label = n.all), vjust = -1.5, hjust = -0.9) +
-        labs(y = "proportion survived to pupation", 
+        labs(y = "prop surv", 
              x = "minimum temperature (°C)" 
         ) +
         theme(legend.position="none", axis.title.x = element_blank(), axis.title.y = element_text(size = 8))+
-        ylim(c(0, 0.8)))
+        scale_color_manual(values = c("#D55E00", "#0072B2")) +
+        ylim(c(0, 0.95)))
 
 ```
 
@@ -1009,7 +1018,7 @@ grid.arrange(plots.NT_mass2[[1]], plots.NT_tt2[[1]], plots.NT_prop2[[1]],
              #heights = 3,
              top = text_grob("lab & field responses to varying min T",
                              size = 15),
-             bottom = text_grob("max T = 40C",
+             bottom = text_grob("max T = 40C; blue = lab",
                                size = 8, hjust = -4.5),
              left = text_grob("response", rot = 90))
 ```
@@ -1130,7 +1139,7 @@ outputs are the same, so looks like it doesn't matter too much how i handle the 
 mod.cph_full <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ minT*pop, data = NTs_exptal)
 anova(mod.cph_full, test = "Chisq") # pop: ***; minT:pop .
 # anova(mod.cph_full) # same as above
-summary(mod.cph_numfull) # poplab **; minT:poplab .
+summary(mod.cph_full) # poplab **; minT:poplab .
 
 # (checking if order matters - i dont think it does, at least w this model)
 mod.cph_full2 <- coxph(Surv(NTs_exptal$tt.exit, NTs_exptal$status) ~ pop*minT, data = NTs_exptal)
