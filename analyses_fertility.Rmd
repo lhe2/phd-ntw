@@ -1260,12 +1260,11 @@ summary(summ_rate$n.coll)
 
 ```{r calc avg longevity}
 
-# TODO: did i get rid of the fridge ones
-
 data_longevity <- data_longevity %>%
   mutate(surv = jdate.died - jdate.ec)
 
 summ_longevity <- data_longevity %>%
+  filter(track.reason == "surv-fert" | track.reason == "surv") %>%
   drop_na(jdate.died) %>%
   group_by(trt, sex, pop) %>%
   summarise(avg.surv = mean(surv),
@@ -1294,21 +1293,19 @@ summ_longevity %>%
        y = "average survival post-eclosion (days)",
        x = "temperature trt (day-night, °C )") +
   guides(color = "none")
-
-# TODO: what about when theyve been in the fridge lol?
 ```
 
-TODO: add adult mass plots
-
 // TODO: currently not planning on running stats! (maybe just a quick anova lol?)
+
 
 
 # to do
 
 - ~~better overlaid overall/per tent rate plots (fix # ovi females)~~
 - fix mods: need to not batch by jdate lol
-- longevity
+- ~~longevity~~
 - response var: standardise by tent
+- add adult mass plots
 
 # followups
 

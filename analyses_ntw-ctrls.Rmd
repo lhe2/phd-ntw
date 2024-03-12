@@ -5,6 +5,10 @@ date: "2024-01-15"
 
 purpose: checking controls over all groups. this is adding visualisations/taking some code from `other_analyses.Rmd`
 
+also doing some other overall analyses, e.g:
+
+- adult masses
+
 # 0. load data, helper fns
 ```{r}
 source("./helpers_ntw.R")
@@ -725,6 +729,106 @@ plots.mass[[1]]
 
 ```
 
+# 4. adult masses
+
+honestly we're just going to bulk calculate them here lol bc i don't think they're really the central analyses to their respective analysis scripts, so!
+
+```{r calc stats}
+# add labels per expt; calc stats
+# wide_all <- wide_all %>%
+#   mutate(expt.temps = case_when(expt.group == "A" | expt.group == "B" ~ "Y"),
+#          expt.acc = case_when(expt.group == "B" ~ "Y"),
+#          expt.ntw = case_when(expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "H" ~ "Y"),
+#          expt.F1 = case_when(src == "F1" | ID %in% c(1186, 1188, 1195, 1192, 1262, 1290, 1264, 1248,
+#                                                      1193, 1184, 1287, 1180,
+#                                                      1353, 1344, 1349, 1345, 1389) ~ "Y"))
+summ.adults <- function(data){
+  summ_data <- data %>%
+  filter(sex == "f" | sex == "m") %>%
+  #group_by(treatment, trt.stage, pop, src, sex) %>%
+  summarise(avg.mass = mean(na.omit(mass.eclose)),
+         se.mass = sd(na.omit(mass.eclose))/sqrt(length(na.omit(mass.eclose))),
+         avg.tt = mean(na.omit(jdate.eclose - jdate.pupa)),
+         se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa))),
+         n = n())
+  
+  return(summ_data)
+}
+```
+
+```{r plots}
+# temps
+wide_all %>%
+  filter.temps2() %>% 
+  group_by(treatment, sex) %>% summ.adults() %>%
+  ggplot(aes(y = avg.mass, x = treatment, color = sex)) +
+  geom_point(aes(shape = sex), size = 2) +
+  #annotate("text", label = n) +
+  geom_text(aes(label = n), hjust = -2, check_overlap = T, show.legend = FALSE) +
+  y_err_mass(err = 0.3) +
+  theme_bw() +
+  labs(title = "temps: avg adult mass")
+
+# acc
+wide_all %>%
+  filter.acc2() %>% 
+  group_by(trt.stage, sex) %>% summ.adults() %>%
+  ggplot(aes(y = avg.mass, x = trt.stage, shape = sex, color = sex)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -2, check_overlap = T, show.legend = FALSE) +
+  y_err_mass(err = 0.3) +
+  theme_bw() +
+  labs(title = "acc: avg adult mass")
+
+# NTs
+wide_all %>%
+  filter.NTs2() %>% 
+  group_by(treatment, pop, sex) %>% summ.adults() %>%
+  mutate(treatment = factor(treatment, levels = c("260", "419", "337", "433"))) %>%
+  ggplot(aes(y = avg.mass, x = treatment, shape = sex, color = sex)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -1, check_overlap = T, show.legend = FALSE) +
+  y_err_mass(err = 0.3) +
+  facet_wrap(~pop) +
+  theme_bw() +
+  labs(title = "NTs: avg adult mass")
+
+# F1s
+  # TODO: need to revisit the filtering lol bc its a bit all over the place...
+wide_all %>%
+  filter.F1s() %>% filter(treatment != 337) %>%
+  mutate(tent = case_when(parent.tent == "301-I" | ID %in% c(1186, 1188, 1195, 1192, 1262, 1290, 1264, 1248) ~ "301-I",
+                          parent.tent == "301-F" | ID %in% c(1193, 1184, 1287, 1180) ~ "301-F",
+                          parent.tent == "107-C" | ID %in% c(1353, 1344, 1349, 1345, 1389) ~ "107-C"),
+         tent = factor(tent, levels = c("301-I", "301-F", "107-C")),
+         parent.trt = case_when(tent == "301-I" ~ "m/f @ 40-19C",
+                                tent == "301-F" ~ "f @ 40-19C",
+                                tent == "107-C" ~ "f @ 40-33C"),
+         treatment2 = case_when(treatment == 260 ~ "control",
+                                treatment != 260 ~ "exptl")) %>%
+  drop_na(tent) %>%
+  group_by(tent, parent.trt, src, treatment, treatment2, 
+           sex) %>% summ.adults() %>%
+  mutate(
+         # treatment = factor(treatment, levels = c("260", "419", "433")),
+         # treatment = case_when(treatment == 260 ~ "26-26",
+         #                       treatment == 419 ~ "40-19",
+         #                       treatment == 433 ~ "40-33"),
+         src = case_when(src == "su" ~ "parent", T ~ as.character(src)),
+         src = factor(src, levels = c("parent", "F1"))) %>%
+  ggplot(aes(y = avg.mass, x = src, color = treatment2, shape = sex), position = position_dodge(2)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -1, check_overlap = T, show.legend = FALSE) +
+  y_err_mass(err = 0.3) +
+  facet_wrap(~parent.trt, nrow = 1) +
+  theme_bw() +
+  scale_color_manual(values = c("#00BFC4", "#F8766D")) +
+  labs(title = "F1s: avg adult mass",
+       color = "temperature treatment")
+```
+
+
+
 
 
 # chronological list of followups
@@ -734,6 +838,6 @@ plots.mass[[1]]
  1. 240118: trying different lab ctrl visualisations
  2. 240129: same but in the 337s
  3. smushing plots together (idk dont know where to put this rn)
-
+ 4. 240310: adult masses
 
 
