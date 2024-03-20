@@ -915,12 +915,23 @@ now try with random effs...
 ```{r}
 mod4.lay4 <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
                   n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
-               data = summ_rates_all)
+               data = summ_rates_all, REML = FALSE)
 summary(mod4.lay4)
 anova(mod4.lay4, test = "Chisq")
 lmerTest::ranova(mod4.lay4, test = "Chisq")
 AIC(mod4.lay4)
+# trying REML=F, nmle::lmer to get signif of the fixed effs via anova(test=chisq) doesnt work either :\
+
+
+# with joel: determine signif by dropping terms consecutively
+  # this works, it's just tedious
+mod <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_all, REML = FALSE)
+anova(mod, mod4.lay4)
 ```
+
+
 - summary
   - none of the fixed effs matter lawl
 - very meh anova
@@ -963,15 +974,19 @@ lol idk how to interp these tbh! let's use base R instead:
 (from: https://stats.stackexchange.com/questions/125856/r-lmer-model-diagnosis-qqnorm)
 
 ```{r}
+# overall
+
 # (run these lines tgt)
 
-# overall
+# lm
 qqnorm(resid(mod4.lay), main = "QQ plot: lm rate.overall")
 qqline(resid(mod4.lay))
 
-# pertent
-qqnorm(resid(mod4.lay3), main = "QQ plot: lm rate.pertent")
-qqline(resid(mod4.lay3))
+# lmer
+qqnorm(resid(mod4.lay2), main = "QQ plot: lmer rate.overall")
+qqline(resid(mod4.lay2))
+  # joel says this is lovely!!!
+
 ```
 // TODO: revist the interp of this LOL
 
@@ -979,12 +994,13 @@ qqline(resid(mod4.lay3))
 but now time to look up qq plots for mixed eff models... 
 
 ```{r}
-# overall
-qqnorm(resid(mod4.lay2), main = "QQ plot: lmer rate.overall")
-qqline(resid(mod4.lay2))
-  # joel says this is lovely!!!
+# per tent mods:
 
-# pertent
+# lm
+qqnorm(resid(mod4.lay3), main = "QQ plot: lm rate.pertent")
+qqline(resid(mod4.lay3))
+
+# lmer
 qqnorm(resid(mod4.lay4), main = "QQ plot: lmer rate.pertent")
 qqline(resid(mod4.lay4))
 
@@ -1305,7 +1321,7 @@ summ_longevity %>%
 - fix mods: need to not batch by jdate lol
 - ~~longevity~~
 - response var: standardise by tent
-- add adult mass plots
+- ~~add adult mass plots~~
 
 # followups
 
