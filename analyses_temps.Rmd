@@ -4,7 +4,7 @@ date: "2023-12-07"
 ---
 
 # 0. load data & packages
-```{r}
+```{r message=FALSE}
 source("./helpers_ntw.R")
 rm(list=c(acc_helpers, NT_helpers))
 ```
@@ -255,36 +255,36 @@ let's try to not plot 80 things at once and just put 1 response var on the y lol
 ```{r plot 1 response var at a time}
 # avg pup mass due to temp
 summary_temps %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT))) +
-  geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_point(size = 2.5) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   y_err_mass(err = 0.04) + theme_bw() +
   labs(title = "2x2: avg mass at pupation", 
        y = "average pupal mass (mg)", 
        x = "mean temp (°C)", 
-       caption = "all lab; N",
+       #caption = "all lab; N",
        shape = "fluctuation temp", lty = "fluctuation temp") +
   scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
   
 # avg tt pupa due to temp
 summary_temps %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor(flucT))) +
-  geom_point(size = 2) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_point(size = 2.5) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   y_err_tt(err = 0.04) + theme_bw() +
   labs(title = "2x2: avg time to pupation", 
        y = "average time to pupation from hatching (days)", 
        x = "mean temp (°C)", 
-       caption = "all lab; N",
+       #caption = "all lab; N",
        shape = "fluctuation temp", lty = "fluctuation temp") +
   scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
 
 # avg surv due to temp
-summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), #color = as.factor(flucT)
+summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.factor(flucT), #color = as.factor(flucT)
                              )) +
-  geom_point(size = 2) + 
-  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5,
-            position = position_dodge(0.1)
+  geom_point(size = 2.5) + 
+  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.8,
+            position = position_dodge(0.2)
             #position = position_jitter(height = 0.001)
             ) +
   #geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_jitter()) +
@@ -295,15 +295,19 @@ summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), #color = as
   labs(title = "2x2: proportion survived to pupation", 
        y = "prop. survived to pupation", 
        x = "mean temp (°C)", 
-       caption = "all lab; N",
+       #caption = "all lab; N",
        # color = "fluctuation temp", 
-       lty = "fluctuation temp") +
+       lty = "fluctuation temp",
+       shape = "fluctuation temp") +
   # scale_color_manual(values = c( "#00BFC4", "#F8766D"),
   #                      labels = c("± 0°C", "± 7°C")) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
   ylim(c(0.87, 1.03))
 
 ```
+
+
 
 
 ```{r KM curve}
@@ -468,13 +472,13 @@ summary_temps2 %>%
 summary_lab260.2 %>% 
   mutate(x.label = case_when(x.label == "0°C" ~ "26±0°C",
                              x.label == "2.5°C"~ "26±2.5°C (diurnal)"),
-         diet = case_when(diet == "LD" ~ "lab diet",
-                           diet == "TB" ~ "tobacco"),
-         expt.group = case_when(expt.group == "A" ~ "Feb '23",
-                                expt.group == "B" ~ "Mar '23",
-                                expt.group == "D" ~ "Jul '23",
-                                expt.group == "F" ~ "Aug '23"),
-         expt.group = factor(expt.group, levels = c("Feb '23", "Mar '23", "Jul '23", "Aug '23")),
+         # diet = case_when(diet == "LD" ~ "lab diet",
+         #                   diet == "TB" ~ "tobacco"),
+         # expt.group = case_when(expt.group == "A" ~ "Feb '23",
+         #                        expt.group == "B" ~ "Mar '23",
+         #                        expt.group == "D" ~ "Jul '23",
+         #                        expt.group == "F" ~ "Aug '23"),
+         # expt.group = factor(expt.group, levels = c("Feb '23", "Mar '23", "Jul '23", "Aug '23")),
          ) %>%
   ggplot(aes(y = pct.survpup, fill = diet, x = expt.group)) +
   geom_col() + theme_bw() +
@@ -493,6 +497,77 @@ summary_lab260.2 %>%
   facet_grid(~x.label, scales = "free_x", space = "free")
 
 ```
+
+## // lunch bunch figs
+
+*pupal responses*: pupal responses on y, mean temp on x, flucts as lty (smushed into 1)
+
+```{r}
+summary_temps_plot <- summary_temps %>%
+  mutate(meanT = case_when(meanT == 26 ~ "26°C",
+                           meanT == 33 ~ "33°C"))
+# avg surv due to temp
+p1 <- 
+  summary_temps_plot %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2.5) + 
+  # geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.8,
+  #           position = position_dodge(0.2)
+  #           ) +
+  geom_line(aes(lty = as.factor(flucT), group = flucT)) +
+  theme_bw() + 
+  labs(#title = "survival to pupation", 
+       y = "proportion survived to pupation", 
+       x = "mean temperature (°C)", 
+       lty = "fluctuation temperature",
+       shape = "fluctuation temperature") +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C"))
+  #theme(axis.title.x = element_blank())
+  #ylim(c(0.87, 1.03))
+  
+# avg tt pupa due to temp
+p2 <- 
+  summary_temps_plot %>% ggplot(aes(y = avg.tt, x = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2.5) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = as.factor(flucT), group = flucT)) +
+  y_err_tt(err = 0.04) + theme_bw() +
+  labs(#title = "time to pupation", 
+       y = "average days to pupation (from hatching)", 
+       x = "mean temperature (°C)", 
+       shape = "fluctuation temperature", lty = "fluctuation temperature") +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+
+# avg pup mass due to temp
+p3 <- 
+  summary_temps_plot %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT))) +
+  geom_point(size = 2.5) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = as.factor(flucT), group = flucT)) +
+  y_err_mass(err = 0.04) + theme_bw() +
+  labs(#title = "mass at pupation", 
+       y = "average pupal mass (mg)", 
+       x = "mean temperature (°C)", 
+       shape = "fluctuation temperature", lty = "fluctuation temperature") +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+
+# works but annoying to get the shared axis
+# ggarrange(p1, p2, p3, ncol = 3, nrow = 1,
+#            common.legend = TRUE)
+
+# weird issues with legend duplication bc of how grob units are defined.
+  # see https://github.com/thomasp85/patchwork/issues/170 for workarounds
+p1 + p2 + p3 +
+  #guides(lty = "none", shape = "none") +
+  plot_layout(guides = "collect",
+              axes = "collect") &
+  theme(legend.position = "top")
+  # okay wtf it was all fixed with the '&'
+    # https://stackoverflow.com/questions/61077254/combine-and-merge-legends-in-ggplot2-with-patchwork
+
+
+```
+
 
 # 3. modeling
 

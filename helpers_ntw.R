@@ -16,7 +16,10 @@
 #library(conflicted)
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
-library(gridExtra)
+
+library(gridExtra) # for grid.arrange
+library(ggpubr) # for ggarrange
+library(patchwork) # for plot_layout
 
 # survival stats/viz
 library(survival)
