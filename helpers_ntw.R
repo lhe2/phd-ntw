@@ -11,7 +11,6 @@
 
 
 # 0. package and data loading ------------------------------------------------
-
 # basic data processing & viz
 #library(conflicted)
 library(tidyverse)
@@ -180,8 +179,10 @@ y_err_mass <- function(err = 0.9) {
   list(geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = err))
 }
 
-y_err_tt <- function(err = 0.9){
-  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = err))
+y_err_tt <- function(err = 0.9, pos = 0){
+  list(geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), 
+                     width = err, 
+                     position = pos))
 }
 
 x_err_tt <- function(err = 0.9){

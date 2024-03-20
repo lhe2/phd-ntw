@@ -205,7 +205,7 @@ temps_all <- wide_all %>% filter.temps2()
 
 # 2. visualise growth, dev, surv
 
-## a. calc stats
+## (**) a. calc stats
 ```{r calculate stats}
 # filter out pupal stuff & the correct bugs lol
 temps_all <- wide_all %>%
@@ -532,7 +532,7 @@ p2 <-
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   y_err_tt(err = 0.04) + theme_bw() +
   labs(#title = "time to pupation", 
-       y = "average days to pupation (from hatching)", 
+       y = "time to pupation (days)", 
        x = "mean temperature (°C)", 
        shape = "fluctuation temperature", lty = "fluctuation temperature") +
   scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
@@ -545,7 +545,7 @@ p3 <-
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   y_err_mass(err = 0.04) + theme_bw() +
   labs(#title = "mass at pupation", 
-       y = "average pupal mass (mg)", 
+       y = "mass at pupation (mg)", 
        x = "mean temperature (°C)", 
        shape = "fluctuation temperature", lty = "fluctuation temperature") +
   scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
@@ -560,7 +560,8 @@ p3 <-
 p1 + p2 + p3 +
   #guides(lty = "none", shape = "none") +
   plot_layout(guides = "collect",
-              axes = "collect") &
+              axes = "collect",
+              widths = c(1:1)) &
   theme(legend.position = "top")
   # okay wtf it was all fixed with the '&'
     # https://stackoverflow.com/questions/61077254/combine-and-merge-legends-in-ggplot2-with-patchwork

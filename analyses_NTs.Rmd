@@ -4,7 +4,7 @@ date: "2024-01-08"
 ---
 
 # 0. load data, packages, helper functions
-```{r}
+```{r message = FALSE}
 source("./helpers_ntw.R")
 rm(list=c(acc_helpers, temps_helpers))
 ```
@@ -832,6 +832,83 @@ summary_NTs2 %>%
 
 # wow these sample sizes/survival rates fuckn suck LOL
 ```
+
+### // lunch bunch
+
+```{r}
+# nts: everyones on tobacco diet
+
+# big changes
+summary_NTs2_plot <- summary_NTs2 %>%
+  filter(if.fluct == "Y")
+
+# survival
+p1 <- 
+  summary_NTs2_plot %>% 
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = pop, #color = pop
+             )) +
+  geom_point(size=2.5) + 
+  geom_line(aes(lty = pop, group = pop)) +
+  theme_bw() +
+  #scale_shape_manual(values=c(21, 16)) +
+  geom_text(aes(label = n.all), 
+            vjust = -1.5, 
+            #hjust = -1, 
+            show.legend = FALSE) +
+  labs(#title = "NTs: survival to pupation (incls LPI)", 
+       y = "proportion survived to pupation", 
+       x = "minimum temperature (°C)", 
+       #caption = "n = starting bugs"
+       ) +
+  guides(lty = "none") +
+  ylim(c(0, 0.8))
+
+# avg tt pup
+pd <- position_dodge(0.3)
+
+p2 <-
+  summary_NTs2_plot %>% 
+  ggplot(aes(y = avg.tt, x = as.factor(minT), shape = pop,
+             )) +
+  geom_point(size = 2.5, position = pd) +  y_err_tt(err = 0.25, pos = pd) +
+  #scale_shape_manual(values=c(21, 16)) +
+  #facet_wrap(~pop) + 
+  theme_bw() +
+  geom_text(aes(label = n.surv), 
+            vjust = -0.2, 
+            hjust = -1, 
+            position = position_dodge(0.1), show.legend = FALSE) +
+  labs(#title = "NTs: avg time to pupation from hatching", 
+       y = "time to pupation (days)", 
+       x = "minimum temperature (°C)")
+
+# avg mass
+p3 <- 
+  summary_NTs2_plot %>% 
+  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = pop, #color = pop
+             )) +
+  geom_point(size = 2.5) +  y_err_mass(err = 0.25) +
+  #scale_shape_manual(values=c(21, 16)) +
+  #facet_wrap(~pop) + 
+  theme_bw() +
+  geom_text(aes(label = n.surv), 
+            #vjust = -0.8, 
+            hjust = -0.9, 
+            show.legend = FALSE) +
+  labs(#title = "NTs: avg pupal mass", 
+       y = "mass at pupation (mg)", 
+       x = "minimum temperature (°C)")
+
+
+# merged plot
+p1 + p2 + p3 +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(1:1)) &
+  theme(legend.position = "top") &
+  labs(shape = "population") 
+```
+
 
 wow these sample sizes suck. anyway moving on
 
