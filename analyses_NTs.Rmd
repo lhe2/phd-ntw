@@ -845,7 +845,7 @@ summary_NTs2_plot <- summary_NTs2 %>%
 # survival
 p1 <- 
   summary_NTs2_plot %>% 
-  ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = pop, #color = pop
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = pop,
              )) +
   geom_point(size=2.5) + 
   geom_line(aes(lty = pop, group = pop)) +
@@ -885,7 +885,7 @@ p2 <-
 # avg mass
 p3 <- 
   summary_NTs2_plot %>% 
-  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = pop, #color = pop
+  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = pop,
              )) +
   geom_point(size = 2.5) +  y_err_mass(err = 0.25) +
   #scale_shape_manual(values=c(21, 16)) +
@@ -906,7 +906,8 @@ p1 + p2 + p3 +
               axes = "collect",
               widths = c(1:1)) &
   theme(legend.position = "top") &
-  labs(shape = "population") 
+  labs(shape = "population") &
+  scale_shape_manual(values = c(1, 16))
 ```
 
 

@@ -34,7 +34,7 @@ library(ggfortify) # qqplots
 ```
 # 1. analyses hodgepodge
 
-## A. overall hatch rates
+## A. (**) overall hatch rates
 
 ```{r calc stats & add other filter criteria}
 summ_hatch <- data_tstats %>%
@@ -54,6 +54,8 @@ summ_hatch <- data_tstats %>%
             t.duration = max(jdate) - min(jdate),
             rate.hatch = n.hatched/n.collected,
             se.hatch = sqrt(rate.hatch*(1-rate.hatch)/n.collected),  # check ???
+            rate.hatchperf = rate.hatch/n.females,
+            se.hatch = sqrt(rate.hatchperf*(1-rate.hatchperf/n.collected)),
             rate.f = round(n.collected/n.females, digits = 1)
             ) %>%
   drop_na(trt.m) %>% # drop tents w/o males
@@ -280,7 +282,7 @@ anova(mod.hatch3) # nothin matters!!!
 
 ## B. daily laying rate
 
-### - calcs
+### - (**) calcs
 ```{r calculate}
 # calculate # of currently ovipositing females
 summ_rate <- data_tstats %>%
@@ -1009,6 +1011,125 @@ qqline(resid(mod4.lay4))
 ```
 
 // TODO: interp
+
+## // lunch bunch: hatching
+
+```{r}
+# take out field individs for these figs
+data_tstatsL <- data_tstats %>%
+  filter(pop == "lab")
+```
+
+
+```{r}
+# do math
+summ_hatch_plot <- data_tstatsL %>%
+  group_by(trt.f, trt.m,
+           ) %>%
+  summarise(n.tents = n_distinct(id.tent), # check
+            n.collected = sum(n.coll, na.rm = TRUE),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            n.females = sum(n.new.f, na.rm = TRUE),
+            rate.hatch = n.hatched/n.collected,
+            se.hatch = sqrt(rate.hatch*(1-rate.hatch)/n.collected),  # check if im calcing right???
+            rate.collf = n.collected/n.females,
+            se.collf = sqrt(rate.collf*(1-rate.collf/n.collected)),
+            ) %>%
+  drop_na(trt.m) %>% # drop tents w/o males
+  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == trt.m & trt.f == 419 ~ "40-19",
+                             trt.f == trt.m & trt.f == 426 ~ "40-26",
+                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.f == 260 & trt.m == 260 ~ "26-26", 
+                              trt.f == 419 | trt.m == 419 ~ "40-19",
+                              trt.f == 426 | trt.m == 426 ~ "40-26",
+                              trt.f == 433 | trt.m == 433 ~ "40-33"),
+         trt.sex = case_when(trt.f == trt.m ~ "F + M",
+                             trt.f > 400 & trt.m < 400 ~ "F only",
+                             trt.f < 400 & trt.m > 400 ~ "M only"),
+         trt.type = case_when(trt.f == 260 & trt.m == 260 ~ "control",
+                              trt.f > 400 | trt.m > 400 ~ "experimental"),
+         trt.temp = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                              trt.f == trt.m & trt.f > 400 ~ as.character(trt.win),
+                              TRUE ~ as.character(trt.btwn)),
+         is.ctrl = case_when(trt.temp == "26-26" ~ "yes",
+                             TRUE ~ "no"))
+
+summ_ctrl <- summ_hatch_plot %>%
+  filter(is.ctrl == "yes")
+```
+
+```{r}
+# plotting btwn trts
+p1 <- 
+summ_hatch_plot %>%
+  filter(#is.ctrl == "no" & 
+           trt.btwn == "26-26" |
+           is.na(trt.win)) %>%
+  ggplot(aes(y = rate.hatch, x = rate.collf,
+             shape = trt.sex, #fill = trt.type, 
+             color = trt.temp)) +
+  geom_point(size = 2.5) +
+  geom_text(aes(label = n.females), vjust = -1.2, hjust = -0.8, show.legend = FALSE) +
+  #geom_point(data = summ_ctrl, shape = 1, size = 2.5) +
+  y_err_hrate(err = 7.5) +
+  x_err_ncollf(err = 0.005) +
+  scale_color_manual(values = RYB) +
+  scale_shape_manual(values = c(19, 17, 15)) +
+  labs(y = "within treatment hatch proportion", x = "eggs collected per female") +
+  theme_bw()
+```
+
+```{r}
+# plotting win trts
+p2 <- 
+summ_hatch_plot %>%
+  filter(#is.ctrl == "no" & 
+    !is.na(trt.win)) %>%
+  ggplot(aes(y = rate.hatch, x = rate.collf,
+             shape = trt.sex, #fill = trt.type, 
+             color = trt.temp)) +
+  geom_point(size = 2.5) +
+  geom_text(aes(label = n.females), vjust = -1, hjust = -1, show.legend = FALSE) +
+  y_err_hrate(err = 3) +
+  x_err_ncollf(err = 0.005) +
+  #geom_point(data = summ_ctrl, shape = 1, size = 2.5) +
+  scale_color_manual(values = RYB) +
+  #scale_shape_manual(values = 19) +
+  guides(shape = "none") +
+  labs(y = "between treatment hatch proportion", x = "eggs collected per female") +
+  theme_bw()
+```
+
+```{r}
+# plotting 0 < hatch rate
+summ_hatch_plot %>%
+  filter(rate.hatch > 0) %>%
+  ggplot(aes(y = rate.hatch, x = rate.collf,
+             shape = trt.sex, 
+             color = trt.temp)) +
+  geom_point(size = 2.5) +
+  geom_text(aes(label = n.females), vjust = -1, hjust = -1, show.legend = FALSE) +
+  y_err_hrate(err = 3) +
+  x_err_ncollf(err = 0.005) +
+  scale_color_manual(values = c("#324DA0", "#acd2bb", "#a51122")) +
+  labs(y = "hatch proportion", x = "eggs collected per female") +
+  ylim(c(0, 0.18)) +
+  theme_bw()
+```
+
+```{r}
+# combine plots
+p1 + p2 +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              ncol = 2, nrow = 1,
+              widths = c(2:2)) &
+  theme(legend.position = "top", legend.box = "vertical", legend.margin = margin(0.1)) &
+  labs(shape = "treated sex", color = "temperature treatment")
+```
+
+
 
 
 # B2: 240304 redo plotting, per tent

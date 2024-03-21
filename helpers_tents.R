@@ -41,6 +41,10 @@ x_err_ncoll <- function(err = 0.9){
   list(geom_errorbarh(aes(xmin = n.collected - se.coll, xmax = n.collected + se.coll), height = err))
 }
 
+x_err_ncollf <- function(err = 0.9){
+  list(geom_errorbarh(aes(xmin = rate.collf - se.collf, xmax = rate.collf + se.collf), height = err))
+}
+
 # 1. generate adult longevity stats ---------------------------------------
 
 # bc i spread this info out everywhere -.-
