@@ -831,7 +831,10 @@ wide_all %>%
 
 ```{r stats}
 data_LB <- wide_all %>%
-  mutate(labeled.group = case_when(expt.group == "A" ~ "Feb '23",
+  mutate(labeled.treatment = case_when(treatment == 260 ~ "26±0",
+                               treatment == 337 ~ "33±7",
+                               TRUE ~ as.character(treatment)),
+         labeled.group = case_when(expt.group == "A" ~ "Feb '23",
                                  expt.group == "B" ~ "Mar '23",
                                  expt.group == "D" ~ "Jul '23",
                                  expt.group == "F" ~ "Aug '23"),
@@ -844,26 +847,6 @@ data_LB <- wide_all %>%
                                      is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "Y" & sup == 6 ~ "6",
                                      is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "Y" & sup == 7 ~ "7"),
          labeled.supfate = factor(labeled.supfate, levels = c("pmd", "7", "6", "normal")))
-
-summ_ctrlsLB <- data_LB %>%
-  filter(final.fate != "culled" | final.fate != "accidental") %>%
-  filter(expt.group !="C") %>% # N is too small bc most of them culled
-  filter(treatment == 260 | treatment == 337) %>%
-  filter(instar.enter == "hatch" & pop == "lab") %>%
-  group_by(labeled.group, treatment, meanT, flucT, labeled.diet) %>%
-  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-            avg.mass = mean(na.omit(mass.pupa)),
-            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
-            n_all = n(),
-            n_pmd = sum(final.fate == "pmd", na.rm = TRUE), 
-            pct.survpup = round(100-(n_pmd/n_all*100), digits=1),
-            n_sup = sum(if.sup == "Y", na.rm = TRUE),
-            pct.sup = round(n_sup/n_all*100, digits = 1), # just geom_bar this
-            pct.6th = round(sum(sup == 6)/n_all*100, digits = 1),
-            n_normal = n_all-n_pmd-n_sup,
-            pct.normal = round(n_normal/n_all*100, digits = 1))
-
 ```
 
 ### sup
@@ -896,11 +879,107 @@ data_LB %>%
 
 
 ### big 3
-```{r}
+```{r stats}
+# lots of changes made specifically for labeling the 2nd grp of figs lol
+
+summ_ctrlsLB <- data_LB %>%
+  filter(final.fate != "culled" | final.fate != "accidental") %>%
+  filter(expt.group !="C") %>% # N is too small bc most of them culled
+  filter(treatment == 260 #| treatment == 337
+         ) %>%
+  filter(instar.enter == "hatch" & pop == "lab") %>%
+  mutate(labeled.group = case_when(expt.group == "A" ~ "Feb",
+                                 expt.group == "B" ~ "Mar",
+                                 expt.group == "D" ~ "Jul",
+                                 expt.group == "F" ~ "Aug"),
+         labeled.group = factor(labeled.group, levels = c("Feb", "Mar", "Jul", "Aug")),
+         flucT = case_when(flucT == 0 ~ "±0°C",
+                           flucT == 2.5 ~ "±2.5°C",
+                           TRUE ~ as.character(flucT))) %>%
+  group_by(labeled.group, labeled.treatment, meanT, flucT, labeled.diet) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd", na.rm = TRUE), 
+            prop.survpup = 1 - n_pmd/n_all,
+            #pct.survpup = round(100-(n_pmd/n_all*100), digits=1),
+            n_sup = sum(if.sup == "Y", na.rm = TRUE),
+            pct.sup = round(n_sup/n_all*100, digits = 1), # just geom_bar this
+            pct.6th = round(sum(sup == 6)/n_all*100, digits = 1),
+            n_normal = n_all-n_pmd-n_sup,
+            pct.normal = round(n_normal/n_all*100, digits = 1))
 
 ```
 
+```{r facet by time}
+# surv
+summ_ctrlsLB %>%
+  ggplot(aes(y = prop.survpup, x = labeled.treatment, color = labeled.diet)) +
+  geom_point() +
+  facet_wrap(~labeled.group, nrow = 1) +
+  theme_bw()
 
+# mass
+summ_ctrlsLB %>%
+  ggplot(aes(y = avg.mass, x = labeled.treatment, color = labeled.diet)) +
+  y_err_mass() +
+  geom_point() +
+  facet_wrap(~labeled.group, nrow = 1) +
+  theme_bw()
+
+
+# time
+summ_ctrlsLB %>%
+  ggplot(aes(y = avg.tt, x = labeled.treatment, color = labeled.diet)) +
+  y_err_tt() +
+  geom_point() +
+  facet_wrap(~labeled.group, nrow = 1) +
+  theme_bw()
+```
+
+
+```{r facet by temp+diet}
+# surv
+p1 <- 
+summ_ctrlsLB %>%
+  ggplot(aes(y = prop.survpup, x = labeled.group, shape = labeled.diet)) +
+  geom_point(size = 2.5, show.legend = FALSE) +
+  facet_wrap(~flucT, scales = "free_x") +
+  labs(y = "proportion surviving to pupation",
+       x = "cohort")
+
+# mass
+p2 <- 
+summ_ctrlsLB %>%
+  ggplot(aes(y = avg.mass, x = labeled.group, shape = labeled.diet)) +
+  y_err_mass(err = 0.5) +
+  geom_point(size = 2.5) +
+  facet_wrap(~flucT, scales = "free_x") +
+  labs(y = "mass at pupation (mg)",
+       x = "cohort")
+
+
+# time
+p3 <- 
+summ_ctrlsLB %>%
+  ggplot(aes(y = avg.tt, x = labeled.group, shape = labeled.diet)) +
+  y_err_tt(err = 0.5) +
+  geom_point(size = 2.5) +
+  facet_wrap(~flucT, scales = "free_x") +
+  labs(y = "time to pupation (days)",
+       x = "cohort")
+
+# merge
+p1 + p2 + p3 +
+  plot_layout(nrow = 1, guides = "collect", axes = "collect",
+              widths = c(1:1)) &
+  theme_bw() &
+  labs(shape = "diet type") &
+  scale_shape_manual(values = c(19, 1)) &
+  theme(legend.position = "top")
+```
 
 
 
