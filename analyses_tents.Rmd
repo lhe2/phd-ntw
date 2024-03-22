@@ -1434,6 +1434,35 @@ summ_longevity %>%
 
 // TODO: currently not planning on running stats! (maybe just a quick anova lol?)
 
+## // lunch bunch
+```{r}
+pd = position_dodge(0.5)
+
+summ_longevity %>%
+  mutate(labels.alltrts2 = case_when(trt == 260 ~ "control",
+                         trt == 419 ~ "19°C",
+                         trt == 426 ~ "26°C",
+                        trt == 433 ~ "33°C"),
+         labels.alltrts2 = factor(labels.alltrts2, levels = c("control", "19°C", "26°C", "33°C"))) %>%
+  #filter(labels.alltrts2 != "control") %>%
+  ggplot(aes(y = avg.surv, x = labels.alltrts2, #color = as.factor(trt), 
+             shape = sex)) +
+  geom_point(size = 2, position = pd) +
+  geom_errorbar(aes(ymax = avg.surv + se.surv, ymin = avg.surv - se.surv,
+                    width = 0.5),
+                position = pd) +
+  facet_wrap(~pop) +
+  geom_text(aes(label = n), hjust = 2, show.legend = FALSE,
+            position = pd) +
+  theme_bw() +
+  scale_shape_manual(values = c(19, 1)) +
+  labs(#title = "avg adult longevity",
+       y = "adult survival post eclosion (days)",
+       x = "minimum temperature") +
+  guides(color = "none") +
+  theme(legend.position = "top")
+
+```
 
 
 # to do
@@ -1441,7 +1470,7 @@ summ_longevity %>%
 - ~~better overlaid overall/per tent rate plots (fix # ovi females)~~
 - fix mods: need to not batch by jdate lol
 - ~~longevity~~
-- response var: standardise by tent
+- ~~response var: standardise by tent~~
 - ~~add adult mass plots~~
 
 # followups

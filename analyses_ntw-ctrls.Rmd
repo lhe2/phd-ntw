@@ -10,7 +10,7 @@ also doing some other overall analyses, e.g:
 - adult masses
 
 # 0. load data, helper fns
-```{r}
+```{r message = FALSE}
 source("./helpers_ntw.R")
 ```
 
@@ -825,6 +825,79 @@ wide_all %>%
   scale_color_manual(values = c("#00BFC4", "#F8766D")) +
   labs(title = "F1s: avg adult mass",
        color = "temperature treatment")
+```
+
+# // lunch bunch
+
+```{r stats}
+data_LB <- wide_all %>%
+  mutate(labeled.group = case_when(expt.group == "A" ~ "Feb '23",
+                                 expt.group == "B" ~ "Mar '23",
+                                 expt.group == "D" ~ "Jul '23",
+                                 expt.group == "F" ~ "Aug '23"),
+         labeled.group = factor(labeled.group, levels = c("Feb '23", "Mar '23", "Jul '23", "Aug '23")),
+         labeled.diet = case_when(diet == "LD" ~ "lab",
+                                  diet == "TB" ~ "tobacco"),
+         labeled.supfate = case_when(!is.na(jdate.pmd) ~ "pmd",
+                                     !is.na(jdate.pmd) & if.pupa == "N" ~ "pmd",
+                                     is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "N" & sup == 0 ~ "normal",
+                                     is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "Y" & sup == 6 ~ "6",
+                                     is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "Y" & sup == 7 ~ "7"),
+         labeled.supfate = factor(labeled.supfate, levels = c("pmd", "7", "6", "normal")))
+
+summ_ctrlsLB <- data_LB %>%
+  filter(final.fate != "culled" | final.fate != "accidental") %>%
+  filter(expt.group !="C") %>% # N is too small bc most of them culled
+  filter(treatment == 260 | treatment == 337) %>%
+  filter(instar.enter == "hatch" & pop == "lab") %>%
+  group_by(labeled.group, treatment, meanT, flucT, labeled.diet) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd", na.rm = TRUE), 
+            pct.survpup = round(100-(n_pmd/n_all*100), digits=1),
+            n_sup = sum(if.sup == "Y", na.rm = TRUE),
+            pct.sup = round(n_sup/n_all*100, digits = 1), # just geom_bar this
+            pct.6th = round(sum(sup == 6)/n_all*100, digits = 1),
+            n_normal = n_all-n_pmd-n_sup,
+            pct.normal = round(n_normal/n_all*100, digits = 1))
+
+```
+
+### sup
+```{r}
+data_LB %>%
+  filter(!(final.fate == "culled" | final.fate == "accidental")) %>%
+  filter(expt.group !="C") %>%
+  filter(treatment == 260 | treatment == 337) %>%
+  filter(instar.enter == "hatch" & pop == "lab") %>%
+  mutate(treatment = case_when(treatment == 260 ~ "26±0",
+                               treatment == 337 ~ "33±7",
+                               TRUE ~ as.character(treatment))) %>%
+  # group_by(labeled.group, treatment) %>%
+  # summarise(n_all = n(),
+  #           n_pmd = count(labeled.supfate == "pmd"),
+  #           n_6 = count(labeled.supfate == "6"),
+  #           n_norm = count(labeled.supfate == "normal"),
+  #           pct.pmd = n_pmd/n_all,
+  #           pct.6 = n_6/n_all,
+  #           pct.norm = n_norm/n_all) %>%
+  ggplot(aes(fill = labeled.supfate, x = treatment)) +
+  geom_bar(stat = "count", position = "fill") +
+  facet_wrap(~labeled.group, nrow = 1) +
+  labs(y = "proportion",
+       x = "temperature treatment (°C)",
+       fill = "development outcome") +
+  scale_fill_brewer(palette = "Spectral", labels = c("failed to pupate", "pupated, supernumerary instars", "pupated, normal instars")) +
+  theme_bw()
+```
+
+
+### big 3
+```{r}
+
 ```
 
 
