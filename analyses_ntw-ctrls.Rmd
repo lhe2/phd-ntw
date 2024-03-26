@@ -941,6 +941,8 @@ summ_ctrlsLB %>%
 
 
 ```{r facet by temp+diet}
+# for 260s only bc these were the expt wide ctrls (337 were just to have a condition to compare to w/in each trt...)
+
 # surv
 p1 <- 
 summ_ctrlsLB %>%
@@ -948,7 +950,8 @@ summ_ctrlsLB %>%
   geom_point(size = 2.5, show.legend = FALSE) +
   facet_wrap(~flucT, scales = "free_x") +
   labs(y = "proportion surviving to pupation",
-       x = "cohort")
+       x = "cohort") +
+  ylim(c(0, 1))
 
 # mass
 p2 <- 
@@ -958,7 +961,8 @@ summ_ctrlsLB %>%
   geom_point(size = 2.5) +
   facet_wrap(~flucT, scales = "free_x") +
   labs(y = "mass at pupation (mg)",
-       x = "cohort")
+       x = "cohort") +
+  ylim(c(0, 7000))
 
 
 # time
@@ -969,7 +973,8 @@ summ_ctrlsLB %>%
   geom_point(size = 2.5) +
   facet_wrap(~flucT, scales = "free_x") +
   labs(y = "time to pupation (days)",
-       x = "cohort")
+       x = "cohort") +
+  ylim(c(0, 32))
 
 # merge
 p1 + p2 + p3 +

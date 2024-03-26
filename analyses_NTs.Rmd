@@ -880,7 +880,8 @@ p2 <-
             position = position_dodge(0.1), show.legend = FALSE) +
   labs(#title = "NTs: avg time to pupation from hatching", 
        y = "time to pupation (days)", 
-       x = "minimum temperature (°C)")
+       x = "minimum temperature (°C)") +
+  ylim(c(0, 40))
 
 # avg mass
 p3 <- 
@@ -897,7 +898,8 @@ p3 <-
             show.legend = FALSE) +
   labs(#title = "NTs: avg pupal mass", 
        y = "mass at pupation (mg)", 
-       x = "minimum temperature (°C)")
+       x = "minimum temperature (°C)") +
+  ylim(c(0, 4750))
 
 
 # merged plot
