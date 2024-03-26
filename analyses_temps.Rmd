@@ -309,6 +309,7 @@ summary_temps %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.
 
 
 
+## (**) calc surv
 
 ```{r KM curve}
 # KM curve
@@ -580,7 +581,7 @@ graphs suggest there is no mean/fluct int: let's confirm
 
 ```{r}
 mod.mass <- lm(mass.pupa ~ meanT*flucT, data = temps_all)
-anova(mod.mass)
+#anova(mod.mass)
 anova(mod.mass, test = "Chisq")
 summary(mod.mass)
   # meanT + flucT are sig on their own (***) and (**) but not the interaction
@@ -588,7 +589,7 @@ summary(mod.mass)
 
 # add sex as an additional check. sex shoooould be signif
 mod.mass2 <- lm(mass.pupa ~ meanT*flucT*sex, data = temps_all[temps_all$sex %in% c("m", "f"),])
-anova(mod.mass2) # (it is)
+#anova(mod.mass2) # (it is)
 anova(mod.mass2, test = "Chisq")
 summary(mod.mass2)
 
@@ -605,6 +606,24 @@ anova(mod.mass5)
 summary(mod.mass5)
   # not really
 ```
+
+```{r lets try this again for lunch bunch}
+# let's compare the additive to the interactive model
+mod.mass6 <- lm(mass.pupa ~ meanT + flucT + sex, data = temps_all[temps_all$sex %in% c("m", "f"),])
+
+anova(mod.mass6, mod.mass2)
+anova(mod.mass6, mod.mass2, test = "Chisq")
+# these two mods aren't significantly different, so can use the add model. but let's check one more variant
+
+mod.mass7 <- lm(mass.pupa ~ meanT*flucT + sex, data = temps_all[temps_all$sex %in% c("m", "f"),])
+anova(mod.mass6, mod.mass7, test = "Chisq")
+# based on this, let's just focus on the additive model then
+
+anova(mod.mass6, test = "Chisq")
+summary(mod.mass6)
+
+```
+
 240308: use mod.2
 
 
@@ -614,15 +633,22 @@ confirm there there is a signif interaction btwn mean/fluct
 
 ```{r}
 mod.tt <- lm(tt.pupa ~ meanT*flucT, data = temps_all)
-anova(mod.tt) # fuller model is better
+#anova(mod.tt) # fuller model is better
 summary(mod.tt) # all the things matter
+anova(mod.tt, test = "Chisq")
 
 # let's add sex? (there shouldnt be anything)
 mod.tt2 <- lm(tt.pupa ~ meanT*flucT*sex, data = temps_all)
 summary(mod.tt2) # a little but not rly an effect of sex so w/e
-anova(mod.tt2)
+#anova(mod.tt2)
+anova(mod.tt2, test ="Chisq")
+
+AIC(mod.tt) # 290.5031 
+AIC(mod.tt2) # 293.0995
 
 ```
+not including `sex` in the pupation time model is better, so we'll focus on the anova results for the meanT/flucT only model.
+
 
 
 ## c. survival
