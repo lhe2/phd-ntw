@@ -1138,6 +1138,35 @@ NTs_exptal <- NTs_all2 %>%
 
 skipping mass for now bc that doesn't seem to be too affected generally by treatment (or at least, no big surprises)
 
+230327: lol well we have to revisit this now so!
+
+```{r}
+# trying mass = f(NT)
+mod.mass_minT <- lm(mass.pupa ~ as.factor(minT)*pop*sex, data = NTs_exptal)
+mod.mass_minT2 <- lm(mass.pupa ~ as.factor(minT) + pop + sex, data = NTs_exptal)
+anova(mod.mass_minT, mod.mass_minT2, test = "Chisq") # add is better
+
+# do we need sex?
+mod.mass_minT3 <- lm(mass.pupa ~ as.factor(minT) + pop, data = NTs_exptal)
+anova(mod.mass_minT3, mod.mass_minT2, test = "Chisq") # yes, we do
+
+anova(mod.mass_minT2, test = "Chisq")
+
+
+# trying mass = f(min/fluct)
+mod.mass_mf<- lm(mass.pupa ~ as.factor(meanT)*as.factor(flucT)*pop+sex, data = NTs_exptal)
+mod.mass_mf2<- lm(mass.pupa ~ as.factor(meanT)+as.factor(flucT)+pop+sex, data = NTs_exptal, na.action = na.omit)
+anova(mod.mass_mf, mod.mass_mf2, test = "Chisq") # use add
+
+anova(mod.mass_mf2, test = "Chisq") # everything impt but the fluct is breaking again
+summary(mod.mass_mf2)
+
+# compare f(NT) and f(min/fluct)
+anova(mod.mass_mf2, mod.mass_minT2, test = "Chisq") # they r the same lol
+
+```
+
+
 ## - ttpup
 
 let's assume that generally, pop matters. which of our main temperature variables are important to/significant in predicting ttpup? (for now, mostly focusing on minT)
@@ -1153,6 +1182,7 @@ mod.tt_minfact <- lm(tt.pupa ~ as.factor(minT)*pop, data = NTs_exptal)
 anova(mod.tt_minnum) # F test: signif (***) var btwn min T's. but not btwn pops/pop:minT?
 #anova(mod.tt_minnum, test = "Chisq") # same as above lol
 #summary(mod.tt_minnum)
+anova(mod.tt_minnum, mod.tt_minfact, test = "Chisq") # factor is better (also based on AIC)
 summary(mod.tt_minfact) # 40-33 has the biggest effect. pop doesnt matter nor does the interaction. the R squared sucks
 anova(mod.tt_minfact) # also (***) here. even more so than as numeric
 ```
@@ -1170,10 +1200,15 @@ anova(mod.tt_minfact) # also (***) here. even more so than as numeric
 mod.surv_minnum <- glm(status ~ minT*pop, data = NTs_exptal, family = "binomial")
 
 # glm with minT as factor
-mod.surv_minfact <- glm(status ~ as.factor(minT)*pop, data = NTs_exptal, family = "binomial")
+mod.surv_minfact <- glm(status ~ as.factor(minT)*pop, data = NTs_exptal, family = "binomial") # int mod, AIC: 242.231
+mod.surv_minfact2 <- glm(status ~ as.factor(minT) + pop, data = NTs_exptal, family = "binomial") # add mod, AIC: 257.861
+anova(mod.surv_minfact2, mod.surv_minfact, test = "Chisq") # int mod is better
 
-# poly
-mod.surv_minpoly <- glm(status ~ poly(NTs_exptal$minT, degree = 2), data = NTs_exptal, family = "binomial")
+# poly with minT as numeric
+mod.surv_minpoly <- glm(status ~ poly(NTs_exptal$minT, degree = 2), data = NTs_exptal, family = "binomial") # AIC: 266.8894
+
+# poly with minT as factor
+mod.surv_minpoly2 <- glm(status ~ poly(as.factor(minT), degree = 2), data = NTs_exptal, family = "binomial") # AIC: 266.8894
 
 # effect sizes
 summary(mod.surv_minfact)
@@ -1182,6 +1217,9 @@ summary(mod.surv_minfact)
 anova(mod.surv_minnum, test = "Chisq") # pop ***, int .
 anova(mod.surv_minfact, test = "Chisq") # everything is at least **
 anova(mod.surv_minpoly, test = "Chisq") # idk how to interp but the overall poly is **
+AIC(mod.surv_minnum) # 272.1025
+AIC(mod.surv_minfact) # 242.231 so this is a better model
+AIC(mod.surv_minpoly) # 266.8894
 ```
 
 - `factor(minT)` mod:
@@ -1189,6 +1227,66 @@ anova(mod.surv_minpoly, test = "Chisq") # idk how to interp but the overall poly
   - being at 40-33 and from the lab matters i guess..
   - all the variables matter! isn't that surprising, considering the graphs.
   
+  
+## // lunch bunch stats
+
+```{r surv polys}
+# compare polys with NT only: use NT as factor or numeric?
+anova(mod.surv_minpoly, mod.surv_minpoly2, test = "Chisq")
+# results are the same. let's use the factor one and add in population
+
+mod.surv_minpoly2a <- glm(status ~ poly(as.factor(minT), degree = 2)*pop, data = NTs_exptal, family = "binomial") # AIC: 242.231
+mod.surv_minpoly2b <- glm(status ~ poly(as.factor(minT), degree = 2) + pop, data = NTs_exptal, family = "binomial")
+anova(mod.surv_minpoly2a, mod.surv_minpoly2b, test = "Chisq") # interaction is better
+
+# now lets compare the regular glm vs the poly
+anova(mod.surv_minfact, mod.surv_minpoly2a) # no difference. they also have = AIC. let's go with the minfact mod since idu polys
+```
+
+```{r surv NT vs mean+fluct}
+# now lets look at if mean/fluct temp is a better model or not
+mod.surv_mf <- glm(status ~ as.factor(meanT)*as.factor(flucT)*pop, data = NTs_exptal, family="binomial")
+mod.surv_mf2 <- glm(status ~ as.factor(meanT) + as.factor(flucT) + pop, data = NTs_exptal, family="binomial")
+anova(mod.surv_mf, mod.surv_mf2, test = "Chisq") # the int mod is better
+
+# compare surv_nt with the NT mod
+anova(mod.surv_mf, mod.surv_minfact, test = "Chisq") # uhhh. ig theyre the same lol
+AIC(mod.surv_mf) # AIC is also the same
+
+# SO.. looks like we can just use mod.minfact
+anova(mod.surv_minfact, test = "Chisq")
+summary(mod.surv_minfact)
+
+anova(mod.surv_mf, test = "Chisq")
+```
+
+```{r tt pup}
+# examine the existing mod we have
+anova(mod.tt_minfact, test = "Chisq") # AIC: 330.1962
+# int looks unimpt so lets drop it
+
+mod.tt_minfact2 <- lm(tt.pupa ~ as.factor(minT) + pop, data = NTs_exptal)
+anova(mod.tt_minfact2) # AIC: 326.8403, minT is signif
+anova(mod.tt_minfact, mod.tt_minfact2, test = "Chisq") # add is better
+
+# let's try polys?
+mod.tt_minfact3 <- lm(tt.pupa ~ poly(as.factor(minT), 2) + pop, data = NTs_exptal) # # AIC: 326.8403
+mod.tt_minfact4 <- lm(tt.pupa ~ poly(as.factor(minT), 2)* pop, data = NTs_exptal)
+anova(mod.tt_minfact3, mod.tt_minfact4, test = "Chisq") # no difference, so use the add one
+
+# compare the add poly w/ the add lm
+anova(mod.tt_minfact2, mod.tt_minfact3, test = "Chisq")
+# they're the same. since i dont get polys lets use minfact2
+anova(mod.tt_minfact2)
+
+# try with mean/flucts
+mod.tt_mf <- lm(tt.pupa ~ as.factor(meanT)*as.factor(flucT)*pop, data = NTs_exptal)
+mod.tt_mf2 <- lm(tt.pupa ~ as.factor(meanT) + as.factor(flucT) + pop, data = NTs_exptal) # AIC: 326.8403
+anova(mod.tt_mf, mod.tt_mf2, test="Chisq") # they're the same, so let's use the additive model
+anova(mod.tt_mf2, test="Chisq")
+summary(mod.tt_mf2)
+```
+
 
 
 ## - cox ph
