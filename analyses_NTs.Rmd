@@ -1270,7 +1270,7 @@ anova(mod.tt_minfact2) # AIC: 326.8403, minT is signif
 anova(mod.tt_minfact, mod.tt_minfact2, test = "Chisq") # add is better
 
 # let's try polys?
-mod.tt_minfact3 <- lm(tt.pupa ~ poly(as.factor(minT), 2) + pop, data = NTs_exptal) # # AIC: 326.8403
+mod.tt_minfact3 <- lm(tt.pupa ~ poly(as.factor(minT), 2) + pop, data = NTs_exptal) # AIC: 326.8403
 mod.tt_minfact4 <- lm(tt.pupa ~ poly(as.factor(minT), 2)* pop, data = NTs_exptal)
 anova(mod.tt_minfact3, mod.tt_minfact4, test = "Chisq") # no difference, so use the add one
 

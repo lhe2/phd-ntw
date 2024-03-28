@@ -203,7 +203,7 @@ summ_hatch %>%
   ylim(c(0,0.20))  
 ```
 
-### - modeling: hatch rates
+### (**) - modeling: hatch rates
 
 ```{r calc stats}
 summ_hatchmod <- data_tstats %>%
@@ -217,9 +217,18 @@ summ_hatchmod <- data_tstats %>%
   group_by(trt.f, trt.m, pop) %>%
   mutate(n.tothatch.overall = sum(n.tothatch),
          n.coll.overall = sum(n.coll),
-         #n.duration.overall = jdate-first(jdate)
+         #n.duration.overall = jdate-first(jdate),
+         # below borrowed from LB hatching stuff
+         n.collected = sum(n.coll),
+         n.hatched = sum(n.tothatch),
+         n.females = sum(n.new.f),
+         rate.hatch = n.hatched/n.collected,
+         rate.collf = n.collected/n.females,
+         lt.hrate = log(rate.hatch + 1)
          ) %>%
   filter(n.tothatch.overall > 0)
+  
+summ_hatchall <- summ_hatchmod # to include hatch rate = 0
   
 ```
 
@@ -808,6 +817,8 @@ going to log transform first bc shit keeps breaking and poisson is mad
 summ_rates_all <- summ_rates_all %>%
   mutate(lt.overall = log(rate.overall + 1),
          lt.pertent = log(rate.pertent + 1))
+
+# 240328: apparently `log()` *is* LN in r so we're goood
 ```
 
 and quickly visualise...
@@ -836,12 +847,16 @@ they look okay, i guess? 😬 nothing looks horribly wrong...
 
 now model again.. with the log transformed data
 
+
+
 ```{r}
-mod4.lay <- lm(lt.overall ~ as.factor(trt.f) + as.factor(trt.m) + pop + jdate.rel,
-               data = summ_rates_all)
-summary(mod4.lay)
-anova(mod4.lay, test = "Chisq")
-AIC(mod4.lay)
+# ignore: this isnt the right response unit (want to look at rate per tent)
+
+# mod4.lay <- lm(lt.overall ~ as.factor(trt.f) + as.factor(trt.m) + pop + jdate.rel,
+#                data = summ_rates_all)
+# summary(mod4.lay)
+# anova(mod4.lay, test = "Chisq")
+# AIC(mod4.lay)
 ```
 - from summary: the f/m trts are varyingly signif... pop is `***` and `jdate` is `***`.
   - adj R sq is 0.3174
@@ -859,12 +874,14 @@ Residuals        327 261.662   0.800
 let's see a mixed model:
 
 ```{r}
-mod4.lay2 <- lme4::lmer(lt.overall ~ as.factor(trt.f) + as.factor(trt.m) + pop + (1|jdate.rel),
-               data = summ_rates_all)
-summary(mod4.lay2)
-anova(mod4.lay2, test = "Chisq")
-lmerTest::ranova(mod4.lay2, test = "Chisq")
-AIC(mod4.lay2)
+# ignore: this isnt the right response unit (want to look at rate per tent)
+
+# mod4.lay2 <- lme4::lmer(lt.overall ~ as.factor(trt.f) + as.factor(trt.m) + pop + (1|jdate.rel),
+#                data = summ_rates_all)
+# summary(mod4.lay2)
+# anova(mod4.lay2, test = "Chisq")
+# lmerTest::ranova(mod4.lay2, test = "Chisq")
+# AIC(mod4.lay2)
 ```
 - summary: no significant fixed effs LOL
 - anova (F-values): `trt.f` = 13, `pop` = 77.5320.
@@ -885,12 +902,14 @@ pop                 1 47.962  47.962 77.5320
 now, look at the `pertent` models
 
 ```{r}
-mod4.lay3 <- lm(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
-                  n.ovi.pertent + id.tent + jdate.rel,
-               data = summ_rates_all)
-summary(mod4.lay3)
-anova(mod4.lay3, test = "Chisq")
-AIC(mod4.lay3)
+# ignore: this is using the wrong predictors (tent cant be a fixed eff since tent 1 in trt 1 ≠ tent 1 in trt 2)
+
+# mod4.lay3 <- lm(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
+#                   n.ovi.pertent + id.tent + jdate.rel,
+#                data = summ_rates_all)
+# summary(mod4.lay3)
+# anova(mod4.lay3, test = "Chisq")
+# AIC(mod4.lay3)
 ```
 - summary:
   - some actual tents are signif (from `*` to `***` but the effect sizes aren't that big)
@@ -915,6 +934,8 @@ Residuals        301 271.743   0.903
 now try with random effs...
 
 ```{r}
+# see lab only bugs in LB stats
+
 mod4.lay4 <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + pop + 
                   n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
                data = summ_rates_all, REML = FALSE)
@@ -1463,6 +1484,136 @@ summ_longevity %>%
   theme(legend.position = "top")
 
 ```
+# // lunch bunch stats
+
+## - longevity
+```{r lab only df}
+# for egg laying
+# see the summ_rates_all stuff (mod4) for egg laying bc i think that seems mostly sorted lol
+
+# for longevity
+data_longevityL <- data_longevity %>%
+  filter(pop == "lab",
+         trt != 260) 
+  # use the "surv" for math
+```
+
+```{r longevity stats}
+# look at longevity as a function of NT
+mod.long <- lm(surv ~ as.factor(minT)*sex, data = data_longevityL) #AIC: 311.9173
+mod.long2 <- lm(surv ~ as.factor(minT) + sex, data = data_longevityL) #AIC: 308.1136
+mod.long3 <- lm(surv ~ minT*sex, data = data_longevityL) #AIC: 308.0313
+mod.long4 <- lm(surv ~ minT+sex, data = data_longevityL) #AIC: 306.2079
+
+# is NT as factor or numeric better? (prob as a factor)
+anova(mod.long, mod.long3, test = "Chisq") # LOL no diff rip
+# based on AIC, minT as numeric is better
+
+anova(mod.long4, test = "Chisq")
+summary(mod.long4)
+
+
+# look at long as a function of mean/fluct
+mod.long_mf <- lm(surv ~ as.factor(meanT)*as.factor(flucT)*sex, data = data_longevityL)
+mod.long_mf2 <- lm(surv ~ as.factor(meanT)+as.factor(flucT)+sex, data = data_longevityL) # AIC: 308.1136
+anova(mod.long_mf, mod.long_mf2, test = "Chisq") # add is better
+
+# is numeric better? -- yes
+mod.long_mf3 <- lm(surv ~ meanT+flucT+sex, data = data_longevityL) #AIC: 306.2079 same as mod.long4....
+anova(mod.long_mf2, mod.long_mf3, test = "Chisq") # (mf2 has lower RSS but higher AIC?)
+anova(mod.long_mf3, test = "Chisq")
+
+# NT vs mf mod?
+anova(mod.long4, mod.long_mf3, test = "Chisq")
+```
+
+## - laying
+```{r egg laying all together}
+summ_rates_L <- summ_rates_all %>% filter(pop == "lab")
+
+mod4.lay4a <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_L, REML = FALSE)
+summary(mod4.lay4a)
+anova(mod4.lay4a, test = "Chisq") # doesnt give signif for fixed terms
+lmerTest::ranova(mod4.lay4a, test = "Chisq") # signif for random terms
+AIC(mod4.lay4a) # AIC: 900.4932
+
+drop1(mod4.lay4a, test="Chisq")
+
+
+# drop the ctrls
+summ_rates_Lexpt <- filter(summ_rates_L, !(trt.f == 260 & trt.m== 260))
+
+mod4.lay4b <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_Lexpt, REML = FALSE)
+
+drop1(mod4.lay4b, test="Chisq")
+```
+
+```{r subset a bit}
+summ_rates_btwn <- summ_rates_L %>%
+  filter(!is.na(trt.btwn) & trt.btwn != "26-26")
+
+summ_rates_win <- summ_rates_L %>%
+  filter(!is.na(trt.win) & trt.win != "26-26")
+
+mod4.lay5a <- lme4::lmer(lt.pertent ~ as.factor(trt.win) + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_win, REML = FALSE)
+
+mod4.lay5b <- lme4::lmer(lt.pertent ~ as.factor(trt.f) + as.factor(trt.m) + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_btwn, REML = FALSE)
+
+mod4.lay5c <- lme4::lmer(lt.pertent ~ as.factor(trt.btwn) + 
+                  n.ovi.pertent + (1|id.tent) + (1|jdate.rel),
+               data = summ_rates_btwn, REML = FALSE)
+
+drop1(mod4.lay5a, test="Chisq")
+drop1(mod4.lay5b, test="Chisq")
+drop1(mod4.lay5c, test="Chisq")
+```
+
+## - hatching
+```{r try for hatching...}
+# keep ctrl in there for now?
+summ_hatchLB <- summ_hatchall %>%
+  #filter(trt.pair != "ct F + ct M") %>%
+  filter(pop == "lab")
+
+summ_hatchLB2 <- summ_hatchLB %>% 
+  filter(n.hatched > 0) # nhatch mod breaks using 0's
+
+
+# model hatch rate
+mod.hrate <- lm(lt.hrate ~ as.factor(trt.f) + as.factor(trt.m) + rate.collf, data = summ_hatchLB)
+anova(mod.hrate, test = "Chisq")
+
+# model total # hatched
+mod.nhatch <- glm(n.hatched ~ as.factor(trt.f) + as.factor(trt.m) + n.females + n.collected, 
+                  data = summ_hatchLB, family = poisson)
+anova(mod.nhatch, test = "Chisq")
+```
+
+```{r hatching with exptl only}
+# keep ctrl in there for now?
+summ_hatchLB3 <- summ_hatchall %>%
+  filter(trt.pair != "ct F + ct M")
+
+
+# model hatch rate
+mod.hrate2 <- lm(lt.hrate ~ as.factor(trt.f) + as.factor(trt.m) + rate.collf, data = summ_hatchLB3)
+anova(mod.hrate2, test = "Chisq")
+
+# model total # hatched
+mod.nhatch2 <- glm(n.hatched ~ as.factor(trt.f) + as.factor(trt.m) + n.females + n.collected, 
+                  data = summ_hatchLB3, family = poisson)
+anova(mod.nhatch2, test = "Chisq")
+```
+
+
 
 
 # to do
