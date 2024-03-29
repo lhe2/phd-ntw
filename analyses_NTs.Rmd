@@ -3,7 +3,7 @@ title: "NTs_EDA and decriptive analyses"
 date: "2024-01-08"
 ---
 
-# 0. load data, packages, helper functions
+# (**) 0. load data, packages, helper functions
 ```{r message = FALSE}
 source("./helpers_ntw.R")
 rm(list=c(acc_helpers, temps_helpers))
@@ -860,8 +860,8 @@ p1 <-
        x = "minimum temperature (°C)", 
        #caption = "n = starting bugs"
        ) +
-  guides(lty = "none") +
-  ylim(c(0, 0.8))
+  #guides(lty = "none") +
+  ylim(c(0, 1))
 
 # avg tt pup
 pd <- position_dodge(0.3)
@@ -870,18 +870,20 @@ p2 <-
   summary_NTs2_plot %>% 
   ggplot(aes(y = avg.tt, x = as.factor(minT), shape = pop,
              )) +
-  geom_point(size = 2.5, position = pd) +  y_err_tt(err = 0.25, pos = pd) +
+  geom_point(size = 2.5, position = pd) +  
+  y_err_tt(err = 0.25, pos = pd) +
+  geom_line(aes(lty = pop, group = pop), position = pd) +
   #scale_shape_manual(values=c(21, 16)) +
   #facet_wrap(~pop) + 
   theme_bw() +
   geom_text(aes(label = n.surv), 
             vjust = -0.2, 
             hjust = -1, 
-            position = position_dodge(0.1), show.legend = FALSE) +
+            position = position_dodge(0.25), show.legend = FALSE) +
+  ylim(c(15, 34)) +
   labs(#title = "NTs: avg time to pupation from hatching", 
        y = "time to pupation (days)", 
-       x = "minimum temperature (°C)") +
-  ylim(c(0, 40))
+       x = "minimum temperature (°C)")
 
 # avg mass
 p3 <- 
@@ -889,6 +891,7 @@ p3 <-
   ggplot(aes(y = avg.mass, x = as.factor(minT), shape = pop,
              )) +
   geom_point(size = 2.5) +  y_err_mass(err = 0.25) +
+  geom_line(aes(lty = pop, group = pop)) +
   #scale_shape_manual(values=c(21, 16)) +
   #facet_wrap(~pop) + 
   theme_bw() +
@@ -896,10 +899,10 @@ p3 <-
             #vjust = -0.8, 
             hjust = -0.9, 
             show.legend = FALSE) +
+  ylim(c(1750, 4750)) +
   labs(#title = "NTs: avg pupal mass", 
        y = "mass at pupation (mg)", 
-       x = "minimum temperature (°C)") +
-  ylim(c(0, 4750))
+       x = "minimum temperature (°C)")
 
 
 # merged plot
@@ -908,9 +911,47 @@ p1 + p2 + p3 +
               axes = "collect",
               widths = c(1:1)) &
   theme(legend.position = "top") &
-  labs(shape = "population") &
+  labs(lty = "population", shape = "population") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
   scale_shape_manual(values = c(1, 16))
 ```
+
+```{r}
+# looking at sex effects of mass
+summary_NTs.sex <- NTs_all2 %>%
+  filter(sex == "m" | sex == "f") %>%
+  group_by(pop, sex, meanT, flucT, minT, if.fluct, .add = TRUE) %>% 
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n(),
+            n.pmd = sum(final.fate == "pmd"), 
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+  mutate(fluct.grp = case_when(if.fluct == "Y" ~ "experimental (max: 40C)", TRUE ~ "control (max: ~28C)")) %>%
+  filter(if.fluct == "Y")
+
+# plot
+p3 <- 
+  summary_NTs.sex %>% 
+  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = pop, color = sex
+             )) +
+  geom_point(size = 2.5) +  y_err_mass(err = 0.25) +
+  geom_line(aes(lty = pop, group = pop)) +
+  #scale_shape_manual(values=c(21, 16)) +
+  facet_wrap(~sex) + 
+  theme_bw() +
+  geom_text(aes(label = n.surv), 
+            #vjust = -0.8, 
+            hjust = -0.9, 
+            show.legend = FALSE) +
+  ylim(c(1750, 4750)) +
+  labs(#title = "NTs: avg pupal mass", 
+       y = "mass at pupation (mg)", 
+       x = "minimum temperature (°C)")
+```
+
 
 
 wow these sample sizes suck. anyway moving on
