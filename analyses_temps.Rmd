@@ -3,7 +3,7 @@ title: "temps_analyses"
 date: "2023-12-07"
 ---
 
-# 0. load data & packages
+# (**)  0. load data & packages
 ```{r message=FALSE}
 source("./helpers_ntw.R")
 rm(list=c(acc_helpers, NT_helpers))
@@ -227,6 +227,19 @@ summary_temps <- temps_all %>%
   # mutate(meanT = as.factor(meanT),
   #        flucT = as.factor(flucT))
   # # nvm lets NOT do this bc i'll forget to fix when we do the surv stuff
+
+# also by sex, just in case
+summary_temps.sex <- temps_all %>%
+  filter(sex == "f" | sex == "m") %>%
+  group_by(meanT, flucT, sex) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n_all = n(),
+            n_pmd = sum(final.fate == "pmd"), 
+            n_surv = n_all - n_pmd, 
+            prop.survpup = round(1-(n_pmd/n_all), digits=2))
 ```
 
 
@@ -507,6 +520,7 @@ summary_lab260.2 %>%
 summary_temps_plot <- summary_temps %>%
   mutate(meanT = case_when(meanT == 26 ~ "26°C",
                            meanT == 33 ~ "33°C"))
+
 # avg surv due to temp
 p1 <- 
   summary_temps_plot %>% ggplot(aes(y = prop.survpup, x = as.factor(meanT), shape = as.factor(flucT))) +
@@ -514,6 +528,7 @@ p1 <-
   # geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.8,
   #           position = position_dodge(0.2)
   #           ) +
+  geom_text(aes(label = n_all), vjust = -1.1, hjust = -0.5, position = position_dodge(0.2)) +
   geom_line(aes(lty = as.factor(flucT), group = flucT)) +
   theme_bw() + 
   labs(#title = "survival to pupation", 
@@ -522,7 +537,8 @@ p1 <-
        lty = "fluctuation temperature",
        shape = "fluctuation temperature") +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C")) +
-  scale_shape_discrete(labels = c("± 0°C", "± 7°C"))
+  scale_shape_manual(labels = c("± 0°C", "± 7°C"), values = c(16, 1)) +
+  ylim(c(0,1.05))
   #theme(axis.title.x = element_blank())
   #ylim(c(0.87, 1.03))
   
@@ -536,7 +552,8 @@ p2 <-
        y = "time to pupation (days)", 
        x = "mean temperature (°C)", 
        shape = "fluctuation temperature", lty = "fluctuation temperature") +
-  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  ylim(c(10, 20)) +
+  scale_shape_manual(labels = c("± 0°C", "± 7°C"), values = c(16, 1)) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
 
 # avg pup mass due to temp
@@ -549,16 +566,20 @@ p3 <-
        y = "mass at pupation (mg)", 
        x = "mean temperature (°C)", 
        shape = "fluctuation temperature", lty = "fluctuation temperature") +
-  scale_shape_discrete(labels = c("± 0°C", "± 7°C")) +
+  ylim(c(1750, 6800)) +
+  scale_shape_manual(labels = c("± 0°C", "± 7°C"), values = c(16, 1)) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
+```
 
-# works but annoying to get the shared axis
+```{r}
+# the following works but annoying to get the shared axis
 # ggarrange(p1, p2, p3, ncol = 3, nrow = 1,
 #            common.legend = TRUE)
 
 # weird issues with legend duplication bc of how grob units are defined.
   # see https://github.com/thomasp85/patchwork/issues/170 for workarounds
-p1 + p2 + p3 +
+#p1 + p2 + 
+  p3 +
   #guides(lty = "none", shape = "none") +
   plot_layout(guides = "collect",
               axes = "collect",
@@ -566,8 +587,28 @@ p1 + p2 + p3 +
   theme(legend.position = "top")
   # okay wtf it was all fixed with the '&'
     # https://stackoverflow.com/questions/61077254/combine-and-merge-legends-in-ggplot2-with-patchwork
+```
 
+```{r}
+# looking at sex on mass
+summary_temps_plot2 <- summary_temps.sex %>%
+  mutate(meanT = case_when(meanT == 26 ~ "26°C",
+                           meanT == 33 ~ "33°C"))
 
+p3 <- 
+  summary_temps_plot2 %>% ggplot(aes(y = avg.mass, x = as.factor(meanT), shape = as.factor(flucT), color = sex)) +
+  geom_point(size = 2.5) + geom_text(aes(label = n_surv), vjust = -1.1, hjust = -0.5) +
+  geom_line(aes(lty = as.factor(flucT), group = interaction(flucT, sex))) +
+  y_err_mass(err = 0.04) + theme_bw() +
+  labs(#title = "mass at pupation", 
+       y = "mass at pupation (mg)", 
+       x = "mean temperature (°C)", 
+       shape = "fluctuation temperature", lty = "fluctuation temperature") +
+  #ylim(c(1750, 6800)) +
+  facet_wrap(~sex) +
+  scale_shape_discrete(labels = c("± 0°C", "± 7°C"), #values = c(16, 1)
+                     ) +
+  scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
 ```
 
 
