@@ -34,15 +34,15 @@ labels.exptrts <- c("40-19", "40-26", "40-33")
 
 # ggplot functions
 y_err_hrate <- function(err = 0.9){
-  list(geom_errorbar(aes(ymin = rate.hatch - se.hatch, ymax = rate.hatch + se.hatch), width = err))
+  list(geom_errorbar(aes(ymin = rate.hatch - se.hatch, ymax = rate.hatch + se.hatch), width = err, show.legend = FALSE))
 }
 
 x_err_ncoll <- function(err = 0.9){
-  list(geom_errorbarh(aes(xmin = n.collected - se.coll, xmax = n.collected + se.coll), height = err))
+  list(geom_errorbarh(aes(xmin = n.collected - se.coll, xmax = n.collected + se.coll), height = err, show.legend = FALSE))
 }
 
 x_err_ncollf <- function(err = 0.9){
-  list(geom_errorbarh(aes(xmin = rate.collf - se.collf, xmax = rate.collf + se.collf), height = err))
+  list(geom_errorbarh(aes(xmin = rate.collf - se.collf, xmax = rate.collf + se.collf), height = err, show.legend = FALSE))
 }
 
 # 1. generate adult longevity stats ---------------------------------------

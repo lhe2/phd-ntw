@@ -9,7 +9,7 @@ also doing some other overall analyses, e.g:
 
 - adult masses
 
-# 0. load data, helper fns
+# (**) 0. load data, helper fns
 ```{r message = FALSE}
 source("./helpers_ntw.R")
 ```
@@ -827,18 +827,18 @@ wide_all %>%
        color = "temperature treatment")
 ```
 
-# // lunch bunch
+# // lunch bunch figs
 
 ```{r stats}
 data_LB <- wide_all %>%
   mutate(labeled.treatment = case_when(treatment == 260 ~ "26±0",
                                treatment == 337 ~ "33±7",
                                TRUE ~ as.character(treatment)),
-         labeled.group = case_when(expt.group == "A" ~ "Feb '23",
-                                 expt.group == "B" ~ "Mar '23",
+         labeled.group = case_when(expt.group == "A" ~ "Feb/Mar '23",
+                                 expt.group == "B" ~ "Feb/Mar '23",
                                  expt.group == "D" ~ "Jul '23",
                                  expt.group == "F" ~ "Aug '23"),
-         labeled.group = factor(labeled.group, levels = c("Feb '23", "Mar '23", "Jul '23", "Aug '23")),
+         labeled.group = factor(labeled.group, levels = c("Feb/Mar '23", "Jul '23", "Aug '23")),
          labeled.diet = case_when(diet == "LD" ~ "lab",
                                   diet == "TB" ~ "tobacco"),
          labeled.supfate = case_when(!is.na(jdate.pmd) ~ "pmd",
@@ -846,19 +846,22 @@ data_LB <- wide_all %>%
                                      is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "N" & sup == 0 ~ "normal",
                                      is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "Y" & sup == 6 ~ "6",
                                      is.na(jdate.pmd) & if.pupa == "Y" & if.sup == "Y" & sup == 7 ~ "7"),
-         labeled.supfate = factor(labeled.supfate, levels = c("pmd", "7", "6", "normal")))
-```
-
-### sup
-```{r}
-data_LB %>%
+         labeled.supfate = factor(labeled.supfate, levels = c("pmd", "7", "6", "normal"))) %>%
   filter(!(final.fate == "culled" | final.fate == "accidental")) %>%
   filter(expt.group !="C") %>%
   filter(treatment == 260 | treatment == 337) %>%
   filter(instar.enter == "hatch" & pop == "lab") %>%
   mutate(treatment = case_when(treatment == 260 ~ "26±0",
                                treatment == 337 ~ "33±7",
-                               TRUE ~ as.character(treatment))) %>%
+                               TRUE ~ as.character(treatment)))
+```
+
+### - sup
+```{r}
+# idky i rlly struggled to get labels on this lol
+  # https://stackoverflow.com/questions/73450505/adding-data-labels-to-geom-bar-when-using-proportions
+
+data_LB %>%
   # group_by(labeled.group, treatment) %>%
   # summarise(n_all = n(),
   #           n_pmd = count(labeled.supfate == "pmd"),
@@ -867,8 +870,20 @@ data_LB %>%
   #           pct.pmd = n_pmd/n_all,
   #           pct.6 = n_6/n_all,
   #           pct.norm = n_norm/n_all) %>%
-  ggplot(aes(fill = labeled.supfate, x = treatment)) +
-  geom_bar(stat = "count", position = "fill") +
+  group_by(labeled.group, treatment, labeled.supfate) %>%
+  count() %>%
+  group_by(labeled.group, treatment) %>%
+  mutate(prop = n/sum(n),
+         n_all = sum(n)) %>% #View()
+  ggplot(aes(fill = labeled.supfate, x = treatment,
+             y = prop
+             )) +
+  geom_bar(#stat = "count", position = "fill", # "count" doesnt work if y is specified
+           stat = "identity") +
+  geom_text(aes(label = paste0(n_all), y = 0.08), position = "identity", 
+            data = . %>% filter(labeled.supfate == "normal"),
+            #vjust = 5
+            ) +
   facet_wrap(~labeled.group, nrow = 1) +
   labs(y = "proportion",
        x = "temperature treatment (°C)",
@@ -878,7 +893,7 @@ data_LB %>%
 ```
 
 
-### big 3
+### - big 3
 ```{r stats}
 # lots of changes made specifically for labeling the 2nd grp of figs lol
 
@@ -985,6 +1000,13 @@ p1 + p2 + p3 +
   scale_shape_manual(values = c(19, 1)) &
   theme(legend.position = "top")
 ```
+
+
+# LB stats
+```{r}
+
+```
+
 
 
 
