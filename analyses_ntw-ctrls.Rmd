@@ -880,7 +880,7 @@ data_LB %>%
              )) +
   geom_bar(#stat = "count", position = "fill", # "count" doesnt work if y is specified
            stat = "identity") +
-  geom_text(aes(label = paste0(n_all), y = 0.08), position = "identity", 
+  geom_text(aes(label = paste0(n_all), y = 0.08), #position = "identity", 
             data = . %>% filter(labeled.supfate == "normal"),
             #vjust = 5
             ) +

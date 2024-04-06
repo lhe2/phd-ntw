@@ -23,7 +23,7 @@ purpose: looking at fertility stats
   - time to ec? what are contributing factors?
   - survival post ec? what factors? (affected by time in 4C?)
 
-# 0. load data, helper fns
+# (**) 0. load data, helper fns
 ```{r message=FALSE}
 source("./helpers_tents.R")
 # map(other_helpers, ~discard(., .p = ~all))
@@ -206,7 +206,7 @@ summ_hatch %>%
 ### (**) - modeling: hatch rates
 
 ```{r calc stats}
-summ_hatchmod <- data_tstats %>%
+summ_hatchall <- data_tstats %>%
   replace(is.na(.), 0) %>%
   group_by(id.tent) %>%
   mutate(jdate.rel = jdate - first(jdate)) %>%
@@ -222,13 +222,12 @@ summ_hatchmod <- data_tstats %>%
          n.collected = sum(n.coll),
          n.hatched = sum(n.tothatch),
          n.females = sum(n.new.f),
-         rate.hatch = n.hatched/n.collected,
+         prop.hatch = n.hatched/n.collected,
          rate.collf = n.collected/n.females,
-         lt.hrate = log(rate.hatch + 1)
-         ) %>%
-  filter(n.tothatch.overall > 0)
+         lt.hprop = log(prop.hatch + 1)) 
   
-summ_hatchall <- summ_hatchmod # to include hatch rate = 0
+summ_hatchmod <- summ_hatchall %>%
+  filter(n.tothatch.overall > 0)
   
 ```
 
@@ -809,7 +808,7 @@ anova(mod3.lay2a, test = "Chisq") # big F values: n.tents (77.18), n.ovi (65.36)
 
 **summary:** do not use non-ints with poisson lol
 
-### - // 240308: redoing mods again
+### - (**) // 240308: redoing mods again
 
 going to log transform first bc shit keeps breaking and poisson is mad
 
@@ -1065,7 +1064,7 @@ summ_hatch_plot <- data_tstatsL %>%
                               trt.f == 419 | trt.m == 419 ~ "40-19",
                               trt.f == 426 | trt.m == 426 ~ "40-26",
                               trt.f == 433 | trt.m == 433 ~ "40-33"),
-         trt.sex = case_when(trt.f == trt.m ~ "F + M",
+         trt.sex = case_when(trt.f == trt.m ~ "F and M",
                              trt.f > 400 & trt.m < 400 ~ "F only",
                              trt.f < 400 & trt.m > 400 ~ "M only"),
          trt.type = case_when(trt.f == 260 & trt.m == 260 ~ "control",
@@ -1081,6 +1080,35 @@ summ_ctrl <- summ_hatch_plot %>%
 ```
 
 ```{r}
+pal = c("#1a7e9e", "#4d126c", "#b0325a", "#f8880b")
+  #c("#73add1", "#f46d43", "#d73027", "#b2182b")
+  #c("#35978f", "#f1bbda", "#de77ae", "#c5237d")
+  #c("#35978f", "#c2a5cf", "#de77ae", "#d95f02")
+  #c("#35978f", "#9970ab", "#c5237d", "#f46d43")
+  #c("#66C2A5", "#8DA0CB", "#E78AC3", "#FC8D62")
+
+# plotting win trts
+p2 <- 
+summ_hatch_plot %>%
+  filter(#is.ctrl == "no" & 
+    !is.na(trt.win)) %>%
+  ggplot(aes(y = rate.hatch, x = rate.collf,
+             shape = trt.sex, #fill = trt.type, 
+             color = trt.temp)) +
+  geom_point(size = 3, #show.legend = FALSE
+             ) +
+  geom_text(aes(label = n.females), vjust = -1, hjust = -1, show.legend = FALSE) +
+  y_err_hrate(err = 3) + # 1+2, default axes
+  x_err_ncollf(err = 0.005) + 
+  #y_err_hrate(err = 7) + # 1+2, custom x-y
+  x_err_ncollf(err = 0.005) +
+  #geom_point(data = summ_ctrl, shape = 1, size = 2.5) +
+  scale_color_manual(values = pal) +
+  scale_shape_manual(values = 4) +
+  guides(shape = "none", linetype="none", color = "none") +
+  labs(y = "within treatment hatch proportion", x = "eggs collected per female") +
+  theme_bw()
+
 # plotting btwn trts
 p1 <- 
 summ_hatch_plot %>%
@@ -1090,36 +1118,31 @@ summ_hatch_plot %>%
   ggplot(aes(y = rate.hatch, x = rate.collf,
              shape = trt.sex, #fill = trt.type, 
              color = trt.temp)) +
-  geom_point(size = 2.5) +
+  geom_point(size = 3) +
+  #geom_line(aes(lty = trt.sex, group = trt.sex)) +
   geom_text(aes(label = n.females), vjust = -1.2, hjust = -0.8, show.legend = FALSE) +
   #geom_point(data = summ_ctrl, shape = 1, size = 2.5) +
-  y_err_hrate(err = 7.5) +
-  x_err_ncollf(err = 0.005) +
-  scale_color_manual(values = RYB) +
-  scale_shape_manual(values = c(19, 17, 15)) +
-  labs(y = "within treatment hatch proportion", x = "eggs collected per female") +
-  theme_bw()
-```
-
-```{r}
-# plotting win trts
-p2 <- 
-summ_hatch_plot %>%
-  filter(#is.ctrl == "no" & 
-    !is.na(trt.win)) %>%
-  ggplot(aes(y = rate.hatch, x = rate.collf,
-             shape = trt.sex, #fill = trt.type, 
-             color = trt.temp)) +
-  geom_point(size = 2.5) +
-  geom_text(aes(label = n.females), vjust = -1, hjust = -1, show.legend = FALSE) +
-  y_err_hrate(err = 3) +
-  x_err_ncollf(err = 0.005) +
-  #geom_point(data = summ_ctrl, shape = 1, size = 2.5) +
-  scale_color_manual(values = RYB) +
-  #scale_shape_manual(values = 19) +
-  guides(shape = "none") +
+  y_err_hrate(err = 7.5) + # 1+2, default axes
+  x_err_ncollf(err = 0.005) + 
+  #y_err_hrate(err = 10) + # 1+2, custom x-y
+  #x_err_ncollf(err = 0.005) +
+  scale_color_manual(values = pal) +
+  #scale_shape_manual(values = c(19, 17, 15)) +
+  scale_shape_manual(values = c(4, 19, 1)) +
   labs(y = "between treatment hatch proportion", x = "eggs collected per female") +
+  #guides(color = "none", linetype = "none", shape = "none") +
   theme_bw()
+
+# combine plots
+#p2 + 
+p1 +
+  plot_layout(guides = "collect",
+              axes = "collect_x",
+              #ncol = 2, nrow = 1,
+              widths = c(2:2)) &
+  theme(legend.position = "top", legend.box = "vertical", legend.margin = margin(0.1)) &
+  labs(shape = "heat-stressed sex", color = "day-night temperatures (°C)") &
+  ylim(c(0, 0.18)) #& xlim(c(0, 350))
 ```
 
 ```{r}
@@ -1137,17 +1160,6 @@ summ_hatch_plot %>%
   labs(y = "hatch proportion", x = "eggs collected per female") +
   ylim(c(0, 0.18)) +
   theme_bw()
-```
-
-```{r}
-# combine plots
-p1 + p2 +
-  plot_layout(guides = "collect",
-              axes = "collect",
-              ncol = 2, nrow = 1,
-              widths = c(2:2)) &
-  theme(legend.position = "top", legend.box = "vertical", legend.margin = margin(0.1)) &
-  labs(shape = "treated sex", color = "temperature treatment")
 ```
 
 
@@ -1414,7 +1426,7 @@ summary(summ_rate$n.coll)
 
 # C. longevity
 
-### - plots
+### (**) - plots
 
 ```{r calc avg longevity}
 
@@ -1436,7 +1448,7 @@ pd = position_dodge(-0.5)
 
 summ_longevity %>%
   ggplot(aes(y = avg.surv, x = as.factor(trt), color = as.factor(trt), shape = sex)) +
-  geom_point(size = 2, position = pd) +
+  geom_point(size = 3, position = pd) +
   geom_errorbar(aes(ymax = avg.surv + se.surv, ymin = avg.surv - se.surv,
                     width = 0.5),
                 position = pd) +
@@ -1465,22 +1477,24 @@ summ_longevity %>%
                          trt == 426 ~ "26°C",
                         trt == 433 ~ "33°C"),
          labels.alltrts2 = factor(labels.alltrts2, levels = c("control", "19°C", "26°C", "33°C"))) %>%
-  #filter(labels.alltrts2 != "control") %>%
-  ggplot(aes(y = avg.surv, x = labels.alltrts2, #color = as.factor(trt), 
-             shape = sex)) +
-  geom_point(size = 2, position = pd) +
+  filter(labels.alltrts2 != "control") %>%
+  filter(pop == "lab") %>%
+  ggplot(aes(y = avg.surv, x = labels.alltrts2, color = sex, #color = as.factor(trt), 
+             shape = sex
+             )) +
+  geom_point(size = 2.5, position = pd) +
   geom_errorbar(aes(ymax = avg.surv + se.surv, ymin = avg.surv - se.surv,
                     width = 0.5),
                 position = pd) +
-  facet_wrap(~pop) +
+  #facet_wrap(~pop) +
   geom_text(aes(label = n), hjust = 2, show.legend = FALSE,
             position = pd) +
   theme_bw() +
-  scale_shape_manual(values = c(19, 1)) +
+  #scale_shape_manual(values = c(19, 1)) +
   labs(#title = "avg adult longevity",
        y = "adult survival post eclosion (days)",
        x = "minimum temperature") +
-  guides(color = "none") +
+  #guides(color = "none") +
   theme(legend.position = "top")
 
 ```
@@ -1578,40 +1592,75 @@ drop1(mod4.lay5c, test="Chisq")
 
 ## - hatching
 ```{r try for hatching...}
-# keep ctrl in there for now?
+# prep df -- remove ctrls
 summ_hatchLB <- summ_hatchall %>%
   #filter(trt.pair != "ct F + ct M") %>%
-  filter(pop == "lab")
+  filter(pop == "lab") %>%
+  pivot_longer(cols = c("trt.f", "trt.m"), names_to = c(".value", "sex"), names_sep = "\\.") %>%
+  filter(trt != 260) %>%
+  mutate(trt.type = case_when(trt.type == "hs F" | trt.type == "hs M" ~ "btwn",
+                              TRUE ~ "win"))
 
-summ_hatchLB2 <- summ_hatchLB %>% 
-  filter(n.hatched > 0) # nhatch mod breaks using 0's
+# summ_hatchLB2 <- summ_hatchLB %>% 
+#   filter(n.hatched > 0) # nhatch mod breaks using 0's
 
 
-# model hatch rate
-mod.hrate <- lm(lt.hrate ~ as.factor(trt.f) + as.factor(trt.m) + rate.collf, data = summ_hatchLB)
-anova(mod.hrate, test = "Chisq")
+# model hatch rate (unpivoted)
+# mod.hprop <- lm(lt.hprop ~ as.factor(trt.f) + as.factor(trt.m) + rate.collf, data = summ_hatchLB)
+# anova(mod.hprop, test = "Chisq")
+
+# model hatch rate (pivoted)
 
 # model total # hatched
-mod.nhatch <- glm(n.hatched ~ as.factor(trt.f) + as.factor(trt.m) + n.females + n.collected, 
-                  data = summ_hatchLB, family = poisson)
-anova(mod.nhatch, test = "Chisq")
+  # dont use - not the right unit
+# mod.nhatch <- glm(n.hatched ~ as.factor(trt.f) + as.factor(trt.m) + n.females + n.collected, 
+#                   data = summ_hatchLB, family = poisson)
+# anova(mod.nhatch, test = "Chisq")
 ```
 
 ```{r hatching with exptl only}
-# keep ctrl in there for now?
-summ_hatchLB3 <- summ_hatchall %>%
-  filter(trt.pair != "ct F + ct M")
-
+# look at btwn hprop
+summ_hatchbt <- summ_hatchLB %>%
+  filter(trt.type == "btwn") %>% 
+  distinct(id.tent, lt.hprop, .keep_all = TRUE) # shit keeps breaking if u dont do this
 
 # model hatch rate
-mod.hrate2 <- lm(lt.hrate ~ as.factor(trt.f) + as.factor(trt.m) + rate.collf, data = summ_hatchLB3)
-anova(mod.hrate2, test = "Chisq")
+# mod.hrate2 <- lm(lt.hrate ~ as.factor(trt.f) + as.factor(trt.m) + rate.collf, data = summ_hatchLB3)
+# anova(mod.hrate2, test = "Chisq")
 
 # model total # hatched
-mod.nhatch2 <- glm(n.hatched ~ as.factor(trt.f) + as.factor(trt.m) + n.females + n.collected, 
-                  data = summ_hatchLB3, family = poisson)
-anova(mod.nhatch2, test = "Chisq")
+# mod.nhatch2 <- glm(n.hatched ~ as.factor(trt.f) + as.factor(trt.m) + n.females + n.collected, 
+#                   data = summ_hatchLB3, family = poisson)
+# anova(mod.nhatch2, test = "Chisq")
+
+# models..
+#mod.bprop <- lme4::lmer(lt.hprop ~ as.factor(trt)*sex + rate.collf + (1|id.tent), data = summ_hatchbt)
+  # this is not giving (model fails to converge) so lets not do that
+  # this doesnt work after distinct()
+# qqnorm(resid(mod.bprop))
+# qqline(resid(mod.bprop)) # this looks terrible on the fail to converge model (duplicates)
+
+mod.bprop2 <- lm(lt.hprop ~ as.factor(trt)*sex + rate.collf, data = summ_hatchbt)
+anova(mod.bprop2, test = "Chisq") # bad model ("perfect fit")
+
+mod.bprop3 <- lm(lt.hprop ~ as.factor(trt)*trt.pair + rate.collf, data = summ_hatchbt)
+anova(mod.bprop3) # bad model ("perfect fit")
+
+mod.bprop4 <- lm(lt.hprop ~ as.factor(trt)*sex, data = summ_hatchbt)
+anova(mod.bprop4) # bad model ("perfect fit")
 ```
+
+
+```{r}
+# look at win prop
+summ_hatchwin <- summ_hatchLB %>%
+  filter(trt.type == "win") %>% 
+  distinct(id.tent, lt.hprop, .keep_all = TRUE)
+
+mod.wprop <- lm(lt.hprop ~ trt, data = summ_hatchwin)
+anova(mod.wprop, test = "Chisq")
+```
+
 
 
 

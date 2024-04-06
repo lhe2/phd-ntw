@@ -534,8 +534,9 @@ p1 <-
   labs(#title = "survival to pupation", 
        y = "proportion survived to pupation", 
        x = "mean temperature (°C)", 
-       lty = "fluctuation temperature",
-       shape = "fluctuation temperature") +
+       # lty = "fluctuation temperature",
+       # shape = "fluctuation temperature"
+       ) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C")) +
   scale_shape_manual(labels = c("± 0°C", "± 7°C"), values = c(16, 1)) +
   ylim(c(0,1.05))
@@ -551,7 +552,8 @@ p2 <-
   labs(#title = "time to pupation", 
        y = "time to pupation (days)", 
        x = "mean temperature (°C)", 
-       shape = "fluctuation temperature", lty = "fluctuation temperature") +
+       # shape = "fluctuation temperature", lty = "fluctuation temperature"
+       ) +
   ylim(c(10, 20)) +
   scale_shape_manual(labels = c("± 0°C", "± 7°C"), values = c(16, 1)) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
@@ -565,7 +567,8 @@ p3 <-
   labs(#title = "mass at pupation", 
        y = "mass at pupation (mg)", 
        x = "mean temperature (°C)", 
-       shape = "fluctuation temperature", lty = "fluctuation temperature") +
+       # shape = "fluctuation temperature", lty = "fluctuation temperature"
+       ) +
   ylim(c(1750, 6800)) +
   scale_shape_manual(labels = c("± 0°C", "± 7°C"), values = c(16, 1)) +
   scale_linetype_discrete(labels = c("± 0°C", "± 7°C"))
@@ -578,13 +581,15 @@ p3 <-
 
 # weird issues with legend duplication bc of how grob units are defined.
   # see https://github.com/thomasp85/patchwork/issues/170 for workarounds
-#p1 + p2 + 
-  p3 +
+p1 + 
+  #p2 + 
+  #p3 +
   #guides(lty = "none", shape = "none") +
   plot_layout(guides = "collect",
               axes = "collect",
-              widths = c(1:1)) &
-  theme(legend.position = "top")
+              widths = c(1.5:1.5)) &
+  theme(legend.position = "top") &
+  labs(shape = "fluctuation", lty = "fluctuation")
   # okay wtf it was all fixed with the '&'
     # https://stackoverflow.com/questions/61077254/combine-and-merge-legends-in-ggplot2-with-patchwork
 ```

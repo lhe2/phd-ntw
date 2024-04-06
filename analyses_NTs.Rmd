@@ -847,14 +847,14 @@ p1 <-
   summary_NTs2_plot %>% 
   ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = pop,
              )) +
-  geom_point(size=2.5) + 
+  geom_point(size=3) + 
   geom_line(aes(lty = pop, group = pop)) +
   theme_bw() +
   #scale_shape_manual(values=c(21, 16)) +
-  geom_text(aes(label = n.all), 
-            vjust = -1.5, 
-            #hjust = -1, 
-            show.legend = FALSE) +
+  # geom_text(aes(label = n.all), 
+  #           vjust = -1.5, 
+  #           #hjust = -1, 
+  #           show.legend = FALSE) +
   labs(#title = "NTs: survival to pupation (incls LPI)", 
        y = "proportion survived to pupation", 
        x = "minimum temperature (°C)", 
@@ -870,16 +870,16 @@ p2 <-
   summary_NTs2_plot %>% 
   ggplot(aes(y = avg.tt, x = as.factor(minT), shape = pop,
              )) +
-  geom_point(size = 2.5, position = pd) +  
+  geom_point(size = 3, position = pd) +  
   y_err_tt(err = 0.25, pos = pd) +
   geom_line(aes(lty = pop, group = pop), position = pd) +
   #scale_shape_manual(values=c(21, 16)) +
   #facet_wrap(~pop) + 
   theme_bw() +
-  geom_text(aes(label = n.surv), 
-            vjust = -0.2, 
-            hjust = -1, 
-            position = position_dodge(0.25), show.legend = FALSE) +
+  # geom_text(aes(label = n.surv), 
+  #           vjust = -0.2, 
+  #           hjust = -1, 
+  #           position = position_dodge(0.25), show.legend = FALSE) +
   ylim(c(15, 34)) +
   labs(#title = "NTs: avg time to pupation from hatching", 
        y = "time to pupation (days)", 
@@ -890,15 +890,15 @@ p3 <-
   summary_NTs2_plot %>% 
   ggplot(aes(y = avg.mass, x = as.factor(minT), shape = pop,
              )) +
-  geom_point(size = 2.5) +  y_err_mass(err = 0.25) +
+  geom_point(size = 3) +  y_err_mass(err = 0.25) +
   geom_line(aes(lty = pop, group = pop)) +
   #scale_shape_manual(values=c(21, 16)) +
   #facet_wrap(~pop) + 
   theme_bw() +
-  geom_text(aes(label = n.surv), 
-            #vjust = -0.8, 
-            hjust = -0.9, 
-            show.legend = FALSE) +
+  # geom_text(aes(label = n.surv), 
+  #           #vjust = -0.8, 
+  #           hjust = -0.9, 
+  #           show.legend = FALSE) +
   ylim(c(1750, 4750)) +
   labs(#title = "NTs: avg pupal mass", 
        y = "mass at pupation (mg)", 
@@ -913,7 +913,8 @@ p1 + p2 + p3 +
   theme(legend.position = "top") &
   labs(lty = "population", shape = "population") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(1, 16))
+  scale_shape_manual(values = c(1, 16)) 
+  guides(shape = "none", lty = "none")
 ```
 
 ```{r}
