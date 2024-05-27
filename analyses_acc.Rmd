@@ -293,7 +293,33 @@ ggsurvplot(fit = kmfit.devtime, data = acc_all,
 
 
 
+# followups
 
+1. 240527: looking for the avg length of time in an instar at diff trts
+
+```{r}
+acc_dev %>%
+  filter(pop == "lab",
+         #trt.stage %in% c("260-hatch", "330-hatch"),
+         !(instar %in% c("pupa"))
+         ) %>%
+  mutate(tthrs = 24*tt) %>%
+  group_by(pop, trt.stage, instar) %>%
+  summarise(avg.ttdays = mean(na.omit(tt)),
+            se.ttdays = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            avg.tthrs = mean(na.omit(tthrs)),
+            se.tthrs = sd(na.omit(tthrs))/sqrt(length(na.omit(tthrs))),
+            n=n()) %>% #View()
+  # mutate(trt.stage = factor(trt.stage, level = c("337-hatch", "260-hatch", "337-3rd", "337-4th")),
+  #        trt.stage = case_when(trt.stage == "260-hatch" ~ "26±0°C @hatch",
+  #                              trt.stage == "337-hatch" ~ "33±7°C @hatch",
+  #                              trt.stage == "337-3rd" ~ "33±7°C @3rd",
+  #                              trt.stage == "337-4th" ~ "33±7°C @4th")) %>%
+  ggplot(aes(y=trt.stage, x = avg.tthrs, color = trt.stage)) +
+  geom_line() + geom_point(aes(shape=instar), size = 3) +
+  labs(y = "treatment", x = "avg hrs post-hatch", title = "instar duration (trt @ various instars) - lab") +
+  xlim(c(65, 375))
+```
 
 
 

@@ -90,6 +90,7 @@ temps_devsumm <- dev_L %>% filter.temps2() %>% calc.devsumm.trtstg()
 
 temps_devsumm %>%
   filter(instar != "pupa") %>%
+  #filter(instar %in% c("2nd", "3rd", "4th", "5th")) %>%
   ggplot(aes(x=avg.tt, y=avg.logmass, color=trt.stage)) +
   geom_line() +
   geom_point(data=(temps_dev %>% filter(instar != "pupa")), aes(x=tt, y=logmass, color=trt.stage), alpha = 0.15) + 
@@ -715,5 +716,31 @@ anova(mod.surv) # tests overall variance
 (look for followup XX in the headers)
 
 1. 240129: i just wanna reframe these graphs in terms of NTs... do we notice any new patterns? (mostly bc im having a hard time translating these results into the NTs (sweats))
+
+2. 240527: looking for the avg length of time in an instar at diff trts
+
+```{r}
+temps_dev %>%
+  filter(pop == "lab",
+         #trt.stage %in% c("260-hatch", "330-hatch"),
+         !(instar %in% c("pupa"))
+         ) %>%
+  mutate(tthrs = 24*tt) %>%
+  group_by(pop, trt.stage, instar) %>%
+  summarise(avg.ttdays = mean(na.omit(tt)),
+            se.ttdays = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            avg.tthrs = mean(na.omit(tthrs)),
+            se.tthrs = sd(na.omit(tthrs))/sqrt(length(na.omit(tthrs))),
+            n=n()) %>% #View()
+  mutate(trt.stage = case_when(trt.stage == "260-hatch" ~ "26±0°C",
+                               trt.stage == "267-hatch" ~ "26±7°C",
+                               trt.stage == "330-hatch" ~ "33±0°C",
+                               TRUE ~ "33±7°C")) %>%
+  ggplot(aes(y=trt.stage, x = avg.tthrs, color = trt.stage)) +
+  geom_line() + geom_point(aes(shape=instar), size = 3) +
+  labs(y = "treatment", x = "avg hrs post-hatch", title = "instar duration (trt @ hatch) - lab") +
+  xlim(c(65, 375))
+```
+
 
 

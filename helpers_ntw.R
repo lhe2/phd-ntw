@@ -109,11 +109,11 @@ filter.F1s <- function(data) {
 }
 
 
-### for larval instars (4th - pup)
-  # idk if this gets used much tho tbh
+### for larval instars (3rd - pup)
+  # idk if this gets used much tho tbh (→ yes it does, for the mass gain over days figs)
 filter.ins.topup <- function(data) {
   filtered_data <- data %>%
-    filter(instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
+    filter(instar == "3rd" | instar == "4th" | instar == "5th" | instar == "6th" | instar == "7th" | instar == "wander" | instar == "pupa")
   
   return(filtered_data)
 }
