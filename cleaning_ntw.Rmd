@@ -23,6 +23,8 @@ library(googlesheets4)
 
 ## - data import from gsheets
 
+note: 2024-07-02 updated gsheet with the field diapausers(?); should be the final update. as of now, has yet to be incorporated into cleaned data used for analyses (should look into "tossing" criteria before deleting this note)
+
 ```{r}
 # before importing,
   # run cleaning macros (larva sheets)
