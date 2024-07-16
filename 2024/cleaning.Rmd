@@ -3,10 +3,10 @@ title: "2024 dev data cleaning"
 date: "2024-07-15"
 ---
 
-# roadmap
+# 0. roadmap
 
-1. load data & packages
-2. cleaning: filtering, column formatting + rearrangement
+1. load data & packages; pre-filtering
+2. column formatting + rearrangement
 3. save output
 
 (borrowing a lot of code from `2023/cleaning_ntw`)
@@ -17,30 +17,109 @@ library(conflicted)
 library(dplyr)
 library(tidyr)
 library(purrr)
+library(lubridate) # for handling time stuff
+
+#library(chron) # handle time formatting independent of date
+  # jk use lubridate::hm for this
 library(googlesheets4)
 ```
 
-# googlesheets import & pre-formatting
+## - googlesheets import
 
 - TODO 2024-07-15: check if columns need to be standardised (i.e. needs macros?)
   - 7/15: yes LOL the dates are broken bc of the year
 
 ```{r}
 data <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1256964024", sheet = "july pilot", col_types = "c")
+
+#incase <- data
+data <- incase
 ```
+
+## - column types
 
 ```{r}
 fix.columns <- function(data) {
   cleaned_data <- data %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d"),
+    mutate(across(starts_with(c("date.", "stuck.")),  as.Date, format = "%m/%d"),
            #across(starts_with("date."), format(., "%m/%d/%Y"))) 
            )%>%
-    mutate(mutate(across(starts_with("mass."), as.numeric))
-    )
+    #mutate(time.transfer = as.chron(times = time.transfer, format = (times = "%H:%M"))) %>% # doesnt work
+    mutate(time.transfer = lubridate::hm(time.transfer)) %>% # works but dont want ymd...
+    #mutate(time.transfer = hms::hms(time.transfer)) %>%
+    mutate(across(starts_with("mass."), as.numeric)) %>%
+    mutate(treatment = as.numeric(treatment),
+           ID = as.numeric(ID))
   
   return(cleaned_data)
 }
 
 data <- fix.columns(data)
 ```
+
+## - pre-filtering
+
+```{r}
+data <- data %>%
+  filter(is.na(treatment)) %>% # drop things that died before 3rd (pre trt assignment)
+  select(-date.transfer) # this col ends up being the same as date.3rd so dropping
+```
+
+
+# 2. column reformatting + creation
+
+// TODO 2024-07-16: think about how to deal with "stuck" individs. 
+  - notes: do i care about dates (i.e. jdate.stuck)? or just being stuck/not at all? being stuck on a per-instar level?
+  - 7/16: for now just going to do on a per-instar level binary
+
+## - julian date conversions
+
+```{r}
+data <- data %>%
+  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric))
+```
+
+## - adding in treatment info
+
+```{r}
+data <- data %>%
+  mutate(meanT = case_when(treatment == "267" | treatment == "260" ~ 26,
+                           treatment == "330" ~ 33,
+                           treatment == "380" ~ 38),
+         flucT = case_when(treatment %% 2 == 0 ~ 0,
+                           TRUE ~ 7))
+```
+
+## - add in stuck indicators (per instar)
+
+```{r}
+# 0 if no, 1 if yes
+
+data <- data %>%
+  mutate(is.stuck3rd = case_when(is.na(stuck.3rd) ~ 0, TRUE ~ 1),
+         is.stuck4th = case_when(is.na(stuck.4th) ~ 0, TRUE ~ 1),
+         is.stuck5th = case_when(is.na(stuck.5th) ~ 0, TRUE ~ 1))
+
+```
+
+
+# 3. saving output & tidying up
+
+```{r}
+# extract useful columns only
+data %>%
+  select(c("cohort", "treatment", "ID", "meanT", "flucT", "time.transfer", 
+           starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) %>% #View()
+  write.csv(file = "~/Documents/repos/ntw/2024/data/cleaned-data.csv", row.names = FALSE)
+
+```
+
+## - remove troubleshooting objects
+
+```{r}
+rm(incase)
+```
+
+
 
