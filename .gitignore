@@ -40,6 +40,5 @@ ntw_prelim-analysis2.nb.html
 ntw_prelim-analysis3.nb.html
 ntw_prelim-analysis.nb copy.html
 figs/*
-2023/data*
-archive/data/*
+*/data/*
 todos.md
