@@ -219,8 +219,8 @@ data_tents <- data_tents[, c(1, 15:16, 2, 17, 3, 14, 4:13, 18)]
 notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
 notes_tents <- select(data_tents, date, id.tent, room, tent, tent.loc, notes.tents)
 
-write.csv(notes_pairs, "~/Documents/repos/_private/data/ntw_data/notes_tentpairs.csv", row.names = FALSE)
-write.csv(notes_tents, "~/Documents/repos/_private/data/ntw_data/notes_tentstats.csv", row.names = FALSE)
+write.csv(notes_pairs, "~/Documents/repos/ntw/2023/data/notes_tentpairs.csv", row.names = FALSE)
+write.csv(notes_tents, "~/Documents/repos/ntw/2023/data/notes_tentstats.csv", row.names = FALSE)
 
 # drop from main dfs
 data_pairs <- select(data_pairs, -notes)
@@ -228,9 +228,9 @@ data_tents <- select(data_tents, -c(notes.tents, if.ignore))
 data_hatch <- select(data_hatch, -notes.hatch)
 
 # save cleaned dfs
-write.csv(data_tents, "~/Documents/repos/_private/data/ntw_data/clean-tentstats.csv", row.names = FALSE)
-write.csv(data_pairs, "~/Documents/repos/_private/data/ntw_data/clean-tentpairs.csv", row.names = FALSE)
-write.csv(data_hatch, "~/Documents/repos/_private/data/ntw_data/clean-hatchstats.csv", row.names = FALSE)
+write.csv(data_tents, "~/Documents/repos/ntw/2023/data/clean-tentstats.csv", row.names = FALSE)
+write.csv(data_pairs, "~/Documents/repos/ntw/2023/data/clean-tentpairs.csv", row.names = FALSE)
+write.csv(data_hatch, "~/Documents/repos/ntw/2023/data/clean-hatchstats.csv", row.names = FALSE)
 ```
 
 ```{r}
