@@ -16,10 +16,10 @@ library(lme4)
 library(lmerTest)
 
 # cleaned data
-data_tstats <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-tentstats.csv")
-data_tpairs <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-tentpairs.csv")
-data_hatch <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-hatchstats.csv")
-data_ntw <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-ntw.csv")
+data_tstats <- read.csv("~/Documents/repos/ntw/2023/data/clean-tentstats.csv")
+data_tpairs <- read.csv("~/Documents/repos/ntw/2023/data/clean-tentpairs.csv")
+data_hatch <- read.csv("~/Documents/repos/ntw/2023/data/clean-hatchstats.csv")
+data_ntw <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv")
 
 
 # 0.1 objects and functions -----------------------------------------------

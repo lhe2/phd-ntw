@@ -26,7 +26,7 @@ library(survminer)
 
 # cleaned data
 #wide_all <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-gsheets.csv", header = TRUE)
-wide_all <- read.csv("~/Documents/repos/_private/data/ntw_data/clean-ntw.csv", header = TRUE)
+wide_all <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv", header = TRUE)
 
 # 1. calculations & pivoting ---------------------------------------------------
 
