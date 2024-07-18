@@ -1,0 +1,106 @@
+---
+title: "2024 dev analyses"
+date: "2024-07-16"
+---
+
+# 0. roadmap & loading
+
+## - **questions**
+
+- (pilot) what is the average time spent in each instar after transferring to constant temps?
+  - where do bugs "line up" in their dev at 4th and 5th?
+- does getting stuck make a difference on survival?
+- are the avg growth outcomes different if you keep the survivors vs not?
+- how 2024 ctrls compare to 2023 ctrls?
+
+
+```{r message = FALSE}
+#source("./helpers.R") # need run cleaning.Rmd beforehand if gsheet has been updated
+  # 2024-07-18: run this manually until u've fixed everything LOL (see)
+
+library(tidyverse)
+conflicted::conflicts_prefer(dplyr::filter)
+wide_all <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
+```
+
+# 2. time to dev stages (july pilot)
+
+## - wrangling
+
+```{r}
+# doing this separately from the helpers stuff bc this is more specific to the pilot lol
+wide_all.trttime <- wide_all %>%
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.wander = jdate.wander - jdate.hatch, 
+         tt.died = jdate.pmd - jdate.hatch,
+         tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
+                              TRUE ~ jdate.pmd - jdate.3rd),
+         is.pmd = case_when(is.na(jdate.pmd) ~ 0,
+                            TRUE ~ 1) # pmd stuff gets dropped in the pivot regardless
+         )
+
+# stats of major dev pts
+long_major <- wide_all %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+               names_to = c(".value", "instar"),
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)"))
+```
+
+
+## - stats
+
+```{r}
+# includes pmd
+long_major %>%
+  group_by(trt, instar)
+  
+
+```
+
+```{r}
+# excludes pmd
+lmaj_stats <- long_major %>%
+  filter(is.pmd == 0 & 
+           instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+  group_by(trt, instar) %>%
+  mutate(tth = tt*24) %>%
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.tt = mean(na.omit(tt)),
+            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
+            avg.tth = mean(na.omit(tth)),
+            se.tth = sd(na.omit(tth))/sqrt(length(na.omit(tth))),
+            logmass = log(mass), 
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+```
+
+## - plot
+
+```{r}
+lmaj_stats %>%
+  mutate(trt = case_when(trt == 267 ~ "26±7°C",
+                         trt == 260 ~ "26±0°C",
+                         trt == 330 ~ "33±0°C",
+                         trt == 380 ~ "38±0°C"),
+         trt = factor(trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "38±0°C")))
+         ) %>%
+  ggplot(aes(y = trt, x = avg.tth, shape = instar, color = trt)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = trt, lty = trt), lwd = 0.8) +
+  geom_errorbarh(aes(xmin = avg.tth - se.tth, xmax = avg.tth + se.tth), height = 0.15) +
+  geom_text(aes(label = n, vjust = -1),
+            check_overlap = TRUE, show.legend = FALSE) +
+  theme_bw() +
+  labs(title = "avg instar times (hrs)",
+       y = "treatment", x = "hrs since hatching")
+
+# do timing from 3rd
+```
+
+

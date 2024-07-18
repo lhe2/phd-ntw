@@ -21,9 +21,13 @@ wide_all <- wide_all %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
          tt.5th = jdate.5th - jdate.hatch,
+         tt.wander = jdate.wander - jdate.hatch, 
          tt.died = jdate.pmd - jdate.hatch,
          tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
-                              TRUE ~ jdate.pmd - jdate.3rd))
+                              TRUE ~ jdate.pmd - jdate.3rd),
+         is.pmd = case_when(is.na(jdate.pmd) ~ 0,
+                            TRUE ~ 1) # pmd stuff gets dropped in the pivot regardless
+         )
 
 # 2. pivot to long, formatting --------------------------------------------
 
@@ -32,13 +36,15 @@ long_major <- wide_all %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                names_to = c(".value", "instar"),
                values_drop_na = TRUE,
-               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
-  drop_na(jdate) %>% drop_na(tt) # drops NA's if an individual didnt reach a certain stage
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) #%>% # 2024-07-18 TOFIX: drops the pmd things early
+  #drop_na(jdate) %>% drop_na(tt) # drops NA's if an individual didnt reach a certain stage
+
+#### RUN UP TO HERE UNTIL THINGS R FIXED ####
 
 # fine-scale stats for 4th and 5th only
   # this calculates the day-by-day weight changes in the 4th and the 5th instars
 long_fine <- wide_all %>%
-  select(c("treatment", "ID", "jdate.4th", starts_with("mass.4"), "jdate.5th", starts_with("mass.5"))) %>%
+  select(c("trt", "id", "jdate.4th", starts_with("mass.4"), "jdate.5th", starts_with("mass.5"))) %>%
   rename(mass.4d0 = mass.4th, mass.5d0 = mass.5th) %>%
   pivot_longer(cols = starts_with("jdate"),
                names_to = c(".value", "instar"), names_sep = "\\.", 
