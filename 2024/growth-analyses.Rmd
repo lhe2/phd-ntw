@@ -20,7 +20,7 @@ date: "2024-07-16"
 
 library(tidyverse)
 conflicted::conflicts_prefer(dplyr::filter)
-wide_all <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
+all_wide <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
 ```
 
 # 2. time to dev stages (july pilot)
@@ -29,20 +29,20 @@ wide_all <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header 
 
 ```{r}
 # doing this separately from the helpers stuff bc this is more specific to the pilot lol
-wide_all.trttime <- wide_all %>%
-  mutate(tt.3rd = jdate.3rd - jdate.hatch,
-         tt.4th = jdate.4th - jdate.hatch,
-         tt.5th = jdate.5th - jdate.hatch,
-         tt.wander = jdate.wander - jdate.hatch, 
-         tt.died = jdate.pmd - jdate.hatch,
-         tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
-                              TRUE ~ jdate.pmd - jdate.3rd),
+trttime_wide <-  all_wide %>%
+  mutate(tt.3rd = jdate.3rd - jdate.3rd,
+         tt.4th = jdate.4th - jdate.3rd,
+         tt.5th = jdate.5th - jdate.3rd,
+         tt.wander = jdate.wander - jdate.3rd, 
+         tt.died = jdate.pmd - jdate.3rd,
+         # tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
+         #                      TRUE ~ jdate.pmd - jdate.3rd),
          is.pmd = case_when(is.na(jdate.pmd) ~ 0,
                             TRUE ~ 1) # pmd stuff gets dropped in the pivot regardless
          )
 
 # stats of major dev pts
-long_major <- wide_all %>%
+trttime_long <- trttime_wide %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                names_to = c(".value", "instar"),
                values_drop_na = TRUE,
@@ -54,17 +54,9 @@ long_major <- wide_all %>%
 
 ```{r}
 # includes pmd
-long_major %>%
-  group_by(trt, instar)
-  
-
-```
-
-```{r}
-# excludes pmd
-lmaj_stats <- long_major %>%
-  filter(is.pmd == 0 & 
-           instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+trttime_lstats <- trttime_long %>%
+  #filter(is.pmd == 0) %>%
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>%
   group_by(trt, instar) %>%
   mutate(tth = tt*24) %>%
   summarise(avg.mass = mean(na.omit(mass)),
@@ -73,9 +65,9 @@ lmaj_stats <- long_major %>%
             se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
             avg.tth = mean(na.omit(tth)),
             se.tth = sd(na.omit(tth))/sqrt(length(na.omit(tth))),
-            logmass = log(mass), 
-            avg.logmass = mean(na.omit(logmass)),
-            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            # logmass = log(mass), 
+            # avg.logmass = mean(na.omit(logmass)),
+            # se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))), # dont need these for dev time only lol
             n=n())
 
 ```
@@ -83,7 +75,8 @@ lmaj_stats <- long_major %>%
 ## - plot
 
 ```{r}
-lmaj_stats %>%
+# by hours
+trttime_lstats %>%
   mutate(trt = case_when(trt == 267 ~ "26±7°C",
                          trt == 260 ~ "26±0°C",
                          trt == 330 ~ "33±0°C",
@@ -92,15 +85,36 @@ lmaj_stats %>%
          ) %>%
   ggplot(aes(y = trt, x = avg.tth, shape = instar, color = trt)) +
   geom_point(size = 2) +
-  geom_line(aes(group = trt, lty = trt), lwd = 0.8) +
+  geom_line(aes(group = trt, lty = trt), lwd = 0.8, show.legend = FALSE) +
   geom_errorbarh(aes(xmin = avg.tth - se.tth, xmax = avg.tth + se.tth), height = 0.15) +
   geom_text(aes(label = n, vjust = -1),
             check_overlap = TRUE, show.legend = FALSE) +
+  scale_x_continuous(minor_breaks = seq(0, 250, by = 24),
+                     breaks = seq(0, 250, by = 48)) +
   theme_bw() +
   labs(title = "avg instar times (hrs)",
-       y = "treatment", x = "hrs since hatching")
+       y = "treatment", x = "hrs since 3rd",
+       color = "treatment")
 
-# do timing from 3rd
+# by days
+trttime_lstats %>%
+  mutate(trt = case_when(trt == 267 ~ "26±7°C",
+                         trt == 260 ~ "26±0°C",
+                         trt == 330 ~ "33±0°C",
+                         trt == 380 ~ "38±0°C"),
+         trt = factor(trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "38±0°C")))
+         ) %>%
+  ggplot(aes(y = trt, x = avg.tt, shape = instar, color = trt)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = trt, lty = trt), lwd = 0.8, show.legend = FALSE) +
+  geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), height = 0.15) +
+  geom_text(aes(label = n, vjust = -1),
+            check_overlap = TRUE, show.legend = FALSE) +
+  scale_x_continuous(breaks = seq(0, 10, by = 2)) +
+  theme_bw() +
+  labs(title = "avg instar times (days)",
+       y = "treatment", x = "days since 3rd",
+       color = "treatment")
 ```
 
 

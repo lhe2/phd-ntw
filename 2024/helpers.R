@@ -86,3 +86,17 @@ long_all <- rows_patch(long_major, long_fine, by = "ID")
 # 3. long calculations ----------------------------------------------------
 
 
+# helper functions --------------------------------------------------------
+
+## adding integer breaks to a plot
+  # from: https://stackoverflow.com/a/62321155/17952236
+  # ok this is not what i want LOL (n will determine the # of breaks u get)
+
+integer_breaks <- function(n, ...) {
+  fxn <- function(x) {
+    breaks <- floor(pretty(x, n = n, ...))
+    names(breaks) <- attr(breaks, "labels")
+    unique(breaks)
+  }
+  return(fxn)
+}
