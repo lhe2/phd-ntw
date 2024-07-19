@@ -15,8 +15,17 @@ conflicted::conflicts_prefer(dplyr::filter)
 wide_all <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
 
 
-# 1. wide calculations ----------------------------------------------------
+# 1. wide manipulations ----------------------------------------------------
 
+## formatting and labels
+wide_all <- wide_all %>%
+  mutate(labs.trt = case_when(trt == 267 ~ "26±7°C",
+                              trt == 260 ~ "26±0°C",
+                              trt == 330 ~ "33±0°C",
+                              trt == 380 ~ "38±0°C"),
+         labs.trt = factor(labs.trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "38±0°C"))))
+
+## calculations
 wide_all <- wide_all %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
@@ -48,15 +57,10 @@ long_major <- wide_all %>%
   filter(instar != "2nd") # want to keep "hatch" for mathing
   #drop_na(tt) # drops NA's if an individual didnt reach a certain stage
 
-#### RUN UP TO HERE UNTIL THINGS R FIXED ####
+# fine-scale stats for later instars only (e.g. 4th onward)
+  # this allows for plotting of the day-by-day weight changes in the later instars
 
-# fine-scale stats for 4th and 5th only
-  # this allows for plotting of the day-by-day weight changes in the 4th and the 5th instars
-
-# separate out the 4ths, 5ths, and individual info (to merge back into later so all lines can be filled in when joining back w the major)
-# long_info <- wide_all %>%
-#   select(1:6) # dont need -- merge works
-
+# separate out the 4ths, 5ths to do math with
 long_4ths <- wide_all %>%
   select(c("id", "jdate.hatch", "jdate.3rd", "jdate.4th", starts_with("mass.4"))) %>%
   rename(mass.4d0 = mass.4th,
@@ -96,7 +100,7 @@ long_all <- merge(long_fine, long_major,
   # https://stackoverflow.com/questions/42915636/forward-and-backward-fill-data-frame-in-r
 
 long_all <- long_all %>%
-  arrange(id, jdate) %>%
+  arrange(id, jdate) %>% # make sure stuff is in order before backfilling
   zoo::na.locf(fromLast = TRUE, na.rm = FALSE) %>%
   mutate(tt = jdate - jdate.hatch,
          t3 = case_when(jdate >= jdate.3rd ~ jdate - jdate.3rd))
@@ -114,11 +118,11 @@ rm(long_4ths, long_5ths)
   # from: https://stackoverflow.com/a/62321155/17952236
   # ok this is not what i want LOL (n will determine the # of breaks u get)
 
-integer_breaks <- function(n, ...) {
-  fxn <- function(x) {
-    breaks <- floor(pretty(x, n = n, ...))
-    names(breaks) <- attr(breaks, "labels")
-    unique(breaks)
-  }
-  return(fxn)
-}
+# integer_breaks <- function(n, ...) {
+#   fxn <- function(x) {
+#     breaks <- floor(pretty(x, n = n, ...))
+#     names(breaks) <- attr(breaks, "labels")
+#     unique(breaks)
+#   }
+#   return(fxn)
+# }
