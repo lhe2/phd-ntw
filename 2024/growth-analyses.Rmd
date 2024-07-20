@@ -3,7 +3,7 @@ title: "2024 dev analyses"
 date: "2024-07-16"
 ---
 
-# 0. roadmap & loading
+# roadmap & loading
 
 ## - **questions**
 
@@ -15,26 +15,28 @@ date: "2024-07-16"
 
 
 ```{r message = FALSE}
-#source("./helpers.R") # need run cleaning.Rmd beforehand if gsheet has been updated
-  # 2024-07-18: run this manually until u've fixed everything LOL (see)
+source("./helpers.R") # need run cleaning.Rmd beforehand if gsheet has been updated
 
-library(tidyverse)
-conflicted::conflicts_prefer(dplyr::filter)
-all_wide <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
+# INCASE: bring this back if u need it and are breaking things
+  # library(tidyverse)
+  # conflicted::conflicts_prefer(dplyr::filter)
+  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
 ```
 
-# 2. time to dev stages (july pilot)
+# july pilot 
 
-## - wrangling
+## = time to dev stages
+
+### - wrangling
 
 ```{r}
 # doing this separately from the helpers stuff bc this is more specific to the pilot lol
-trttime_wide <-  all_wide %>%
-  mutate(tt.3rd = jdate.3rd - jdate.3rd,
-         tt.4th = jdate.4th - jdate.3rd,
-         tt.5th = jdate.5th - jdate.3rd,
-         tt.wander = jdate.wander - jdate.3rd, 
-         tt.died = jdate.pmd - jdate.3rd,
+trttime_wide <-  wide_all %>%
+  mutate(t3.3rd = jdate.3rd - jdate.3rd,
+         t3.4th = jdate.4th - jdate.3rd,
+         t3.5th = jdate.5th - jdate.3rd,
+         t3.wander = jdate.wander - jdate.3rd, 
+         t3.died = jdate.pmd - jdate.3rd,
          # tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
          #                      TRUE ~ jdate.pmd - jdate.3rd),
          is.pmd = case_when(is.na(jdate.pmd) ~ 0,
@@ -43,51 +45,41 @@ trttime_wide <-  all_wide %>%
 
 # stats of major dev pts
 trttime_long <- trttime_wide %>%
-  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+  pivot_longer(cols = starts_with(c("jdate", "mass", "t3")),
                names_to = c(".value", "instar"),
                values_drop_na = TRUE,
-               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)"))
+               names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)"))
 ```
 
 
-## - stats
+### - stats
 
 ```{r}
 # includes pmd
 trttime_lstats <- trttime_long %>%
   #filter(is.pmd == 0) %>%
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>%
-  group_by(trt, instar) %>%
-  mutate(tth = tt*24) %>%
+  group_by(labs.trt, instar) %>%
+  mutate(t3h = t3*24) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
-            avg.tt = mean(na.omit(tt)),
-            se.tt = sd(na.omit(tt))/sqrt(length(na.omit(tt))),
-            avg.tth = mean(na.omit(tth)),
-            se.tth = sd(na.omit(tth))/sqrt(length(na.omit(tth))),
-            # logmass = log(mass), 
-            # avg.logmass = mean(na.omit(logmass)),
-            # se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))), # dont need these for dev time only lol
+            avg.t3 = mean(na.omit(t3)),
+            se.t3 = sd(na.omit(t3))/sqrt(length(na.omit(t3))),
+            avg.t3h = mean(na.omit(t3h)),
+            se.t3h = sd(na.omit(t3h))/sqrt(length(na.omit(t3h))),
             n=n())
-
 ```
 
-## - plot
+### - plot
 
 ```{r}
 # by hours
 trttime_lstats %>%
-  mutate(trt = case_when(trt == 267 ~ "26±7°C",
-                         trt == 260 ~ "26±0°C",
-                         trt == 330 ~ "33±0°C",
-                         trt == 380 ~ "38±0°C"),
-         trt = factor(trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "38±0°C")))
-         ) %>%
-  ggplot(aes(y = trt, x = avg.tth, shape = instar, color = trt)) +
+  ggplot(aes(y = labs.trt, x = avg.t3h, shape = instar, color = labs.trt)) +
   geom_point(size = 2) +
-  geom_line(aes(group = trt, lty = trt), lwd = 0.8, show.legend = FALSE) +
-  geom_errorbarh(aes(xmin = avg.tth - se.tth, xmax = avg.tth + se.tth), height = 0.15) +
-  geom_text(aes(label = n, vjust = -1),
+  geom_line(aes(group = labs.trt, lty = labs.trt), lwd = 0.8, show.legend = FALSE) +
+  geom_errorbarh(aes(xmin = avg.t3h - se.t3h, xmax = avg.t3h + se.t3h), height = 0.15) +
+  geom_text(aes(label = n, vjust = -1.5),
             check_overlap = TRUE, show.legend = FALSE) +
   scale_x_continuous(minor_breaks = seq(0, 250, by = 24),
                      breaks = seq(0, 250, by = 48)) +
@@ -98,17 +90,11 @@ trttime_lstats %>%
 
 # by days
 trttime_lstats %>%
-  mutate(trt = case_when(trt == 267 ~ "26±7°C",
-                         trt == 260 ~ "26±0°C",
-                         trt == 330 ~ "33±0°C",
-                         trt == 380 ~ "38±0°C"),
-         trt = factor(trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "38±0°C")))
-         ) %>%
-  ggplot(aes(y = trt, x = avg.tt, shape = instar, color = trt)) +
+  ggplot(aes(y = labs.trt, x = avg.t3, shape = instar, color = labs.trt)) +
   geom_point(size = 2) +
-  geom_line(aes(group = trt, lty = trt), lwd = 0.8, show.legend = FALSE) +
-  geom_errorbarh(aes(xmin = avg.tt - se.tt, xmax = avg.tt + se.tt), height = 0.15) +
-  geom_text(aes(label = n, vjust = -1),
+  geom_line(aes(group = labs.trt, lty = labs.trt), lwd = 0.8, show.legend = FALSE) +
+  geom_errorbarh(aes(xmin = avg.t3 - se.t3, xmax = avg.t3 + se.t3), height = 0.15) +
+  geom_text(aes(label = n, vjust = -1.5),
             check_overlap = TRUE, show.legend = FALSE) +
   scale_x_continuous(breaks = seq(0, 10, by = 2)) +
   theme_bw() +
@@ -117,4 +103,46 @@ trttime_lstats %>%
        color = "treatment")
 ```
 
+## = fine-scale development
+
+want to see how mass changes day-by-day in the later instars up to wandering
+
+### - stats
+
+```{r}
+fine_stats <- long_all %>%
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>%
+  group_by(labs.trt, #instar, # does nawt work w instar lol
+           t3) %>%
+  mutate(logmass = log(na.omit(mass))) %>% 
+  summarise(avg.mass = mean(na.omit(mass)),
+            se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
+            avg.logmass = mean(na.omit(logmass)),
+            se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
+            n=n())
+
+majortimes_stats <- trttime_long %>%
+  filter(instar %in% c("4th", "5th", "wander")) %>%
+  group_by(instar) %>%
+  summarise(avg.t3 = mean(na.omit(t3)))
+```
+
+### - plot
+
+```{r}
+ggplot(fine_stats, aes(y = avg.mass, x = t3, color = labs.trt, #shape = instar
+                       )) +
+  geom_point() + geom_line(lwd = 0.8) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
+  geom_line(data = long_all, 
+            aes(y = mass, group = interaction(id, labs.trt)),
+            alpha = 0.25) +
+  geom_vline(majortimes_stats, mapping = aes(xintercept = avg.t3, lty = instar), # meh could be better
+             #show.legend = FALSE
+             ) + 
+  #facet_wrap(~labs.trt) +
+  theme_bw() +
+  labs(x = "days since 3rd", y = "avg mass (mg)",  
+       color = "treatment")
+```
 
