@@ -9,8 +9,6 @@ date: "2024-07-15"
 2. column formatting + rearrangement
 3. save output into `2024/data/`
 
-(borrowing a lot of code from `2023/cleaning_ntw`)
-
 # 1. load data & packages
 ```{r message = FALSE}
 library(conflicted)
@@ -30,7 +28,7 @@ library(googlesheets4)
   - 7/15: yes LOL the dates are broken bc of the year
 
 ```{r}
-data <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1256964024", sheet = "july pilot", col_types = "c")
+data <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1256964024", sheet = "ox str", col_types = "c")
 
 incase <- data
 data <- incase
@@ -113,7 +111,7 @@ data <- data %>%
 data %>%
   select(c("cohort", "trt", "id", "meanT", "flucT", "time.transfer", 
            starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) %>% #View()
-  write.csv(., file = "~/Documents/repos/ntw/2024/data/cleaned-data.csv", row.names = FALSE)
+  write.csv(., file = "~/Documents/repos/ntw/2024/data/data_ox.csv", row.names = FALSE)
 
 ```
 

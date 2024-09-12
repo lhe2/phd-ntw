@@ -5,14 +5,14 @@
 # this worked well for 2023 lol so we'll do it again
 
 # dependencies:
-  ## outputs of `cleaning.Rmd`
+  ## outputs of `cleaning_ox.Rmd`
 
 # 0. package and data loading ---------------------------------------------
 
 library(tidyverse)
 conflicted::conflicts_prefer(dplyr::filter)
 
-wide_all <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
+wide_all <- read.csv("~/Documents/repos/ntw/2024/data/data_ox.csv", header = TRUE)
 
 
 # 1. wide manipulations ----------------------------------------------------
@@ -22,14 +22,16 @@ wide_all <- wide_all %>%
   mutate(labs.trt = case_when(trt == 267 ~ "26±7°C",
                               trt == 260 ~ "26±0°C",
                               trt == 330 ~ "33±0°C",
+                              trt == 360 ~ "36±0°C",
                               trt == 380 ~ "38±0°C"),
-         labs.trt = factor(labs.trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "38±0°C"))))
+         labs.trt = factor(labs.trt, levels = (c("26±7°C", "26±0°C", "33±0°C", "36±0°C", "38±0°C"))))
 
 ## calculations
 wide_all <- wide_all %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
          tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
          tt.wander = jdate.wander - jdate.hatch, 
          tt.died = jdate.pmd - jdate.hatch,
          tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd, ## i think intrt, pmdh, pmdt can be consolidated
@@ -40,6 +42,7 @@ wide_all <- wide_all %>%
          t3.pmd = jdate.pmd - jdate.3rd, 
          t3.4th = jdate.4th - jdate.3rd,
          t3.5th = jdate.5th - jdate.3rd,
+         t3.6th = jdate.6th - jdate.3rd, 
          t3.wander = jdate.wander - jdate.3rd, 
          is.pmd = case_when(is.na(jdate.pmd) ~ 0,
                             TRUE ~ 1) # pmd stuff gets dropped in the pivot regardless
@@ -88,8 +91,21 @@ long_5ths <- wide_all %>%
   rename(jdate = jdate_d,
          mass = mass5th)
 
+long_6ths <- wide_all %>%
+  select(c("id", "jdate.hatch", "jdate.3rd", "jdate.6th", starts_with("mass.6"))) %>%
+  rename(mass.6d0 = mass.6th,
+         jdate = jdate.6th) %>%
+  pivot_longer(cols = starts_with("mass.6"),
+               names_to = "dx", names_prefix = "mass.6d", names_transform = as.integer,
+               values_to = "mass6th", values_drop_na = TRUE) %>%
+  mutate(jdate_d = jdate + dx,
+         instar = "6th") %>%
+  select(-c("jdate", "dx")) %>%
+  rename(jdate = jdate_d,
+         mass = mass6th)
+
 # merging
-long_fine <- rbind(long_4ths, long_5ths)
+long_fine <- rbind(long_4ths, long_5ths, long_6ths)
 
 long_all <- merge(long_fine, long_major, 
                   by = c("id", "instar", "jdate", "mass"),
@@ -106,7 +122,7 @@ long_all <- long_all %>%
          t3 = case_when(jdate >= jdate.3rd ~ jdate - jdate.3rd))
   
 # cleanup
-rm(long_4ths, long_5ths)
+rm(long_4ths, long_5ths, long_6ths)
   
 
 # 3. long calculations ----------------------------------------------------

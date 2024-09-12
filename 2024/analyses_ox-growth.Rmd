@@ -20,7 +20,7 @@ source("./helpers.R") # need run cleaning.Rmd beforehand if gsheet has been upda
 # INCASE: bring this back if u need it and are breaking things
   # library(tidyverse)
   # conflicted::conflicts_prefer(dplyr::filter)
-  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/cleaned-data.csv", header = TRUE)
+  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/data_ox.csv", header = TRUE)
 ```
 
 # july pilot 
@@ -35,6 +35,7 @@ trttime_wide <-  wide_all %>%
   mutate(t3.3rd = jdate.3rd - jdate.3rd,
          t3.4th = jdate.4th - jdate.3rd,
          t3.5th = jdate.5th - jdate.3rd,
+         t3.6th = jdate.6th - jdate.3rd,
          t3.wander = jdate.wander - jdate.3rd, 
          t3.died = jdate.pmd - jdate.3rd,
          # tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
@@ -58,7 +59,7 @@ trttime_long <- trttime_wide %>%
 # includes pmd
 trttime_lstats <- trttime_long %>%
   #filter(is.pmd == 0) %>%
-  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>%
+  filter(instar %in% c("3rd", "4th", "5th", "6th", "wander")) %>%
   group_by(labs.trt, instar) %>%
   mutate(t3h = t3*24) %>%
   summarise(avg.mass = mean(na.omit(mass)),
@@ -72,6 +73,12 @@ trttime_lstats <- trttime_long %>%
 
 ### - plot
 
+TODO: 
+
+- pull out 6ths
+- reorder trts?
+- how to handle the culled bugs
+
 ```{r}
 # by hours
 trttime_lstats %>%
@@ -82,7 +89,7 @@ trttime_lstats %>%
   geom_text(aes(label = n, vjust = -1.5),
             check_overlap = TRUE, show.legend = FALSE) +
   scale_x_continuous(minor_breaks = seq(0, 250, by = 24),
-                     breaks = seq(0, 250, by = 48)) +
+                     breaks = seq(0, 400, by = 48)) +
   theme_bw() +
   labs(title = "avg instar times (hrs)",
        y = "treatment", x = "hrs since 3rd",
@@ -90,13 +97,14 @@ trttime_lstats %>%
 
 # by days
 trttime_lstats %>%
+  filter(labs.trt != "38±0°C") %>%
   ggplot(aes(y = labs.trt, x = avg.t3, shape = instar, color = labs.trt)) +
   geom_point(size = 2) +
   geom_line(aes(group = labs.trt, lty = labs.trt), lwd = 0.8, show.legend = FALSE) +
   geom_errorbarh(aes(xmin = avg.t3 - se.t3, xmax = avg.t3 + se.t3), height = 0.15) +
   geom_text(aes(label = n, vjust = -1.5),
             check_overlap = TRUE, show.legend = FALSE) +
-  scale_x_continuous(breaks = seq(0, 10, by = 2)) +
+  scale_x_continuous(breaks = seq(0, 18, by = 2)) +
   theme_bw() +
   labs(title = "avg instar times (days)",
        y = "treatment", x = "days since 3rd",
@@ -111,7 +119,7 @@ want to see how mass changes day-by-day in the later instars up to wandering
 
 ```{r}
 fine_stats <- long_all %>%
-  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>%
+  filter(instar %in% c("3rd", "4th", "5th", "6th", "wander")) %>%
   group_by(labs.trt, #instar, # does nawt work w instar lol
            t3) %>%
   mutate(logmass = log(na.omit(mass))) %>% 
@@ -122,27 +130,34 @@ fine_stats <- long_all %>%
             n=n())
 
 majortimes_stats <- trttime_long %>%
-  filter(instar %in% c("4th", "5th", "wander")) %>%
+  filter(instar %in% c("4th", "5th", "6th", "wander")) %>%
   group_by(instar) %>%
   summarise(avg.t3 = mean(na.omit(t3)))
 ```
 
 ### - plot
 
+TODO:
+
+- need to split the 6ths from the rest bc they have different dev trajectories
+
 ```{r}
-ggplot(fine_stats, aes(y = avg.mass, x = t3, color = labs.trt, #shape = instar
+ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = instar
                        )) +
   geom_point() + geom_line(lwd = 0.8) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass)) +
-  geom_line(data = long_all, 
-            aes(y = mass, group = interaction(id, labs.trt)),
-            alpha = 0.25) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass,
+                    width = 0.5)) +
+  # geom_line(data = long_all, 
+  #           aes(y = log(mass), group = interaction(id, labs.trt)),
+  #           alpha = 0.25) +
   geom_vline(majortimes_stats, mapping = aes(xintercept = avg.t3, lty = instar), # meh could be better
              #show.legend = FALSE
              ) + 
   #facet_wrap(~labs.trt) +
   theme_bw() +
-  labs(x = "days since 3rd", y = "avg mass (mg)",  
+  labs(x = "days since 3rd", y = "avg log(mass (mg))",  
        color = "treatment")
 ```
+
+
 
