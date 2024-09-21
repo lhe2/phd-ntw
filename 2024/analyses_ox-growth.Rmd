@@ -37,7 +37,9 @@ source("./helpers_ox.R") # need run cleaning.Rmd beforehand if gsheet has been u
 ### - wrangling
 
 ```{r}
-# doing this separately from the helpers stuff bc this is more specific to the pilot lol
+# doing this math separately from the helpers stuff bc this is more specific to the pilot lol
+
+# relative to time entering trt
 trttime_wide <-  wide_all %>%
   filter(sup == 0 | is.na(sup)) %>%
   mutate(t3.3rd = jdate.3rd - jdate.3rd,
@@ -45,17 +47,19 @@ trttime_wide <-  wide_all %>%
          t3.5th = jdate.5th - jdate.3rd,
          t3.6th = jdate.6th - jdate.3rd,
          t3.wander = jdate.wander - jdate.3rd,
-         t3.died = jdate.pmd - jdate.3rd,
+         t3.pmd = jdate.pmd - jdate.3rd,
          tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
                               TRUE ~ jdate.pmd - jdate.3rd)
          )
 
-# stats of major dev pts
+# stats of major dev pts (long)
 trttime_long <- trttime_wide %>%
+  select(-(contains(c("4d", "5d", "6d")))) %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "t3")),
                names_to = c(".value", "instar"),
                values_drop_na = TRUE,
-               names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)"))
+               names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
+  filter(!is.na(instar) & !(instar %in% c("2nd", "15", "culled", "")))
 ```
 
 
@@ -64,19 +68,32 @@ trttime_long <- trttime_wide %>%
 2024-09-12: need to take handle the culled somehow
 
 ```{r}
-# includes pmd
+# includes pmd and all trts
 trttime_lstats <- trttime_long %>%
   #filter(is.pmd == 0) %>%
   filter(instar %in% c("3rd", "4th", "5th", "6th", "wander")) %>%
-  group_by(labs.trt, instar) %>%
-  mutate(t3h = t3*24) %>%
+  group_by(labs.trt, instar) %>% # can add extra filters...
+  mutate(t3h = t3*24,
+         fate.pmd = case_when(fate == "pmd" ~ 1, TRUE ~ 0),
+         fate.culled = case_when(grepl("culled", fate) ~ 1, TRUE ~ 0),
+         #fate.surv = case_when(fate %in% c("pupa", "eclose") ~ 1, TRUE ~ 0)
+         ) %>%
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
             avg.t3 = mean(na.omit(t3)),
             se.t3 = sd(na.omit(t3))/sqrt(length(na.omit(t3))),
             avg.t3h = mean(na.omit(t3h)),
             se.t3h = sd(na.omit(t3h))/sqrt(length(na.omit(t3h))),
-            n=n())
+            n=n(), # includes culled #s
+            n.pmd = sum(fate.pmd),
+            n.culled = sum(fate.culled),
+            pct.surv =  round((n - n.culled - n.pmd)/(n - n.culled) * 100, digits = 1), # excludes culled from pctg
+            labs.surv = paste0(n, " (", pct.surv, ")")
+            ) %>%
+  mutate(labs.surv = str_replace(labs.surv, " \\(.0*\\)", ""))
+# oops math
+  # mutate(n.culled = dplyr::lag(n.culled, default = 0),
+  #        pct.surv =  round(n - n.pmd/(n - n.culled) * 100, digits = 1))
 ```
 
 ### - plot
@@ -90,6 +107,7 @@ TODO:
 ```{r}
 # by hours
 trttime_lstats %>%
+  filter()
   ggplot(aes(y = labs.trt, x = avg.t3h, shape = instar, color = labs.trt)) +
   geom_point(size = 2) +
   geom_line(aes(group = labs.trt, lty = labs.trt), lwd = 0.8, show.legend = FALSE) +

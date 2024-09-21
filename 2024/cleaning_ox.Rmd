@@ -123,7 +123,8 @@ data <- data %>%
 ```{r}
 # extract useful columns only
 data %>%
-  select(c("cohort", "trt", "id", "meanT", "flucT", "time.transfer", "fate", "sup", 
+  select(c("cohort", "trt", "id", "meanT", "flucT", #"time.transfer", 
+           "fate", "sup", 
            starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) %>% #View()
   write.csv(., file = "~/Documents/repos/ntw/2024/data/data-ox.csv", row.names = FALSE)
 
