@@ -11,37 +11,43 @@ date: "2024-07-16"
   - where do bugs "line up" in their dev at 4th and 5th?
 - does getting stuck make a difference on survival?
 - are the avg growth outcomes different if you keep the survivors vs not?
-- how 2024 ctrls compare to 2023 ctrls?
+- (ntw) how 2024 ctrls compare to 2023 ctrls?
 
 
 ```{r message = FALSE}
-source("./helpers.R") # need run cleaning.Rmd beforehand if gsheet has been updated
+source("./helpers_ox.R") # need run cleaning.Rmd beforehand if gsheet has been updated
 
 # INCASE: bring this back if u need it and are breaking things
   # library(tidyverse)
   # conflicted::conflicts_prefer(dplyr::filter)
-  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/data_ox.csv", header = TRUE)
+  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/data-ox.csv", header = TRUE)
 ```
 
 # july pilot 
 
+## = controls
+
+
+
+
 ## = time to dev stages
+
+2024-09-12: taking out the 6ths bc there's just not rly enough of them to do anything interesting w/ and they mess things up lol
 
 ### - wrangling
 
 ```{r}
 # doing this separately from the helpers stuff bc this is more specific to the pilot lol
 trttime_wide <-  wide_all %>%
+  filter(sup == 0 | is.na(sup)) %>%
   mutate(t3.3rd = jdate.3rd - jdate.3rd,
          t3.4th = jdate.4th - jdate.3rd,
          t3.5th = jdate.5th - jdate.3rd,
          t3.6th = jdate.6th - jdate.3rd,
-         t3.wander = jdate.wander - jdate.3rd, 
+         t3.wander = jdate.wander - jdate.3rd,
          t3.died = jdate.pmd - jdate.3rd,
-         # tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
-         #                      TRUE ~ jdate.pmd - jdate.3rd),
-         is.pmd = case_when(is.na(jdate.pmd) ~ 0,
-                            TRUE ~ 1) # pmd stuff gets dropped in the pivot regardless
+         tt.intrt = case_when(is.na(jdate.pmd) ~ jdate.pupa - jdate.3rd,
+                              TRUE ~ jdate.pmd - jdate.3rd)
          )
 
 # stats of major dev pts
@@ -54,6 +60,8 @@ trttime_long <- trttime_wide %>%
 
 
 ### - stats
+
+2024-09-12: need to take handle the culled somehow
 
 ```{r}
 # includes pmd

@@ -86,6 +86,7 @@ data <- data %>%
 data <- data %>%
   mutate(meanT = case_when(trt %in% c("260", "267") ~ 26,
                            trt == "330" ~ 33,
+                           trt == "360" ~ 36,
                            trt == "380" ~ 38),
          flucT = case_when(trt %% 2 == 0 ~ 0,
                            TRUE ~ 7))
@@ -99,7 +100,20 @@ data <- data %>%
 data <- data %>%
   mutate(is.stuck3rd = case_when(is.na(stuck.3rd) ~ 0, TRUE ~ 1),
          is.stuck4th = case_when(is.na(stuck.4th) ~ 0, TRUE ~ 1),
-         is.stuck5th = case_when(is.na(stuck.5th) ~ 0, TRUE ~ 1))
+         is.stuck5th = case_when(is.na(stuck.5th) ~ 0, TRUE ~ 1),
+         is.stuck6th = case_when(is.na(stuck.6th) ~ 0, TRUE ~ 1))
+
+```
+
+
+## - parse out dev trajectories
+
+```{r}
+# separate 5ths vs 6ths
+
+data <- data %>%
+  mutate(sup = case_when(!is.na(date.6th) ~ 6,
+                         (is.na(date.pmd) & fate == "eclose") ~ 0))
 
 ```
 
@@ -109,9 +123,9 @@ data <- data %>%
 ```{r}
 # extract useful columns only
 data %>%
-  select(c("cohort", "trt", "id", "meanT", "flucT", "time.transfer", 
+  select(c("cohort", "trt", "id", "meanT", "flucT", "time.transfer", "fate", "sup", 
            starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) %>% #View()
-  write.csv(., file = "~/Documents/repos/ntw/2024/data/data_ox.csv", row.names = FALSE)
+  write.csv(., file = "~/Documents/repos/ntw/2024/data/data-ox.csv", row.names = FALSE)
 
 ```
 

@@ -5,14 +5,16 @@
 # this worked well for 2023 lol so we'll do it again
 
 # dependencies:
-  ## outputs of `cleaning_ox.Rmd`
+  ## outputs of `cleaning_ox.Rmd`, but see below
 
 # 0. package and data loading ---------------------------------------------
 
 library(tidyverse)
 conflicted::conflicts_prefer(dplyr::filter)
 
-wide_all <- read.csv("~/Documents/repos/ntw/2024/data/data_ox.csv", header = TRUE)
+#source("./cleaning_ox.Rmd") # uncomment and run if need to update the datasheet. archive the old csv first tho
+
+wide_all <- read.csv("~/Documents/repos/ntw/2024/data/data-ox.csv", header = TRUE)
 
 
 # 1. wide manipulations ----------------------------------------------------
@@ -44,8 +46,9 @@ wide_all <- wide_all %>%
          t3.5th = jdate.5th - jdate.3rd,
          t3.6th = jdate.6th - jdate.3rd, 
          t3.wander = jdate.wander - jdate.3rd, 
-         is.pmd = case_when(is.na(jdate.pmd) ~ 0,
-                            TRUE ~ 1) # pmd stuff gets dropped in the pivot regardless
+         is.pmd = case_when(grepl("cull", fate) ~ 2,
+                            is.na(jdate.pmd) ~ 0,
+                            TRUE ~ 1)  # pmd stuff gets dropped in the pivot regardless
          )
 
 # 2. pivot to long, formatting --------------------------------------------
@@ -63,7 +66,7 @@ long_major <- wide_all %>%
 # fine-scale stats for later instars only (e.g. 4th onward)
   # this allows for plotting of the day-by-day weight changes in the later instars
 
-# separate out the 4ths, 5ths to do math with
+# separate out the 4ths, 5ths, 6ths to do math with
 long_4ths <- wide_all %>%
   select(c("id", "jdate.hatch", "jdate.3rd", "jdate.4th", starts_with("mass.4"))) %>%
   rename(mass.4d0 = mass.4th,
