@@ -12,8 +12,6 @@
 library(tidyverse)
 conflicted::conflicts_prefer(dplyr::filter)
 
-#source("./cleaning_ox.Rmd") # uncomment and run if need to update the datasheet. archive the old csv first tho
-
 wide_all <- read.csv("~/Documents/repos/ntw/2024/data/data-ox.csv", header = TRUE)
 
 

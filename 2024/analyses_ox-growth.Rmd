@@ -25,11 +25,6 @@ source("./helpers_ox.R") # need run cleaning.Rmd beforehand if gsheet has been u
 
 # july pilot 
 
-## = controls
-
-
-
-
 ## = time to dev stages
 
 2024-09-12: taking out the 6ths bc there's just not rly enough of them to do anything interesting w/ and they mess things up lol
@@ -41,6 +36,7 @@ source("./helpers_ox.R") # need run cleaning.Rmd beforehand if gsheet has been u
 
 # relative to time entering trt
 trttime_wide <-  wide_all %>%
+  mutate(labs.trt = factor(labs.trt, c("26±7°C", "26±0°C", "33±0°C", "36±0°C", "38±0°C"))) %>%
   filter(sup == 0 | is.na(sup)) %>%
   mutate(t3.3rd = jdate.3rd - jdate.3rd,
          t3.4th = jdate.4th - jdate.3rd,
@@ -102,7 +98,7 @@ trttime_lstats <- trttime_long %>%
 ### - plot
 
 TODO: 
-- reorder trts?
+- [x] reorder trts?
 - how to handle the culled bugs
 
 ```{r}
@@ -148,7 +144,7 @@ trttime_lstats %>%
        caption = "n (% surv)")
 ```
 
-## = dev stages by cohort
+## = ctrl: dev stages by cohort
 
 wrangle (recalc stats by cohort)
 
@@ -212,21 +208,27 @@ want to see how mass changes day-by-day in the later instars up to wandering
 ### - stats
 
 ```{r}
-fine_stats <- long_all %>%
+fine_stats <- long_all %>% # todo: 2024-09-22: theres some unexpected NAs in here?
   filter(instar %in% c("3rd", "4th", "5th", "6th", "wander")) %>%
   group_by(labs.trt, #instar, # does nawt work w instar lol
            t3) %>%
-  mutate(logmass = log(na.omit(mass))) %>% 
+  mutate(logmass = log(na.omit(mass))) %>% #filter(t3 == 0) %>% View
   summarise(avg.mass = mean(na.omit(mass)),
             se.mass = sd(na.omit(mass))/sqrt(length(na.omit(mass))),
             avg.logmass = mean(na.omit(logmass)),
             se.logmass = sd(na.omit(logmass))/sqrt(length(na.omit(logmass))),
-            n=n())
+            n=n()) %>%
+  filter(n > 1) # drops the lonely things bc they fudge the graph up
+
 
 majortimes_stats <- trttime_long %>%
   filter(instar %in% c("4th", "5th", "6th", "wander")) %>%
-  group_by(instar) %>%
-  summarise(avg.t3 = mean(na.omit(t3)))
+  group_by(#labs.trt, 
+           instar) %>%
+  summarise(avg.t3 = mean(na.omit(t3)),
+            se.t3 = sd(na.omit(t3)/sqrt(length(na.omit(t3)))),
+            max.t3 = avg.t3 + se.t3, 
+            min.t3 = avg.t3 - se.t3)
 ```
 
 ### - plot
@@ -236,6 +238,7 @@ TODO:
 - need to split the 6ths from the rest bc they have different dev trajectories (everything is fine if u omit it tho 👍)
 
 ```{r}
+# faceted ver: run majortime_stats grouped by labs.trt
 ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = instar
                        )) +
   geom_point() + geom_line(lwd = 0.8) +
@@ -244,13 +247,47 @@ ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = insta
   # geom_line(data = long_all, 
   #           aes(y = log(mass), group = interaction(id, labs.trt)),
   #           alpha = 0.25) +
-  geom_vline(majortimes_stats, mapping = aes(xintercept = avg.t3, lty = instar), # meh could be better
+  geom_vline(majortimes_stats, mapping = aes(xintercept = avg.t3, lty = instar, color = labs.trt), # meh could be better
              #show.legend = FALSE
              ) + 
-  #facet_wrap(~labs.trt) +
+  facet_grid(labs.trt~.) +
   theme_bw() +
-  labs(x = "days since 3rd", y = "avg log(mass (mg))",  
+  scale_color_manual(values = c("#2166ac", "#92c5de", "#f4a582", "#d6604d", "#b2182b")) +
+  labs(title = "avg daily growth after entering trt",
+       x = "days since 3rd", y = "avg log(mass (mg))",  
        color = "treatment")
+
+
+
+
+# combined: run majortime_stats w/o grouping by labs.trt
+# for rectangle fills, see:
+  # https://stackoverflow.com/questions/71733503/background-bars-in-ggplot2-using-geom-rect
+  # https://stackoverflow.com/questions/62590533/how-to-shade-an-area-in-ggplot-mixing-geom-rect-and-geom-line
+ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = instar
+                       )) +
+  geom_point() + geom_line(lwd = 0.8) +
+  geom_errorbar(aes(ymin = avg.logmass - se.logmass, ymax = avg.logmass + se.logmass,
+                    width = 0.5)) +
+  # geom_line(data = long_all, 
+  #           aes(y = log(mass), group = interaction(id, labs.trt)),
+  #           alpha = 0.25) +
+  # geom_ribbon(data = majortimes_stats, mapping = aes(y = 0, x = avg.t3, xmin = avg.t3 - se.t3, xmax = avg.t3 + se.t3,
+  #                                             lty = instar), # meh could be better
+  #             inherit.aes = FALSE
+  #            #show.legend = FALSE
+  #            ) + 
+  geom_rect(majortimes_stats, mapping = aes(xmin = min.t3, xmax = max.t3,
+                                            ymin = -Inf, ymax = Inf),
+            alpha = 0.6, fill = "grey70",
+            inherit.aes = FALSE) +
+  geom_vline(majortimes_stats, mapping = aes(xintercept = avg.t3, lty = instar)) +
+  theme_bw() +
+  scale_color_manual(values = c("#2166ac", "#92c5de", "#f4a582", "#d6604d", "#b2182b")) +
+  labs(title = "avg daily growth after entering trt",
+       x = "days since 3rd", y = "avg log(mass (mg))",  
+       color = "treatment",
+       caption = "vlines = avg±sd instar duration")
 ```
 
 
