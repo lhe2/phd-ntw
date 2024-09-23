@@ -20,7 +20,7 @@ source("./helpers_ox.R") # need run cleaning.Rmd beforehand if gsheet has been u
 # INCASE: bring this back if u need it and are breaking things
   # library(tidyverse)
   # conflicted::conflicts_prefer(dplyr::filter)
-  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/data-ox.csv", header = TRUE)
+  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/ox.csv", header = TRUE)
 ```
 
 # july pilot 
@@ -264,6 +264,7 @@ ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = insta
 # for rectangle fills, see:
   # https://stackoverflow.com/questions/71733503/background-bars-in-ggplot2-using-geom-rect
   # https://stackoverflow.com/questions/62590533/how-to-shade-an-area-in-ggplot-mixing-geom-rect-and-geom-line
+
 ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = instar
                        )) +
   geom_point() + geom_line(lwd = 0.8) +

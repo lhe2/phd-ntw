@@ -14,11 +14,9 @@ date: "2024-07-15"
 
 ##### if doing a major update of the sheet, archive the old one first
 
-
-library(conflicted)
-library(dplyr)
 library(tidyr)
 library(purrr)
+library(dplyr)
 library(lubridate) # for handling time stuff
 
 #library(chron) # handle time formatting independent of date
@@ -130,7 +128,7 @@ data %>%
   select(c("cohort", "trt", "id", "meanT", "flucT", #"time.transfer", 
            "fate", "sup", 
            starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) %>% #View()
-  write.csv(., file = "~/Documents/repos/ntw/2024/data/data-ox.csv", row.names = FALSE)
+  write.csv(., file = "~/Documents/repos/ntw/2024/data/ox.csv", row.names = FALSE)
 
 ```
 

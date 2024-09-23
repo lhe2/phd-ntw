@@ -10,9 +10,10 @@
 # 0. package and data loading ---------------------------------------------
 
 library(tidyverse)
-conflicted::conflicts_prefer(dplyr::filter)
+library(conflicted)
+conflicts_prefer(dplyr::filter)
 
-wide_all <- read.csv("~/Documents/repos/ntw/2024/data/data-ox.csv", header = TRUE)
+wide_all <- read.csv("~/Documents/repos/ntw/2024/data/ox.csv", header = TRUE)
 
 
 # 1. wide manipulations ----------------------------------------------------
