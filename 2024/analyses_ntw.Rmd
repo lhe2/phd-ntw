@@ -1,0 +1,77 @@
+---
+title: "2024 ntw dev analyses"
+date: "2024-09-23"
+---
+
+# roadmap & loading
+
+(pulling a lot of of stuff from the 2023 analyses lol)
+
+## - questions
+
+- [ ] how do 2024 ctrls compare to 2023 ctrls?
+
+
+```{r message = FALSE}
+source("./helpers_ntw.R") # need run cleaning.Rmd beforehand if gsheet has been updated
+
+# INCASE: bring this back if u need it and are breaking things
+  # library(tidyverse)
+  # conflicted::conflicts_prefer(dplyr::filter)
+  # all_wide <- read.csv("~/Documents/repos/ntw/2024/data/ntw.csv", header = TRUE)
+```
+
+
+
+# 1. generic dev analyses (dev trajectories, overall outcomes)
+
+- drop pmds in the #s but incl injured bugs i think.... though omit injured from barplot math
+
+## - dev outcomes (sup, pmd)
+
+table (for sanity check)
+
+```{r}
+wide_all %>%
+  group_by(pop, diet, trt) %>%
+  summarise(n=n(),
+            pct.pmd = round(sum(na.omit(surv.outcome == 1))/n*100, digits = 1),
+            n.sup = sum(na.omit(sup > 0)),
+            pct.sup = round(n.sup/n*100, digits = 1),
+            pct.6th = round(sum(na.omit(sup == 6))/n.sup*100, digits = 1),
+            pct.7th = round(sum(na.omit(sup == 7))/n.sup*100, digits = 1),
+            pct.8th = round(sum(na.omit(sup == 8))/n.sup*100, digits = 1)
+            )
+```
+
+barplot
+
+```{r}
+wide_all %>%
+  mutate(sup = case_when(surv.outcome == 1 ~ "pmd",
+                         (surv.outcome == 0 & (is.na(sup) | sup == 0)) ~ "5",
+                         surv.outcome == 0 & sup > 5  ~ as.character(sup)),
+         sup = factor(sup, levels = c("pmd", "5", "6", "7", "8")),
+         #trt = factor(sup)
+         ) %>%
+  filter(!is.na(sup)) %>% # excludes things w/ alt deaths/bugs still developing
+  #filter(surv.outcome == "pmd") %>%
+  ggplot(aes(x = labs.trt, fill = sup)) +
+  geom_bar(stat = "count", 
+           #position = "stack", 
+           position = position_fill(reverse = TRUE)
+           ) +
+  facet_grid(diet ~ pop) +
+  labs(title = "developmental fates",
+       x = "treatment", y = "proportion",
+       fill = "# larval instars/death") +
+  scale_fill_brewer(palette = "Blues") +
+  theme_bw()
+```
+
+- todo  
+  - 2024-10-02: 
+    - could add in sample sizes to each bar? 
+    - maybe flip the order so dev stuff is on the bottom? (or else just look at only counts for suriving things)
+
+
