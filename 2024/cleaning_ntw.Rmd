@@ -56,9 +56,6 @@ data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = ";")
 data[, 'id'] <- lapply(data[, 'id'], gsub, pattern="\\.\\d", replacement = "") 
   # turns the repeat entries into whole numbers so theres no decimals going on after as.numeric(id)
 
-data$instar.enter[data$instar.enter == "1st"] <- "hatch" 
-  # change field 1sts to hatchlings
-
 ```
 
 column type standardising
@@ -93,6 +90,18 @@ data <- data %>%
   mutate(across(starts_with("jdate."), as.numeric))
 ```
 
+treating field 1sts as hatchlings
+
+```{r}
+### WIP ####
+data$jdate.hatch[data$instar.enter == "1st"] <- as.numeric(data$jdate.collected - 1)
+  # assume they hatched the day before collecting
+
+data$instar.enter[data$instar.enter == "1st"] <- "hatch" 
+  # change instar.enter
+```
+
+
 adding in temperature treatment info
 
 ```{r}
@@ -122,8 +131,9 @@ parse out dev trajectories
 
 ```{r}
 data <- data %>%
-  mutate(sup = case_when(!is.na(date.6th) ~ 6,
+  mutate(sup = case_when(!is.na(date.8th) ~ 8,
                          !is.na(date.7th) ~ 7,
+                         !is.na(date.6th) ~ 6,
                          (is.na(date.pmd) & !is.na(date.eclose)) ~ 0)) 
 
 ```
@@ -165,8 +175,6 @@ data <- data %>%
 maybe keep?
   - instar.enter (idk bc they're all sposed to start at hatching lol)
   - notes.ignore
-  
-also not sure why `row.names` stopped existing lol
 
 
 ```{r}
@@ -204,7 +212,7 @@ export <- data %>%
            "sex",
            ends_with("T", ignore.case = FALSE),
            "sup", "surv.outcome"
-          )) %>% #View()
+          )) #%>% View()
 
 write.csv(export, file = "~/Documents/repos/ntw/2024/data/ntw.csv", row.names = FALSE)
 write.csv(export, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ntw.csv" ), row.names = FALSE)
