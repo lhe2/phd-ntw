@@ -173,40 +173,49 @@ also not sure why `row.names` stopped existing lol
 data$time.enter <- as.character(data$time.enter) 
   # breaks write_csv if left as a `lubridate` object
 
+today <- format(Sys.time(), "%y%m%d")
+
 # wordier notes/less-informative columns
-data %>%
+notes <- data %>%
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
            "species", "location", "date.collected", # collection/demog info
            "instar.enter", "time.enter", # prob dont need
            starts_with(c("date.", "h.")), contains(c("stuck", "notes")), # dev stuff that is jdated
-           "surv.outcome"
-           )) %>% #View()
-  write_csv(., file = "~/Documents/repos/ntw/2024/data/ntw-notes.csv", #row.names = FALSE
-            )
+           "sup", "surv.outcome"
+           )) #%>% View()
+
+write.csv(notes, file = "~/Documents/repos/ntw/2024/data/ntw-notes.csv", row.names = FALSE)
+write.csv(notes, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ntw-notes.csv" ), row.names = FALSE)
   
 # MQs only
-data %>%
-  filter(species == "MQ") %>% 
-  write_csv(file = "~/Documents/repos/ntw/2024/data/ntw-MQ.csv")
+mqs <- data %>%
+  filter(species == "MQ")
+
+write.csv(mqs, file = "~/Documents/repos/ntw/2024/data/ntw-MQ.csv", row.names = FALSE)
+write.csv(mqs, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ntw-MQ.csv" ), row.names = FALSE)
 
   
 # useful columns only
-data %>%
+export <- data %>%
   filter(is.na(species)) %>%
+  select(-"jdate.collected") %>%
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
-           starts_with(c("jdate", "mass")), 
+           "instar.enter", starts_with(c("jdate", "mass")), 
            "sex",
            ends_with("T", ignore.case = FALSE),
-           "surv.outcome"
+           "sup", "surv.outcome"
           )) %>% #View()
-  write_csv(file = "~/Documents/repos/ntw/2024/data/ntw.csv")
+
+write.csv(export, file = "~/Documents/repos/ntw/2024/data/ntw.csv", row.names = FALSE)
+write.csv(export, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ntw.csv" ), row.names = FALSE)
 
 ```
 
 remove troubleshooting objects
 
 ```{r}
-rm(incase, data, fix.columns)
+#rm(incase, data, fix.columns)
+rm(today, notes, mqs, export)
 ```
 
 

@@ -123,12 +123,16 @@ data <- data %>%
 # 3. saving output & tidying up
 
 ```{r}
+today <- format(Sys.time(), "%y%m%d")
+
 # extract useful columns only
-data %>%
+export <- data %>%
   select(c("cohort", "trt", "id", "meanT", "flucT", #"time.transfer", 
            "fate", "sup", 
-           starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) %>% #View()
-  write.csv(., file = "~/Documents/repos/ntw/2024/data/ox.csv", row.names = FALSE)
+           starts_with("jdate"), starts_with("mass"), "sex", starts_with("is.stuck"))) #%>% View()
+
+write.csv(export, file = "~/Documents/repos/ntw/2024/data/ox.csv", row.names = FALSE)
+write.csv(export, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ox.csv" ), row.names = FALSE)
 
 ```
 
@@ -136,6 +140,7 @@ data %>%
 
 ```{r}
 rm(incase, data, fix.columns)
+rm(today, export)
 ```
 
 
