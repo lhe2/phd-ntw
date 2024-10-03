@@ -65,7 +65,7 @@ long_all <- wide_all %>%
                values_drop_na = TRUE,
                names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
   drop_na(jdate) %>%
-  filter(instar != "2nd") #%>% # want to keep "hatch" for mathing
+  filter(instar != "2nd") %>% # want to keep "hatch" for mathing
   drop_na(tt) # drops NA's if an individual didnt reach a certain stage
 
 

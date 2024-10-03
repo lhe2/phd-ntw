@@ -32,46 +32,86 @@ source("./helpers_ntw.R") # need run cleaning.Rmd beforehand if gsheet has been 
 table (for sanity check)
 
 ```{r}
-wide_all %>%
-  group_by(pop, diet, trt) %>%
-  summarise(n=n(),
-            pct.pmd = round(sum(na.omit(surv.outcome == 1))/n*100, digits = 1),
+outcomes_table <- wide_all %>%
+  filter(!is.na(surv.outcome)) %>% # excludes things that are still developing
+  mutate(diet = case_when(diet == "LD" ~ "lab diet",
+                          diet == "TB" ~ "tobacco diet"),
+         diet = factor(diet, levels = c("tobacco diet", "lab diet"))
+         ) %>%
+  group_by(pop, diet, labs.trt) %>%
+  summarise(n = n(),
+            n.pmd = sum(na.omit(surv.outcome == 1)),
+            n.misc = sum(na.omit(surv.outcome == 2)),
+            n.surv = n - n.pmd - n.misc,
+            pct.pmd = round(n.pmd/(n-n.misc)*100, digits = 1),
             n.sup = sum(na.omit(sup > 0)),
             pct.sup = round(n.sup/n*100, digits = 1),
             pct.6th = round(sum(na.omit(sup == 6))/n.sup*100, digits = 1),
             pct.7th = round(sum(na.omit(sup == 7))/n.sup*100, digits = 1),
             pct.8th = round(sum(na.omit(sup == 8))/n.sup*100, digits = 1)
             )
+
+outcomes_table
 ```
 
 barplot
 
 ```{r}
-wide_all %>%
+# data formatting and filtering
+outcomes <- wide_all %>%
   mutate(sup = case_when(surv.outcome == 1 ~ "pmd",
                          (surv.outcome == 0 & (is.na(sup) | sup == 0)) ~ "5",
                          surv.outcome == 0 & sup > 5  ~ as.character(sup)),
          sup = factor(sup, levels = c("pmd", "5", "6", "7", "8")),
+         diet = case_when(diet == "LD" ~ "lab diet",
+                          diet == "TB" ~ "tobacco diet"),
+         diet = factor(diet, levels = c("tobacco diet", "lab diet"))
          #trt = factor(sup)
          ) %>%
-  filter(!is.na(sup)) %>% # excludes things w/ alt deaths/bugs still developing
-  #filter(surv.outcome == "pmd") %>%
+  filter(surv.outcome == 0 | surv.outcome == 1) # excludes things w/ alt deaths/bugs still developing
+  #filter(!is.na(sup) | surv.outcome == 2 | !is.na(surv.outcome)) 
+```
+
+```{r}  
+# plots
+  # needs outcomes_table from prev section
+
+
+## all bugs
+outcomes %>%
   ggplot(aes(x = labs.trt, fill = sup)) +
   geom_bar(stat = "count", 
            #position = "stack", 
            position = position_fill(reverse = TRUE)
            ) +
-  facet_grid(diet ~ pop) +
+  facet_wrap(pop ~ diet) +
   labs(title = "developmental fates",
        x = "treatment", y = "proportion",
-       fill = "# larval instars/death") +
+       fill = "# larval instars/\ndeath") +
+  geom_text(data = outcomes_table, aes(x = labs.trt, y = 0.05, label = n), inherit.aes = FALSE) +
   scale_fill_brewer(palette = "Blues") +
-  theme_bw()
+  theme_bw() + guides(x = guide_axis(angle = 45))
+
+## only looking at alive ones
+outcomes %>%
+  filter(sup != "pmd") %>% #View()
+  ggplot(aes(x = labs.trt, fill = sup)) +
+  geom_bar(stat = "count", 
+           #position = "stack", 
+           position = position_fill(reverse = TRUE)
+           ) +
+  facet_wrap(pop~diet) +
+  labs(title = "developmental fates",
+       x = "treatment", y = "proportion",
+       fill = "# larval instars") +
+  geom_text(data = outcomes_table, aes(x = labs.trt, y = 0.05, label = n.surv), inherit.aes = FALSE) + 
+  #scale_fill_brewer(palette = "Blues") +
+  scale_fill_manual(values = c("#BDD7E7", "#6BAED6", "#2171B5")) + # keep consistent w prev
+  theme_bw() + guides(x = guide_axis(angle = 45))
 ```
 
 - todo  
   - 2024-10-02: 
-    - could add in sample sizes to each bar? 
     - maybe flip the order so dev stuff is on the bottom? (or else just look at only counts for suriving things)
 
 
