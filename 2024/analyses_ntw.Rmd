@@ -114,4 +114,96 @@ outcomes %>%
   - 2024-10-02: 
     - maybe flip the order so dev stuff is on the bottom? (or else just look at only counts for suriving things)
 
+# 2. main development stats
+
+- look at avg pupal mass and avg time to pup (see if need to filter out diet stuff later)
+
+df prep
+
+```{r}
+# remove pmd
+dev_nopmd <- wide_all %>%
+  filter(surv.outcome != 1 | is.na(surv.outcome)) # incl in progress stuff
+```
+
+calculations
+
+```{r}
+dev_summary <- dev_nopmd %>%
+  group_by(pop, diet, labs.trt, 
+           trt.type, minT, #sex #revisit this when theres more LOL
+           ) %>%
+  summarise(n = n(),
+            avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))))
+
+surv_summary <- wide_all %>%
+  filter(surv.outcome != 2) %>% # omit accidental deaths
+  group_by(pop, diet, labs.trt, 
+           trt.type, minT) %>%
+  summarise(n = n(),
+            n.pmd = sum(surv.outcome == 1), 
+            prop.survpup = round(1-(n.pmd/n), digits=2))
+```
+
+plots
+
+- todo
+  - 2024-10-03: `geom_text_repel` is temp until numbers are finalised
+
+```{r}
+# survival
+surv_summary %>%
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = trt.type, color = diet)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = interaction(diet, trt.type))) +
+  #geom_text(aes(label = n), vjust = 1, hjust = -0.5) +
+  geom_text_repel(aes(label = n), show.legend = FALSE) +
+  facet_wrap(~pop) +
+  theme_bw() +
+  labs(title = "pupal survival",
+       y = "proportion survived to pupation", x = "minimum temperature (°C)",
+       shape = "treatment group", color = "diet type")
+
+# pupal mass
+dev_summary %>%
+  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = trt.type, color = diet)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass), width = 0.25) +
+  geom_line(aes(group = interaction(diet, trt.type))) +
+  geom_text_repel(aes(label = n), show.legend = FALSE) +
+  facet_wrap(~pop) +
+  theme_bw() +
+  labs(title = "pupal mass",
+       y = "avg mass at pupation (mg)", x = "minimum temperature (°C)",
+       shape = "treatment group", color = "diet type")
+
+# time to pup
+dev_summary %>%
+  ggplot(aes(y = avg.tt, x = as.factor(minT), shape = trt.type, color = diet)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt), width = 0.25) +
+  geom_line(aes(group = interaction(diet, trt.type))) +
+  geom_text_repel(aes(label = n), show.legend = FALSE) +
+  facet_wrap(~pop) +
+  theme_bw() +
+  labs(title = "time to pupation", 
+       y = "avg time to pupation (days)", x = "minimum temperature (°C)",
+       shape = "treatment group", color = "diet type")
+
+```
+
+- notes 2024-10-03:
+  - looks super wonky bc not enough things have gotten to pup still LMFAO
+  - def need to exclude the lab bug diet type variation....
+
+
+
+
+# 3. survival
+
+- this will all be for fun lol
+
 

@@ -10,6 +10,7 @@
 
 library(tidyverse)
 library(conflicted)
+library(ggrepel)
 conflicts_prefer(dplyr::filter)
 
 wide_all <- read.csv("~/Documents/repos/ntw/2024/data/ntw.csv", header = TRUE)

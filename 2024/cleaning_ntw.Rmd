@@ -118,7 +118,9 @@ data <- data %>%
                           TRUE ~ 40),
          minT = case_when(trt == 260 | trt == 426 ~ 26,
                           trt == 419 ~ 19,
-                          trt == 433 ~ 33)
+                          trt == 433 ~ 33),
+         trt.type = case_when(trt == 260 ~ "ctrl",
+                              TRUE ~ "expt")
          )
 ```
 
@@ -134,7 +136,7 @@ data <- data %>%
   mutate(sup = case_when(!is.na(date.8th) ~ 8,
                          !is.na(date.7th) ~ 7,
                          !is.na(date.6th) ~ 6,
-                         (is.na(date.pmd) & !is.na(date.eclose)) ~ 0)) 
+                         (is.na(date.pmd) & !is.na(date.pupa)) ~ 0)) 
 
 ```
 
@@ -210,7 +212,7 @@ export <- data %>%
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
            "instar.enter", starts_with(c("jdate", "mass")), 
            "sex",
-           ends_with("T", ignore.case = FALSE),
+           ends_with("T", ignore.case = FALSE), "trt.type",
            "sup", "surv.outcome"
           )) #%>% View()
 
