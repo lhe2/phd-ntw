@@ -156,42 +156,45 @@ plots
 ```{r}
 # survival
 surv_summary %>%
-  ggplot(aes(y = prop.survpup, x = as.factor(minT), shape = trt.type, color = diet)) +
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), color = trt.type, shape = diet)) +
   geom_point(size = 2) +
-  geom_line(aes(group = interaction(diet, trt.type))) +
+  geom_line(aes(lty = diet, group = interaction(diet, trt.type))) +
   #geom_text(aes(label = n), vjust = 1, hjust = -0.5) +
   geom_text_repel(aes(label = n), show.legend = FALSE) +
   facet_wrap(~pop) +
   theme_bw() +
-  labs(title = "pupal survival",
+  labs(title = "survival to pupation",
        y = "proportion survived to pupation", x = "minimum temperature (°C)",
-       shape = "treatment group", color = "diet type")
+       shape = "treatment group", color = "diet type") +
+  guides(shape = "none")
 
 # pupal mass
 dev_summary %>%
-  ggplot(aes(y = avg.mass, x = as.factor(minT), shape = trt.type, color = diet)) +
+  ggplot(aes(y = avg.mass, x = as.factor(minT), color = trt.type, shape = diet)) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass), width = 0.25) +
-  geom_line(aes(group = interaction(diet, trt.type))) +
+  geom_line(aes(lty = diet, group = interaction(diet, trt.type))) +
   geom_text_repel(aes(label = n), show.legend = FALSE) +
   facet_wrap(~pop) +
   theme_bw() +
   labs(title = "pupal mass",
        y = "avg mass at pupation (mg)", x = "minimum temperature (°C)",
-       shape = "treatment group", color = "diet type")
+       shape = "treatment group", color = "diet type")+
+  guides(shape = "none")
 
 # time to pup
 dev_summary %>%
-  ggplot(aes(y = avg.tt, x = as.factor(minT), shape = trt.type, color = diet)) +
+  ggplot(aes(y = avg.tt, x = as.factor(minT), color = trt.type, shape = diet)) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt), width = 0.25) +
-  geom_line(aes(group = interaction(diet, trt.type))) +
+  geom_line(aes(lty = diet, group = interaction(diet, trt.type))) +
   geom_text_repel(aes(label = n), show.legend = FALSE) +
   facet_wrap(~pop) +
   theme_bw() +
   labs(title = "time to pupation", 
        y = "avg time to pupation (days)", x = "minimum temperature (°C)",
-       shape = "treatment group", color = "diet type")
+       shape = "treatment group", color = "diet type") +
+  guides(shape = "none")
 
 ```
 
