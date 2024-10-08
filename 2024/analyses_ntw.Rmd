@@ -5,7 +5,7 @@ date: "2024-09-23"
 
 # roadmap & loading
 
-(pulling a lot of of stuff from the 2023 analyses lol)
+= (pulling a lot of of stuff from the 2023 analyses lol)
 
 ## - questions
 
@@ -27,7 +27,7 @@ source("./helpers_ntw.R") # need run cleaning.Rmd beforehand if gsheet has been 
 
 - drop pmds in the #s but incl injured bugs i think.... though omit injured from barplot math
 
-## - dev outcomes (sup, pmd)
+## - dev outcomes barplot (sup, pmd)
 
 table (for sanity check)
 
@@ -74,7 +74,7 @@ outcomes <- wide_all %>%
 
 ```{r}  
 # plots
-  # needs outcomes_table from prev section
+  # needs outcomes_table from prev prev section
 
 
 ## all bugs
@@ -113,10 +113,15 @@ outcomes %>%
 - todo  
   - 2024-10-02: 
     - maybe flip the order so dev stuff is on the bottom? (or else just look at only counts for suriving things)
+    
+    
+## - (wip) daily dev
 
-# 2. main development stats
+# 2. main development stats (big 3)
 
-- look at avg pupal mass and avg time to pup (see if need to filter out diet stuff later)
+## - df prep
+
+= look at avg pupal mass and avg time to pup (see if need to filter out diet stuff later)
 
 df prep
 
@@ -133,7 +138,7 @@ dev_summary <- dev_nopmd %>%
   group_by(pop, diet, labs.trt, 
            trt.type, minT, #sex #revisit this when theres more LOL
            ) %>%
-  summarise(n = n(),
+  summarise(n = n(), # todo: 2024-10-08 this doesnt look right tbh LOL... maybe bc of the in-progress ones?
             avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
             avg.mass = mean(na.omit(mass.pupa)),
@@ -148,7 +153,7 @@ surv_summary <- wide_all %>%
             prop.survpup = round(1-(n.pmd/n), digits=2))
 ```
 
-plots
+## - plots (all data)
 
 - todo
   - 2024-10-03: `geom_text_repel` is temp until numbers are finalised
@@ -200,7 +205,69 @@ dev_summary %>%
 
 - notes 2024-10-03:
   - looks super wonky bc not enough things have gotten to pup still LMFAO
-  - def need to exclude the lab bug diet type variation....
+  - def need to exclude the lab bug diet type variation.... (see below)
+  
+
+## - plots (focused)
+
+= per mtg recommendations, focus on lab bugs on LD vs field bugs on TB; omit the 26 constant trt for clarity
+
+
+filtering
+
+```{r}
+# needs outputs of 'df prep'
+
+surv_summf <- surv_summary %>%
+  filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
+
+dev_summf <- dev_summary %>%
+  filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
+```
+
+
+
+plotting
+
+```{r}
+# survival
+surv_summf %>%
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), color = pop, shape = pop)) +
+  geom_point(size = 2) +
+  geom_line(aes(lty = pop, group = pop)) +
+  #geom_text(aes(label = n), vjust = 1, hjust = -0.5) +
+  geom_text_repel(aes(label = n), show.legend = FALSE) +
+  theme_bw() +
+  labs(title = "survival to pupation",
+       y = "proportion survived to pupation", x = "minimum temperature (°C)",
+       shape = "population", color = "population", lty = "population") +
+  ylim(0, 0.38)
+
+# pupal mass
+dev_summf %>%
+  ggplot(aes(y = avg.mass, x = as.factor(minT), color = pop, shape = pop)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass), width = 0.15) +
+  geom_line(aes(lty = pop, group = pop)) +
+  geom_text_repel(aes(label = n), show.legend = FALSE) +
+  theme_bw() +
+  labs(title = "pupal mass",
+       y = "avg mass at pupation (mg)", x = "minimum temperature (°C)",
+       shape = "population", color = "population", lty = "population")
+
+# time to pup
+dev_summf %>%
+  ggplot(aes(y = avg.tt, x = as.factor(minT), color = pop, shape = pop)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt), width = 0.15) +
+  geom_line(aes(lty = pop, group = pop)) +
+  geom_text_repel(aes(label = n), show.legend = FALSE) +
+  theme_bw() +
+  labs(title = "time to pupation", 
+       y = "avg time to pupation (days)", x = "minimum temperature (°C)",
+       shape = "population", color = "population", lty = "population")
+
+```
 
 
 
@@ -208,5 +275,10 @@ dev_summary %>%
 # 3. survival
 
 - this will all be for fun lol
+
+
+
+# 4. 2024 vs 2023
+
 
 
