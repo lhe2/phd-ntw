@@ -93,12 +93,21 @@ data <- data %>%
 treating field 1sts as hatchlings
 
 ```{r}
-### WIP ####
-data$jdate.hatch[data$instar.enter == "1st"] <- as.numeric(data$jdate.collected - 1)
-  # assume they hatched the day before collecting
+# data$jdate.hatch[(data$pop == "field" & data$instar.enter == "1st")] <- as.numeric(data$jdate.collected - 1)
+  # assume they hatched the day before collecting ### this is breaking as of 2024-10-08
+
+data <- data %>%
+  mutate(jdate.hatch = case_when(pop == "field" & instar.enter == "1st" ~ as.numeric(jdate.collected - 1),
+                                 pop == "field" & instar.enter == "hatch" & is.na(jdate.hatch) ~ as.numeric(jdate.collected),
+                                 TRUE ~ as.numeric(jdate.hatch)))
+  # assume hatch date for late/early field hatchlings
+
+# data %>% filter(instar.enter %in% c("1st", "hatch") & pop == "field") %>% select(c("id", "instar.enter", "jdate.collected", "jdate.hatch")) %>% View() # troubleshooting
 
 data$instar.enter[data$instar.enter == "1st"] <- "hatch" 
   # change instar.enter
+
+
 ```
 
 
