@@ -166,13 +166,20 @@ check_newcols <- data_all
 # 3. save the output
 
 ```{r}
+today <- format(Sys.time(), "%y%m%d")
+
 # MQs only
-data_all %>% 
-  filter(species == "MQ") %>% write.csv(file = "~/Documents/repos/ntw/2023/data/clean-MQs.csv", row.names = FALSE)
+mqs <- data_all %>% filter(species == "MQ")
+
+write.csv(mqs, file = "~/Documents/repos/ntw/2023/data/clean-MQs.csv", row.names = FALSE)
+write.csv(mqs, file = paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-MQs.csv" ), row.names = FALSE)
+
 
 # wordier notes
-data_all %>% select(c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled"))) %>%
-  write.csv(file = "~/Documents/repos/ntw/2023/data/notes_ntw.csv", row.names = FALSE)
+notes <- data_all %>% select(c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled")))
+
+write.csv(notes, file = "~/Documents/repos/ntw/2023/data/notes_ntw.csv", row.names = FALSE)
+write.csv(notes, file = paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_ntw.csv" ), row.names = FALSE)
   
 # cleaned up sexta
 check_final <- data_all %>%
@@ -180,6 +187,7 @@ check_final <- data_all %>%
   select(-c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", "date.stuck", ends_with(".culled"), "eclose-3"))
 
 write.csv(check_final, file = "~/Documents/repos/ntw/2023/data/clean-ntw.csv", row.names = FALSE)
+write.csv(check_final, file = paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean_ntw.csv" ), row.names = FALSE)
 ```
 
 ## - troubleshooting
@@ -193,6 +201,6 @@ write.csv(check_final, file = "~/Documents/repos/ntw/2023/data/clean-ntw.csv", r
 ```{r}
 # if all goes well!
 rm(check_raw, check_newcols)
-rm(check_final, data_all)
+rm(today, mqs, notes, check_final, data_all)
 rm(data_field, data_labF1, data_labsp, data_labsu)
 ```
