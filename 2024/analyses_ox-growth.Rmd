@@ -292,4 +292,85 @@ ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = insta
 ```
 
 
+# plate data i dont understand how to use excel
+
+```{r}
+df <- read.csv("~/Documents/repos/ntw/2024/data/plates/241009_bradford-1.csv", header = TRUE)
+
+# blank correct
+df %>%
+  filter(type == "std") %>%
+  group_by(cxn) %>%
+  summarise(avg= mean(abs)) # blank = 0.721
+
+df <- df %>% 
+  mutate(blank = 0.721,
+         bc = abs - 0.721) 
+
+# take avgs
+std <- df %>%
+  filter(type == "std") %>%
+  group_by(cxn) %>%
+  summarise(bc.avg = mean(bc),
+            bca.wt = bc.avg)
+
+unk <- df %>%
+  filter(type == "unk") %>%
+  group_by(time, temp, rep) %>%
+  summarise(bc.avg = mean(bc),
+            bca.wt = bc.avg/log(mass)) # mass-corrected
+
+# fit std curve and unks
+stdc <- lm(cxn ~ poly(bc.avg, 2, raw = TRUE), data = std)
+stdc.wt <- lm(cxn ~ poly(bca.wt, 2, raw = TRUE), data = std)
+
+unk$temp[is.na(unk$temp)] <- "ctrl"
+unk$temp <- factor(unk$temp, levels = c("ctrl", "26", "33", "36"))
+
+
+std <- cbind(std, fit = predict(stdc, type = "response"))
+unk <- cbind(unk, fit = predict(stdc, unk))
+
+
+std <- cbind(std, fit.wt = predict(stdc.wt, type = "response"))
+unk <- cbind(unk, fit.wt = predict(stdc.wt, unk))
+
+```
+
+```{r}
+# plot
+#library(viridis)
+
+# raw abs
+ggplot(data = std, aes(y = cxn, x = bc.avg)) +
+  geom_point(aes()) + 
+  #geom_line(mapping = aes(x = cxn)) +
+  geom_line(data = std, aes(y = fit)) +
+  geom_point(data = unk, aes(y = fit, #shape = time, 
+                             color = temp), size = 2) +
+  facet_wrap(~time) +
+  labs(title = "non-mass corrected abs") +
+  #theme_bw() +
+  scale_shape_manual(values = c(4, 1, 16)) +
+  scale_color_brewer(palette = "BrBG", direction = -1)
+  #scale_color_viridis(discrete = TRUE, option = "mako")
+
+
+# mass-corrected abs
+ggplot(data = std, aes(y = cxn, x = bca.wt)) +
+  geom_point() + 
+  #geom_line(mapping = aes(x = cxn)) +
+  geom_line(data = std, aes(y = fit.wt)) +
+  geom_point(data = unk, aes(y = fit.wt, #shape = time, 
+                             color = temp), size = 2) +
+  facet_wrap(~time) +
+  labs(title = "mass corrected abs") +
+  #theme_bw() +
+  scale_shape_manual(values = c(4, 1, 16)) +
+  scale_color_brewer(palette = "BrBG", direction = -1) +
+  ylim(0, 11) + xlim(0, 0.2)
+  #scale_color_viridis(discrete = TRUE, option = "mako")
+
+```
+
 
