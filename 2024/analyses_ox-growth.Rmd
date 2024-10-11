@@ -341,6 +341,10 @@ unk <- cbind(unk, fit.wt = predict(stdc.wt, unk))
 # plot
 #library(viridis)
 
+ggplot(data = std, aes(y = cxn, x = bc.avg)) +
+  geom_point(aes()) + 
+  geom_line(data = std, aes(y = fit))
+
 # raw abs
 ggplot(data = std, aes(y = cxn, x = bc.avg)) +
   geom_point(aes()) + 
@@ -372,5 +376,29 @@ ggplot(data = std, aes(y = cxn, x = bca.wt)) +
   #scale_color_viridis(discrete = TRUE, option = "mako")
 
 ```
+
+
+```{r}
+# does mass correlate with abs ????
+df %>%
+  filter(type == "unk") %>%
+  mutate(temp = case_when(is.na(temp) ~ "ctrl",
+                          TRUE ~ as.character(temp)),
+         temp = factor(temp, levels = c("ctrl", "26", "33", "36"))) %>%
+  group_by(time, temp, rep) %>%
+  summarise(avg.abs = mean(abs),
+            mass = mass) %>%
+  filter(time != "T0") %>%
+  ggplot(aes(x = log(mass), y = avg.abs,
+             color = temp, shape = time)) +
+  geom_point(size = 2) +
+  facet_wrap(~time) +
+  #scale_shape_manual(values = c(4, 1, 16)) +
+  #scale_color_brewer(palette = "BrBG", direction = -1) +
+  scale_color_manual(values = c("cyan3", "purple4", "darkorange")) +
+  theme_bw()
+
+```
+
 
 
