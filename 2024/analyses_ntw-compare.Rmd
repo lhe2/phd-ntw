@@ -11,16 +11,17 @@ goal: compare 2023 and 2024 data. needs some wrangling lol
 
 ```{r}
 library(tidyverse)
+library(patchwork) # for plot_layout
 
 d23 <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv", header = TRUE) %>% mutate(year = 2023)
 #test <- d23
-d23 <- test
+#d23 <- test
 
 d24 <- read.csv("~/Documents/repos/ntw/2024/data/ntw.csv", header = TRUE) %>% mutate(year = 2024)
 ```
 
 
-# 2. wrangling
+# 2. wrangling dfs
 
 standardising some data values and column names in `d23`
 
@@ -56,38 +57,217 @@ d23 <- d23 %>%
                            TRUE ~ as.numeric(flucT)),
          trt.type = case_when(meanT == 26 & flucT == 0 ~ "ctrl",
                               TRUE ~ "expt"),
-         trt = as.numeric(trt)
+         trt = as.numeric(trt),
+         #id = paste(id, year, sep = "-")
          )
 
 #test2 <- d23
-d23<-test2
+#d23<-test2
 
 # how to handle LPIs? (in 23 and 24?)
-```
 
-
-merge data
-
-```{r}
 d23 <- d23 %>%
   select(-c("jdate.collected", "jdate.15", "jdate.stuck")) %>%
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
            "instar.enter", starts_with(c("jdate", "mass")), 
            "sex",
            ends_with("T", ignore.case = FALSE), "trt.type",
-           "sup", "surv.outcome"
+           "sup", "surv.outcome", "year"
           ))
+```
 
-all <- bind_rows(d24, d23) %>%
+
+fine-tuning `d24`
+
+```{r}
+d24 <- d24 %>%
+  #mutate(id = paste(id, year, sep = "-")) %>%
+  filter(instar.enter == "hatch")
+```
+
+
+
+merge data
+
+```{r}
+
+# something is mega breaking and 2024 isnt showing up properly
+
+all <- #merge(d24, d23, all = TRUE) %>%
+  #data.table::rbindlist(list(d24, d23), use.names = FALSE) %>%
+  bind_rows(d24, d23) %>% 
+  drop_na(id) %>%
   select(-c("instar.enter",
-            "jdate.exit", "jdate.LP", "jdate.died")) %>% # dropping these for now bc idk what they are
-  drop_na(id)
+          "jdate.exit", "jdate.LP", "jdate.died" # dropping these for now bc idk what they are
+            ))
+
+all <- all[grepl("^NA", rownames(all))==F,]
 
 # drop things that died in 1 day
 all <- all[all$jdate.pmd - all$jdate.enter > 1, ]
 
 ```
 
+
+
+# 3. df prep (math)
+
+generic math
+
+```{r}
+all_wide <- all %>%
+  #filter(!is.na(trt.type)) %>%
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
+         tt.7th = jdate.7th - jdate.hatch,
+         tt.8th = jdate.8th - jdate.hatch,
+         tt.wander = jdate.wander - jdate.hatch,
+         tt.pupa = jdate.pupa - jdate.hatch,
+         tt.eclose = jdate.eclose - jdate.pupa,
+         #tt.exit = jdate.exit - jdate.hatch, # time to dev outcome
+         #tt.surv = jdate.surv - jdate.eclose, # time spent as adult
+         )
+
+all_long <- all_wide %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+               names_to = c(".value", "instar"),
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
+  drop_na(jdate) %>%
+  drop_na(tt) # drops NA's if an individual didnt reach a certain stage
+```
+
+
+summary stats
+
+// todo 2024-10-17: keeping bugs separate by year for now
+
+```{r}
+
+### super breaking
+
+
+# keeping separate by yr for now -- will see how they look separate before trying to combine
+
+# sep by sups
+# ss_wide.sup <- all %>%
+#   #filter(!is.na(trt.type)) %>%
+#   filter(year == 2023) %>%
+#   group_by(year, pop, diet, trt.type, minT, 
+#            #sup
+#            ) %>%
+#   summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+#             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+#             avg.mass = mean(na.omit(mass.pupa)),
+#             se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+#             n.all = n() - sum(surv.outcome == 2),
+#             n.pmd = sum(surv.outcome == 1), 
+#             n.surv = n.all - n.pmd, 
+#             prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+#   mutate_all(~ifelse(is.nan(.), NA, .))
+
+
+```
+
+
+```{r}
+ss_wide <- d23 %>%
+  #filter(!is.na(trt.type)) %>%
+  group_by(year, pop, diet, trt.type, minT, 
+           #sup
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n() - sum(na.omit(surv.outcome == 2)),
+            n.pmd = sum(na.omit(surv.outcome == 1)), 
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
+  mutate_all(~ifelse(is.nan(.), NA, .)) %>%
+  mutate(minT = factor(minT, levels = c("19", "26", "33"))) %>%
+  filter(!(pop == "lab" & diet == "TB") &
+           trt.type == "expt")
+```
+
+
+
+
+
+# 4. figs
+
+*notes:* 
+
+- use lab bugs on LD + field on TB only!!!! (this is why u cant just reuse ur LB figs lol)
+
+```{r}
+# using LB code lol
+
+# survival
+p1 <- 
+  ss_wide %>% 
+  ggplot(aes(y = prop.survpup, x = minT, shape = pop,
+             )) +
+  geom_point(size=3) + 
+  geom_line(aes(lty = pop, group = pop)) +
+  theme_bw() +
+  labs( 
+       y = "proportion survived to pupation", 
+       x = "minimum temperature (°C)", 
+       ) +
+  ylim(c(0, 1))
+
+# avg tt pup
+pd <- position_dodge(0.3)
+
+p2 <-
+  ss_wide %>% 
+  ggplot(aes(y = avg.tt, x = minT, shape = pop,
+             )) +
+  geom_point(size = 3, #position = pd
+             ) +  
+  geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt),
+                width = 0.25, #position = pd
+                ) +
+  geom_line(aes(lty = pop, group = pop), #position = pd
+            ) +
+  theme_bw() +
+  ylim(c(18, 34)) +
+  labs(
+       y = "time to pupation (days)", 
+       x = "minimum temperature (°C)")
+
+# avg mass
+p3 <- 
+  ss_wide %>% 
+  ggplot(aes(y = avg.mass, x = minT, shape = pop,
+             )) +
+  geom_point(size = 3) +  
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.25, #position = pd
+                ) +
+  geom_line(aes(lty = pop, group = pop)) +
+  theme_bw() +
+  #ylim(c(1750, 4750)) +
+  labs( 
+       y = "mass at pupation (mg)", 
+       x = "minimum temperature (°C)")
+
+
+# merged plot
+p1 + p2 + 
+  p3 +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(1:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population", shape = "population") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(1, 16)) 
+  #guides(shape = "none", lty = "none")
+```
 
 
 
