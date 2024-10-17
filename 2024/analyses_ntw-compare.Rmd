@@ -1,0 +1,94 @@
+---
+title: "ntw data comparisons"
+date: "2024-10-08"
+---
+
+# 0. roadmap
+
+goal: compare 2023 and 2024 data. needs some wrangling lol
+
+# 1. load data & packages
+
+```{r}
+library(tidyverse)
+
+d23 <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv", header = TRUE) %>% mutate(year = 2023)
+#test <- d23
+d23 <- test
+
+d24 <- read.csv("~/Documents/repos/ntw/2024/data/ntw.csv", header = TRUE) %>% mutate(year = 2024)
+```
+
+
+# 2. wrangling
+
+standardising some data values and column names in `d23`
+
+```{r}
+# pick relevant data and rename columns/values to match 2024
+
+# filter
+d23 <- d23 %>%
+  filter(reason.ignore != "lost" | src != "F1" #| !is.na(final.fate)
+           ) %>% 
+  filter(trt.stage %in% c("260-hatch", "337-hatch", "419-hatch","433-hatch")) %>%
+  filter(expt.group %in% c("C", "D", "E", "F", "H")) %>%
+  rename(trt = treatment,
+         id = ID,
+         cohort = expt.group,
+         notes.ignore = reason.ignore)
+
+# standardise values
+d23$trt[d23$trt == 337] <- 426
+
+d23 <- d23 %>%
+  mutate(final.fate = case_when(notes.ignore %in% c("hot larva", "cut", "culled larva", "wet diet") ~ "other",
+                                TRUE ~ as.character(final.fate)))
+
+# match values to d24
+d23 <- d23 %>%
+  mutate(sup = case_when(sup = 0 & !is.na(jdate.5th) ~ NA_real_,
+                         TRUE ~ as.numeric(sup)),
+         surv.outcome = case_when(!is.na(date.pupa) | !is.na(date.LP) ~ 0,
+                                  final.fate == "pmd" ~ 1,
+                                  final.fate == "other" ~ 2), # treat injuries the same as this
+         flucT = case_when(flucT == 2.5 ~ 0,
+                           TRUE ~ as.numeric(flucT)),
+         trt.type = case_when(meanT == 26 & flucT == 0 ~ "ctrl",
+                              TRUE ~ "expt"),
+         trt = as.numeric(trt)
+         )
+
+#test2 <- d23
+d23<-test2
+
+# how to handle LPIs? (in 23 and 24?)
+```
+
+
+merge data
+
+```{r}
+d23 <- d23 %>%
+  select(-c("jdate.collected", "jdate.15", "jdate.stuck")) %>%
+  select(c("cohort", "pop", "diet", "trt", "id", # identifying info
+           "instar.enter", starts_with(c("jdate", "mass")), 
+           "sex",
+           ends_with("T", ignore.case = FALSE), "trt.type",
+           "sup", "surv.outcome"
+          ))
+
+all <- bind_rows(d24, d23) %>%
+  select(-c("instar.enter",
+            "jdate.exit", "jdate.LP", "jdate.died")) %>% # dropping these for now bc idk what they are
+  drop_na(id)
+
+# drop things that died in 1 day
+all <- all[all$jdate.pmd - all$jdate.enter > 1, ]
+
+```
+
+
+
+
+
