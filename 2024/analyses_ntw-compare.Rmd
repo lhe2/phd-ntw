@@ -67,7 +67,8 @@ d23 <- d23 %>%
 # how to handle LPIs? (in 23 and 24?)
 
 d23 <- d23 %>%
-  select(-c("jdate.collected", "jdate.15", "jdate.stuck")) %>%
+  select(-c("jdate.collected", "jdate.15", "jdate.stuck",
+            "jdate.exit", "jdate.LP", "jdate.died")) %>% # d23 exclusives
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
            "instar.enter", starts_with(c("jdate", "mass")), 
            "sex",
@@ -90,21 +91,20 @@ d24 <- d24 %>%
 merge data
 
 ```{r}
-
-# something is mega breaking and 2024 isnt showing up properly
-
-all <- #merge(d24, d23, all = TRUE) %>%
-  #data.table::rbindlist(list(d24, d23), use.names = FALSE) %>%
-  bind_rows(d24, d23) %>% 
+all <- merge(d24, d23, all = TRUE
+             ) %>%
   drop_na(id) %>%
   select(-c("instar.enter",
-          "jdate.exit", "jdate.LP", "jdate.died" # dropping these for now bc idk what they are
             ))
 
-all <- all[grepl("^NA", rownames(all))==F,]
-
 # drop things that died in 1 day
-all <- all[all$jdate.pmd - all$jdate.enter > 1, ]
+all <- filter(all, jdate.pmd - jdate.enter > 1 | is.na(jdate.pmd - jdate.enter))
+
+# add in exit dates to more easily parse out things still developing (for 2024 data)
+all <- all %>% 
+  mutate(jdate.exit = case_when(!is.na(jdate.pmd) ~ jdate.pmd,
+                                !is.na(jdate.pupa) ~ jdate.pupa,
+                                TRUE ~ NA_integer_))
 
 ```
 
@@ -116,7 +116,6 @@ generic math
 
 ```{r}
 all_wide <- all %>%
-  #filter(!is.na(trt.type)) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
          tt.5th = jdate.5th - jdate.hatch,
@@ -126,8 +125,6 @@ all_wide <- all %>%
          tt.wander = jdate.wander - jdate.hatch,
          tt.pupa = jdate.pupa - jdate.hatch,
          tt.eclose = jdate.eclose - jdate.pupa,
-         #tt.exit = jdate.exit - jdate.hatch, # time to dev outcome
-         #tt.surv = jdate.surv - jdate.eclose, # time spent as adult
          )
 
 all_long <- all_wide %>%
@@ -145,28 +142,37 @@ summary stats
 // todo 2024-10-17: keeping bugs separate by year for now
 
 ```{r}
-
-### super breaking
-
-
 # keeping separate by yr for now -- will see how they look separate before trying to combine
 
 # sep by sups
-# ss_wide.sup <- all %>%
-#   #filter(!is.na(trt.type)) %>%
-#   filter(year == 2023) %>%
-#   group_by(year, pop, diet, trt.type, minT, 
-#            #sup
-#            ) %>%
-#   summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-#             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-#             avg.mass = mean(na.omit(mass.pupa)),
-#             se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
-#             n.all = n() - sum(surv.outcome == 2),
-#             n.pmd = sum(surv.outcome == 1), 
-#             n.surv = n.all - n.pmd, 
-#             prop.survpup = round(1-(n.pmd/n.all), digits=2)) %>%
-#   mutate_all(~ifelse(is.nan(.), NA, .))
+ss_wide.sup <- all %>%
+  group_by(year, pop, diet, trt.type, minT, sup
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n() - sum(na.omit(surv.outcome == 2)),
+            n.pmd = sum(na.omit(surv.outcome == 1)),
+            n.surv = n.all - n.pmd,
+            prop.survpup = round(1-(n.pmd/n.all), digits=2),
+            n.inprog = sum(is.na(surv.outcome))) %>%
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# all dev trajectories together
+ss_wide <- all %>%
+  group_by(year, pop, diet, trt.type, minT,
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n() - sum(na.omit(surv.outcome == 2)),
+            n.pmd = sum(na.omit(surv.outcome == 1)),
+            n.surv = n.all - n.pmd,
+            prop.survpup = round(1-(n.pmd/n.all), digits=2),
+            n.inprog = sum(is.na(surv.outcome))) %>%
+  mutate_all(~ifelse(is.nan(.), NA, .))
 
 
 ```
