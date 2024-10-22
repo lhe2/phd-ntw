@@ -209,7 +209,7 @@ moreinfo <- data_pairs %>%
   distinct()
 
 data_tents <- left_join(data_tents, moreinfo, by = "id.tent", all = TRUE)
-data_tents <- data_tents[, c(1, 15:16, 2, 17, 3, 14, 4:13, 18)]
+data_tents <- data_tents[, c(1, 15:16, 2, 17, 3, 14, 4:13, 18:19)]
 ```
 
 # 3. extracting notes & saving outputs
