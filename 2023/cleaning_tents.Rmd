@@ -30,7 +30,7 @@ library(googlesheets4)
 
 # tents/hatch data
 data_pairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c", na = c("#N/A", "NA", "--", "", "#REF!"))
-data_tentstats <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:P", na = c("#N/A", "NA", "--", "", "#REF!", "unk"))
+data_tentstats <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:Q", na = c("#N/A", "NA", "--", "", "#REF!", "unk"))
 data_hatch <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c", range = "A:F", na = c("#N/A", "NA", "--", "", "#REF!"))
 
 # for when i mess up!
@@ -215,12 +215,17 @@ data_tents <- data_tents[, c(1, 15:16, 2, 17, 3, 14, 4:13, 18)]
 # 3. extracting notes & saving outputs
 
 ```{r}
+today <- format(Sys.time(), "%y%m%d")
+
 # save notes elsewhere
 notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
 notes_tents <- select(data_tents, date, id.tent, room, tent, tent.loc, notes.tents)
 
 write.csv(notes_pairs, "~/Documents/repos/ntw/2023/data/notes_tentpairs.csv", row.names = FALSE)
+write.csv(notes_pairs, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentpairs.csv"), row.names = FALSE)
+
 write.csv(notes_tents, "~/Documents/repos/ntw/2023/data/notes_tentstats.csv", row.names = FALSE)
+write.csv(notes_tents, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentstats.csv"), row.names = FALSE)
 
 # drop from main dfs
 data_pairs <- select(data_pairs, -notes)
@@ -229,13 +234,19 @@ data_hatch <- select(data_hatch, -notes.hatch)
 
 # save cleaned dfs
 write.csv(data_tents, "~/Documents/repos/ntw/2023/data/clean-tentstats.csv", row.names = FALSE)
+write.csv(data_tents, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-tentstats.csv"), row.names = FALSE)
+
 write.csv(data_pairs, "~/Documents/repos/ntw/2023/data/clean-tentpairs.csv", row.names = FALSE)
+write.csv(data_pairs, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-tentpairs.csv"), row.names = FALSE)
+
 write.csv(data_hatch, "~/Documents/repos/ntw/2023/data/clean-hatchstats.csv", row.names = FALSE)
+write.csv(data_hatch, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-hatchstats.csv"), row.names = FALSE)
 ```
 
 ```{r}
 # cleanup
-rm(data_tents, data_pairs, data_hatch, data_tentstats, 
+rm(today,
+   data_tents, data_pairs, data_hatch, data_tentstats, 
    notes_pairs, notes_tents,
    tentlist, tentlist_clean,
    fix.values, hatchinfo, moreinfo)
