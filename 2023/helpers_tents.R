@@ -61,7 +61,7 @@ x_err_ncollf <- function(err = 0.9){
 
 ntwadults <- data_ntw %>%
   filter(!(expt.group == "A" | expt.group == "B")) %>%
-  select(c(ID, date.hatch, date.pupa, mass.pupa, expt.group, pop, diet, meanT, flucT, maxT, minT)) %>%
+  select(c(ID, date.hatch, date.pupa, mass.pupa, mass.eclose, expt.group, pop, diet, meanT, flucT, maxT, minT)) %>%
   mutate(ID = as.character(ID))
 
 finfo <- data_tpairs %>%
@@ -89,7 +89,7 @@ data_longevity <- full_join(tentadults, ntwadults, by = c("id" = "ID")) %>%
 
 
 # reorder columns for sensibleness
-data_longevity <- data_longevity[, c(4:5, 2, 13, 3, 6:9, 15:17, 11, 10, 18:24, 1, 12, 14)] 
+data_longevity <- data_longevity[, c(4:5, 2, 13, 3, 6:9, 15:17, 11, 10, 18:25, 1, 12, 14)] 
 
 # 3. format columns ----------------------------------------------------------
 
