@@ -10,6 +10,96 @@ goal: making figs/running stats for entsoc poster, focusing on lab bugs
 # 1. load data & packages
 
 ```{r}
-source("./2024/helpers_entsoc.R")
+source("./helpers_entsoc.R")
+
+source("../2023/helpers_tents.R")
+
+dtents <- data_tstats %>% select(-c("trt.type", "trt.pair"))
+dad <- data_longevity
+
+rm(data_tstats, data_hatch, data_longevity,
+   labels.alltrts, labels.exptrts, RYB,
+   x_err_ncoll, x_err_ncollf, y_err_hrate)
+```
+
+value/columns renaming and filtering
+
+```{r}
+# adult data
+dad <- dad %>%
+  rename(jdate.eclose = jdate.ec,
+         jdate.surv = jdate.died) %>%
+  mutate(for.surv = case_when(track.reason %in% c("surv-fert", "surv") ~ 1),
+         for.fert = case_when(track.reason %in% c("surv-fert", "fert") ~ 1),
+         trt.type = case_when(maxT == minT ~ "ctrl",
+                              TRUE ~ "expt")) %>%
+  select(-c(track.reason, starts_with("date")))
+
+
+# tent data
+dtents <- dtents %>%
+  filter(pop == "lab") %>%
+  #rename(trt.typeold = trt.type) %>%
+  mutate(trt.mateto = case_when(trt.m != trt.f | trt.m + trt.f == 520 ~ "ctrl",
+                                TRUE ~ "hs"),
+         trt.sex = case_when(trt.m > trt.f ~ "m",
+                             trt.f > trt.m ~ "f",
+                             trt.m == trt.f ~ "both"),
+         trt.hs = case_when(trt.m > trt.f ~ as.numeric(trt.m),
+                            trt.f > trt.m ~ as.numeric(trt.f),
+                            trt.m + trt.f > 600 ~ as.numeric(trt.m),
+                            TRUE ~ 260),
+         trt.isctrl = case_when(trt.m + trt.f == 520 ~ 1,
+                              TRUE ~ 0),
+         trt.ref = case_when(trt.m + trt.f == 520 ~ "ctrl",
+                             trt.m != trt.f ~ "btwn",
+                             trt.m == trt.f ~ "win")
+         ) %>%
+  select(-pop)
+```
+
+
+# 2. adult, larval dev
+
+## a. math
+
+```{r}
+# larval stats
+ss_la <- d23 %>%
+  group_by(trt.type, minT, 
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            n.all = n() - sum(na.omit(surv.outcome == 2)),
+            n.pmd = sum(na.omit(surv.outcome == 1)), 
+            n.surv = n.all - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n.all), digits=2)
+            ) #%>% mutate_all(~ifelse(is.nan(.), NA, .))
+
+# adult stats
+ss_ad.23 <- d23 %>%
+  filter(!is.na(sex) & !is.na(jdate.surv)) %>%
+  group_by(trt.type, minT, sex
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+            se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+            avg.mass = mean(na.omit(mass.eclose)),
+            se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
+            n = sum(na.omit(!is.na(jdate.eclose)))
+            )
+
+ss_ad.ad <- dad %>%
+  filter(!is.na(for.surv), pop == "lab") %>%
+  group_by(#diet, # gets too parsed out w/ diet lol
+           trt.type, minT, sex
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+            se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+            avg.mass = mean(na.omit(mass.eclose)),
+            se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
+            n = sum(na.omit(!is.na(jdate.eclose)))
+            )
 ```
 

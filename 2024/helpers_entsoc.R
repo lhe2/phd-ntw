@@ -48,7 +48,7 @@ d23 <- d23 %>%
   )
 
 ### TROUBLESHOOTING
-backup_d23-init <- d23
+backup_d23.init <- d23
 
 # pick relevant columns
 d23 <- d23 %>%
@@ -57,7 +57,9 @@ d23 <- d23 %>%
            "sex",
            ends_with("T", ignore.case = FALSE), "trt.type",
            "sup", "surv.outcome"
-  ))
+  )) %>%
+  select(-c("jdate.collected", "jdate.stuck", "jdate.LP", "jdate.died",
+            ends_with("7th"), ends_with("15")))
 
 
 # drop things that died in 1 day
@@ -73,9 +75,9 @@ mutate(jdate.exit = case_when(!is.na(jdate.pmd) ~ jdate.pmd,
 
 
 ### TROUBLESHOOTING
-backup_d23-all <- d23
+backup_d23.all <- d23
 
 # more heavy-handed filtering:
   # focus on lab bugs for entsoc
 
-d23 <- filter(d23, pop == "lab")
+d23 <- filter(d23, pop == "lab" & diet == "LD")
