@@ -1,0 +1,15 @@
+---
+title: "entsoc 2024 figs and analyses"
+date: "2024-10-22"
+---
+
+# 0. roadmap
+
+goal: making figs/running stats for entsoc poster, focusing on lab bugs
+
+# 1. load data & packages
+
+```{r}
+source("./2024/helpers_entsoc.R")
+```
+
