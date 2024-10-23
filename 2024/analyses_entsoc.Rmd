@@ -14,7 +14,9 @@ source("./helpers_entsoc.R")
 
 source("../2023/helpers_tents.R")
 
-dtents <- data_tstats %>% select(-c("trt.type", "trt.pair"))
+dtents <- data_tstats 
+#%>% select(-c("trt.type", "trt.pair"))
+
 dad <- data_longevity
 
 rm(data_tstats, data_hatch, data_longevity,
@@ -102,4 +104,52 @@ ss_ad.ad <- dad %>%
             n = sum(na.omit(!is.na(jdate.eclose)))
             )
 ```
+
+# 3. fertility/fecundity
+
+## a. math
+
+these calcs are copy/pasted/tweaked from `/2023/analyses_tents.Rmd`
+
+```{r}
+# determine # of ovipositing females
+summ_rate <- dtents %>%
+  mutate_at(c(6:14), ~replace_na(., 0)) %>% 
+  group_by(id.tent) %>%
+  mutate(jdate.rel = jdate - first(jdate)) %>%
+  ungroup() %>%
+  group_by(id.tent, trt.f, trt.m, trt.sex, jdate.rel) %>%
+  arrange(jdate.rel, .by_group = TRUE) %>%
+  mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
+         n.ovi = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
+  ungroup()
+
+
+# where n.ovipositing females = 0 but n.collected > 0, add the # eggs collected to the day before
+# (or last date of ovipositing females)
+# first, figure out the rows
+cond <- (summ_rate$n.coll > 0 & summ_rate$n.ovi == 0)
+
+eggfix <- summ_rate %>%
+  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
+  subset(cond | lead(cond) | lead(cond, n=2)) #%>% View() 
+
+negovi <- eggfix[eggfix$females.laying < 0, ]
+
+lastovi <- eggfix[eggfix$n.curr.f > 0 & eggfix$n.ovi >= 1, ]
+
+
+# then, edit values
+#summ_rate$n.coll[negovi$index] <- 0
+summ_rate <- summ_rate %>% 
+  mutate(n.coll = case_when(rownames(summ_rate) %in% negovi$index ~ 0,
+                            TRUE ~ n.coll)) %>%
+  mutate(n.coll = case_when(rownames(summ_rate) %in% lastovi$index ~ n.coll + 1,
+                                   TRUE ~ n.coll))
+
+rm(cond, eggfix, negovi, lastovi)
+
+```
+
+
 
