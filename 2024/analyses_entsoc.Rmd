@@ -24,6 +24,17 @@ rm(data_tstats, data_hatch, data_longevity,
    x_err_ncoll, x_err_ncollf, y_err_hrate)
 ```
 
+convenience functions
+
+```{r}
+# calc std err
+se <- function(x){
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
+}
+```
+
+
+
 value/columns renaming and filtering
 
 ```{r}
@@ -81,18 +92,7 @@ ss_la <- d23 %>%
             ) #%>% mutate_all(~ifelse(is.nan(.), NA, .))
 
 # adult stats
-ss_ad.23 <- d23 %>%
-  filter(!is.na(sex) & !is.na(jdate.surv)) %>%
-  group_by(trt.type, minT, sex
-           ) %>%
-  summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
-            se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
-            avg.mass = mean(na.omit(mass.eclose)),
-            se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
-            n = sum(na.omit(!is.na(jdate.eclose)))
-            )
-
-ss_ad.ad <- dad %>%
+ss_ad <- dad %>%
   filter(!is.na(for.surv), pop == "lab") %>%
   group_by(#diet, # gets too parsed out w/ diet lol
            trt.type, minT, sex
@@ -105,15 +105,15 @@ ss_ad.ad <- dad %>%
             )
 ```
 
-# 3. fertility/fecundity
+# 3. tent stats
 
-## a. math
+## a. pre-math (fixing #s)
 
 these calcs are copy/pasted/tweaked from `/2023/analyses_tents.Rmd`
 
 ```{r}
-# determine # of ovipositing females
-summ_rate <- dtents %>%
+# determine actual # of ovipositing females
+dtents <- dtents %>%
   mutate_at(c(6:14), ~replace_na(., 0)) %>% 
   group_by(id.tent) %>%
   mutate(jdate.rel = jdate - first(jdate)) %>%
@@ -128,28 +128,70 @@ summ_rate <- dtents %>%
 # where n.ovipositing females = 0 but n.collected > 0, add the # eggs collected to the day before
 # (or last date of ovipositing females)
 # first, figure out the rows
-cond <- (summ_rate$n.coll > 0 & summ_rate$n.ovi == 0)
+cond <- (dtents$n.coll > 0 & dtents$n.ovi == 0)
 
-eggfix <- summ_rate %>%
+ovifix <- dtents %>%
   mutate(index = as.numeric(rownames(.)), .before = 1) %>%
   subset(cond | lead(cond) | lead(cond, n=2)) #%>% View() 
 
-negovi <- eggfix[eggfix$females.laying < 0, ]
+negovi <- ovifix[ovifix$females.laying < 0, ]
 
-lastovi <- eggfix[eggfix$n.curr.f > 0 & eggfix$n.ovi >= 1, ]
+lastovi <- ovifix[ovifix$n.curr.f > 0 & ovifix$n.ovi >= 1, ]
 
+test2 <- c(negovi$index, lastovi$index)
 
 # then, edit values
 #summ_rate$n.coll[negovi$index] <- 0
-summ_rate <- summ_rate %>% 
-  mutate(n.coll = case_when(rownames(summ_rate) %in% negovi$index ~ 0,
-                            TRUE ~ n.coll)) %>%
-  mutate(n.coll = case_when(rownames(summ_rate) %in% lastovi$index ~ n.coll + 1,
-                                   TRUE ~ n.coll))
+dtents <- dtents %>% 
+  mutate(n.coll = case_when(rownames(.) %in% negovi$index ~ 0,
+                            rownames(.) %in% lastovi$index ~ n.coll + 1,
+                            !(rownames(.) %in% c(negovi$index, lastovi$index)) ~ as.numeric(n.coll)
+                            )) %>%
+  select(-females.laying)
 
-rm(cond, eggfix, negovi, lastovi)
+rm(cond, ovifix, negovi, lastovi)
+
+# removing extra 0's
+# dtents <- dtents %>%
+#   filter(!(n.coll == 0 & n.ovi == 0))
+  # tbh not sure why i did this in the old version. this drops a few #s here and there
 
 ```
 
+## b. fecundity rates (# laid)
+
+ref: `summ_rates_all` calcs in `analyses_tents.Rmd`
+
+```{r}
+# this calcs how # of tents, # eggs laid, # ovi f changes daily per trt
+ss_ovirates <- dtents %>%
+  group_by(trt.ref, trt.sex, trt.hs, jdate.rel) %>%
+  summarise(n.tents = n(), #idk why i use mutate in the orig lol
+         eggs.perovi = sum(n.coll)/sum(n.ovi),
+         eggsovi.pertent = eggs.perovi / n.tents) %>%
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+```
+
+
+## c. fertility rates (# hatched)
+
+ref: `summ_hatch` calcs in `analyses_tents.Rmd`
+
+```{r}
+ss_hatchrates <- dtents %>%
+  group_by(trt.ref, trt.sex, trt.hs) %>%
+  summarise(n.tents = n_distinct(id.tent),
+            n.laid = sum(n.coll, na.rm = TRUE),
+            se.laid = se(n.coll),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            se.hatched = se(n.tothatch),
+            n.fs = sum(n.new.f, na.rm = TRUE),
+            prop.hatched = n.hatched/n.laid,
+            se.hatchprop = sqrt(prop.hatched*(1-prop.hatched)/n.laid),
+            prop.hatchf = prop.hatched/n.fs,
+            se.hatchfprop = sqrt(prop.hatchf*(1-prop.hatchf)/n.laid)
+            )
+```
 
 
