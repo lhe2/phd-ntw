@@ -38,6 +38,11 @@ se <- function(x){
 value/columns renaming and filtering
 
 ```{r}
+# change mass to g
+d23 <- d23 %>%
+  mutate(mass.pupa = mass.pupa/1000,
+         mass.eclose = mass.eclose/1000)
+
 # adult data
 dad <- dad %>%
   rename(jdate.eclose = jdate.ec,
@@ -48,8 +53,9 @@ dad <- dad %>%
          trt.type = case_when(maxT == minT ~ "ctrl",
                               TRUE ~ "expt")) %>%
   select(-c(track.reason, starts_with("date")))
+```
 
-
+```{r}
 # tent data
 dtents <- dtents %>%
   filter(pop == "lab") %>%
@@ -70,18 +76,12 @@ dtents <- dtents %>%
                              trt.m == trt.f ~ "win")
          ) %>%
   select(-pop)
-
-
-# change mass to g
-d23 <- d23 %>%
-  mutate(mass.pupa = mass.pupa/1000,
-         mass.eclose = mass.eclose/1000)
 ```
 
 
 # 2. adult, larval dev
 
-## a. math
+## a. df prep & summary stats
 
 ```{r}
 # larval stats
@@ -134,7 +134,10 @@ ss_ad <- dad %>%
             n = sum(na.omit(!is.na(jdate.eclose)))
             ) %>%
   mutate(stage = "ad")
+```
 
+```{r}
+# combine dfs
 ss_dev <- full_join(ss_la, ss_pu)
 ss_dev <- full_join(ss_dev, ss_ad)
 ss_dev <- full_join(ss_dev, ss_ad.sex)
@@ -143,13 +146,25 @@ ss_dev.expt <- filter(ss_dev, trt.type == "expt")
 ss_dev.ctrl <- filter(ss_dev, trt.type == "ctrl")
 ```
 
+```{r}
+# df for exptal bugs only (for modeling)
+d23.expt <- filter(d23, trt.type == "expt")
+```
 
-## b. figs
+
+## b. figs & modeling
+
+### - survival
+
+fig
 
 ```{r}
-# survival
-plot.surv <- ss_dev.expt %>%
-  ggplot(aes(y = prop.survpup, x = as.factor(minT), group = stage)) +
+plot.surv <- #ss_dev.expt %>%
+  ss_dev %>%
+  filter(trt.type == "expt") %>%
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), group = stage,
+             #color = trt.type
+             )) +
   geom_point(size = 2) +
   geom_line(lty = "dashed") +
   #geom_text(aes(label = n.surv), vjust = 2.25) +
@@ -159,11 +174,21 @@ plot.surv <- ss_dev.expt %>%
   ylim(c(0, 1))
 
 plot.surv
+```
 
-# mass
-plot.devmass <- ss_dev.expt %>% 
+
+
+
+### - mass
+
+```{r}
+plot.devmass <- #ss_dev.expt %>%
+  ss_dev %>%
+  filter(trt.type == "expt") %>%
   filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f aren't that different
-  ggplot(aes(y = avg.mass, x = as.factor(minT), group = stage)) +
+  ggplot(aes(y = avg.mass, x = as.factor(minT), group = stage,
+             #color = trt.type
+             )) +
   geom_point(size = 2) +
   geom_line(aes(lty = stage)) +
   geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
@@ -175,11 +200,18 @@ plot.devmass <- ss_dev.expt %>%
   ylim(c(1.25, 4.6)) 
   
 plot.devmass
-  
-# time
-plot.devtime <- ss_dev.expt %>% 
+```
+
+### - time
+
+```{r} 
+plot.devtime <- #ss_dev.expt %>% 
+  ss_dev %>%
+  filter(trt.type == "expt") %>%
   filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f not that different
-  ggplot(aes(y = avg.tt, x = as.factor(minT), group = stage)) +
+  ggplot(aes(y = avg.tt, x = as.factor(minT), group = stage,
+             #color = trt.type
+             )) +
   geom_point(size = 2) +
   geom_line(aes(lty = stage)) +
   geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt),
@@ -198,10 +230,10 @@ plot.devtime <- ss_dev.expt %>%
 plot.devtime
 ```
 
-## c. stats
+### - combined plot
 
 ```{r}
-mod_surv <- 
+grid_layout
 ```
 
 
