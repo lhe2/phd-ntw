@@ -37,7 +37,7 @@ se <- function(x){
 
 value/columns renaming and filtering
 
-```{r}
+```{r dev data formatting}
 # change mass to g
 d23 <- d23 %>%
   mutate(mass.pupa = mass.pupa/1000,
@@ -55,7 +55,7 @@ dad <- dad %>%
   select(-c(track.reason, starts_with("date")))
 ```
 
-```{r}
+```{r tent data formatting}
 # tent data
 dtents <- dtents %>%
   filter(pop == "lab") %>%
@@ -83,7 +83,7 @@ dtents <- dtents %>%
 
 ## a. df prep & summary stats
 
-```{r}
+```{r dev stats}
 # larval stats
 ss_la <- d23 %>%
   group_by(trt.type, minT, 
@@ -136,17 +136,19 @@ ss_ad <- dad %>%
   mutate(stage = "ad")
 ```
 
-```{r}
+```{r final dev df}
 # combine dfs
 ss_dev <- full_join(ss_la, ss_pu)
 ss_dev <- full_join(ss_dev, ss_ad)
 ss_dev <- full_join(ss_dev, ss_ad.sex)
 
+ss_dev$stage <- factor(ss_dev$stage, levels = c("la", "pu", "ad", "ad.sex"))
+
 ss_dev.expt <- filter(ss_dev, trt.type == "expt")
 ss_dev.ctrl <- filter(ss_dev, trt.type == "ctrl")
 ```
 
-```{r}
+```{r final stats df}
 # df for exptal bugs only (for modeling)
 d23.expt <- filter(d23, trt.type == "expt")
 ```
@@ -156,9 +158,7 @@ d23.expt <- filter(d23, trt.type == "expt")
 
 ### - survival
 
-fig
-
-```{r}
+```{r surv fig}
 plot.surv <- #ss_dev.expt %>%
   ss_dev %>%
   filter(trt.type == "expt") %>%
@@ -166,7 +166,7 @@ plot.surv <- #ss_dev.expt %>%
              #color = trt.type
              )) +
   geom_point(size = 2) +
-  geom_line(lty = "dashed") +
+  geom_line(lty = 2) +
   #geom_text(aes(label = n.surv), vjust = 2.25) +
   theme_bw() +
   labs(y = "proportion survived to pupation",
@@ -181,12 +181,19 @@ plot.surv
 
 ### - mass
 
-```{r}
+```{r mass fig}
+# after running stats: sex matters for adults lol
+
 plot.devmass <- #ss_dev.expt %>%
   ss_dev %>%
   filter(trt.type == "expt") %>%
-  filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f aren't that different
-  ggplot(aes(y = avg.mass, x = as.factor(minT), group = stage,
+  #filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f aren't that different
+  filter(stage %in% c("ad.sex", "la")) %>%
+  # mutate(sex = case_when(is.na(sex) ~ "etc",
+  #                        TRUE ~ sex)) %>%
+  ggplot(aes(y = avg.mass, x = as.factor(minT), group = interaction(stage, sex),
+             #group = stage,
+             color = sex, shape = sex,
              #color = trt.type
              )) +
   geom_point(size = 2) +
@@ -194,10 +201,18 @@ plot.devmass <- #ss_dev.expt %>%
   geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
                 width = 0.1) +
   theme_bw() +
-  scale_linetype_discrete(labels = c("adult", "pupa")) +
   labs(y = "mass (g)",
        x = "larval nighttime temperature (°C)") +
-  ylim(c(1.25, 4.6)) 
+  scale_linetype_manual(labels = c("pupa", "adult"), values = c(2, 1)) +
+  scale_shape_discrete(#breaks = ~ .x[!is.na(.x)],
+                       limits = c("f", "m"),
+                       na.translate = TRUE, na.value = 1
+                       ) +
+  scale_color_discrete(#breaks = ~ .x[!is.na(.x)],
+                       limits = c("f", "m"),
+                       na.translate = TRUE
+                       ) +
+  ylim(c(1.15, 4.6)) # 1.25-4.6 if omitting sex
   
 plot.devmass
 ```
@@ -219,9 +234,10 @@ plot.devtime <- #ss_dev.expt %>%
   theme_bw() +
   scale_linetype_manual(labels = c(#"adult\n(eclosion → death)", "larva\n(hatching → pupation)",
                                    "adult", "larva"
+                                   "larva", "adult"
                                    #"pupa (pupation → eclosion)"
                                    ),
-                        values = c(1, 2#, 3
+                        values = c(3, 1#, 3
                                    )
                         ) +
   labs(y = "development time/longevity (days)",
