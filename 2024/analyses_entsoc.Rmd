@@ -177,6 +177,18 @@ plot.surv
 ```
 
 
+```{r surv stats}
+# new df for survival data: drops accidental deaths/na outcomes (0 = eclose, 1 = death)
+d_surv <- d23.expt %>%
+  rename(status = surv.outcome) %>%
+  filter(status < 2)
+
+mod_surv <- glm(status ~ as.factor(minT), data = d_surv, family = "binomial")
+
+summary(mod_surv)
+anova(mod_surv, test = "Chisq") # minT ***
+```
+
 
 
 ### - mass
@@ -217,9 +229,36 @@ plot.devmass <- #ss_dev.expt %>%
 plot.devmass
 ```
 
+stats
+
+```{r pupal mass stats}
+# trying other possible influencing factors first
+mod_pmass1 <- lm(mass.pupa ~ as.factor(minT)*sex, data = d23)
+mod_pmass2 <- lm(mass.pupa ~ as.factor(minT), data = d23) # better per AIC
+
+anova(mod_pmass1) # minT ***, sex ns (0.19), int ns (0.42)
+anova(mod_pmass2) # minT ***
+
+AIC(mod_pmass1) # 351.1274
+AIC(mod_pmass2) # 348.6995
+```
+
+```{r adult mass stats}
+mod_amass1 <- lm(mass.eclose ~ as.factor(minT)*sex, data = d23) # better per AIC
+mod_amass2 <- lm(mass.eclose ~ as.factor(minT), data = d23)
+
+anova(mod_amass1) # minT ***, sex **
+anova(mod_amass2) # minT ***
+
+AIC(mod_amass1) # 214.7664
+AIC(mod_amass2) # 220.7273
+```
+
+
+
 ### - time
 
-```{r} 
+```{r dev time fig} 
 plot.devtime <- #ss_dev.expt %>% 
   ss_dev %>%
   filter(trt.type == "expt") %>%
@@ -233,7 +272,6 @@ plot.devtime <- #ss_dev.expt %>%
                 width = 0.08) +
   theme_bw() +
   scale_linetype_manual(labels = c(#"adult\n(eclosion → death)", "larva\n(hatching → pupation)",
-                                   "adult", "larva"
                                    "larva", "adult"
                                    #"pupa (pupation → eclosion)"
                                    ),
@@ -245,6 +283,32 @@ plot.devtime <- #ss_dev.expt %>%
 
 plot.devtime
 ```
+
+stats
+
+```{r larval dtime stats}
+mod_ltime1 <- lm((jdate.pupa - jdate.hatch) ~ as.factor(minT)*as.factor(sup), data = d23) # better per AIC
+mod_ltime2 <- lm((jdate.pupa - jdate.hatch) ~ as.factor(minT), data = d23)
+
+anova(mod_ltime1) # minT ***, sup ***, int ns (0.75)
+anova(mod_ltime2) # minT ***
+
+AIC(mod_ltime1) # 480.7616
+AIC(mod_ltime2) # 576.1871
+```
+
+
+```{r adult dtime stats}
+mod_atime1 <- lm((jdate.surv - jdate.eclose) ~ as.factor(minT)*sex, data = d23) 
+mod_atime2 <- lm((jdate.surv - jdate.eclose) ~ as.factor(minT), data = d23) # better per AIC
+
+anova(mod_atime1) # minT ns (0.55), sex ns (0.81)
+anova(mod_atime2) # minT ns
+
+AIC(mod_atime1) # 158.7356
+AIC(mod_atime2) # 156.8043
+```
+
 
 ### - combined plot
 
