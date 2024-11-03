@@ -42,7 +42,8 @@ value/columns renaming and filtering
 dad <- dad %>%
   rename(jdate.eclose = jdate.ec,
          jdate.surv = jdate.died) %>%
-  mutate(for.surv = case_when(track.reason %in% c("surv-fert", "surv") ~ 1),
+  mutate(mass.eclose = mass.eclose/1000,
+         for.surv = case_when(track.reason %in% c("surv-fert", "surv") ~ 1),
          for.fert = case_when(track.reason %in% c("surv-fert", "fert") ~ 1),
          trt.type = case_when(maxT == minT ~ "ctrl",
                               TRUE ~ "expt")) %>%
@@ -69,6 +70,12 @@ dtents <- dtents %>%
                              trt.m == trt.f ~ "win")
          ) %>%
   select(-pop)
+
+
+# change mass to g
+d23 <- d23 %>%
+  mutate(mass.pupa = mass.pupa/1000,
+         mass.eclose = mass.eclose/1000)
 ```
 
 
