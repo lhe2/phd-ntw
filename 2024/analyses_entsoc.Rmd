@@ -281,19 +281,79 @@ ss_ovirates <- dtents %>%
 ref: `summ_hatch` calcs in `analyses_tents.Rmd`
 
 ```{r}
+# want: # eggs laid per female (overall), prop hatched in tent
 ss_hatchrates <- dtents %>%
   group_by(trt.ref, trt.sex, trt.hs) %>%
   summarise(n.tents = n_distinct(id.tent),
             n.laid = sum(n.coll, na.rm = TRUE),
-            se.laid = se(n.coll),
-            n.hatched = sum(n.tothatch, na.rm = TRUE),
-            se.hatched = se(n.tothatch),
-            n.fs = sum(n.new.f, na.rm = TRUE),
+            #se.laid = se(n.coll),
+            n.fs = sum(n.new.f, na.rm = TRUE), # = total # fs in a tent
+            n.laidf = round(n.laid/n.fs, digits = 2),
+            #se.laidf = se(sum(n.coll, na.rm = TRUE)/sum(n.new.f)), # doesnt work
+            se.laidf = sqrt(n.laidf*(1-n.laidf/n.laid)), # hmmmm.
+            n.hatched = sum(n.tothatch, na.rm = TRUE), # needed downstream
+            #se.hatched = se(n.tothatch),
             prop.hatched = n.hatched/n.laid,
             se.hatchprop = sqrt(prop.hatched*(1-prop.hatched)/n.laid),
-            prop.hatchf = prop.hatched/n.fs,
-            se.hatchfprop = sqrt(prop.hatchf*(1-prop.hatchf)/n.laid)
+            # prop.hatchf = prop.hatched/n.fs,
+            # se.hatchfprop = sqrt(prop.hatchf*(1-prop.hatchf)/n.laid)
             )
+```
+
+
+## d. figs
+
+```{r}
+plot.whatch <- ss_hatchrates %>%
+  filter(trt.ref %in% c("win", "ctrl")) %>%
+  ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs))) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin= prop.hatched - se.hatchprop, ymax = prop.hatched + se.hatchprop), 
+                width = 5
+                ) +
+  geom_errorbarh(aes(xmin = n.laidf - se.laidf, xmax = n.laidf + se.laidf), 
+                 height = 0.005
+                 ) +
+  #geom_errorbarh(aes(xmin = n.laid - se.laid, xmax = n.laid + se.laid), height = 0.01) +
+  geom_text(aes(label = n.fs), vjust = -0.7, hjust = -0.7, show.legend = FALSE) +
+  theme_bw() +
+  labs(color = "larval temperature\ntreatment",
+       y = "proportion hatched",
+       x = "# eggs laid per female")+
+  scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
+                     #values = c("#0b809f", "#4d266b", "#b12256", "#f88e28")
+                     #values = c("#4393c3", "#f4a582", "#d6604d", "#b2182b")
+                     values = c("#4393ce", "#fdae61", "#d73027", "#a50026")
+                     )
+
+plot.whatch # y: 0-0.18?, x: 0-200
+```
+
+```{r}
+plot.bhatch <- ss_hatchrates %>%
+  filter(trt.ref == "btwn") %>%
+  ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs), shape = trt.sex)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin= prop.hatched - se.hatchprop, ymax = prop.hatched + se.hatchprop), 
+                width = 5
+                ) +
+  geom_errorbarh(aes(xmin = n.laidf - se.laidf, xmax = n.laidf + se.laidf), 
+                 height = 0.0035
+                 ) +
+  geom_text(aes(label = n.fs), vjust = -0.9, hjust = -0.8, show.legend = FALSE) +
+  theme_bw() +
+  labs(color = "larval temperature\ntreatment",
+       shape = "treated sex",
+       y = "proportion hatched",
+       x = "# eggs laid per female") +
+  scale_color_manual(labels = c("40-19°C", "40-26°C", "40-33°C"),
+                     #values = c("#4d266b", "#b12256", "#f88e28"),
+                     #values = c("#f4a582", "#d6604d", "#b2182b"),
+                     #values = c("#fdae61", "#f46d43", "#a50026"),
+                     values = c("#fdae61", "#d73027", "#a50026")) +
+  scale_shape_manual(values = c(19, 17))
+
+plot.bhatch # y: 0-0.12, x = 0-350
 ```
 
 
