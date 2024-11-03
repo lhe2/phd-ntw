@@ -90,8 +90,8 @@ ss_la <- d23 %>%
            ) %>%
   summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
             se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-            avg.mass = mean(na.omit(mass.pupa)),
-            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            # avg.mass = mean(na.omit(mass.pupa)),
+            # se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
             #n = n(),
             n = n() - sum(na.omit(surv.outcome == 2)),
             n.pmd = sum(na.omit(surv.outcome == 1)), 
@@ -105,7 +105,9 @@ ss_la <- d23 %>%
 ss_pu <- d23 %>%
   group_by(trt.type, minT) %>%
   summarise(avg.tt = mean(na.omit(jdate.eclose - jdate.pupa)),
-            se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa)))) %>%
+            se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),) %>%
   mutate(stage = "pu")
 
 # adult stats
@@ -120,7 +122,7 @@ ss_ad.sex <- dad %>%
             se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
             n = sum(na.omit(!is.na(jdate.eclose)))
             ) %>%
-  mutate(stage = "ad.sex")
+  mutate(stage = "ad")
 
 ss_ad <- dad %>%
   filter(!is.na(for.surv), pop == "lab") %>%
@@ -142,7 +144,7 @@ ss_dev <- full_join(ss_la, ss_pu)
 ss_dev <- full_join(ss_dev, ss_ad)
 ss_dev <- full_join(ss_dev, ss_ad.sex)
 
-ss_dev$stage <- factor(ss_dev$stage, levels = c("la", "pu", "ad", "ad.sex"))
+ss_dev$stage <- factor(ss_dev$stage, levels = c("la", "pu", "ad"))
 
 ss_dev.expt <- filter(ss_dev, trt.type == "expt")
 ss_dev.ctrl <- filter(ss_dev, trt.type == "ctrl")
@@ -165,7 +167,7 @@ plot.surv <- #ss_dev.expt %>%
   ggplot(aes(y = prop.survpup, x = as.factor(minT), group = stage,
              #color = trt.type
              )) +
-  geom_point(size = 2) +
+  geom_point(size = 2, shape = 16) +
   geom_line(lty = 2) +
   #geom_text(aes(label = n.surv), vjust = 2.25) +
   theme_bw() +
@@ -200,7 +202,11 @@ plot.devmass <- #ss_dev.expt %>%
   ss_dev %>%
   filter(trt.type == "expt") %>%
   #filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f aren't that different
-  filter(stage %in% c("ad.sex", "la")) %>%
+  #filter(stage %in% c("ad.sex", "pu")) %>%
+  filter(stage == "ad" & !is.na(sex) | stage == "pu") %>%
+  # mutate(stage = case_when(stage == "la" ~ "pu",
+  #                          TRUE ~ as.character(stage)),
+  #        stage = factor(stage, levels = c("pu", "ad.sex"))) %>%
   # mutate(sex = case_when(is.na(sex) ~ "etc",
   #                        TRUE ~ sex)) %>%
   ggplot(aes(y = avg.mass, x = as.factor(minT), group = interaction(stage, sex),
@@ -216,13 +222,13 @@ plot.devmass <- #ss_dev.expt %>%
   labs(y = "mass (g)",
        x = "larval nighttime temperature (°C)") +
   scale_linetype_manual(labels = c("pupa", "adult"), values = c(2, 1)) +
-  scale_shape_discrete(#breaks = ~ .x[!is.na(.x)],
-                       limits = c("f", "m"),
-                       na.translate = TRUE, na.value = 1
+  scale_shape_manual(#breaks = ~ .x[!is.na(.x)],
+                       values = c(17, 15), limits = c("f", "m"),
+                       na.translate = TRUE, na.value = 16
                        ) +
   scale_color_discrete(#breaks = ~ .x[!is.na(.x)],
                        limits = c("f", "m"),
-                       na.translate = TRUE
+                       na.translate = TRUE, na.value = "black"
                        ) +
   ylim(c(1.15, 4.6)) # 1.25-4.6 if omitting sex
   
@@ -262,11 +268,12 @@ AIC(mod_amass2) # 220.7273
 plot.devtime <- #ss_dev.expt %>% 
   ss_dev %>%
   filter(trt.type == "expt") %>%
-  filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f not that different
+  #filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f not that different
+  filter(stage %in% c("ad", "la") & is.na(sex)) %>% 
   ggplot(aes(y = avg.tt, x = as.factor(minT), group = stage,
              #color = trt.type
              )) +
-  geom_point(size = 2) +
+  geom_point(size = 2, shape = 16) +
   geom_line(aes(lty = stage)) +
   geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt),
                 width = 0.08) +
@@ -275,10 +282,10 @@ plot.devtime <- #ss_dev.expt %>%
                                    "larva", "adult"
                                    #"pupa (pupation → eclosion)"
                                    ),
-                        values = c(3, 1#, 3
+                        values = c(4, 1#, 3
                                    )
                         ) +
-  labs(y = "development time/longevity (days)",
+  labs(y = "development time / longevity (days)",
        x = "larval nighttime temperature (°C)")
 
 plot.devtime
@@ -313,7 +320,17 @@ AIC(mod_atime2) # 156.8043
 ### - combined plot
 
 ```{r}
-grid_layout
+# library(patchwork)
+# check that lty/shape values match across plots for merge to work
+
+(plot.surv | plot.devmass | plot.devtime) +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(1:1)) &
+  theme(legend.position = "top") &
+  scale_linetype_manual(labels = c("larva", "pupa", "adult", "adult"), values = c(4,2,1,1), 
+                        drop = FALSE) # good enough man idk
+
 ```
 
 
@@ -321,11 +338,13 @@ grid_layout
 
 # 3. tent stats
 
-## a. pre-math (fixing #s)
+## a. hatch rate calcs
 
 these calcs are copy/pasted/tweaked from `/2023/analyses_tents.Rmd`
 
-```{r}
+### - pre-math (fixing #s)
+
+```{r fixing calcs}
 # determine actual # of ovipositing females
 dtents <- dtents %>%
   mutate_at(c(6:14), ~replace_na(., 0)) %>% 
@@ -372,7 +391,8 @@ rm(cond, ovifix, negovi, lastovi)
 
 ```
 
-## b. fecundity rates (# laid)
+
+### - fecundity rates (# laid)
 
 ref: `summ_rates_all` calcs in `analyses_tents.Rmd`
 
@@ -388,7 +408,7 @@ ss_ovirates <- dtents %>%
 ```
 
 
-## c. fertility rates (# hatched)
+### - fertility rates (# hatched)
 
 ref: `summ_hatch` calcs in `analyses_tents.Rmd`
 
@@ -413,9 +433,11 @@ ss_hatchrates <- dtents %>%
 ```
 
 
-## d. figs
+## d. figs & modeling
 
-```{r}
+### - win hatch
+
+```{r win hatch rates plot}
 plot.whatch <- ss_hatchrates %>%
   filter(trt.ref %in% c("win", "ctrl")) %>%
   ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs))) +
@@ -429,9 +451,10 @@ plot.whatch <- ss_hatchrates %>%
   #geom_errorbarh(aes(xmin = n.laid - se.laid, xmax = n.laid + se.laid), height = 0.01) +
   geom_text(aes(label = n.fs), vjust = -0.7, hjust = -0.7, show.legend = FALSE) +
   theme_bw() +
-  labs(color = "larval temperature\ntreatment",
-       y = "proportion hatched",
+  labs(color = "larval temperature treatment",
+       y = "proportion eggs hatched",
        x = "# eggs laid per female")+
+  #guides(color = guide_legend(nrow = 2)) +
   scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
                      #values = c("#0b809f", "#4d266b", "#b12256", "#f88e28")
                      #values = c("#4393c3", "#f4a582", "#d6604d", "#b2182b")
@@ -441,7 +464,9 @@ plot.whatch <- ss_hatchrates %>%
 plot.whatch # y: 0-0.18?, x: 0-200
 ```
 
-```{r}
+### - btwn hatch
+
+```{r btwn hatch rates plot}
 plot.bhatch <- ss_hatchrates %>%
   filter(trt.ref == "btwn") %>%
   ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs), shape = trt.sex)) +
@@ -456,16 +481,36 @@ plot.bhatch <- ss_hatchrates %>%
   theme_bw() +
   labs(color = "larval temperature\ntreatment",
        shape = "treated sex",
-       y = "proportion hatched",
+       y = "proportion eggs hatched",
        x = "# eggs laid per female") +
   scale_color_manual(labels = c("40-19°C", "40-26°C", "40-33°C"),
                      #values = c("#4d266b", "#b12256", "#f88e28"),
                      #values = c("#f4a582", "#d6604d", "#b2182b"),
                      #values = c("#fdae61", "#f46d43", "#a50026"),
                      values = c("#fdae61", "#d73027", "#a50026")) +
-  scale_shape_manual(values = c(19, 17))
+  guides(color = "none") + # omit for plot_layout to work
+  scale_shape_manual(values = c(17, 15))
 
 plot.bhatch # y: 0-0.12, x = 0-350
 ```
+### - combined plot
+
+```{r}
+(plot.whatch | plot.bhatch) +
+  plot_layout(guides = "collect", 
+              axes = "collect", 
+              widths = c(1:1)) &
+  theme(legend.position = "bottom",
+        #legend.justification = "top"
+        ) &
+  # scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
+  #                    values = c("#4393ce", "#fdae61", "#d73027", "#a50026")
+  #                    )
+  ylim(c(-0.005, 0.18)) &
+  xlim(c(0, 340))
+
+
+```
+
 
 
