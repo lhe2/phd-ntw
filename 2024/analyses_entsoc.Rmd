@@ -397,13 +397,15 @@ rm(cond, ovifix, negovi, lastovi)
 ref: `summ_rates_all` calcs in `analyses_tents.Rmd`
 
 ```{r}
-# this calcs how # of tents, # eggs laid, # ovi f changes daily per trt
-ss_ovirates <- dtents %>%
-  group_by(trt.ref, trt.sex, trt.hs, jdate.rel) %>%
-  summarise(n.tents = n(), #idk why i use mutate in the orig lol
-         eggs.perovi = sum(n.coll)/sum(n.ovi),
-         eggsovi.pertent = eggs.perovi / n.tents) %>%
-  mutate_all(~ifelse(is.nan(.), NA, .))
+# i dont need this lol
+
+# # this calcs how # of tents, # eggs laid, # ovi f changes daily per trt
+# ss_ovirates <- dtents %>%
+#   group_by(trt.ref, trt.sex, trt.hs, jdate.rel) %>%
+#   summarise(n.tents = n(), #idk why i use mutate in the orig lol
+#          eggs.perovi = sum(n.coll)/sum(n.ovi),
+#          eggsovi.pertent = eggs.perovi / n.tents) %>%
+#   mutate_all(~ifelse(is.nan(.), NA, .))
 
 ```
 
@@ -433,7 +435,7 @@ ss_hatchrates <- dtents %>%
 ```
 
 
-## d. figs & modeling
+## b. figs
 
 ### - win hatch
 
@@ -443,7 +445,7 @@ plot.whatch <- ss_hatchrates %>%
   ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs))) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin= prop.hatched - se.hatchprop, ymax = prop.hatched + se.hatchprop), 
-                width = 5
+                width = 8
                 ) +
   geom_errorbarh(aes(xmin = n.laidf - se.laidf, xmax = n.laidf + se.laidf), 
                  height = 0.005
@@ -454,7 +456,7 @@ plot.whatch <- ss_hatchrates %>%
   labs(color = "larval temperature treatment",
        y = "proportion eggs hatched",
        x = "# eggs laid per female")+
-  #guides(color = guide_legend(nrow = 2)) +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
   scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
                      #values = c("#0b809f", "#4d266b", "#b12256", "#f88e28")
                      #values = c("#4393c3", "#f4a582", "#d6604d", "#b2182b")
@@ -464,6 +466,7 @@ plot.whatch <- ss_hatchrates %>%
 plot.whatch # y: 0-0.18?, x: 0-200
 ```
 
+
 ### - btwn hatch
 
 ```{r btwn hatch rates plot}
@@ -472,10 +475,10 @@ plot.bhatch <- ss_hatchrates %>%
   ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs), shape = trt.sex)) +
   geom_point(size = 2) +
   geom_errorbar(aes(ymin= prop.hatched - se.hatchprop, ymax = prop.hatched + se.hatchprop), 
-                width = 5
+                width = 8
                 ) +
   geom_errorbarh(aes(xmin = n.laidf - se.laidf, xmax = n.laidf + se.laidf), 
-                 height = 0.0035
+                 height = 0.005
                  ) +
   geom_text(aes(label = n.fs), vjust = -0.9, hjust = -0.8, show.legend = FALSE) +
   theme_bw() +
@@ -488,7 +491,9 @@ plot.bhatch <- ss_hatchrates %>%
                      #values = c("#f4a582", "#d6604d", "#b2182b"),
                      #values = c("#fdae61", "#f46d43", "#a50026"),
                      values = c("#fdae61", "#d73027", "#a50026")) +
-  guides(color = "none") + # omit for plot_layout to work
+  guides(color = "none", # omit for plot_layout to work
+         #shape = guide_legend(nrow = 2)
+         ) + 
   scale_shape_manual(values = c(17, 15))
 
 plot.bhatch # y: 0-0.12, x = 0-350
@@ -501,16 +506,156 @@ plot.bhatch # y: 0-0.12, x = 0-350
               axes = "collect", 
               widths = c(1:1)) &
   theme(legend.position = "bottom",
-        #legend.justification = "top"
+        legend.justification = "center"
         ) &
   # scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
   #                    values = c("#4393ce", "#fdae61", "#d73027", "#a50026")
   #                    )
   ylim(c(-0.005, 0.18)) &
   xlim(c(0, 340))
+```
 
+
+## c. modeling
+
+### - df prep & value-checking
+
+```{r}
+# calc avg eggs/F (fecundity) and overall prop hatch PER TENT
+d_repro <- dtents %>%
+  filter(trt.ref != "ctrl") %>%
+  group_by(id.tent, trt.ref, trt.sex, trt.hs) %>%
+  summarise(n.laid = sum(n.coll, na.rm = TRUE),
+            n.fs = sum(n.new.f, na.rm = TRUE), # = total # fs in a tent
+            avg.laidf = round(n.laid/n.fs, digits = 2), # fecundity stat
+            log.fec = log(avg.laidf + 1),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            prop.hatched = n.hatched/n.laid, # fert stat
+            log.fert = log(prop.hatched + 1) 
+            )
+
+# imo need log.fert and avg.laidf is ok... just looking at 0's. but should check qqplots later
+
+d_win <- d_repro %>%
+  filter(trt.ref == "win")
+d_btwn <- d_repro %>%
+  filter(trt.ref == "btwn")
+```
+
+### - btwn trts
+```{r modeling btwn}
+# no random effs bc of tent grouping lol
+
+# fecundity 
+mod_bfec <- lm(avg.laidf ~ trt.hs*trt.sex, data = d_btwn)
+mod_bfec.log <- lm(log.fec ~ trt.hs*trt.sex, data = d_btwn)
+
+# fertility
+mod_bfert <- lm(prop.hatched ~ trt.hs*trt.sex, data = d_btwn)
+mod_bfert.log <- lm(log.fert ~ trt.hs*trt.sex, data = d_btwn)
+```
+
+```{r checking btwn mods}
+anova(mod_bfec) # trt (0.95), sex (.17), int (0.82) ns 
+anova(mod_bfec.log) # trt (0.79), sex (.97), int (0.64) ns 
+AIC(mod_bfec) # 177.0551
+AIC(mod_bfec.log) # 61.76643
+
+anova(mod_bfert) 
+anova(mod_bfert.log)  
+AIC(mod_bfert) # better?? not rly tho - they are pretty close anyway lol
+AIC(mod_bfert.log)
+```
+
+```{r qq btwn mods}
+# fecundity
+qqnorm(resid(mod_bfec), main = "QQ btwn fecundity")
+qqline(resid(mod_bfec))
+
+qqnorm(resid(mod_bfec.log), main = "QQ log(btwn fecundity)") # this is better (sorta)
+qqline(resid(mod_bfec.log))
+
+# fertility 
+# they both rly suck bc of a shitton of 0s lol
+qqnorm(resid(mod_bfert), main = "QQ btwn fertility")
+qqline(resid(mod_bfert))
+
+qqnorm(resid(mod_bfert.log), main = "QQ log(btwn fertility)")
+qqline(resid(mod_bfert.log))
+```
+
+
+Analysis of Variance Table
+
+Response: avg.laidf
+               Df Sum Sq Mean Sq F value Pr(>F)
+trt.hs          1     48    48.0  0.0039 0.9517
+trt.sex         1  27487 27487.0  2.2042 0.1685
+trt.hs:trt.sex  1    680   680.4  0.0546 0.8200
+Residuals      10 124702 12470.2               
+Analysis of Variance Table
+
+Response: log.fec
+               Df Sum Sq Mean Sq F value Pr(>F)
+trt.hs          1  0.242  0.2421  0.0732 0.7922
+trt.sex         1  0.005  0.0052  0.0016 0.9693
+trt.hs:trt.sex  1  0.784  0.7844  0.2372 0.6368
+Residuals      10 33.075  3.3075               
+[1] 177.0551
+[1] 61.76643
+
+
+Analysis of Variance Table
+
+Response: prop.hatched
+               Df   Sum Sq   Mean Sq F value Pr(>F)
+trt.hs          1 0.002134 0.0021337  0.3753 0.5553
+trt.sex         1 0.007761 0.0077610  1.3653 0.2726
+trt.hs:trt.sex  1 0.000566 0.0005664  0.0996 0.7595
+Residuals       9 0.051161 0.0056845               
+Analysis of Variance Table
+
+Response: log.fert
+               Df   Sum Sq   Mean Sq F value Pr(>F)
+trt.hs          1 0.001633 0.0016333  0.3449 0.5715
+trt.sex         1 0.006554 0.0065543  1.3841 0.2696
+trt.hs:trt.sex  1 0.000402 0.0004023  0.0849 0.7773
+Residuals       9 0.042620 0.0047355               
+[1] -25.0981
+[1] -27.47261
+
+
+
+### - win trts
+```{r modeling win}
+# fecundity 
+mod_wfec.log <- lm(log.fec ~ trt.hs, data = d_win)
+
+# fertility
+mod_wfert <- lm(prop.hatched ~ trt.hs, data = d_win)
+```
+
+
+```{r checking win mods}
+anova(mod_wfec.log) # trt (0.94) ns
+
+anova(mod_wfert) # trt (0.21) ns
 
 ```
+
+
+```{r qqplots win}
+# fecundity
+qqnorm(resid(mod_wfec.log)) 
+qqline(resid(mod_wfec.log))
+
+# fertility 
+qqnorm(resid(mod_wfert))
+qqline(resid(mod_wfert))
+
+```
+
+
 
 
 
