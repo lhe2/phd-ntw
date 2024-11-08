@@ -186,6 +186,7 @@ d_surv <- d23.expt %>%
   filter(status < 2)
 
 mod_surv <- glm(status ~ as.factor(minT), data = d_surv, family = "binomial")
+mod_surv2 <- glm(status ~ as.factor(minT)*sex, data = d_surv, family = "binomial")
 
 summary(mod_surv)
 anova(mod_surv, test = "Chisq") # minT ***
@@ -323,6 +324,7 @@ AIC(mod_atime2) # 156.8043
 # library(patchwork)
 # check that lty/shape values match across plots for merge to work
 
+
 (plot.surv | plot.devmass | plot.devtime) +
   plot_layout(guides = "collect",
               axes = "collect",
@@ -331,6 +333,7 @@ AIC(mod_atime2) # 156.8043
   scale_linetype_manual(labels = c("larva", "pupa", "adult", "adult"), values = c(4,2,1,1), 
                         drop = FALSE) # good enough man idk
 
+#ggsave("./figs/entsoc/big 3.png", dpi = "retina")
 ```
 
 
@@ -437,6 +440,12 @@ ss_hatchrates <- dtents %>%
 
 ## b. figs
 
+```{r}
+# a note that colors were formerly
+# c("#f15a29", "#b2325c", "#4d276a")
+```
+
+
 ### - win hatch
 
 ```{r win hatch rates plot}
@@ -492,7 +501,7 @@ plot.bhatch <- ss_hatchrates %>%
                      #values = c("#fdae61", "#f46d43", "#a50026"),
                      values = c("#fdae61", "#d73027", "#a50026")) +
   guides(color = "none", # omit for plot_layout to work
-         #shape = guide_legend(nrow = 2)
+         shape = guide_legend(nrow = 2)
          ) + 
   scale_shape_manual(values = c(17, 15))
 
@@ -504,15 +513,18 @@ plot.bhatch # y: 0-0.12, x = 0-350
 (plot.whatch | plot.bhatch) +
   plot_layout(guides = "collect", 
               axes = "collect", 
-              widths = c(1:1)) &
+              widths = c(1:1)
+              ) &
   theme(legend.position = "bottom",
-        legend.justification = "center"
+        legend.justification = "left"
         ) &
   # scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
   #                    values = c("#4393ce", "#fdae61", "#d73027", "#a50026")
   #                    )
   ylim(c(-0.005, 0.18)) &
   xlim(c(0, 340))
+
+ggsave("./figs/entsoc/tents-2.png",dpi = "retina")
 ```
 
 

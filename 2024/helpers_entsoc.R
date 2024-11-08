@@ -9,6 +9,7 @@
 # load data and pkgs ------------------------------------------------------
 library(tidyverse)
 library(patchwork) # for plot_layout
+library(lme4)
 
 d23 <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv", header = TRUE) %>% mutate(year = 2023)
 
@@ -71,7 +72,8 @@ d23 <- d23 %>%
 mutate(jdate.exit = case_when(!is.na(jdate.pmd) ~ jdate.pmd,
                               !is.na(jdate.pupa) ~ jdate.pupa,
                               TRUE ~ NA_integer_),
-       minT = factor(minT, levels = c(19, 26, 33)))
+       #minT = factor(minT, levels = c(19, 26, 33))
+       )
 
 
 ### TROUBLESHOOTING
