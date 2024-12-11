@@ -1,0 +1,673 @@
+---
+title: "entsoc 2024 figs and analyses"
+date: "2024-10-22"
+---
+
+# 0. roadmap
+
+goal: making figs/running stats for entsoc poster, focusing on lab bugs
+
+# 1. load data & packages
+
+```{r}
+source("./helpers_entsoc.R")
+
+source("../2023/helpers_tents.R")
+
+dtents <- data_tstats 
+#%>% select(-c("trt.type", "trt.pair"))
+
+dad <- data_longevity
+
+rm(data_tstats, data_hatch, data_longevity,
+   labels.alltrts, labels.exptrts, RYB,
+   x_err_ncoll, x_err_ncollf, y_err_hrate)
+```
+
+convenience functions
+
+```{r}
+# calc std err
+se <- function(x){
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
+}
+```
+
+
+
+value/columns renaming and filtering
+
+```{r dev data formatting}
+# change mass to g
+d23 <- d23 %>%
+  mutate(mass.pupa = mass.pupa/1000,
+         mass.eclose = mass.eclose/1000)
+
+# adult data
+dad <- dad %>%
+  rename(jdate.eclose = jdate.ec,
+         jdate.surv = jdate.died) %>%
+  mutate(mass.eclose = mass.eclose/1000,
+         for.surv = case_when(track.reason %in% c("surv-fert", "surv") ~ 1),
+         for.fert = case_when(track.reason %in% c("surv-fert", "fert") ~ 1),
+         trt.type = case_when(maxT == minT ~ "ctrl",
+                              TRUE ~ "expt")) %>%
+  select(-c(track.reason, starts_with("date")))
+```
+
+```{r tent data formatting}
+# tent data
+dtents <- dtents %>%
+  filter(pop == "lab") %>%
+  #rename(trt.typeold = trt.type) %>%
+  mutate(trt.mateto = case_when(trt.m != trt.f | trt.m + trt.f == 520 ~ "ctrl",
+                                TRUE ~ "hs"),
+         trt.sex = case_when(trt.m > trt.f ~ "m",
+                             trt.f > trt.m ~ "f",
+                             trt.m == trt.f ~ "both"),
+         trt.hs = case_when(trt.m > trt.f ~ as.numeric(trt.m),
+                            trt.f > trt.m ~ as.numeric(trt.f),
+                            trt.m + trt.f > 600 ~ as.numeric(trt.m),
+                            TRUE ~ 260),
+         trt.isctrl = case_when(trt.m + trt.f == 520 ~ 1,
+                              TRUE ~ 0),
+         trt.ref = case_when(trt.m + trt.f == 520 ~ "ctrl",
+                             trt.m != trt.f ~ "btwn",
+                             trt.m == trt.f ~ "win")
+         ) %>%
+  select(-pop)
+```
+
+
+# 2. adult, larval dev
+
+## a. df prep & summary stats
+
+```{r dev stats}
+# larval stats
+ss_la <- d23 %>%
+  group_by(trt.type, minT, 
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            # avg.mass = mean(na.omit(mass.pupa)),
+            # se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+            #n = n(),
+            n = n() - sum(na.omit(surv.outcome == 2)),
+            n.pmd = sum(na.omit(surv.outcome == 1)), 
+            n.surv = n - n.pmd, 
+            prop.survpup = round(1-(n.pmd/n), digits=2)
+            ) %>% 
+  #mutate_all(~ifelse(is.nan(.), NA, .))
+  mutate(stage = "la")
+
+# pupal dev (eclosion time)
+ss_pu <- d23 %>%
+  group_by(trt.type, minT) %>%
+  summarise(avg.tt = mean(na.omit(jdate.eclose - jdate.pupa)),
+            se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),) %>%
+  mutate(stage = "pu")
+
+# adult stats
+ss_ad.sex <- dad %>%
+  filter(!is.na(for.surv), pop == "lab") %>%
+  group_by(#diet, # gets too parsed out w/ diet lol
+           trt.type, minT, sex
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+            se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+            avg.mass = mean(na.omit(mass.eclose)),
+            se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
+            n = sum(na.omit(!is.na(jdate.eclose)))
+            ) %>%
+  mutate(stage = "ad")
+
+ss_ad <- dad %>%
+  filter(!is.na(for.surv), pop == "lab") %>%
+  group_by(
+           trt.type, minT
+           ) %>%
+  summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+            se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+            avg.mass = mean(na.omit(mass.eclose)),
+            se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
+            n = sum(na.omit(!is.na(jdate.eclose)))
+            ) %>%
+  mutate(stage = "ad")
+```
+
+```{r final dev df}
+# combine dfs
+ss_dev <- full_join(ss_la, ss_pu)
+ss_dev <- full_join(ss_dev, ss_ad)
+ss_dev <- full_join(ss_dev, ss_ad.sex)
+
+ss_dev$stage <- factor(ss_dev$stage, levels = c("la", "pu", "ad"))
+
+ss_dev.expt <- filter(ss_dev, trt.type == "expt")
+ss_dev.ctrl <- filter(ss_dev, trt.type == "ctrl")
+```
+
+```{r final stats df}
+# df for exptal bugs only (for modeling)
+d23.expt <- filter(d23, trt.type == "expt")
+```
+
+
+## b. figs & modeling
+
+### - survival
+
+```{r surv fig}
+plot.surv <- #ss_dev.expt %>%
+  ss_dev %>%
+  filter(trt.type == "expt") %>%
+  ggplot(aes(y = prop.survpup, x = as.factor(minT), group = stage,
+             #color = trt.type
+             )) +
+  geom_point(size = 2, shape = 16) +
+  geom_line(lty = 2) +
+  #geom_text(aes(label = n.surv), vjust = 2.25) +
+  theme_bw() +
+  labs(y = "proportion survived to pupation",
+       x = "larval nighttime temperature (°C)") +
+  ylim(c(0, 1))
+
+plot.surv
+```
+
+
+```{r surv stats}
+# new df for survival data: drops accidental deaths/na outcomes (0 = eclose, 1 = death)
+d_surv <- d23.expt %>%
+  rename(status = surv.outcome) %>%
+  filter(status < 2)
+
+mod_surv <- glm(status ~ as.factor(minT), data = d_surv, family = "binomial")
+mod_surv2 <- glm(status ~ as.factor(minT)*sex, data = d_surv, family = "binomial")
+
+summary(mod_surv)
+anova(mod_surv, test = "Chisq") # minT ***
+```
+
+
+
+### - mass
+
+```{r mass fig}
+# after running stats: sex matters for adults lol
+
+plot.devmass <- #ss_dev.expt %>%
+  ss_dev %>%
+  filter(trt.type == "expt") %>%
+  #filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f aren't that different
+  #filter(stage %in% c("ad.sex", "pu")) %>%
+  filter(stage == "ad" & !is.na(sex) | stage == "pu") %>%
+  # mutate(stage = case_when(stage == "la" ~ "pu",
+  #                          TRUE ~ as.character(stage)),
+  #        stage = factor(stage, levels = c("pu", "ad.sex"))) %>%
+  # mutate(sex = case_when(is.na(sex) ~ "etc",
+  #                        TRUE ~ sex)) %>%
+  ggplot(aes(y = avg.mass, x = as.factor(minT), group = interaction(stage, sex),
+             #group = stage,
+             color = sex, shape = sex,
+             #color = trt.type
+             )) +
+  geom_point(size = 2) +
+  geom_line(aes(lty = stage)) +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.1) +
+  theme_bw() +
+  labs(y = "mass (g)",
+       x = "larval nighttime temperature (°C)") +
+  scale_linetype_manual(labels = c("pupa", "adult"), values = c(2, 1)) +
+  scale_shape_manual(#breaks = ~ .x[!is.na(.x)],
+                       values = c(17, 15), limits = c("f", "m"),
+                       na.translate = TRUE, na.value = 16
+                       ) +
+  scale_color_discrete(#breaks = ~ .x[!is.na(.x)],
+                       limits = c("f", "m"),
+                       na.translate = TRUE, na.value = "black"
+                       ) +
+  ylim(c(1.15, 4.6)) # 1.25-4.6 if omitting sex
+  
+plot.devmass
+```
+
+stats
+
+```{r pupal mass stats}
+# trying other possible influencing factors first
+mod_pmass1 <- lm(mass.pupa ~ as.factor(minT)*sex, data = d23)
+mod_pmass2 <- lm(mass.pupa ~ as.factor(minT), data = d23) # better per AIC
+
+anova(mod_pmass1) # minT ***, sex ns (0.19), int ns (0.42)
+anova(mod_pmass2) # minT ***
+
+AIC(mod_pmass1) # 351.1274
+AIC(mod_pmass2) # 348.6995
+```
+
+```{r adult mass stats}
+mod_amass1 <- lm(mass.eclose ~ as.factor(minT)*sex, data = d23) # better per AIC
+mod_amass2 <- lm(mass.eclose ~ as.factor(minT), data = d23)
+
+anova(mod_amass1) # minT ***, sex **
+anova(mod_amass2) # minT ***
+
+AIC(mod_amass1) # 214.7664
+AIC(mod_amass2) # 220.7273
+```
+
+
+
+### - time
+
+```{r dev time fig} 
+plot.devtime <- #ss_dev.expt %>% 
+  ss_dev %>%
+  filter(trt.type == "expt") %>%
+  #filter(!(stage %in% c("ad.sex", "pu"))) %>% # m/f not that different
+  filter(stage %in% c("ad", "la") & is.na(sex)) %>% 
+  ggplot(aes(y = avg.tt, x = as.factor(minT), group = stage,
+             #color = trt.type
+             )) +
+  geom_point(size = 2, shape = 16) +
+  geom_line(aes(lty = stage)) +
+  geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt),
+                width = 0.08) +
+  theme_bw() +
+  scale_linetype_manual(labels = c(#"adult\n(eclosion → death)", "larva\n(hatching → pupation)",
+                                   "larva", "adult"
+                                   #"pupa (pupation → eclosion)"
+                                   ),
+                        values = c(4, 1#, 3
+                                   )
+                        ) +
+  labs(y = "development time / longevity (days)",
+       x = "larval nighttime temperature (°C)")
+
+plot.devtime
+```
+
+stats
+
+```{r larval dtime stats}
+mod_ltime1 <- lm((jdate.pupa - jdate.hatch) ~ as.factor(minT)*as.factor(sup), data = d23) # better per AIC
+mod_ltime2 <- lm((jdate.pupa - jdate.hatch) ~ as.factor(minT), data = d23)
+
+anova(mod_ltime1) # minT ***, sup ***, int ns (0.75)
+anova(mod_ltime2) # minT ***
+
+AIC(mod_ltime1) # 480.7616
+AIC(mod_ltime2) # 576.1871
+```
+
+
+```{r adult dtime stats}
+mod_atime1 <- lm((jdate.surv - jdate.eclose) ~ as.factor(minT)*sex, data = d23) 
+mod_atime2 <- lm((jdate.surv - jdate.eclose) ~ as.factor(minT), data = d23) # better per AIC
+
+anova(mod_atime1) # minT ns (0.55), sex ns (0.81)
+anova(mod_atime2) # minT ns
+
+AIC(mod_atime1) # 158.7356
+AIC(mod_atime2) # 156.8043
+```
+
+
+### - combined plot
+
+```{r}
+# library(patchwork)
+# check that lty/shape values match across plots for merge to work
+
+
+(plot.surv | plot.devmass | plot.devtime) +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(1:1)) &
+  theme(legend.position = "top") &
+  scale_linetype_manual(labels = c("larva", "pupa", "adult", "adult"), values = c(4,2,1,1), 
+                        drop = FALSE) # good enough man idk
+
+#ggsave("./figs/entsoc/big 3.png", dpi = "retina")
+```
+
+
+
+
+# 3. tent stats
+
+## a. hatch rate calcs
+
+these calcs are copy/pasted/tweaked from `/2023/analyses_tents.Rmd`
+
+### - pre-math (fixing #s)
+
+```{r fixing calcs}
+# determine actual # of ovipositing females
+dtents <- dtents %>%
+  mutate_at(c(6:14), ~replace_na(., 0)) %>% 
+  group_by(id.tent) %>%
+  mutate(jdate.rel = jdate - first(jdate)) %>%
+  ungroup() %>%
+  group_by(id.tent, trt.f, trt.m, trt.sex, jdate.rel) %>%
+  arrange(jdate.rel, .by_group = TRUE) %>%
+  mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
+         n.ovi = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
+  ungroup()
+
+
+# where n.ovipositing females = 0 but n.collected > 0, add the # eggs collected to the day before
+# (or last date of ovipositing females)
+# first, figure out the rows
+cond <- (dtents$n.coll > 0 & dtents$n.ovi == 0)
+
+ovifix <- dtents %>%
+  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
+  subset(cond | lead(cond) | lead(cond, n=2)) #%>% View() 
+
+negovi <- ovifix[ovifix$females.laying < 0, ]
+
+lastovi <- ovifix[ovifix$n.curr.f > 0 & ovifix$n.ovi >= 1, ]
+
+test2 <- c(negovi$index, lastovi$index)
+
+# then, edit values
+#summ_rate$n.coll[negovi$index] <- 0
+dtents <- dtents %>% 
+  mutate(n.coll = case_when(rownames(.) %in% negovi$index ~ 0,
+                            rownames(.) %in% lastovi$index ~ n.coll + 1,
+                            !(rownames(.) %in% c(negovi$index, lastovi$index)) ~ as.numeric(n.coll)
+                            )) %>%
+  select(-females.laying)
+
+rm(cond, ovifix, negovi, lastovi)
+
+# removing extra 0's
+# dtents <- dtents %>%
+#   filter(!(n.coll == 0 & n.ovi == 0))
+  # tbh not sure why i did this in the old version. this drops a few #s here and there
+
+```
+
+
+### - fecundity rates (# laid)
+
+ref: `summ_rates_all` calcs in `analyses_tents.Rmd`
+
+```{r}
+# i dont need this lol
+
+# # this calcs how # of tents, # eggs laid, # ovi f changes daily per trt
+# ss_ovirates <- dtents %>%
+#   group_by(trt.ref, trt.sex, trt.hs, jdate.rel) %>%
+#   summarise(n.tents = n(), #idk why i use mutate in the orig lol
+#          eggs.perovi = sum(n.coll)/sum(n.ovi),
+#          eggsovi.pertent = eggs.perovi / n.tents) %>%
+#   mutate_all(~ifelse(is.nan(.), NA, .))
+
+```
+
+
+### - fertility rates (# hatched)
+
+ref: `summ_hatch` calcs in `analyses_tents.Rmd`
+
+```{r}
+# want: # eggs laid per female (overall), prop hatched in tent
+ss_hatchrates <- dtents %>%
+  group_by(trt.ref, trt.sex, trt.hs) %>%
+  summarise(n.tents = n_distinct(id.tent),
+            n.laid = sum(n.coll, na.rm = TRUE),
+            #se.laid = se(n.coll),
+            n.fs = sum(n.new.f, na.rm = TRUE), # = total # fs in a tent
+            n.laidf = round(n.laid/n.fs, digits = 2),
+            #se.laidf = se(sum(n.coll, na.rm = TRUE)/sum(n.new.f)), # doesnt work
+            se.laidf = sqrt(n.laidf*(1-n.laidf/n.laid)), # hmmmm.
+            n.hatched = sum(n.tothatch, na.rm = TRUE), # needed downstream
+            #se.hatched = se(n.tothatch),
+            prop.hatched = n.hatched/n.laid,
+            se.hatchprop = sqrt(prop.hatched*(1-prop.hatched)/n.laid),
+            # prop.hatchf = prop.hatched/n.fs,
+            # se.hatchfprop = sqrt(prop.hatchf*(1-prop.hatchf)/n.laid)
+            )
+```
+
+
+## b. figs
+
+```{r}
+# a note that colors were formerly
+# c("#f15a29", "#b2325c", "#4d276a")
+```
+
+
+### - win hatch
+
+```{r win hatch rates plot}
+plot.whatch <- ss_hatchrates %>%
+  filter(trt.ref %in% c("win", "ctrl")) %>%
+  ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs))) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin= prop.hatched - se.hatchprop, ymax = prop.hatched + se.hatchprop), 
+                width = 8
+                ) +
+  geom_errorbarh(aes(xmin = n.laidf - se.laidf, xmax = n.laidf + se.laidf), 
+                 height = 0.005
+                 ) +
+  #geom_errorbarh(aes(xmin = n.laid - se.laid, xmax = n.laid + se.laid), height = 0.01) +
+  geom_text(aes(label = n.fs), vjust = -0.7, hjust = -0.7, show.legend = FALSE) +
+  theme_bw() +
+  labs(color = "larval temperature treatment",
+       y = "proportion eggs hatched",
+       x = "# eggs laid per female")+
+  guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
+  scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
+                     #values = c("#0b809f", "#4d266b", "#b12256", "#f88e28")
+                     #values = c("#4393c3", "#f4a582", "#d6604d", "#b2182b")
+                     values = c("#4393ce", "#fdae61", "#d73027", "#a50026")
+                     )
+
+plot.whatch # y: 0-0.18?, x: 0-200
+```
+
+
+### - btwn hatch
+
+```{r btwn hatch rates plot}
+plot.bhatch <- ss_hatchrates %>%
+  filter(trt.ref == "btwn") %>%
+  ggplot(aes(y = prop.hatched, x = n.laidf, color = as.factor(trt.hs), shape = trt.sex)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin= prop.hatched - se.hatchprop, ymax = prop.hatched + se.hatchprop), 
+                width = 8
+                ) +
+  geom_errorbarh(aes(xmin = n.laidf - se.laidf, xmax = n.laidf + se.laidf), 
+                 height = 0.005
+                 ) +
+  geom_text(aes(label = n.fs), vjust = -0.9, hjust = -0.8, show.legend = FALSE) +
+  theme_bw() +
+  labs(color = "larval temperature\ntreatment",
+       shape = "treated sex",
+       y = "proportion eggs hatched",
+       x = "# eggs laid per female") +
+  scale_color_manual(labels = c("40-19°C", "40-26°C", "40-33°C"),
+                     #values = c("#4d266b", "#b12256", "#f88e28"),
+                     #values = c("#f4a582", "#d6604d", "#b2182b"),
+                     #values = c("#fdae61", "#f46d43", "#a50026"),
+                     values = c("#fdae61", "#d73027", "#a50026")) +
+  guides(color = "none", # omit for plot_layout to work
+         shape = guide_legend(nrow = 2)
+         ) + 
+  scale_shape_manual(values = c(17, 15))
+
+plot.bhatch # y: 0-0.12, x = 0-350
+```
+### - combined plot
+
+```{r}
+(plot.whatch | plot.bhatch) +
+  plot_layout(guides = "collect", 
+              axes = "collect", 
+              widths = c(1:1)
+              ) &
+  theme(legend.position = "bottom",
+        legend.justification = "left"
+        ) &
+  # scale_color_manual(labels = c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
+  #                    values = c("#4393ce", "#fdae61", "#d73027", "#a50026")
+  #                    )
+  ylim(c(-0.005, 0.18)) &
+  xlim(c(0, 340))
+
+ggsave("./figs/entsoc/tents-2.png",dpi = "retina")
+```
+
+
+## c. modeling
+
+### - df prep & value-checking
+
+```{r}
+# calc avg eggs/F (fecundity) and overall prop hatch PER TENT
+d_repro <- dtents %>%
+  filter(trt.ref != "ctrl") %>%
+  group_by(id.tent, trt.ref, trt.sex, trt.hs) %>%
+  summarise(n.laid = sum(n.coll, na.rm = TRUE),
+            n.fs = sum(n.new.f, na.rm = TRUE), # = total # fs in a tent
+            avg.laidf = round(n.laid/n.fs, digits = 2), # fecundity stat
+            log.fec = log(avg.laidf + 1),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            prop.hatched = n.hatched/n.laid, # fert stat
+            log.fert = log(prop.hatched + 1) 
+            )
+
+# imo need log.fert and avg.laidf is ok... just looking at 0's. but should check qqplots later
+
+d_win <- d_repro %>%
+  filter(trt.ref == "win")
+d_btwn <- d_repro %>%
+  filter(trt.ref == "btwn")
+```
+
+### - btwn trts
+```{r modeling btwn}
+# no random effs bc of tent grouping lol
+
+# fecundity 
+mod_bfec <- lm(avg.laidf ~ trt.hs*trt.sex, data = d_btwn)
+mod_bfec.log <- lm(log.fec ~ trt.hs*trt.sex, data = d_btwn)
+
+# fertility
+mod_bfert <- lm(prop.hatched ~ trt.hs*trt.sex, data = d_btwn)
+mod_bfert.log <- lm(log.fert ~ trt.hs*trt.sex, data = d_btwn)
+```
+
+```{r checking btwn mods}
+anova(mod_bfec) # trt (0.95), sex (.17), int (0.82) ns 
+anova(mod_bfec.log) # trt (0.79), sex (.97), int (0.64) ns 
+AIC(mod_bfec) # 177.0551
+AIC(mod_bfec.log) # 61.76643
+
+anova(mod_bfert) 
+anova(mod_bfert.log)  
+AIC(mod_bfert) # better?? not rly tho - they are pretty close anyway lol
+AIC(mod_bfert.log)
+```
+
+```{r qq btwn mods}
+# fecundity
+qqnorm(resid(mod_bfec), main = "QQ btwn fecundity")
+qqline(resid(mod_bfec))
+
+qqnorm(resid(mod_bfec.log), main = "QQ log(btwn fecundity)") # this is better (sorta)
+qqline(resid(mod_bfec.log))
+
+# fertility 
+# they both rly suck bc of a shitton of 0s lol
+qqnorm(resid(mod_bfert), main = "QQ btwn fertility")
+qqline(resid(mod_bfert))
+
+qqnorm(resid(mod_bfert.log), main = "QQ log(btwn fertility)")
+qqline(resid(mod_bfert.log))
+```
+
+
+Analysis of Variance Table
+
+Response: avg.laidf
+               Df Sum Sq Mean Sq F value Pr(>F)
+trt.hs          1     48    48.0  0.0039 0.9517
+trt.sex         1  27487 27487.0  2.2042 0.1685
+trt.hs:trt.sex  1    680   680.4  0.0546 0.8200
+Residuals      10 124702 12470.2               
+Analysis of Variance Table
+
+Response: log.fec
+               Df Sum Sq Mean Sq F value Pr(>F)
+trt.hs          1  0.242  0.2421  0.0732 0.7922
+trt.sex         1  0.005  0.0052  0.0016 0.9693
+trt.hs:trt.sex  1  0.784  0.7844  0.2372 0.6368
+Residuals      10 33.075  3.3075               
+[1] 177.0551
+[1] 61.76643
+
+
+Analysis of Variance Table
+
+Response: prop.hatched
+               Df   Sum Sq   Mean Sq F value Pr(>F)
+trt.hs          1 0.002134 0.0021337  0.3753 0.5553
+trt.sex         1 0.007761 0.0077610  1.3653 0.2726
+trt.hs:trt.sex  1 0.000566 0.0005664  0.0996 0.7595
+Residuals       9 0.051161 0.0056845               
+Analysis of Variance Table
+
+Response: log.fert
+               Df   Sum Sq   Mean Sq F value Pr(>F)
+trt.hs          1 0.001633 0.0016333  0.3449 0.5715
+trt.sex         1 0.006554 0.0065543  1.3841 0.2696
+trt.hs:trt.sex  1 0.000402 0.0004023  0.0849 0.7773
+Residuals       9 0.042620 0.0047355               
+[1] -25.0981
+[1] -27.47261
+
+
+
+### - win trts
+```{r modeling win}
+# fecundity 
+mod_wfec.log <- lm(log.fec ~ trt.hs, data = d_win)
+
+# fertility
+mod_wfert <- lm(prop.hatched ~ trt.hs, data = d_win)
+```
+
+
+```{r checking win mods}
+anova(mod_wfec.log) # trt (0.94) ns
+
+anova(mod_wfert) # trt (0.21) ns
+
+```
+
+
+```{r qqplots win}
+# fecundity
+qqnorm(resid(mod_wfec.log)) 
+qqline(resid(mod_wfec.log))
+
+# fertility 
+qqnorm(resid(mod_wfert))
+qqline(resid(mod_wfert))
+
+```
+
+
+
+
+
