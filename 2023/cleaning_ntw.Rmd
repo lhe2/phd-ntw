@@ -202,5 +202,5 @@ write.csv(check_final, file = paste0("~/Documents/repos/ntw/2023/data/archive/",
 # if all goes well!
 rm(check_raw, check_newcols)
 rm(today, mqs, notes, check_final, data_all)
-rm(data_field, data_labF1, data_labsp, data_labsu)
+rm(data_field, data_labF1, data_labsp, data_labsu, fix.columns)
 ```

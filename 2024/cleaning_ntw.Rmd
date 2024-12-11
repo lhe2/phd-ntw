@@ -43,6 +43,7 @@ data <- data %>%
   dplyr::filter(!(notes.ignore %in% c("early pmd", "lost"))) # dropping things that died in 1 day or got lost
 
 data <- select(data, -c("date.LPI", "date.15")) # not rly needed for analyses/LPI is empty lol
+  # LPI is no longer empty LOL !
 
 
 # value fixing

@@ -15,6 +15,8 @@ date: "2024-09-23"
 ```{r message = FALSE}
 source("./helpers_ntw.R") # need run cleaning.Rmd beforehand if gsheet has been updated
 
+library(ggrepel)
+
 # INCASE: bring this back if u need it and are breaking things
   # library(tidyverse)
   # conflicted::conflicts_prefer(dplyr::filter)
@@ -275,10 +277,4 @@ dev_summf %>%
 # 3. survival
 
 - this will all be for fun lol
-
-
-
-# 4. 2024 vs 2023
-
-
 
