@@ -159,7 +159,7 @@ ss_wide.sup <- all %>%
             n.surv = n.all - n.pmd,
             prop.survpup = round(1-(n.pmd/n.all), digits=2),
             n.inprog = sum(is.na(surv.outcome))) %>%
-  mutate_all(~ifelse(is.nan(.), NA, .))
+  mutate_all(~ifelse(is.nan(.), NA, .)) # `minT` is ok here
 
 # all dev trajectories together
 ss_wide <- all %>%
@@ -173,8 +173,8 @@ ss_wide <- all %>%
             n.pmd = sum(na.omit(surv.outcome == 1)),
             n.surv = n.all - n.pmd,
             prop.survpup = round(1-(n.pmd/n.all), digits=2),
-            n.inprog = sum(is.na(surv.outcome))) %>%
-  mutate_all(~ifelse(is.nan(.), NA, .))
+            n.inprog = sum(is.na(surv.outcome))) #%>% 
+  #mutate_all(~ifelse(is.nan(.), NA, .)) # breaks `minT`
 
 
 ```
@@ -227,23 +227,31 @@ ss_larva <- d23 %>%
 # survival
 p1 <- 
   ss_wide %>% 
-  ggplot(aes(y = prop.survpup, x = minT, shape = pop,
+  filter(trt.type == "expt" & ((pop == "field" & diet == "TB") | (pop == "lab" & diet == "LD"))) %>%
+  ggplot(aes(y = prop.survpup, x = minT, shape = pop, color = pop,
              )) +
   geom_point(size=3) + 
   geom_line(aes(lty = pop, group = pop)) +
+  geom_text(aes(label = n.all), hjust = -0.5, show.legend = FALSE) +
   theme_bw() +
   labs( 
        y = "proportion survived to pupation", 
        x = "minimum temperature (°C)", 
        ) +
+  facet_wrap(~year) +
   ylim(c(0, 1))
 
+p1
+```
+
+```{r}
 # avg tt pup
 pd <- position_dodge(0.3)
 
 p2 <-
   ss_wide %>% 
-  ggplot(aes(y = avg.tt, x = minT, shape = pop,
+  filter(trt.type == "expt" & ((pop == "field" & diet == "TB") | (pop == "lab" & diet == "LD"))) %>%
+  ggplot(aes(y = avg.tt, x = minT, shape = pop, color = pop
              )) +
   geom_point(size = 3, #position = pd
              ) +  
@@ -256,12 +264,18 @@ p2 <-
   ylim(c(18, 34)) +
   labs(
        y = "time to pupation (days)", 
-       x = "minimum temperature (°C)")
+       x = "minimum temperature (°C)") +
+  facet_wrap(~year)
 
+p2
+```
+
+```{r}
 # avg mass
 p3 <- 
   ss_wide %>% 
-  ggplot(aes(y = avg.mass, x = minT, shape = pop,
+  filter(trt.type == "expt" & ((pop == "field" & diet == "TB") | (pop == "lab" & diet == "LD"))) %>%
+  ggplot(aes(y = avg.mass, x = minT, shape = pop, color = pop
              )) +
   geom_point(size = 3) +  
   geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
@@ -273,9 +287,14 @@ p3 <-
   labs( 
        y = "mass at pupation (mg)", 
        x = "minimum temperature (°C)",
-       caption = "2023 data only; lab+LD and field+TB")
+       #caption = "2023 data only; lab+LD and field+TB"
+       ) +
+  facet_wrap(~year)
 
+p3
+```
 
+```{r}
 # merged plot
 p1 + p2 + p3 +
   plot_layout(guides = "collect",
