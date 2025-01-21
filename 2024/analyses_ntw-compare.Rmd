@@ -153,15 +153,98 @@ all_long <- all_wide %>%
                names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
   drop_na(jdate) %>%
   drop_na(tt) # drops NA's if an individual didnt reach a certain stage
+
+
+# filtering by expt type
+ntw_wide <- filter(all, for.ntw == "Y")
+cvf_wide <- filter(all, for.const == "Y")
 ```
 
+stage-specific summary stats
 
-summary stats
+2025-01-20 troubleshooting:
+- https://stackoverflow.com/questions/73533852/create-multiple-dataframes-based-on-the-dates-of-another-dataframe-in-r
+- https://stackoverflow.com/a/24376207/3358227
 
-// todo 2024-10-17: keeping bugs separate by year for now
+```{r dev stats}
+# create some functions so that we can calc dev stats and then stitch it all together later
+
+calc.devstats <- function(data){
+  
+  # larval stats
+  ss_la <- data %>%
+    group_by(year, pop, trt.type, minT,
+             ) %>%
+    summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+              se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+              n = n() - sum(na.omit(surv.outcome == 2)),
+              n.pmd = sum(na.omit(surv.outcome == 1)), 
+              n.surv = n - n.pmd, 
+              prop.survpup = round(1-(n.pmd/n), digits=2)
+              ) %>% 
+    mutate(stage = "la")
+
+  # pupal dev (eclosion time)
+  ss_pu <- data %>%
+    group_by(year, pop, sex, trt.type, minT) %>%
+    summarise(avg.tt = mean(na.omit(jdate.eclose - jdate.pupa)),
+              se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa))),
+              avg.mass = mean(na.omit(mass.pupa)),
+              se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),) %>%
+    mutate(stage = "pu")
+  
+  # adult stats
+  ss_ad.sex <- data %>%
+    filter(!is.na(jdate.surv)) %>%
+    group_by(#diet, # gets too parsed out w/ diet lol
+             trt.type, minT, sex
+             ) %>%
+    summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+              se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+              avg.mass = mean(na.omit(mass.eclose)),
+              se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
+              n = sum(na.omit(!is.na(jdate.eclose)))
+              ) %>%
+    mutate(stage = "ad")
+  
+  ss_ad <- data %>%
+    filter(!is.na(jdate.surv)) %>%
+    group_by(
+             trt.type, minT
+             ) %>%
+    summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+              se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+              avg.mass = mean(na.omit(mass.eclose)),
+              se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
+              n = sum(na.omit(!is.na(jdate.eclose)))
+              ) %>%
+    mutate(stage = "ad")
+  
+  return(list(ss_la, ss_pu, ss_ad.sex, ss_ad))
+
+}
+
+
+join.devstats <- function(data){
+  dev <- full_join(data[[1]], data[[2]])
+  dev <- full_join(dev, data[[3]])
+  dev <- full_join(dev, data[[4]])
+  
+  dev$stage <- factor(dev$stage, levels = c("la", "pu", "ad"))
+  
+  return(dev)
+}
+
+```
 
 ```{r}
-# keeping separate by yr for now -- will see how they look separate before trying to combine
+# apply to data
+ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
+
+
+ss_ntw <- lapply(ss_all[[1]], join.devstats) # doesnt work
+ss_ntw <- do.call(join.devstats, lapply(ss_all[1], '[[', 1))
+```
 
 
 
