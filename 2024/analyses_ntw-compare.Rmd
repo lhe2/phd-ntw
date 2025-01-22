@@ -242,6 +242,60 @@ ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
 ```
 
 
+# 4. figs!
+
+larval "#1B9E77" 
+pup "#D95F02" 
+adult "#7570B3"
+
+```{r}
+# NTs on pupal survival 
+
+p1 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "expt") %>% 
+  ggplot(aes(y = prop.survpup, x = minT,
+             color = stage, 
+             lty = pop, shape = year,
+             group = interaction(pop, trt.type))) +
+  geom_line() +
+  geom_point(size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_wrap(~year) +
+  theme_bw()
+
+p1
+
+
+p2 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = prop.survpup, x = year,
+             color = stage, 
+             lty = pop, shape = year,
+             group = interaction(pop, trt.type))) +
+  geom_line() +
+  geom_point(size = 2) +
+  facet_wrap(~trt.type) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs increase survival to pup?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population",
+       y = "proportion survived to pupation") &
+  guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(1, 16)) &
+  scale_color_manual(values = "#1B9E77") &
+  ylim(c(0, 1))
+
+```
 
 
 # zzz archive
