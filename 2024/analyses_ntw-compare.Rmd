@@ -12,14 +12,10 @@ wip: combine fertility data...
 # 1. load data & packages
 
 ```{r}
-library(tidyverse)
-library(patchwork) # for plot_layout
+source("./helpers_ntw-compare.R")
 
-d23 <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv", header = TRUE) %>% mutate(year = 2023)
 test <- d23
 #d23 <- test
-
-d24 <- read.csv("~/Documents/repos/ntw/2024/data/ntw.csv", header = TRUE) %>% mutate(year = 2024)
 ```
 
 
@@ -39,7 +35,7 @@ intersect(names(d24), names(d23)) # same
 d23 <- d23 %>%
   filter(reason.ignore != "lost" | src != "F1" #| !is.na(final.fate)
            ) %>% 
-  filter(trt.stage %in% c("260-hatch", "337-hatch", "419-hatch","433-hatch")) %>%
+  filter(trt.stage %in% c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "419-hatch","433-hatch")) %>%
   filter(expt.group %in% c("A", "B", "C", "D", "E", "F", "H")) %>%
   rename(trt = treatment,
          id = ID,
@@ -106,6 +102,7 @@ all <- merge(d24, d23, all = TRUE
             ))
 
 # drop things that died in 1 day
+  # 2025-01-23: can i do this??????
 all <- filter(all, jdate.pmd - jdate.enter > 1 | is.na(jdate.pmd - jdate.enter))
 
 # add in exit dates to more easily parse out things still developing (for 2024 data)
@@ -117,13 +114,17 @@ all <- all %>%
         #                         TRUE ~ NA_integer_),
          minT = factor(minT, levels = c(19, 26, 33)),
          year = factor(year, levels = c(2023, 2024)),
-         for.ntw = case_when(year == 2023 & cohort %in% c("A", "B") ~ "N",
-                             TRUE ~ "Y"),
-         for.const = case_when(trt.type == "ctrl" | (meanT == 33 & flucT %in% c(0, 7)) ~ "Y",
-                               TRUE ~ "N"))
+         for.ntw = case_when(#year == 2023 & cohort %in% c("A", "B") ~ "N",
+                             trt %in% c(260, 419, 426, 433) ~ "Y",
+                             TRUE ~ "N"),
+         for.const = case_when(#flucT %in% c(0, 7) & meanT %in% c(26, 33) ~ "Y",
+                               trt %in% c(260, 267, 330, 426) ~ "Y",
+                               TRUE ~ "N")
+                               # trt.type == "ctrl" | (meanT == 33 & flucT %in% c(0, 7)) ~ "Y",
+                               # TRUE ~ "N")
+         )
 
 ```
-
 
 
 # 3. df prep (math)
@@ -167,80 +168,10 @@ stage-specific summary stats
 - https://stackoverflow.com/questions/73533852/create-multiple-dataframes-based-on-the-dates-of-another-dataframe-in-r
 - https://stackoverflow.com/a/24376207/3358227
 
-```{r dev stats}
-# create some functions so that we can calc dev stats and then stitch it all together later
-
-calc.devstats <- function(data){
-  
-  # larval stats
-  ss_la <- data %>%
-    group_by(year, pop, trt.type, minT,
-             ) %>%
-    summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-              se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-              n = n() - sum(na.omit(surv.outcome == 2)),
-              n.pmd = sum(na.omit(surv.outcome == 1)), 
-              n.surv = n - n.pmd, 
-              prop.survpup = round(1-(n.pmd/n), digits=2)
-              ) %>% 
-    mutate(stage = "la")
-
-  # pupal dev (eclosion time)
-  ss_pu <- data %>%
-    filter(!is.na(sex)) %>%
-    group_by(year, pop, sex, trt.type, minT) %>%
-    summarise(avg.tt = mean(na.omit(jdate.eclose - jdate.pupa)),
-              se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa))),
-              avg.mass = mean(na.omit(mass.pupa)),
-              se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
-              n = n()) %>%
-    mutate(stage = "pu")
-  
-  # adult stats
-  ss_ad.sex <- data %>%
-    filter(!is.na(jdate.surv)) %>%
-    group_by(year, pop,
-             trt.type, minT, sex
-             ) %>%
-    summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
-              se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
-              avg.mass = mean(na.omit(mass.eclose)),
-              se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
-              n = sum(na.omit(!is.na(jdate.eclose)))
-              ) %>%
-    mutate(stage = "ad")
-  
-  ss_ad <- data %>%
-    filter(!is.na(jdate.surv)) %>%
-    group_by(year, pop,
-             trt.type, minT
-             ) %>%
-    summarise(avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
-              se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
-              avg.mass = mean(na.omit(mass.eclose)),
-              se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
-              n = sum(na.omit(!is.na(jdate.eclose)))
-              ) %>%
-    mutate(stage = "ad",
-           sex = "all")
-  
-  return(list(ss_la, ss_pu, ss_ad.sex, ss_ad))
-
-}
-
-calc.ssadj <- function(data){
-  data <- data %>%
-    mutate(stage = factor(stage, levels = c("la", "pu", "ad")),
-           avg.mass = avg.mass/1000,
-           se.mass = se.mass/1000)
-}
-
-```
 
 ```{r}
 # apply to data
 ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
-
 
 ss_ntw <- Reduce(full_join, ss_all[[1]]) %>% 
   calc.ssadj()
@@ -250,13 +181,17 @@ ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
 ```
 
 
-# 4. figs!
+# 4. NT figs!
 
 larval "#1B9E77" 
 pup "#D95F02" 
 adult "#7570B3"
 
 ## - survival
+
+// todo
+2025-01-23: 
+- make these functions also LOL
 
 ```{r}
 # NTs on pupal survival 
@@ -276,6 +211,191 @@ p1 <- ss_ntw %>%
 p1
 
 
+p2 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = prop.survpup, x = year,
+             color = stage, 
+             lty = pop, shape = year,
+             group = interaction(pop, trt.type))) +
+  geom_line() +
+  geom_point(size = 2) +
+  facet_wrap(~trt.type) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs increase survival to pup?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population",
+       y = "proportion survived to pupation") &
+  guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(1, 16)) &
+  scale_color_manual(values = "#1B9E77") &
+  ylim(c(0, 1))
+
+```
+## - dev time/longevity
+
+```{r}
+# NTs on development time/longevity
+# see this
+  # https://stackoverflow.com/questions/78193007/how-do-i-control-the-alpha-of-a-geom-point-fill
+
+p1 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  filter(!(stage == "ad" & sex == "all")) %>%
+  filter((stage == "la" | stage == "ad") & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.tt, x = minT,
+             color = stage, fill = stage, shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(alpha = year, color = stage), size = 2) +
+  geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_wrap(~year) +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  filter(!(stage == "ad" & sex == "all")) %>%
+  filter((stage == "la" | stage == "ad") & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.tt, x = year,
+             color = stage, fill = stage, shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(alpha = year), size = 2) +
+  geom_point(fill = NA, size = 2) +
+  labs(x = "year") +
+  facet_wrap(~trt.type) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs reduce dev time?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "development time / longevity (days)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(21, 24, 22)
+                     #c(16, 17, 15)
+                     #c(1, 2, 0)
+                     ) &
+  scale_color_manual(values = c("#1B9E77", "#7570B3")) &
+  scale_fill_manual(values = c("#1B9E77", "#7570B3")) &
+  scale_alpha_manual(values = c(0.1,1)) &
+  ylim(c(5, 35))
+
+```
+
+## - mass
+
+```{r}
+# NTs on pupal/adult mass
+
+p1 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  filter(!(stage == "ad" & sex == "all")) %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.mass, x = minT,
+             color = stage, fill = stage, shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(alpha = year, color = stage), size = 2) +
+  geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_wrap(~year) +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  filter(!(stage == "ad" & sex == "all")) %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.mass, x = year,
+             color = stage, fill = stage, shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(alpha = year), size = 2) +
+  geom_point(fill = NA, size = 2) +
+  labs(x = "year") +
+  facet_wrap(~trt.type) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs lead to larger mass?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "mass (g)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(24, 22)) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  scale_fill_manual(values = c("#D95F02", "#7570B3")) &
+  scale_alpha_manual(values = c(0.1,1)) &
+  ylim(c(1.1, 7.25))
+
+```
+
+# 5. const figs
+
+## - survival
+
+```{r}
+# NTs on pupal survival 
+
+p1 <- ss_cvf %>% 
+  filter(stage == "la") %>% View()
+  ggplot(aes(y = prop.survpup, x = trt.type,
+             color = stage, 
+             lty = pop, shape = year,
+             group = interaction(pop, trt.type)
+             )) +
+  geom_line() +
+  geom_point(size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_wrap(~year) +
+  theme_bw()
+
+p1
+```
+
+```{r}
 p2 <- ss_ntw %>% 
   filter(stage == "la" & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
@@ -427,7 +547,7 @@ p1 + p2 +
        y = "mass (g)") &
   #guides(color = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(21, 24, 22)) &
+  scale_shape_manual(values = c(24, 22)) &
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
   scale_fill_manual(values = c("#D95F02", "#7570B3")) &
   scale_alpha_manual(values = c(0.1,1)) &
