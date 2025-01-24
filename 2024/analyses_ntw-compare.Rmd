@@ -27,9 +27,9 @@ standardising some data values and column names in `d23`
 # pick relevant data and rename columns/values to match 2024
 
 # compare column names
-setdiff(names(d24), names(d23)) # differences
-setdiff(names(d23), names(d24))
-intersect(names(d24), names(d23)) # same
+# setdiff(names(d24), names(d23)) # differences
+# setdiff(names(d23), names(d24))
+# intersect(names(d24), names(d23)) # same
 
 # filter rows and rename columns
 d23 <- d23 %>%
@@ -78,6 +78,9 @@ d23 <- d23 %>%
            ends_with("T", ignore.case = FALSE), "trt.type",
            "sup", "surv.outcome", "year"
           ))
+
+# append longevity data to d23
+d23 <- merge(d23, d23_longevity, all = TRUE)
 ```
 
 
@@ -145,8 +148,14 @@ all_wide <- all %>%
          tt.wander = jdate.wander - jdate.hatch,
          tt.pupa = jdate.pupa - jdate.hatch,
          tt.eclose = jdate.eclose - jdate.pupa,
-         tt.surv = jdate.surv - jdate.eclose
-         )
+         tt.surv = jdate.surv - jdate.eclose,
+         tt.lsurv = jdate.lsurv - jdate.lec # for d23 longevity
+         )  %>%
+  # drop extra d23 longevity columns
+  mutate(tt.surv = case_when(is.na(tt.surv) ~ as.numeric(tt.lsurv),
+                             TRUE ~ as.numeric(tt.surv))) %>%
+  #filter(year == 2023 & sex == "f" & !is.na(jdate.lsurv)) %>% View()
+  select(-c("jdate.lsurv", "jdate.lec", "tt.lsurv"))
 
 all_long <- all_wide %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
@@ -158,8 +167,8 @@ all_long <- all_wide %>%
 
 
 # filtering by expt type
-ntw_wide <- filter(all, for.ntw == "Y")
-cvf_wide <- filter(all, for.const == "Y")
+ntw_wide <- filter(all_wide, for.ntw == "Y")
+cvf_wide <- filter(all_wide, for.const == "Y")
 ```
 
 stage-specific summary stats
@@ -186,6 +195,15 @@ ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
 larval "#1B9E77" 
 pup "#D95F02" 
 adult "#7570B3"
+
+```{r}
+# troubleshooting
+# filter(all_wide, year == 2023 & sex == "f" & !is.na(tt.surv)) %>% View()
+# filter(ntw_wide, year == 2023 & sex == "f" & !is.na(tt.surv)) %>% View()
+# filter(ntw_wide, year == 2023 & sex == "f" & pop == "field" & minT == 33) %>% View()
+# filter(ss_ntw, year == 2023 & sex == "f" & stage == "ad") %>% View()
+```
+
 
 ## - survival
 
@@ -305,7 +323,7 @@ p1 + p2 +
   scale_color_manual(values = c("#1B9E77", "#7570B3")) &
   scale_fill_manual(values = c("#1B9E77", "#7570B3")) &
   scale_alpha_manual(values = c(0.1,1)) &
-  ylim(c(5, 35))
+  ylim(c(2.5, 35))
 
 ```
 
@@ -368,7 +386,7 @@ p1 + p2 +
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
   scale_fill_manual(values = c("#D95F02", "#7570B3")) &
   scale_alpha_manual(values = c(0.1,1)) &
-  ylim(c(1.1, 7.25))
+  ylim(c(0.75, 7.25))
 
 ```
 
