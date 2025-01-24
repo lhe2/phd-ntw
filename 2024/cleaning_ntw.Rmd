@@ -87,7 +87,7 @@ julian date conversions
 
 ```{r}
 data <- data %>%
-  mutate(across(starts_with("date."), format, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric))
 ```
 
