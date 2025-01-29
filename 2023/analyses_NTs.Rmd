@@ -51,6 +51,19 @@ wide_all %>%
             pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
             pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1))
 
+outcomes <- wide_all %>%
+  filter.NTs2() %>%
+  group_by(pop, treatment) %>%
+  summarise(n=n(),
+            pct.pmd = round(sum(final.fate == "pmd")/n*100, digits = 1),
+            #pct.slow = round(sum(ignore.reason == "slow")/n*100, digits = 1),
+            pct.sup = round(sum(if.sup == "Y")/n*100, digits = 1),
+            pct.6th = round(sum(sup == 6)/sum(if.sup == "Y")*100, digits = 1),
+            pct.7th = round(sum(sup == 7)/sum(if.sup == "Y")*100, digits = 1),
+            n.sup = sum(if.sup == "Y"))
+
+outcomes
+
 ```
 
 ### - visualise with barplots
@@ -62,10 +75,14 @@ wide_all %>%
   filter.NTs2() %>% 
   #filter(!(pop == "lab" & diet == "TB")) %>%
   filter(pop != "F1" & diet == "TB") %>%
+  filter(sup != 0) %>%
   mutate(sup = factor(sup)) %>%
   ggplot(aes(x = trt.stage, fill = sup)) +
+  #geom_text(data = outcomes, aes(x = treatment, y = 1.05, label = n.sup), inherit.aes = FALSE) + 
   geom_bar(stat = "count", position = position_fill(reverse = TRUE)) +
-  labs(title = "NTs: supernumerary fates", fill = "supernumerary stage", x = "treatment (D-N)", y = "proportion") +
+  labs(#title = "NTs: supernumerary fates", 
+       title = "2023 developmental fates",
+       fill = "supernumerary stage", x = "treatment (D-N)", y = "proportion") +
   scale_x_discrete(#labels = NT_labels,
                    labels = c("26-26", "40-19", "40-26", "40-33"),
                    guide = guide_axis(angle = 45)) +

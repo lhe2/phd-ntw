@@ -97,13 +97,14 @@ outcomes %>%
 ## only looking at alive ones
 outcomes %>%
   filter(sup != "pmd") %>% #View()
+  #filter(!(pop == "lab" & diet == "tobacco diet")) %>%
   ggplot(aes(x = labs.trt, fill = sup)) +
   geom_bar(stat = "count", 
            #position = "stack", 
            position = position_fill(reverse = TRUE)
            ) +
   facet_wrap(pop~diet) +
-  labs(title = "developmental fates",
+  labs(title = "2024 developmental fates",
        x = "treatment", y = "proportion",
        fill = "# larval instars") +
   geom_text(data = outcomes_table, aes(x = labs.trt, y = 0.05, label = n.surv), inherit.aes = FALSE) + 
