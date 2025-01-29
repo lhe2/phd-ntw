@@ -223,7 +223,7 @@ fine_stats <- long_all %>% # todo: 2024-09-22: theres some unexpected NAs in her
 
 majortimes_stats <- trttime_long %>%
   filter(instar %in% c("4th", "5th", "6th", "wander")) %>%
-  group_by(#labs.trt, 
+  group_by(labs.trt, 
            instar) %>%
   summarise(avg.t3 = mean(na.omit(t3)),
             se.t3 = sd(na.omit(t3)/sqrt(length(na.omit(t3)))),
@@ -292,7 +292,9 @@ ggplot(fine_stats, aes(y = avg.logmass, x = t3, color = labs.trt, #shape = insta
 ```
 
 
-# plate data i dont understand how to use excel
+# bradford plate data i dont understand how to use excel
+
+##- fit std curve
 
 ```{r}
 df <- read.csv("~/Documents/repos/ntw/2024/data/plates/241009_bradford-1.csv", header = TRUE)
@@ -336,6 +338,8 @@ std <- cbind(std, fit.wt = predict(stdc.wt, type = "response"))
 unk <- cbind(unk, fit.wt = predict(stdc.wt, unk))
 
 ```
+
+## - plots
 
 ```{r}
 # plot
@@ -414,5 +418,138 @@ df %>%
 
 ```
 
+# sod assay (try 1)
+
+2025-01-20: need to fix this per 240115 joel mtg lol
+
+##- fit std curve
+
+```{r}
+df <- read.csv("~/Documents/repos/ntw/2024/data/plates/241212_sod.csv", header = TRUE)
+
+df <- mutate(df,
+             bc = abs.post - abs.blank)
+
+# take avgs
+std <- df %>%
+  filter(type == "std") %>%
+  group_by(cxn) %>%
+  summarise(bc.avg = mean(bc),
+            bca.wt = bc.avg)
+
+unk <- df %>%
+  filter(type == "unk") %>%
+  group_by(time, temp, rep) %>%
+  summarise(bc.avg = mean(bc),
+            bca.wt = bc.avg/log(mass)) # mass-corrected
+
+# fit std curve and unks
+stdc <- lm(cxn ~ poly(bc.avg, 2, raw = TRUE), data = std)
+stdc.wt <- lm(cxn ~ poly(bca.wt, 2, raw = TRUE), data = std)
+
+unk$temp[is.na(unk$temp)] <- "ctrl"
+unk$temp <- factor(unk$temp, levels = c("ctrl", "26", "33", "36"))
+
+
+std <- cbind(std, fit = predict(stdc, type = "response"))
+unk <- cbind(unk, fit = predict(stdc, unk))
+
+
+std <- cbind(std, fit.wt = predict(stdc.wt, type = "response"))
+unk <- cbind(unk, fit.wt = predict(stdc.wt, unk))
+
+```
+
+## - plots
+
+```{r}
+# plot
+#library(viridis)
+
+ggplot(data = std, aes(x = cxn, y = bc.avg)) +
+  geom_point(aes()) + 
+  geom_line(data = std, aes(x = fit))
+
+# raw abs
+ggplot(data = std, aes(x = cxn, y = bc.avg)) +
+  geom_point(aes()) + 
+  #geom_line(mapping = aes(x = cxn)) +
+  geom_line(data = std, aes(x = fit)) +
+  geom_point(data = unk, aes(x = fit, #shape = time, 
+                             color = temp), size = 2) +
+  facet_wrap(~time) +
+  labs(#title = "non-mass corrected abs",
+       title = "SOD activity",
+       x = "SOD cxn (U/mL)",
+       y = "avg abs @ 450 nm",
+       caption = "T0 = pre-trt; T1 = 100 hrs in trt; T2 = 5th d1",
+       color = "treatment") +
+  theme_bw() +
+  scale_shape_manual(values = c(4, 1, 16)) +
+  #scale_color_brewer(palette = "BrBG", direction = -1)
+  scale_color_manual(values = c("seagreen4", "cyan3", "purple4", "darkorange"))
+  #scale_color_viridis(discrete = TRUE, option = "mako")
+
+
+# mass-corrected abs
+ggplot(data = std, aes(y = cxn, x = bca.wt)) +
+  geom_point() + 
+  #geom_line(mapping = aes(x = cxn)) +
+  geom_line(data = std, aes(y = fit.wt)) +
+  geom_point(data = unk, aes(y = fit.wt, #shape = time, 
+                             color = temp), size = 2) +
+  facet_wrap(~time) +
+  labs(#title = "mass corrected abs",
+       title = "SOD activity",
+       x = "SOD cxn (U/mL)",
+       y = "avg abs @ 450 nm",
+       caption = "T0 = pre-trt; T1 = 100 hrs in trt; T2 = 5th d1",
+       color = "treatment") +
+  #theme_bw() +  scale_shape_manual(values = c(4, 1, 16)) +
+  scale_color_brewer(palette = "BrBG", direction = -1) +
+  ylim(0, 11) + xlim(0, 0.2)
+  #scale_color_viridis(discrete = TRUE, option = "mako")
+
+```
+
+
+```{r}
+# does mass correlate with abs ????
+df %>%
+  filter(type == "unk") %>%
+  mutate(temp = case_when(is.na(temp) ~ "ctrl",
+                          TRUE ~ as.character(temp)),
+         temp = factor(temp, levels = c("ctrl", "26", "33", "36"))) %>%
+  group_by(time, temp, rep) %>%
+  summarise(avg.abs = mean(abs),
+            mass = mass) %>%
+  filter(time != "T0") %>%
+  ggplot(aes(x = log(mass), y = avg.abs,
+             color = temp, shape = time)) +
+  geom_point(size = 2) +
+  facet_wrap(~time) +
+  #scale_shape_manual(values = c(4, 1, 16)) +
+  #scale_color_brewer(palette = "BrBG", direction = -1) +
+  scale_color_manual(values = c("cyan3", "purple4", "darkorange")) +
+  #theme_bw() +
+  labs(title = "abs vs mass",
+       y = "avg abs @ 595 nm") +
+  ylim(0, 2) +
+  xlim(5.5, 8.5)
+
+```
+
+# sod assay (try 2)
+
+## - fit std curve
+
+- using 4PLC: https://janalin.github.io/analyse-ELISA/calibration.html
+
+```{r}
+# minpack.lm::nlsLM
+df <- read.csv("~/Documents/repos/ntw/2024/data/plates/prelim.csv", header = TRUE)
+
+sod <- filter(df, assay == "sod")
+```
 
 
