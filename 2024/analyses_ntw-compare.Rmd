@@ -222,6 +222,7 @@ p1 <- ss_ntw %>%
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5) +
   labs(x = "minimum temperature (°C)") +
   facet_wrap(~year) +
   theme_bw()
@@ -238,6 +239,7 @@ p2 <- ss_ntw %>%
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5) +
   facet_wrap(~trt.type) +
   theme_bw()
 
@@ -278,6 +280,7 @@ p1 <- ss_ntw %>%
   geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
   geom_point(aes(alpha = year, color = stage), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
   facet_wrap(~year) +
@@ -298,9 +301,11 @@ p2 <- ss_ntw %>%
   geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
   geom_point(aes(alpha = year), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   geom_point(fill = NA, size = 2) +
   labs(x = "year") +
   facet_wrap(~trt.type) +
+  #facet_wrap(~stage) +
   theme_bw()
 
 p2
@@ -346,7 +351,7 @@ p1 <- ss_ntw %>%
   geom_point(aes(alpha = year, color = stage), size = 2) +
   geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
+  facet_wrap(stage~year) +
   theme_bw()
 
 p1
@@ -366,7 +371,7 @@ p2 <- ss_ntw %>%
   geom_point(aes(alpha = year), size = 2) +
   geom_point(fill = NA, size = 2) +
   labs(x = "year") +
-  facet_wrap(~trt.type) +
+  facet_wrap(stage~trt.type) +
   theme_bw()
 
 p2
@@ -398,7 +403,7 @@ p1 + p2 +
 # NTs on pupal survival 
 
 p1 <- ss_cvf %>% 
-  filter(stage == "la") %>% View()
+  filter(stage == "la") %>% #View()
   ggplot(aes(y = prop.survpup, x = trt.type,
              color = stage, 
              lty = pop, shape = year,
