@@ -43,7 +43,6 @@ data <- data %>%
   dplyr::filter(!(notes.ignore %in% c("early pmd", "lost"))) # dropping things that died in 1 day or got lost
 
 data <- select(data, -c("date.LPI", "date.15")) # not rly needed for analyses/LPI is empty lol
-  # LPI is no longer empty LOL !
 
 
 # value fixing
@@ -95,7 +94,7 @@ treating field 1sts as hatchlings
 
 ```{r}
 # data$jdate.hatch[(data$pop == "field" & data$instar.enter == "1st")] <- as.numeric(data$jdate.collected - 1)
-  # assume they hatched the day before collecting ### this is breaking as of 2024-10-08
+  # assume they hatched the day before collecting (this is breaking as of 2024-10-08)
 
 data <- data %>%
   mutate(jdate.hatch = case_when(pop == "field" & instar.enter == "1st" ~ as.numeric(jdate.collected - 1),
@@ -107,7 +106,6 @@ data <- data %>%
 
 data$instar.enter[data$instar.enter == "1st"] <- "hatch" 
   # change instar.enter
-
 
 ```
 
@@ -154,15 +152,17 @@ data <- data %>%
 survival outcomes
 
 ```{r}
-# 0 = pupated, 1 = pmd, 2 = died of other reason (i.e. injury)
-
+# 0 = pmd, 1 = pupated, 2 = died of other reason (injury)
 data <- data %>%
-  mutate(surv.outcome = case_when(!is.na(date.pmd) & notes.ignore == "injured" ~ 2,
-                                  !is.na(date.pmd) ~ 1,
-                                  !is.na(date.pupa) ~ 0))
+  mutate(surv.outcome = case_when(notes.ignore == "injured" ~ 2,
+                                  !is.na(date.pmd) | is.na(date.pupa) ~ 0,
+                                  !is.na(date.pupa) ~ 1))
+
+# # 0 = pupated, 1 = pmd, 2 = died of other reason (i.e. injury)
+#   mutate(surv.outcome = case_when(!is.na(date.pmd) & notes.ignore == "injured" ~ 2,
+#                                   !is.na(date.pmd) ~ 1,
+#                                   !is.na(date.pupa) ~ 0))
 ```
-
-
 
 
 ## - fun ones
@@ -179,6 +179,17 @@ data <- data %>%
          is.stuck6th = case_when(is.na(stuck.6th) ~ 0, TRUE ~ 1),
          is.stuck7th = case_when(is.na(stuck.7th) ~ 0, TRUE ~ 1))
 
+```
+
+
+development outcomes & exit dates
+
+2025-02-02: (idk if i need this ngl. in my head i do)
+
+```{r}
+# data <- data %>%
+#   mutate(jdate.exit = case_when())
+  
 ```
 
 
