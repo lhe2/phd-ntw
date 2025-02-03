@@ -274,19 +274,24 @@ p1 <- ss_ntw %>%
   filter(!(stage == "ad" & sex == "all")) %>%
   filter((stage == "la" | stage == "ad") & trt.type == "expt") %>% #View()
   ggplot(aes(y = avg.tt, x = minT,
-             color = stage, fill = stage, shape = sex,
+             color = stage, #fill = stage, 
+             shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year, color = stage), size = 2) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
   geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
-  geom_point(fill = NA, size = 2) +
+  #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
+  #facet_wrap(~year) + # orig
+  facet_grid(stage~year, #scales = "free_y"
+             ) +
   theme_bw()
 
 p1
+
 
 p2 <- ss_ntw %>% 
   mutate(sex = case_when(is.na(sex) ~ "both",
@@ -295,17 +300,20 @@ p2 <- ss_ntw %>%
   filter((stage == "la" | stage == "ad") & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = avg.tt, x = year,
-             color = stage, fill = stage, shape = sex,
+             color = stage, 
+             #fill = stage, shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year), size = 2) +
+  #geom_point(aes(alpha = year), size = 2) +
   geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(#fill = NA, 
+             size = 2) +
   labs(x = "year") +
-  facet_wrap(~trt.type) +
-  #facet_wrap(~stage) +
+  #facet_wrap(~trt.type) + # orig
+  facet_grid(stage~trt.type, #scales = "free_y"
+             ) +
   theme_bw()
 
 p2
@@ -327,12 +335,14 @@ p1 + p2 +
                      ) &
   scale_color_manual(values = c("#1B9E77", "#7570B3")) &
   scale_fill_manual(values = c("#1B9E77", "#7570B3")) &
-  scale_alpha_manual(values = c(0.1,1)) &
-  ylim(c(2.5, 35))
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) #&
+  #expand_limits(y = 37)
+  #scale_alpha_manual(values = c(0.1,1)) &
+  #ylim(c(2.5, 35))
 
 ```
 
-## - mass
+## - mass (by sex)
 
 ```{r}
 # NTs on pupal/adult mass
@@ -343,15 +353,17 @@ p1 <- ss_ntw %>%
   filter(!(stage == "ad" & sex == "all")) %>%
   filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
   ggplot(aes(y = avg.mass, x = minT,
-             color = stage, fill = stage, shape = sex,
+             color = stage, #fill = stage, 
+             shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year, color = stage), size = 2) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
+  #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
-  facet_wrap(stage~year) +
+  facet_grid(stage~year) +
   theme_bw()
 
 p1
@@ -363,15 +375,17 @@ p2 <- ss_ntw %>%
   filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = avg.mass, x = year,
-             color = stage, fill = stage, shape = sex,
+             color = stage, #fill = stage, 
+             shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year), size = 2) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(#aes(alpha = year), 
+             size = 2) +
+  #geom_point(fill = NA, size = 2) +
   labs(x = "year") +
-  facet_wrap(stage~trt.type) +
+  facet_grid(stage~trt.type) +
   theme_bw()
 
 p2
@@ -390,7 +404,8 @@ p1 + p2 +
   scale_shape_manual(values = c(24, 22)) &
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
   scale_fill_manual(values = c("#D95F02", "#7570B3")) &
-  scale_alpha_manual(values = c(0.1,1)) &
+  #scale_alpha_manual(values = c(0.1,1)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
   ylim(c(0.75, 7.25))
 
 ```
