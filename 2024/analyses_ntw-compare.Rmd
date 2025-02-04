@@ -282,12 +282,51 @@ p1 + p2 +
   ylim(c(0, 1))
 
 ```
+
+
 ## - outcomes (sup)
 
+//todo
+- 2025-02-04: try to group by surv outcome maybe...
+
 ```{r}
+# pmds + sup of those that pup'ed
+ss_devall <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab")) %>%
+  group_by(year, diet, pop, trt) %>%
+  summarise(n = n(),
+            n.pmd = sum(na.omit(surv.outcome == 0)),
+            n.misc = sum(na.omit(surv.outcome == 2)),
+            n.sup = sum(na.omit(surv.outcome == 1 & sup > 0)),
+            n.surv = n - n.misc,
+            n.5th = sum(na.omit(sup == 0 & surv.outcome == 1)),
+            n.6th = sum(na.omit(sup == 6 & surv.outcome == 1)),
+            n.7th = sum(na.omit(sup == 7 & surv.outcome == 1)),
+            n.8th = sum(na.omit(sup == 8 & surv.outcome == 1)),
+            p.pmd = round(n.pmd/n.surv, digits = 2),
+            p.sup = round(n.sup/n.surv, digits = 2),
+            p.5th = round(n.5th/n.surv, digits = 2),
+            p.6th = round(n.6th/n.surv, digits = 2),
+            p.7th = round(n.7th/n.surv, digits = 2),
+            p.8th = round(n.8th/n.surv, digits = 2)
+            )
 
 
-
+# sup of those that pmd'd
+ss_devpmd <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab")) %>%
+  filter(surv.outcome == 0) %>%
+  group_by(year, diet, pop, trt) %>%
+  summarise(n = n(),
+            n.5th = sum(na.omit(sup == 0)),
+            n.6th = sum(na.omit(sup == 6)),
+            n.7th = sum(na.omit(sup == 7)),
+            n.8th = sum(na.omit(sup == 8)),
+            p.5th = round(n.5th/n, digits = 2),
+            p.6th = round(n.6th/n, digits = 2),
+            p.7th = round(n.7th/n, digits = 2),
+            p.8th = round(n.8th/n, digits = 2)
+            )
 ```
 
 
