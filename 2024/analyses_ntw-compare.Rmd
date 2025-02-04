@@ -152,7 +152,7 @@ all <- all %>%
 
 # 3. df prep (math)
 
-generic math
+## - generic math
 
 2025-01-20: filtering out diet wonkiness here lol. we can revisit it later if needed
 
@@ -210,6 +210,68 @@ ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
   calc.ssadj()
 ```
 
+## - dev outcomes 
+
+//todo
+- 2025-02-04: try to group by surv outcome maybe... (instead of splitting into 2 dfs)
+
+```{r}
+# pmds + sup of those that pup'ed
+ss_devall <- ntw_wide %>%
+  mutate(trt = as.factor(trt)) %>%
+  filter(!(diet == "TB" & pop == "lab")) %>%
+  group_by(year, diet, pop, trt) %>%
+  summarise(n.tot = n(),
+            n.pmd = sum(na.omit(surv.outcome == 0)),
+            n.misc = sum(na.omit(surv.outcome == 2)),
+            n.pup = sum(na.omit(surv.outcome == 1)),
+            n.sup = sum(na.omit(surv.outcome == 1 & sup > 0)),
+            n.dev = n.tot - n.misc,
+            n.5th = sum(na.omit(sup == 0 & surv.outcome == 1)),
+            n.6th = sum(na.omit(sup == 6 & surv.outcome == 1)),
+            n.7th = sum(na.omit(sup == 7 & surv.outcome == 1)),
+            n.8th = sum(na.omit(sup == 8 & surv.outcome == 1)),
+            p.pmd = round(n.pmd/n.dev, digits = 3),
+            p.sup = round(n.sup/n.dev, digits = 3),
+            p.5th = round(n.5th/n.dev, digits = 3),
+            p.6th = round(n.6th/n.dev, digits = 2),
+            p.7th = round(n.7th/n.dev, digits = 2),
+            p.8th = round(n.8th/n.dev, digits = 2)
+            )
+
+
+# sup of those that pmd'd
+ss_devpmd <- ntw_wide %>%
+  mutate(trt = as.factor(trt)) %>%
+  filter(!(diet == "TB" & pop == "lab")) %>%
+  filter(surv.outcome == 0) %>%
+  group_by(year, diet, pop, trt) %>%
+  summarise(n.tot = n(),
+            n.5th = sum(na.omit(sup == 0)),
+            n.6th = sum(na.omit(sup == 6)),
+            n.7th = sum(na.omit(sup == 7)),
+            n.8th = sum(na.omit(sup == 8)),
+            p.5th = round(n.5th/n.tot, digits = 2),
+            p.6th = round(n.6th/n.tot, digits = 2),
+            p.7th = round(n.7th/n.tot, digits = 2),
+            p.8th = round(n.8th/n.tot, digits = 2)
+            )
+
+# pivots
+
+ss_devall2 <- ss_devall %>%
+  pivot_longer(cols = starts_with(c("n.", "p.")),
+               names_to = c(".value", "stage"),
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  filter(stage %in% c("pmd", "5th", "6th", "7th"))
+
+ss_devpmd2 <- ss_devpmd %>%
+  pivot_longer(cols = starts_with(c("n.", "p.")),
+               names_to = c(".value", "stage"),
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+    filter(stage %in% c("5th", "6th", "7th"))
+```
+
 
 # 4. NT figs!
 
@@ -243,7 +305,7 @@ p1 <- ss_ntw %>%
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
-  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
   labs(x = "minimum temperature (°C)") +
   facet_wrap(~year) +
   theme_bw()
@@ -260,7 +322,7 @@ p2 <- ss_ntw %>%
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
-  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
   facet_wrap(~trt.type) +
   theme_bw()
 
@@ -286,48 +348,16 @@ p1 + p2 +
 
 ## - outcomes (sup)
 
-//todo
-- 2025-02-04: try to group by surv outcome maybe...
-
 ```{r}
-# pmds + sup of those that pup'ed
-ss_devall <- ntw_wide %>%
-  filter(!(diet == "TB" & pop == "lab")) %>%
-  group_by(year, diet, pop, trt) %>%
-  summarise(n = n(),
-            n.pmd = sum(na.omit(surv.outcome == 0)),
-            n.misc = sum(na.omit(surv.outcome == 2)),
-            n.sup = sum(na.omit(surv.outcome == 1 & sup > 0)),
-            n.surv = n - n.misc,
-            n.5th = sum(na.omit(sup == 0 & surv.outcome == 1)),
-            n.6th = sum(na.omit(sup == 6 & surv.outcome == 1)),
-            n.7th = sum(na.omit(sup == 7 & surv.outcome == 1)),
-            n.8th = sum(na.omit(sup == 8 & surv.outcome == 1)),
-            p.pmd = round(n.pmd/n.surv, digits = 2),
-            p.sup = round(n.sup/n.surv, digits = 2),
-            p.5th = round(n.5th/n.surv, digits = 2),
-            p.6th = round(n.6th/n.surv, digits = 2),
-            p.7th = round(n.7th/n.surv, digits = 2),
-            p.8th = round(n.8th/n.surv, digits = 2)
-            )
+ss_devall2 %>%
+  ggplot(aes(y = p, x = trt, fill = stage)) +
+  geom_col() +
+  facet_wrap(year~pop) +
+  labs(caption = "pmds + dev fates of pups") +
+  theme_bw()
 
-
-# sup of those that pmd'd
-ss_devpmd <- ntw_wide %>%
-  filter(!(diet == "TB" & pop == "lab")) %>%
-  filter(surv.outcome == 0) %>%
-  group_by(year, diet, pop, trt) %>%
-  summarise(n = n(),
-            n.5th = sum(na.omit(sup == 0)),
-            n.6th = sum(na.omit(sup == 6)),
-            n.7th = sum(na.omit(sup == 7)),
-            n.8th = sum(na.omit(sup == 8)),
-            p.5th = round(n.5th/n, digits = 2),
-            p.6th = round(n.6th/n, digits = 2),
-            p.7th = round(n.7th/n, digits = 2),
-            p.8th = round(n.8th/n, digits = 2)
-            )
 ```
+
 
 
 

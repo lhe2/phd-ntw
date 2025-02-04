@@ -52,10 +52,16 @@ calc.devstats <- function(data){
               se.tt = se(tt.pupa),
               # avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
               # se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-              n = n() - sum(na.omit(surv.outcome == 2)),
-              n.pmd = sum(na.omit(surv.outcome == 1)), 
-              n.surv = n - n.pmd, 
-              prop.survpup = round(1-(n.pmd/n), digits=2)
+              # n = n() - sum(na.omit(surv.outcome == 2)),
+              # n.pmd = sum(na.omit(surv.outcome == 0)), 
+              # n.surv = n - n.pmd, 
+              # prop.survpup = round(1-(n.pmd/n), digits=2),
+              n = n(),
+              n.misc = sum(na.omit(surv.outcome == 2)), # things that died by accident
+              n.dev = n - n.misc, 
+              n.pmd = sum(na.omit(surv.outcome == 1)),
+              n.pup = sum(na.omit(surv.outcome == 0)),
+              prop.survpup = round(1 - (n.pup/n.dev), digits = 2)
     ) %>% 
     mutate(stage = "la")
   
