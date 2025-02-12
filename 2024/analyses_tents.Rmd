@@ -1,0 +1,39 @@
+---
+title: "fertility analyses"
+date: "2025-01-13"
+---
+
+# 0. load data, helper fns
+```{r message=FALSE}
+source("./helpers_tents.R")
+```
+
+# 1. longevity
+```{r calc stats}
+summ_longevity <- data_longevity %>%
+  mutate(surv = jdate.surv - jdate.eclose) %>%
+  group_by(expt.type, pop, #sex, 
+           minT) %>%
+  summarise(n = n(),
+            avg.surv = mean(na.omit(surv)),
+            se.surv = sd(na.omit(surv))/sqrt(length(na.omit(surv))))
+```
+
+```{r plot}
+summ_longevity %>%
+  filter(expt.type == "expt") %>%
+  #filter(!(pop == "lab" & diet.type == "TB")) %>% 
+  ggplot(aes(y = avg.surv, x = as.factor(minT), 
+             #group = interaction(pop, sex),
+             group = pop)) +
+  geom_point(size = 2) +
+  geom_line(aes(lty = pop)) +
+  geom_errorbar(aes(ymin = avg.surv - se.surv, ymax = avg.surv + se.surv), width = 0.25) +
+  geom_text(aes(label = n), hjust = -1, vjust = 0.75) +
+  theme_bw() 
+  #facet_wrap(~sex)
+
+```
+
+
+# 2. egg laying

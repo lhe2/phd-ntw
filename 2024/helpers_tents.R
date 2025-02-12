@@ -34,7 +34,9 @@ mod.dates <- function(data) {
                             trt == 419 ~ 19,
                             trt == 433 ~ 33),
            expt.type = case_when(trt == 260 ~ "ctrl",
-                                 TRUE ~ "expt")
+                                 TRUE ~ "expt"),
+           diet.type = case_when(trt > 2000 ~ "LD",
+                                 TRUE ~ "TB")
     )
 }
 
