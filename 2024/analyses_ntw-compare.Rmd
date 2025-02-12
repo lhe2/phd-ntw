@@ -12,7 +12,7 @@ wip: combine fertility data...
 # 1. load data & packages
 
 ```{r}
-source("./helpers_ntw-compare.R")
+source("./helpers_ntw-compare.R", include = FALSE)
 
 test <- d23
 #d23 <- test
@@ -226,7 +226,7 @@ ss_devall <- ntw_wide %>%
             n.misc = sum(na.omit(surv.outcome == 2)),
             n.pup = sum(na.omit(surv.outcome == 1)),
             n.sup = sum(na.omit(surv.outcome == 1 & sup > 0)),
-            n.dev = n.tot - n.misc,
+            n.dev = n.tot - n.misc, # = pmd + pups of any sup
             n.5th = sum(na.omit(sup == 0 & surv.outcome == 1)),
             n.6th = sum(na.omit(sup == 6 & surv.outcome == 1)),
             n.7th = sum(na.omit(sup == 7 & surv.outcome == 1)),
@@ -349,13 +349,32 @@ p1 + p2 +
 ## - outcomes (sup)
 
 ```{r}
+# not stacking stages/grouping by pop as desired
 ss_devall2 %>%
   ggplot(aes(y = p, x = trt, fill = stage)) +
-  geom_col() +
-  facet_wrap(year~pop) +
+  #geom_col(position = "dodge") + facet_wrap(~year) +
+  #geom_col() + facet_wrap(year~pop) +
+  geom_col(position = "dodge", stat = "identity") + facet_wrap(~year) +
   labs(caption = "pmds + dev fates of pups") +
   theme_bw()
 
+# okay apparently u just cant stack AND dodge at the same time lol says google
+  # https://stackoverflow.com/questions/12715635/ggplot2-bar-plot-with-both-stack-and-dodge
+ss_devall2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", stat = "identity") + facet_grid(~year) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + dev fates of pups") +
+  theme_bw()
+
+# trying w/ alpha.. tldr i think i need to combine some of these variables tgt lol. but also redo the math
+# also, why aren't the bars adding to 1?
+ss_devall2 %>%
+  ggplot(aes(y = p, x = pop, fill = stage, group = trt, alpha = trt)) +
+  geom_bar(position = "dodge", stat = "identity") + facet_grid(~year) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + dev fates of pups") +
+  theme_bw()
 ```
 
 
