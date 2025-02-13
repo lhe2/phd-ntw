@@ -1,11 +1,13 @@
 ---
-title: "ntw data comparisons"
+title: "ntw 2023 v 2024 data comparisons"
 date: "2024-10-08"
 ---
 
 # 0. roadmap
 
 goal: compare 2023 and 2024 ntw development data. needs some wrangling lol (esp 2023)
+
+- 2025-02-13: commenting out/moved out some of the 26/33 vs ±0/7 stuff. moved some of it to a draft doc
 
 wip: combine fertility data...
 
@@ -152,7 +154,7 @@ all <- all %>%
 
 # 3. df prep (math)
 
-generic math
+## - pivot prep
 
 2025-01-20: filtering out diet wonkiness here lol. we can revisit it later if needed
 
@@ -189,10 +191,10 @@ all_long <- all_wide %>%
 
 # filtering by expt type
 ntw_wide <- filter(all_wide, for.ntw == "Y")
-cvf_wide <- filter(all_wide, for.const == "Y")
+#cvf_wide <- filter(all_wide, for.const == "Y")
 ```
 
-stage-specific summary stats
+## - stage-specific summary stats
 
 2025-01-20 troubleshooting:
 - https://stackoverflow.com/questions/73533852/create-multiple-dataframes-based-on-the-dates-of-another-dataframe-in-r
@@ -200,33 +202,118 @@ stage-specific summary stats
 
 
 ```{r}
-# apply to data
+# apply calcs to data
 ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
 
 ss_ntw <- Reduce(full_join, ss_all[[1]]) %>% 
   calc.ssadj()
 
-ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
-  calc.ssadj()
+# ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
+#   calc.ssadj()
+```
+
+## - dev ss variations
+
+```{r}
+ss_moredev <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab")) %>% 
+  calc.ssmoredev()
+
 ```
 
 
-# 4. NT figs!
+## - dev outcomes 
+
+//todo
+- 2025-02-04: try to group by surv outcome maybe... (instead of splitting into 2 dfs)
+
+```{r}
+# pmds + sup of those that pup'ed
+ss_devall <- ntw_wide %>%
+  mutate(trt = as.factor(trt)) %>%
+  filter(!(diet == "TB" & pop == "lab")) %>%
+  group_by(year, diet, pop, trt) %>%
+  summarise(n.tot = n(),
+            n.pmd = sum(na.omit(surv.outcome == 0)),
+            n.misc = sum(na.omit(surv.outcome == 2)),
+            n.pup = sum(na.omit(surv.outcome == 1)),
+            n.sup = sum(na.omit(surv.outcome == 1 & sup > 0)),
+            n.dev = n.tot - n.misc, # = pmd + pups of any sup
+            n.5th = sum(na.omit(sup == 0 & surv.outcome == 1)),
+            n.6th = sum(na.omit(sup == 6 & surv.outcome == 1)),
+            n.7th = sum(na.omit(sup == 7 & surv.outcome == 1)),
+            n.8th = sum(na.omit(sup == 8 & surv.outcome == 1)),
+            p.pmd = round(n.pmd/n.dev, digits = 3),
+            p.sup = round(n.sup/n.dev, digits = 3),
+            p.5th = round(n.5th/n.dev, digits = 3),
+            p.6th = round(n.6th/n.dev, digits = 2),
+            p.7th = round(n.7th/n.dev, digits = 2),
+            p.8th = round(n.8th/n.dev, digits = 2)
+            )
+
+
+# sup of those that pmd'd
+ss_devpmd <- ntw_wide %>%
+  mutate(trt = as.factor(trt)) %>%
+  filter(!(diet == "TB" & pop == "lab")) %>%
+  filter(surv.outcome == 1) %>%
+  group_by(year, diet, pop, trt) %>%
+  summarise(n.tot = n(),
+            n.5th = sum(na.omit(sup == 0)),
+            n.6th = sum(na.omit(sup == 6)),
+            n.7th = sum(na.omit(sup == 7)),
+            n.8th = sum(na.omit(sup == 8)),
+            p.5th = round(n.5th/n.tot, digits = 2),
+            p.6th = round(n.6th/n.tot, digits = 2),
+            p.7th = round(n.7th/n.tot, digits = 2),
+            p.8th = round(n.8th/n.tot, digits = 2)
+            )
+
+# pivots
+
+ss_devall2 <- ss_devall %>%
+  pivot_longer(cols = starts_with(c("n.", "p.")),
+               names_to = c(".value", "stage"),
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+  filter(stage %in% c("pmd", "5th", "6th", "7th"))
+
+ss_devpmd2 <- ss_devpmd %>%
+  pivot_longer(cols = starts_with(c("n.", "p.")),
+               names_to = c(".value", "stage"),
+               names_pattern = ("([a-z]*)\\.(\\d*[a-z]*)")) %>%
+    filter(stage %in% c("5th", "6th", "7th"))
+```
+
+
+# 4. figs & analyses prep
+
+## - figs ref
 
 larval "#1B9E77" 
 pup "#D95F02" 
 adult "#7570B3"
 
 ```{r}
-# troubleshooting
+# fig troubleshooting
 # filter(all_wide, year == 2023 & sex == "f" & !is.na(tt.surv)) %>% View()
 # filter(ntw_wide, year == 2023 & sex == "f" & !is.na(tt.surv)) %>% View()
 # filter(ntw_wide, year == 2023 & sex == "f" & pop == "field" & minT == 33) %>% View()
 # filter(ss_ntw, year == 2023 & sex == "f" & stage == "ad") %>% View()
 ```
 
+## - stats prep
 
-## - survival
+```{r}
+ntw_expt <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
+  mutate(dmass = mass.pupa - mass.eclose,
+         rate.pup = mass.pupa/tt.pupa)
+
+```
+
+# - pupal survival
+
+## - figs
 
 // todo
 2025-01-23: 
@@ -243,7 +330,7 @@ p1 <- ss_ntw %>%
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
-  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
   labs(x = "minimum temperature (°C)") +
   facet_wrap(~year) +
   theme_bw()
@@ -260,7 +347,7 @@ p2 <- ss_ntw %>%
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
-  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
   facet_wrap(~trt.type) +
   theme_bw()
 
@@ -282,21 +369,112 @@ p1 + p2 +
   ylim(c(0, 1))
 
 ```
-## - outcomes (sup)
+## - stats
 
 ```{r}
+ntw_expt.surv <- ntw_expt %>%
+  filter(surv.outcome != 2)
+```
 
+```{r}
+mod.surv_minT <- glm(surv.outcome ~ minT*pop, data = ntw_expt.surv, family = "binomial")
+# mod.surv_meanT <- glm(surv.outcome ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
+  # ignore meanT bc it's confounded w minT
 
+anova(mod.surv_minT, mod.surv_meanT, test = "Chisq") 
 
 ```
 
 
+# - dev outcomes (sup)
 
-## - dev time & longevity (by sex)
+## - figs: pmds + pups
+
+```{r}
+# not stacking stages/grouping by pop as desired
+ss_devall2 %>%
+  ggplot(aes(y = p, x = trt, fill = stage)) +
+  #geom_col(position = "dodge") + facet_wrap(~year) +
+  #geom_col() + facet_wrap(year~pop) +
+  geom_col(position = "dodge", stat = "identity") + facet_wrap(~year) +
+  labs(caption = "pmds + dev fates of pups") +
+  theme_bw()
+
+# okay apparently u just cant stack AND dodge at the same time lol says google
+  # https://stackoverflow.com/questions/12715635/ggplot2-bar-plot-with-both-stack-and-dodge
+  # https://stackoverflow.com/questions/46597278/how-to-plot-a-stacked-and-grouped-bar-chart-in-ggplot
+ss_devall2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", stat = "identity") + facet_grid(~year) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + dev fates of pups") +
+  theme_bw()
+
+# this is the one!!!!!
+ss_devall2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", 
+           #position = position_fill(reverse = TRUE),
+           stat = "identity") + 
+  facet_grid(~interaction(pop,year), scale = "free", 
+             #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+             ) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + instars of pups",
+       fill = "stage",
+       x = "D-N treatment (°C)",
+       y = "proportion") +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"), guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x.bottom = element_text(angle = 90)) +
+  scale_fill_brewer(palette = "Blues", direction = -1) +
+  theme_bw()
+  
+
+# trying w/ alpha.. tldr i think i need to combine some of these variables tgt lol. but also redo the math
+# (its not adding to 1 bc need x=interaction)
+ss_devall2 %>%
+  ggplot(aes(y = p, x = pop, fill = stage, group = trt, alpha = trt)) +
+  geom_bar(position = "dodge", stat = "identity") + facet_grid(~year) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + dev fates of pups") +
+  theme_bw()
+```
+
+## - figs: pups only
+
+```{r}
+# looking only at survivors
+ss_devpmd2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", 
+           #position = position_fill(reverse = TRUE),
+           stat = "identity") + 
+  facet_grid(~interaction(pop,year), scale = "free", 
+             #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+             ) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "instars of things that survived to pupation",
+       fill = "stage",
+       x = "D-N treatment (°C)",
+       y = "proportion") +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"), guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x.bottom = element_text(angle = 90)) +
+  scale_fill_brewer(palette = "Blues", 
+                    #direction = -1
+                    ) +
+  theme_bw()
+```
+
+
+
+
+# - dev time & longevity
 
 // todo
 - 2025-01-30: look into forcing y-axes limits to be the same w `ggh4x`
   - https://teunbrand.github.io/ggh4x/articles/Facets.html
+  
+## - figs: by sex
 
 ```{r}
 # NTs on development time/longevity
@@ -309,19 +487,24 @@ p1 <- ss_ntw %>%
   filter(!(stage == "ad" & sex == "all")) %>%
   filter((stage == "la" | stage == "ad") & trt.type == "expt") %>% #View()
   ggplot(aes(y = avg.tt, x = minT,
-             color = stage, fill = stage, shape = sex,
+             color = stage, #fill = stage, 
+             shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year, color = stage), size = 2) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
   geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
-  geom_point(fill = NA, size = 2) +
+  #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
+  facet_wrap(~year) + # orig
+  # facet_grid(stage~year, scales = "free_y"
+  #            ) +
   theme_bw()
 
 p1
+
 
 p2 <- ss_ntw %>% 
   mutate(sex = case_when(is.na(sex) ~ "both",
@@ -330,17 +513,20 @@ p2 <- ss_ntw %>%
   filter((stage == "la" | stage == "ad") & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = avg.tt, x = year,
-             color = stage, fill = stage, shape = sex,
+             color = stage, 
+             #fill = stage, shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year), size = 2) +
+  #geom_point(aes(alpha = year), size = 2) +
   geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(#fill = NA, 
+             size = 2) +
   labs(x = "year") +
-  facet_wrap(~trt.type) +
-  #facet_wrap(~stage) +
+  facet_wrap(~trt.type) + # orig
+  # facet_grid(stage~trt.type, scales = "free_y"
+  #            ) +
   theme_bw()
 
 p2
@@ -362,12 +548,16 @@ p1 + p2 +
                      ) &
   scale_color_manual(values = c("#1B9E77", "#7570B3")) &
   scale_fill_manual(values = c("#1B9E77", "#7570B3")) &
-  scale_alpha_manual(values = c(0.1,1)) &
-  ylim(c(2.5, 35))
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
+  expand_limits(y = 37)
+  #scale_alpha_manual(values = c(0.1,1)) &
+  #ylim(c(2.5, 35))
 
 ```
 
-## - mass
+# - mass
+
+## - figs: by sex
 
 ```{r}
 # NTs on pupal/adult mass
@@ -378,15 +568,18 @@ p1 <- ss_ntw %>%
   filter(!(stage == "ad" & sex == "all")) %>%
   filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
   ggplot(aes(y = avg.mass, x = minT,
-             color = stage, fill = stage, shape = sex,
+             color = stage, #fill = stage, 
+             shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year, color = stage), size = 2) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
+  #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
-  facet_wrap(stage~year) +
+  facet_grid(#stage
+             ~year) +
   theme_bw()
 
 p1
@@ -398,15 +591,18 @@ p2 <- ss_ntw %>%
   filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = avg.mass, x = year,
-             color = stage, fill = stage, shape = sex,
+             color = stage, #fill = stage, 
+             shape = sex,
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year), size = 2) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(#aes(alpha = year), 
+             size = 2) +
+  #geom_point(fill = NA, size = 2) +
   labs(x = "year") +
-  facet_wrap(stage~trt.type) +
+  facet_grid(#stage
+               ~trt.type) +
   theme_bw()
 
 p2
@@ -425,375 +621,185 @@ p1 + p2 +
   scale_shape_manual(values = c(24, 22)) &
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
   scale_fill_manual(values = c("#D95F02", "#7570B3")) &
-  scale_alpha_manual(values = c(0.1,1)) &
+  #scale_alpha_manual(values = c(0.1,1)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
   ylim(c(0.75, 7.25))
 
 ```
 
-# 5. const figs
 
-## - survival
+# - dmass
+
+## - figs: by sex
 
 ```{r}
-# NTs on pupal survival 
-
-p1 <- ss_cvf %>% 
-  filter(stage == "la") %>% #View()
-  ggplot(aes(y = prop.survpup, x = trt.type,
-             color = stage, 
-             lty = pop, shape = year,
-             group = interaction(pop, trt.type)
+# separated sexes
+p1 <- ss_moredev %>% 
+  filter(sex != "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.dmass, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
              )) +
-  geom_line() +
-  geom_point(size = 2) +
-  labs(x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
-  theme_bw()
-
-p1
-```
-
-```{r}
-p2 <- ss_ntw %>% 
-  filter(stage == "la" & trt.type == "ctrl") %>% 
-  mutate(trt.type = "control (26/26 °C)") %>%
-  ggplot(aes(y = prop.survpup, x = year,
-             color = stage, 
-             lty = pop, shape = year,
-             group = interaction(pop, trt.type))) +
-  geom_line() +
-  geom_point(size = 2) +
-  facet_wrap(~trt.type) +
-  theme_bw()
-
-p2
-
-# merge
-p1 + p2 +
-  labs(caption = "do lower NTs increase survival to pup?") +
-  plot_layout(guides = "collect",
-              axes = "collect",
-              widths = c(2:1)) &
-  theme(legend.position = "top") &
-  labs(lty = "population",
-       y = "proportion survived to pupation") &
-  guides(color = "none") &
-  scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(1, 16)) &
-  scale_color_manual(values = "#1B9E77") &
-  ylim(c(0, 1))
-
-```
-## - dev time/longevity
-
-```{r}
-# NTs on development time/longevity
-# see this
-  # https://stackoverflow.com/questions/78193007/how-do-i-control-the-alpha-of-a-geom-point-fill
-
-p1 <- ss_ntw %>% 
-  mutate(sex = case_when(is.na(sex) ~ "both",
-                         TRUE ~ as.character(sex))) %>%
-  filter(!(stage == "ad" & sex == "all")) %>%
-  filter((stage == "la" | stage == "ad") & trt.type == "expt") %>% #View()
-  ggplot(aes(y = avg.tt, x = minT,
-             color = stage, fill = stage, shape = sex,
-             group = interaction(pop, stage, sex)
-             )) +
-  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year, color = stage), size = 2) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   labs(x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
   theme_bw()
 
 p1
 
-p2 <- ss_ntw %>% 
-  mutate(sex = case_when(is.na(sex) ~ "both",
-                         TRUE ~ as.character(sex))) %>%
-  filter(!(stage == "ad" & sex == "all")) %>%
-  filter((stage == "la" | stage == "ad") & trt.type == "ctrl") %>% 
-  ggplot(aes(y = avg.tt, x = year,
-             color = stage, fill = stage, shape = sex,
-             group = interaction(pop, stage, sex)
+p2 <- ss_moredev %>% 
+  filter(sex != "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.dmass, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
              )) +
-  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
   geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year), size = 2) +
-  geom_point(fill = NA, size = 2) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   labs(x = "year") +
-  facet_wrap(~trt.type) +
+  facet_grid(sex~trt.type) +
+  #scale_color_manual(values = aes_2col) +
   theme_bw()
 
 p2
 
-# merge
+
 p1 + p2 +
-  labs(caption = "do lower NTs reduce dev time?") +
+  labs(caption = "lower NTs x change in mass by sex") +
   plot_layout(guides = "collect",
               axes = "collect",
               widths = c(2:1)) &
   theme(legend.position = "top") &
   labs(#lty = "population",
-       y = "development time / longevity (days)") &
+       y = "mass pupa - mass eclosion (g)") &
   #guides(color = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(21, 24, 22)
-                     #c(16, 17, 15)
-                     #c(1, 2, 0)
-                     ) &
-  scale_color_manual(values = c("#1B9E77", "#7570B3")) &
-  scale_fill_manual(values = c("#1B9E77", "#7570B3")) &
-  scale_alpha_manual(values = c(0.1,1)) &
-  ylim(c(5, 35))
-
-```
-
-## - mass
-
-```{r}
-# NTs on pupal/adult mass
-
-p1 <- ss_ntw %>% 
-  mutate(sex = case_when(is.na(sex) ~ "both",
-                         TRUE ~ as.character(sex))) %>%
-  filter(!(stage == "ad" & sex == "all")) %>%
-  filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
-  ggplot(aes(y = avg.mass, x = minT,
-             color = stage, fill = stage, shape = sex,
-             group = interaction(pop, stage, sex)
-             )) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
-  geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year, color = stage), size = 2) +
-  geom_point(fill = NA, size = 2) +
-  labs(x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
-  theme_bw()
-
-p1
-
-p2 <- ss_ntw %>% 
-  mutate(sex = case_when(is.na(sex) ~ "both",
-                         TRUE ~ as.character(sex))) %>%
-  filter(!(stage == "ad" & sex == "all")) %>%
-  filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
-  ggplot(aes(y = avg.mass, x = year,
-             color = stage, fill = stage, shape = sex,
-             group = interaction(pop, stage, sex)
-             )) +
-  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
-  geom_line(aes(lty = pop), alpha = 1) +
-  geom_point(aes(alpha = year), size = 2) +
-  geom_point(fill = NA, size = 2) +
-  labs(x = "year") +
-  facet_wrap(~trt.type) +
-  theme_bw()
-
-p2
-
-# merge
-p1 + p2 +
-  labs(caption = "do lower NTs lead to larger mass?") +
-  plot_layout(guides = "collect",
-              axes = "collect",
-              widths = c(2:1)) &
-  theme(legend.position = "top") &
-  labs(#lty = "population",
-       y = "mass (g)") &
-  #guides(color = "none") &
-  scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(24, 22)) &
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
-  scale_fill_manual(values = c("#D95F02", "#7570B3")) &
-  scale_alpha_manual(values = c(0.1,1)) &
-  ylim(c(1.1, 7.25))
-
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 ```
 
-
-
-
-
-# zzz archive
-
-
-## 4. entsoc figs
-
-archived 2025-01-20
-
-
-summary stats
-
-// todo 
-- 2024-10-17: keeping bugs separate by year for now, will see how they look separate before trying to combine
-- 2025-01-20: filter out bugs on their correct diet types only for now
+## - figs: both sexes
 
 ```{r}
-# sep by sups (bc the sups have their own dev trajectory...)
-ss_wide.sup <- all
-  filter(!(pop == "lab" & diet == "TB")) %>%
-  group_by(year, 
-           pop, #diet, 
-           trt.type, minT, sup
-           ) %>%
-  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-            avg.mass = mean(na.omit(mass.pupa)),
-            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
-            n.all = n() - sum(na.omit(surv.outcome == 2)),
-            n.pmd = sum(na.omit(surv.outcome == 1)),
-            n.surv = n.all - n.pmd,
-            prop.survpup = round(1-(n.pmd/n.all), digits=2),
-            n.inprog = sum(is.na(surv.outcome))) %>%
-  mutate_all(~ifelse(is.nan(.), NA, .)) # `minT` is ok here
-
-# all dev trajectories together
-ss_wide <- all
-  filter(!(pop == "lab" & diet == "TB")) %>%
-  group_by(year, 
-           pop, #diet, 
-           trt.type, minT,
-           ) %>%
-  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-            avg.mass = mean(na.omit(mass.pupa)),
-            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
-            n.all = n() - sum(na.omit(surv.outcome == 2)),
-            n.pmd = sum(na.omit(surv.outcome == 1)),
-            n.surv = n.all - n.pmd,
-            prop.survpup = round(1-(n.pmd/n.all), digits=2),
-            n.inprog = sum(is.na(surv.outcome))) #%>% 
-  #mutate_all(~ifelse(is.nan(.), NA, .)) # breaks `minT`
-
-```
-
-
-prereqs: a cleaned up `d23`
-
-- stats
-
-```{r}
-# slapping sth on for entsocing
-ss_larva <- d23 %>%
-  filter(pop == "lab") %>%
-  group_by(year, pop, diet, trt.type, minT, 
-           #sup
-           ) %>%
-  summarise(avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-            avg.mass = mean(na.omit(mass.pupa)),
-            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
-            n.all = n() - sum(na.omit(surv.outcome == 2)),
-            n.pmd = sum(na.omit(surv.outcome == 1)), 
-            n.surv = n.all - n.pmd, 
-            prop.survpup = round(1-(n.pmd/n.all), digits=2)
-            ) %>%
-  mutate_all(~ifelse(is.nan(.), NA, .)) %>%
-  mutate(minT = factor(minT, levels = c("19", "26", "33"))) %>%
-  filter(!(pop == "lab" & diet == "TB") &
-           trt.type == "expt")
-```
-
-
-
-
-- figs
-
-
-*notes:* 
-
-- use lab bugs on LD + field on TB only!!!! (this is why u cant just reuse ur LB figs lol)
-- 2025-01-20: below figs assume all combos of diet types and pops are included in the `all` df.
-
-```{r}
-# (messing around w 2023 data only for entsoc,,)
-# using LB code lol
-
-# survival
-p1 <- 
-  ss_wide %>% 
-  filter(trt.type == "expt" & ((pop == "field" & diet == "TB") | (pop == "lab" & diet == "LD"))) %>%
-  ggplot(aes(y = prop.survpup, x = minT, shape = pop, color = pop,
+# sexes combined
+p1 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.dmass, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
              )) +
-  geom_point(size=3) + 
-  geom_line(aes(lty = pop, group = pop)) +
-  geom_text(aes(label = n.all), hjust = -0.5, show.legend = FALSE) +
-  theme_bw() +
-  labs(title = "23v24 ntw pupal survival",
-       y = "proportion survived to pupation", 
-       x = "minimum temperature (°C)") +
-  facet_wrap(~year) +
-  ylim(c(0, 1))
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
 
 p1
-```
 
-```{r}
-# avg tt pup
-pd <- position_dodge(0.3)
-
-p2 <-
-  ss_wide %>% 
-  filter(trt.type == "expt" & ((pop == "field" & diet == "TB") | (pop == "lab" & diet == "LD"))) %>%
-  ggplot(aes(y = avg.tt, x = minT, shape = pop, color = pop
+p2 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.dmass, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
              )) +
-  geom_point(size = 3, #position = pd
-             ) +  
-  geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt),
-                width = 0.25, #position = pd
-                ) +
-  geom_line(aes(lty = pop, group = pop), #position = pd
-            ) +
-  theme_bw() +
-  ylim(c(18, 34)) +
-  labs(title = "23v24 ntw larval development",
-       y = "time to pupation (days)", 
-       x = "minimum temperature (°C)") +
-  facet_wrap(~year)
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
+  geom_line(aes(lty = pop)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
 
 p2
-```
 
-```{r}
-# avg mass
-p3 <- 
-  ss_wide %>% 
-  filter(trt.type == "expt" & ((pop == "field" & diet == "TB") | (pop == "lab" & diet == "LD"))) %>%
-  ggplot(aes(y = avg.mass, x = minT, shape = pop, color = pop
-             )) +
-  geom_point(size = 3) +  
-  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
-                width = 0.25, #position = pd
-                ) +
-  geom_line(aes(lty = pop, group = pop)) +
-  theme_bw() +
-  #ylim(c(1750, 4750)) +
-  labs(title = "23v24 ntw pupal mass",
-       y = "mass at pupation (mg)", 
-       x = "minimum temperature (°C)",
-       #caption = "2023 data only; lab+LD and field+TB"
-       ) +
-  facet_wrap(~year)
 
-p3
-```
-
-```{r}
-# merged plot
-p1 + p2 + p3 +
+p1 + p2 +
+  labs(caption = "lower NTs x change in mass") +
   plot_layout(guides = "collect",
               axes = "collect",
-              widths = c(1:1)) &
+              widths = c(2:1)) &
   theme(legend.position = "top") &
-  labs(lty = "population", shape = "population",
-       title = NULL) &
+  labs(#lty = "population",
+       y = "mass pupa - mass eclosion (g)") &
+  #guides(color = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(1, 16))
-  #guides(shape = "none", lty = "none")
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 ```
+
+# - pup growth rate 
+
+## - figs: both sexes
+
+```{r}
+# sexes combined
+p1 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.ratepup, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepup - se.ratepup, ymax = avg.ratepup + se.ratepup), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.ratepup, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepup - se.ratepup, ymax = avg.ratepup + se.ratepup), width = 0.25) +
+  geom_line(aes(lty = pop)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p2
+
+
+p1 + p2 +
+  labs(caption = "lower NTs x pup growth rate") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "pup growth rate (g/days)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
+
+
+
+
 
 
 
