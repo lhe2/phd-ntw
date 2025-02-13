@@ -156,3 +156,11 @@ calc.ssmoredev <- function(data){
   return(Reduce(full_join, (list(ss_moredev, ss_moredev.sex))))
   
 }
+
+
+# df prepping -------------------------------------------------------------
+
+# things for modeling
+
+
+  
