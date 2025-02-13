@@ -12,7 +12,7 @@ wip: combine fertility data...
 # 1. load data & packages
 
 ```{r}
-source("./helpers_ntw-compare.R", include = FALSE)
+source("./helpers_ntw-compare.R")
 
 test <- d23
 #d23 <- test
@@ -360,6 +360,7 @@ ss_devall2 %>%
 
 # okay apparently u just cant stack AND dodge at the same time lol says google
   # https://stackoverflow.com/questions/12715635/ggplot2-bar-plot-with-both-stack-and-dodge
+  # https://stackoverflow.com/questions/46597278/how-to-plot-a-stacked-and-grouped-bar-chart-in-ggplot
 ss_devall2 %>%
   ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
   geom_bar(position = "stack", stat = "identity") + facet_grid(~year) +
@@ -367,8 +368,28 @@ ss_devall2 %>%
   labs(caption = "pmds + dev fates of pups") +
   theme_bw()
 
+# this is the one!!!!!
+ss_devall2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", 
+           #position = position_fill(reverse = TRUE),
+           stat = "identity") + 
+  facet_grid(~interaction(pop,year), scale = "free", 
+             #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+             ) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + instars of pups",
+       fill = "stage",
+       x = "D-N treatment (°C)",
+       y = "proportion") +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"), guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x.bottom = element_text(angle = 90)) +
+  scale_fill_brewer(palette = "Blues", direction = -1) +
+  theme_bw()
+  
+
 # trying w/ alpha.. tldr i think i need to combine some of these variables tgt lol. but also redo the math
-# also, why aren't the bars adding to 1?
+# (its not adding to 1 bc need x=interaction)
 ss_devall2 %>%
   ggplot(aes(y = p, x = pop, fill = stage, group = trt, alpha = trt)) +
   geom_bar(position = "dodge", stat = "identity") + facet_grid(~year) +
