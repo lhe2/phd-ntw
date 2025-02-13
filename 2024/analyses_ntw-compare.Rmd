@@ -152,7 +152,7 @@ all <- all %>%
 
 # 3. df prep (math)
 
-## - generic math
+## - pivot prep
 
 2025-01-20: filtering out diet wonkiness here lol. we can revisit it later if needed
 
@@ -192,7 +192,7 @@ ntw_wide <- filter(all_wide, for.ntw == "Y")
 cvf_wide <- filter(all_wide, for.const == "Y")
 ```
 
-stage-specific summary stats
+## - stage-specific summary stats
 
 2025-01-20 troubleshooting:
 - https://stackoverflow.com/questions/73533852/create-multiple-dataframes-based-on-the-dates-of-another-dataframe-in-r
@@ -200,7 +200,7 @@ stage-specific summary stats
 
 
 ```{r}
-# apply to data
+# apply calcs to data
 ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
 
 ss_ntw <- Reduce(full_join, ss_all[[1]]) %>% 
@@ -209,6 +209,16 @@ ss_ntw <- Reduce(full_join, ss_all[[1]]) %>%
 ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
   calc.ssadj()
 ```
+
+## - dev stat variations
+
+```{r}
+ss_moredev <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab")) %>% 
+  calc.ssmoredev()
+
+```
+
 
 ## - dev outcomes 
 
@@ -244,7 +254,7 @@ ss_devall <- ntw_wide %>%
 ss_devpmd <- ntw_wide %>%
   mutate(trt = as.factor(trt)) %>%
   filter(!(diet == "TB" & pop == "lab")) %>%
-  filter(surv.outcome == 0) %>%
+  filter(surv.outcome == 1) %>%
   group_by(year, diet, pop, trt) %>%
   summarise(n.tot = n(),
             n.5th = sum(na.omit(sup == 0)),
@@ -398,6 +408,30 @@ ss_devall2 %>%
   theme_bw()
 ```
 
+```{r}
+# looking only at survivors
+ss_devpmd2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", 
+           #position = position_fill(reverse = TRUE),
+           stat = "identity") + 
+  facet_grid(~interaction(pop,year), scale = "free", 
+             #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+             ) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "instars of things that survived to pupation",
+       fill = "stage",
+       x = "D-N treatment (°C)",
+       y = "proportion") +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"), guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x.bottom = element_text(angle = 90)) +
+  scale_fill_brewer(palette = "Blues", 
+                    #direction = -1
+                    ) +
+  theme_bw()
+```
+
+
 
 
 
@@ -549,12 +583,201 @@ p1 + p2 +
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
   scale_fill_manual(values = c("#D95F02", "#7570B3")) &
   #scale_alpha_manual(values = c(0.1,1)) &
-  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
-  ylim(c(0.75, 7.25))
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) #&
+  #ylim(c(0.75, 7.25))
 
 ```
 
-# 5. const figs
+
+## - other dev stuff
+
+```{r}
+# separated sexes
+p1 <- ss_moredev %>% 
+  filter(sex != "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.dmass, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>% 
+  filter(sex != "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.dmass, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(sex~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p2
+
+
+p1 + p2 +
+  labs(caption = "lower NTs x change in mass by sex") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "mass pupa - mass eclosion (g)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
+
+```{r}
+# sexes combined
+p1 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.dmass, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.dmass, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.dmass - se.dmass, ymax = avg.dmass + se.dmass), width = 0.25) +
+  geom_line(aes(lty = pop)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p2
+
+
+p1 + p2 +
+  labs(caption = "lower NTs x change in mass") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "mass pupa - mass eclosion (g)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
+
+```{r}
+# sexes combined
+p1 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.ratepup, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepup - se.ratepup, ymax = avg.ratepup + se.ratepup), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.ratepup, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepup - se.ratepup, ymax = avg.ratepup + se.ratepup), width = 0.25) +
+  geom_line(aes(lty = pop)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p2
+
+
+p1 + p2 +
+  labs(caption = "lower NTs x pup growth rate") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "pup growth rate (g/days)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
+
+
+
+# 5. NT modeling/stats
+
+## - df prep
+
+```{r}
+ntw_expt <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
+  mutate(dmass = mass.pupa - mass.eclose,
+         rate.pup = mass.pupa/tt.pupa)
+
+```
+
+
+```
+
+
+## - dev time
+
+```{r}
+
+
+```
+
+
+
+# 6. const temp figs
 
 ## - survival
 

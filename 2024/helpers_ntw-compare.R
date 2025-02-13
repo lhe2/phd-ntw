@@ -35,13 +35,17 @@ rm(data_tstats, data_hatch, data_longevity,
 
 # function making ---------------------------------------------------------
 
-# calcing stats and then stitching it together
-
-# calc stage-specific summary stats
+# calc se
 se <- function(x){
   sd(na.omit(x))/sqrt(length(na.omit(x)))
 }
 
+
+# calcing stats and then stitching it together
+
+## stage-specific summary stats (need wide data)
+
+### do calcs
 calc.devstats <- function(data){
   
   # larval stats
@@ -114,10 +118,41 @@ calc.devstats <- function(data){
   
 }
 
-# pull stats together
+### pull together
 calc.ssadj <- function(data){
   data <- data %>%
     mutate(stage = factor(stage, levels = c("la", "pu", "ad")),
            avg.mass = avg.mass/1000,
            se.mass = se.mass/1000)
+}
+
+
+
+## more dev stats
+
+calc.ssmoredev <- function(data){
+  moredev <- data %>%
+    mutate(dmass = (mass.pupa - mass.eclose)/1000,
+           rate.pup = (mass.pupa/tt.pupa)/1000)
+  
+  ss_moredev <- moredev %>%
+    group_by(year, pop, trt.type, minT) %>%
+    summarise(n = n(),
+              avg.dmass = mean(na.omit(dmass)),
+              se.dmass = se(dmass),
+              avg.ratepup = mean(na.omit(rate.pup)),
+              se.ratepup = se(rate.pup)) %>%
+    mutate(sex = "both") # "f+m"
+  
+  ss_moredev.sex<- moredev %>%
+    filter(!is.na(sex)) %>%
+    group_by(year, pop, sex, trt.type, minT) %>%
+    summarise(n = n(),
+              avg.dmass = mean(na.omit(dmass)),
+              se.dmass = se(dmass),
+              avg.ratepup = mean(na.omit(rate.pup)),
+              se.ratepup = se(rate.pup))
+  
+  return(Reduce(full_join, (list(ss_moredev, ss_moredev.sex))))
+  
 }
