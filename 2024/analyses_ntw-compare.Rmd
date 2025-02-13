@@ -630,6 +630,48 @@ p1 + p2 +
 
 # - dmass
 
+## - figs: check decrease
+
+```{r}
+ntw_wide %>%
+  filter(!is.na(sex)) %>%
+  filter(!(diet == "TB" & pop == "lab") #& trt.type == "expt"
+         ) %>%
+  ggplot(aes(y = mass.eclose, x = mass.pupa, 
+             #lty = sex
+             )) +
+  geom_point(aes(color = minT, shape = trt.type), size = 2) +
+  # geom_smooth(data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "expt"),
+  #             method = "lm",
+  #             color = "red") +
+  # annotate("text", label = "R^2 = 0.552", color = "red", x = 1100, y = 4500) +
+  # geom_smooth(data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "ctrl"),
+  #             method = "lm",
+  #             color = "black") +
+  # annotate("text", label = "R^2 = 0.627", color = "black", x = 1100, y = 4250) +
+  geom_smooth(method = "lm", color = "blue",
+              #aes(lty = trt.type)
+              ) +
+  annotate("text", label = "R^2 = 0.731", color = "blue", x = 1100, y = 4000) +
+  theme_bw() +
+  scale_color_manual(values = aes_3col) +
+  labs(caption = "mass @ pup vs eclosion") +
+  xlim(c(500, 8100))
+
+```
+
+```{r}
+summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "expt")))$r.squared
+# 0.5518755
+
+summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "ctrl")))$r.squared
+# 0.6266585
+
+summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab"))))$r.squared
+# 0.7310885
+```
+
+
 ## - figs: by sex
 
 ```{r}
