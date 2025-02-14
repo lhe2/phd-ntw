@@ -35,13 +35,23 @@ rm(data_tstats, data_hatch, data_longevity,
 
 # function making ---------------------------------------------------------
 
-# calc se
+
+## some useful generics ----------------------------------------------------
+
+## calc se
 se <- function(x){
   sd(na.omit(x))/sqrt(length(na.omit(x)))
 }
 
+## filters
 
-# calcing stats and then stitching it together
+filter.2pops <- function(data){
+  data <- filter(data, !(diet == "TB" & diet == "lab"))
+  
+  return(data)
+}
+
+## calcing stats and then stitching it together ----------------------------
 
 ## stage-specific summary stats (need wide data)
 
