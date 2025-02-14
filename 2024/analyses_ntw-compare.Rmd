@@ -844,7 +844,60 @@ p1 + p2 +
 
 
 
+## - figs: both sexes (log)
 
+```{r}
+# sexes combined
+p1 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.ratepupl, x = minT,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepupl - se.ratepupl, ymax = avg.ratepupl + se.ratepupl), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.ratepupl, x = year,
+             shape = sex, color = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepupl - se.ratepupl, ymax = avg.ratepupl + se.ratepupl), width = 0.25) +
+  geom_line(aes(lty = pop)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p2
+
+
+p1 + p2 +
+  labs(caption = "lower NTs x pup growth rate (log)") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "pup growth rate (log mg/days)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
 
 
 

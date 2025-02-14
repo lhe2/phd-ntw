@@ -139,11 +139,13 @@ calc.ssadj <- function(data){
 
 
 ## more dev stats
+  # 2025-02-13: maybe smush into another fn lol
 
 calc.ssmoredev <- function(data){
   moredev <- data %>%
     mutate(dmass = (mass.pupa - mass.eclose)/1000,
-           rate.pup = (mass.pupa/tt.pupa)/1000)
+           rate.pup = (mass.pupa/tt.pupa)/1000,
+           rate.puplog = log(mass.pupa)/tt.pupa)
   
   ss_moredev <- moredev %>%
     group_by(year, pop, trt.type, minT) %>%
@@ -151,7 +153,9 @@ calc.ssmoredev <- function(data){
               avg.dmass = mean(na.omit(dmass)),
               se.dmass = se(dmass),
               avg.ratepup = mean(na.omit(rate.pup)),
-              se.ratepup = se(rate.pup)) %>%
+              se.ratepup = se(rate.pup),
+              avg.ratepupl = mean(na.omit(rate.puplog)),
+              se.ratepupl = se(rate.puplog)) %>%
     mutate(sex = "both") # "f+m"
   
   ss_moredev.sex<- moredev %>%
@@ -161,7 +165,9 @@ calc.ssmoredev <- function(data){
               avg.dmass = mean(na.omit(dmass)),
               se.dmass = se(dmass),
               avg.ratepup = mean(na.omit(rate.pup)),
-              se.ratepup = se(rate.pup))
+              se.ratepup = se(rate.pup),
+              avg.ratepupl = mean(na.omit(rate.puplog)),
+              se.ratepupl = se(rate.puplog))
   
   return(Reduce(full_join, (list(ss_moredev, ss_moredev.sex))))
   
