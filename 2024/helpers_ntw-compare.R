@@ -79,8 +79,8 @@ calc.devstats <- function(data){
     ) %>% 
     mutate(stage = "la")
   
-  # pupal dev (eclosion time)
-  ss_pu <- data %>%
+  # pupal stats by sex
+  ss_pu.sex <- data %>%
     filter(!is.na(sex)) %>%
     group_by(year, pop, sex, trt.type, minT) %>%
     summarise(avg.tt = mean(na.omit(tt.eclose)),
@@ -92,12 +92,24 @@ calc.devstats <- function(data){
               n = n()) %>%
     mutate(stage = "pu")
   
-  # adult stats
+  # pupal stats combined sexes
+  ss_pu <- data %>%
+    filter(!is.na(jdate.pupa)) %>%
+    group_by(year, pop, trt.type, minT) %>%
+    summarise(avg.tt = mean(na.omit(tt.eclose)),
+              se.tt = se(tt.eclose),
+              # avg.tt = mean(na.omit(jdate.eclose - jdate.pupa)),
+              # se.tt = sd(na.omit(jdate.eclose - jdate.pupa))/sqrt(length(na.omit(jdate.eclose - jdate.pupa))),
+              avg.mass = mean(na.omit(mass.pupa)),
+              se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
+              n = n()) %>%
+    mutate(stage = "pu",
+           sex = "all")
+  
+  # adult stats by sex
   ss_ad.sex <- data %>%
     filter(!is.na(jdate.eclose)) %>%
-    group_by(year, pop,
-             trt.type, minT, sex
-    ) %>%
+    group_by(year, pop, trt.type, minT, sex) %>%
     summarise(avg.tt = mean(na.omit(tt.surv)),
               se.tt = se(tt.surv),
               # avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
@@ -108,11 +120,10 @@ calc.devstats <- function(data){
     ) %>%
     mutate(stage = "ad")
   
+  # adult stats combined sexes
   ss_ad <- data %>%
     filter(!is.na(jdate.eclose)) %>%
-    group_by(year, pop,
-             trt.type, minT
-    ) %>%
+    group_by(year, pop, trt.type, minT) %>%
     summarise(avg.tt = mean(na.omit(tt.surv)),
               se.tt = se(tt.surv),
               # avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
@@ -124,7 +135,7 @@ calc.devstats <- function(data){
     mutate(stage = "ad",
            sex = "all")
   
-  return(list(ss_la, ss_pu, ss_ad.sex, ss_ad))
+  return(list(ss_la, ss_pu.sex, ss_pu, ss_ad.sex, ss_ad))
   
 }
 

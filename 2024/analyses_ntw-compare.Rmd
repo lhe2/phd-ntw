@@ -630,10 +630,87 @@ p1 + p2 +
 
 ```
 
+## - figs: sexes combined
+
+```{r}
+# NTs on pupal/adult mass
+
+p1 <- ss_ntw %>% 
+  filter(sex == "all") %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.mass, x = minT,
+             color = stage, #fill = stage, 
+             group = interaction(pop, stage)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(#stage
+             ~year) +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  filter(sex == "all") %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.mass, x = year,
+             color = stage, #fill = stage, 
+             group = interaction(pop, stage)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(#aes(alpha = year), 
+             size = 2) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "year") +
+  facet_grid(#stage
+               ~trt.type) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs lead to larger mass?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "mass (g)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#D95F02", "#7570B3")) &
+  scale_fill_manual(values = c("#D95F02", "#7570B3")) &
+  #scale_alpha_manual(values = c(0.1,1)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
+  ylim(c(0.75, 7.25))
+
+```
+
+## - stats
+
+what affects pupal mass? Tmin, sex, year, pop?
+
+```{r}
+# 01: test the full complex vs the full additive model
+mod.pmass_int01 <- lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex)
+mod.pmass_add01 <- lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex)
+
+anova(mod.pmass_int01, mod.pmass_add01, test = "Chisq") # no sig diff btwn add/int: add is better
+```
+
 
 # dmass
 
 ## - figs: check decrease
+
+is decrease in mass from pup to ec proportional?
 
 ```{r}
 ntw_wide %>%
