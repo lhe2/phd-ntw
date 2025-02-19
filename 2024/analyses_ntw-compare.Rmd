@@ -285,7 +285,7 @@ ss_devpmd2 <- ss_devpmd %>%
 ```
 
 
-# 4. figs & analyses prep
+# 4. figs & stats prep
 
 ## - figs troubleshooting
 
@@ -301,13 +301,30 @@ adult "#7570B3"
 # filter(ss_ntw, year == 2023 & sex == "f" & stage == "ad") %>% View()
 ```
 
-## - stats prep
+## - stats dfs prep
+
+- filter bugs for modeling: 
+  - exptal bugs only (D = 40, N = 19/26/40)
+  - field on TB and lab on LD
 
 ```{r}
+# general filter
 ntw_expt <- ntw_wide %>%
   filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
   mutate(dmass = mass.pupa - mass.eclose,
          rate.pup = mass.pupa/tt.pupa)
+```
+
+specific filters
+
+```{r}
+# omit accidental deaths (so either pmd, pup, LPI)
+ntw_expt.surv <- ntw_expt %>%
+  filter(surv.outcome != 2) 
+
+# omit unsexed pupa
+ntw_expt.sex <- ntw_expt %>%
+  filter(!is.na(sex))
 ```
 
 # ### analyses ###
@@ -696,6 +713,8 @@ p1 + p2 +
 
 ## - figs
 
+how does pup mass look across yrs, pops, trts, sexes, temps? (getting some intuition of what to do for modeling)
+
 ```{r}
 # NTs on pupal mass
 
@@ -747,10 +766,16 @@ p1 + p2 +
   theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 
 ```
+- what does/doesnt matter?
+  - pop, field < lab
+  - minT, interacting with lab
+  - sex can prob be ignored
 
 ## - stats
 
 what affects pupal mass? Tmin, sex, year, pop?
+
+(numbering is just based on when i ran them lol)
 
 ```{r}
 # 01: test the full complex vs the full additive model
@@ -759,6 +784,35 @@ mod.pmass_add01 <- lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex)
 
 anova(mod.pmass_int01, mod.pmass_add01, test = "Chisq") # no sig diff btwn add/int: add is better
 ```
+```{r}
+# 02: look at int mod again after plotting the pupal masses by temp/sex/yr/pop. which ints matter?
+
+# drop year
+mod.pmass_int02 <- lm(mass.pupa ~ minT*pop*sex, data = ntw_expt.sex) 
+
+anova(mod.pmass_int01, mod.pmass_int02, test = "Chisq") # temp*pop*sex is better
+
+anova(mod.pmass_int02)
+
+# drop sex
+mod.pmass_int03 <- lm(mass.pupa ~ minT*pop, data = ntw_expt.sex) 
+
+anova(mod.pmass_int02, mod.pmass_int03, test = "Chisq") # no sig diff, so keep sex?
+
+# which terms matter?
+anova(mod.pmass_int02)
+```
+- `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
+  - *** = minT; pop
+  - * = sex, minT*pop
+
+```{r}
+# 03: look into the additive mods
+mod.pmass_add02 <- lm(mass.pupa ~ minT + pop + sex, data = ntw_expt.sex)
+
+anova(mod.pmass_int02, mod.pmass_add02, test = "Chisq") # no sig diff
+```
+
 
 
 # dmass
@@ -790,7 +844,7 @@ ntw_wide %>%
   annotate("text", label = "R^2 = 0.731 (all)", color = "blue", x = 1100, y = 4000) +
   theme_bw() +
   scale_color_manual(values = aes_3col) +
-  labs(caption = "mass @ pup vs eclosion") +
+  labs(caption = "mass pup vs mass eclosion") +
   xlim(c(500, 8100))
 
 ```
@@ -806,6 +860,7 @@ summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop
 # 0.7310885
 ```
 
+seems like yes (in both the ctrls and exptal bugs)
 
 ## - figs: by sex
 
