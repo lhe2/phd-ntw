@@ -42,3 +42,9 @@ aes_stg <- list(c("larva", "pupa", "adult"),
 
 aes_pal <- list(c("#4393ce", "#fdae61"),
                 c("#1B9E77", "#D95F02", "#7570B3"))
+
+aes_sex <- list(c(19, 17, 15),
+                c(21, 24, 22),
+                c("#019e73","#cc79a7","#0072b2"),
+                c(24, 22),
+                c("#cc79a7","#0072b2"))

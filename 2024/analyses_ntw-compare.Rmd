@@ -692,6 +692,61 @@ p1 + p2 +
   ylim(c(0.75, 7.25))
 
 ```
+# pupal mass
+
+## - figs
+
+```{r}
+# NTs on pupal mass
+
+p1 <- ss_ntw %>% 
+  filter(stage == "pu" & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.mass, x = minT,
+             color = sex, shape = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(color = sex), size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(is.sep~year) +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  filter(stage == "pu" & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.mass, x = year,
+             color = sex, shape = sex,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  labs(x = "year") +
+  facet_grid(is.sep~trt.type) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs lead to larger pupal mass?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "mass (g)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = aes_sex[[1]]) &
+  scale_color_manual(values = aes_sex[[3]]) &
+  #scale_fill_manual(values = c("#D95F02", "#7570B3")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+
+```
 
 ## - stats
 

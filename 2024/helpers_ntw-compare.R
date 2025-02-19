@@ -77,7 +77,8 @@ calc.devstats <- function(data){
               n.pup = sum(na.omit(surv.outcome == 0)),
               prop.survpup = round(1 - (n.pup/n.dev), digits = 2)
     ) %>% 
-    mutate(stage = "la")
+    mutate(stage = "la",
+           is.sep = "N")
   
   # pupal stats by sex
   ss_pu.sex <- data %>%
@@ -90,7 +91,8 @@ calc.devstats <- function(data){
               avg.mass = mean(na.omit(mass.pupa)),
               se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
               n = n()) %>%
-    mutate(stage = "pu")
+    mutate(stage = "pu",
+           is.sep = "Y")
   
   # pupal stats combined sexes
   ss_pu <- data %>%
@@ -104,7 +106,8 @@ calc.devstats <- function(data){
               se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))),
               n = n()) %>%
     mutate(stage = "pu",
-           sex = "all")
+           sex = "all",
+           is.sep = "N")
   
   # adult stats by sex
   ss_ad.sex <- data %>%
@@ -118,7 +121,8 @@ calc.devstats <- function(data){
               se.mass = sd(na.omit(mass.eclose)/sqrt(length(na.omit(mass.eclose)))),
               n = sum(na.omit(!is.na(jdate.eclose)))
     ) %>%
-    mutate(stage = "ad")
+    mutate(stage = "ad",
+           is.sep = "Y")
   
   # adult stats combined sexes
   ss_ad <- data %>%
@@ -133,7 +137,8 @@ calc.devstats <- function(data){
               n = sum(na.omit(!is.na(jdate.eclose)))
     ) %>%
     mutate(stage = "ad",
-           sex = "all")
+           sex = "all",
+           is.sep = "N")
   
   return(list(ss_la, ss_pu.sex, ss_pu, ss_ad.sex, ss_ad))
   
