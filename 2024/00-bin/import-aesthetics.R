@@ -12,7 +12,7 @@
 # aes_4temp <- c("26-26", "40-19", "40-26", "40-33")
 # aes_4tempcol <- c("#4393ce", "#fdae61", "#d73027", "#a50026")
 
-aes_4temp <- list(c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
+bin_aes.4temp <- list(c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
                   c("26-26", "40-19", "40-26", "40-33"),
                   c("#4393ce", "#fdae61", "#d73027", "#a50026"))
 
@@ -21,7 +21,7 @@ aes_4temp <- list(c("26-26°C", "40-19°C", "40-26°C", "40-33°C"),
 # aes_3tempC <- c("40-19", "40-26", "40-33")
 # aes_3tempcol <- c("#fdae61", "#d73027", "#a50026")
 
-aes_3temp <- list(c("40-19°C", "40-26°C", "40-33°C"),
+bin_aes.3temp <- list(c("40-19°C", "40-26°C", "40-33°C"),
                   c("40-19", "40-26", "40-33"),
                   c("#fdae61", "#d73027", "#a50026"))
 
@@ -31,7 +31,7 @@ aes_3temp <- list(c("40-19°C", "40-26°C", "40-33°C"),
 # aes_stg <- c("larva", "pupa", "adult")
 # aes_stgcol <- c("#1B9E77", "#D95F02", "#7570B3")
 
-aes_stg <- list(c("larva", "pupa", "adult"),
+bin_aes.stg <- list(c("larva", "pupa", "adult"),
                 c("#1B9E77", "#D95F02", "#7570B3"))
 
 
@@ -40,10 +40,10 @@ aes_stg <- list(c("larva", "pupa", "adult"),
 # aes_2col <- c("#D95F02", "#7570B3")
 # aes_3col <- c("#1B9E77", "#D95F02", "#7570B3")
 
-aes_pal <- list(c("#4393ce", "#fdae61"),
+bin_aes.pal <- list(c("#4393ce", "#fdae61"),
                 c("#1B9E77", "#D95F02", "#7570B3"))
 
-aes_sex <- list(c(19, 17, 15),
+bin_aes.sex <- list(c(19, 17, 15),
                 c(21, 24, 22),
                 c("#019e73","#cc79a7","#0072b2"),
                 c(24, 22),
