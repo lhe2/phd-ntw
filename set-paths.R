@@ -12,7 +12,8 @@ bin_paths24 <- list(y24 = here("2024"),
                     util = here("2024", "00-util"),
                     clean = here("2024", "01-cleaning"),
                     wrangle = here("2024", "02-wrangle"),
-                    do = here("2024", "03-analysis"))
+                    doviz = here("2024", "03-viz"),
+                    dostats = here("2024", "03-stats"))
 
 bin_paths23 <- list(y23 = here("2023"),
                     data = here("2023", "data"))
