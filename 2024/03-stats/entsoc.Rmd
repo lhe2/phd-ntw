@@ -1,0 +1,195 @@
+---
+title: "stats/entsoc.Rmd"
+date: "2025-02-20"
+---
+
+# setup
+
+```{r}
+here::i_am("2024/03-stats/entsoc.Rmd")
+library(here)
+
+library(tidyverse)
+library(lme4)
+
+source(here::here("set-paths.R"))
+source(here::here(bin_paths24$wrangle, "entsoc.R"))
+```
+
+# pupal survival
+
+```{r surv stats}
+mod_surv <- glm(status ~ as.factor(minT), data = d_surv, family = "binomial")
+mod_surv2 <- glm(status ~ as.factor(minT)*sex, data = d_surv, family = "binomial")
+
+summary(mod_surv)
+anova(mod_surv, test = "Chisq") # minT ***
+```
+
+
+# pupal, adult mass
+
+```{r pupal mass stats}
+# trying other possible influencing factors first
+mod_pmass1 <- lm(mass.pupa ~ as.factor(minT)*sex, data = d23)
+mod_pmass2 <- lm(mass.pupa ~ as.factor(minT), data = d23) # better per AIC
+
+anova(mod_pmass1) # minT ***, sex ns (0.19), int ns (0.42)
+anova(mod_pmass2) # minT ***
+
+AIC(mod_pmass1) # 351.1274
+AIC(mod_pmass2) # 348.6995
+```
+
+```{r adult mass stats}
+mod_amass1 <- lm(mass.eclose ~ as.factor(minT)*sex, data = d23) # better per AIC
+mod_amass2 <- lm(mass.eclose ~ as.factor(minT), data = d23)
+
+anova(mod_amass1) # minT ***, sex **
+anova(mod_amass2) # minT ***
+
+AIC(mod_amass1) # 214.7664
+AIC(mod_amass2) # 220.7273
+```
+
+
+
+# larval dev, adult longevity
+
+```{r larval dtime stats}
+mod_ltime1 <- lm((jdate.pupa - jdate.hatch) ~ as.factor(minT)*as.factor(sup), data = d23) # better per AIC
+mod_ltime2 <- lm((jdate.pupa - jdate.hatch) ~ as.factor(minT), data = d23)
+
+anova(mod_ltime1) # minT ***, sup ***, int ns (0.75)
+anova(mod_ltime2) # minT ***
+
+AIC(mod_ltime1) # 480.7616
+AIC(mod_ltime2) # 576.1871
+```
+
+
+```{r adult dtime stats}
+mod_atime1 <- lm((jdate.surv - jdate.eclose) ~ as.factor(minT)*sex, data = d23) 
+mod_atime2 <- lm((jdate.surv - jdate.eclose) ~ as.factor(minT), data = d23) # better per AIC
+
+anova(mod_atime1) # minT ns (0.55), sex ns (0.81)
+anova(mod_atime2) # minT ns
+
+AIC(mod_atime1) # 158.7356
+AIC(mod_atime2) # 156.8043
+```
+
+# fertility
+
+## - btwn trts
+```{r modeling btwn}
+# no random effs bc of tent grouping lol
+
+# fecundity 
+mod_bfec <- lm(avg.laidf ~ trt.hs*trt.sex, data = d_btwn)
+mod_bfec.log <- lm(log.fec ~ trt.hs*trt.sex, data = d_btwn)
+
+# fertility
+mod_bfert <- lm(prop.hatched ~ trt.hs*trt.sex, data = d_btwn)
+mod_bfert.log <- lm(log.fert ~ trt.hs*trt.sex, data = d_btwn)
+```
+
+```{r checking btwn mods}
+anova(mod_bfec) # trt (0.95), sex (.17), int (0.82) ns 
+anova(mod_bfec.log) # trt (0.79), sex (.97), int (0.64) ns 
+AIC(mod_bfec) # 177.0551
+AIC(mod_bfec.log) # 61.76643
+
+anova(mod_bfert) 
+anova(mod_bfert.log)  
+AIC(mod_bfert) # better?? not rly tho - they are pretty close anyway lol
+AIC(mod_bfert.log)
+```
+
+```{r qq btwn mods}
+# fecundity
+qqnorm(resid(mod_bfec), main = "QQ btwn fecundity")
+qqline(resid(mod_bfec))
+
+qqnorm(resid(mod_bfec.log), main = "QQ log(btwn fecundity)") # this is better (sorta)
+qqline(resid(mod_bfec.log))
+
+# fertility 
+# they both rly suck bc of a shitton of 0s lol
+qqnorm(resid(mod_bfert), main = "QQ btwn fertility")
+qqline(resid(mod_bfert))
+
+qqnorm(resid(mod_bfert.log), main = "QQ log(btwn fertility)")
+qqline(resid(mod_bfert.log))
+```
+
+
+Analysis of Variance Table
+
+Response: avg.laidf
+               Df Sum Sq Mean Sq F value Pr(>F)
+trt.hs          1     48    48.0  0.0039 0.9517
+trt.sex         1  27487 27487.0  2.2042 0.1685
+trt.hs:trt.sex  1    680   680.4  0.0546 0.8200
+Residuals      10 124702 12470.2               
+Analysis of Variance Table
+
+Response: log.fec
+               Df Sum Sq Mean Sq F value Pr(>F)
+trt.hs          1  0.242  0.2421  0.0732 0.7922
+trt.sex         1  0.005  0.0052  0.0016 0.9693
+trt.hs:trt.sex  1  0.784  0.7844  0.2372 0.6368
+Residuals      10 33.075  3.3075               
+[1] 177.0551
+[1] 61.76643
+
+
+Analysis of Variance Table
+
+Response: prop.hatched
+               Df   Sum Sq   Mean Sq F value Pr(>F)
+trt.hs          1 0.002134 0.0021337  0.3753 0.5553
+trt.sex         1 0.007761 0.0077610  1.3653 0.2726
+trt.hs:trt.sex  1 0.000566 0.0005664  0.0996 0.7595
+Residuals       9 0.051161 0.0056845               
+Analysis of Variance Table
+
+Response: log.fert
+               Df   Sum Sq   Mean Sq F value Pr(>F)
+trt.hs          1 0.001633 0.0016333  0.3449 0.5715
+trt.sex         1 0.006554 0.0065543  1.3841 0.2696
+trt.hs:trt.sex  1 0.000402 0.0004023  0.0849 0.7773
+Residuals       9 0.042620 0.0047355               
+[1] -25.0981
+[1] -27.47261
+
+
+
+## - win trts
+```{r modeling win}
+# fecundity 
+mod_wfec.log <- lm(log.fec ~ trt.hs, data = d_win)
+
+# fertility
+mod_wfert <- lm(prop.hatched ~ trt.hs, data = d_win)
+```
+
+
+```{r checking win mods}
+anova(mod_wfec.log) # trt (0.94) ns
+
+anova(mod_wfert) # trt (0.21) ns
+
+```
+
+
+```{r qqplots win}
+# fecundity
+qqnorm(resid(mod_wfec.log)) 
+qqline(resid(mod_wfec.log))
+
+# fertility 
+qqnorm(resid(mod_wfert))
+qqline(resid(mod_wfert))
+
+```
