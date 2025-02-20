@@ -35,10 +35,8 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 >>>>>>> b18d659151ab2a9fb345881f6d430cff20f3a211
-ntw_prelim-analysis.nb.html
-ntw_prelim-analysis2.nb.html
-ntw_prelim-analysis3.nb.html
-ntw_prelim-analysis.nb copy.html
 */figs/*
 */data/*
 notes/*
+archive/*
+*/02-wrangle/*.R

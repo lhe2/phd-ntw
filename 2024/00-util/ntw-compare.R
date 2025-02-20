@@ -1,39 +1,11 @@
 # helpers_ntw-compare.R
 # 2025-01-23
 
-# dumping help functions and things
+# dumping help functions and things for wrangling
 # see 2024 entsoc files for some ideas/longevity stuff
 
 
-# package loading ---------------------------------------------------------
-library(tidyverse)
-library(patchwork) # for plot_layout
-
-
-# data loading ------------------------------------------------------------
-
-# dev stats
-d23 <- read.csv("~/Documents/repos/ntw/2023/data/clean-ntw.csv", header = TRUE) %>% mutate(year = 2023)
-d24 <- read.csv("~/Documents/repos/ntw/2024/data/ntw.csv", header = TRUE) %>% mutate(year = 2024)
-
-# longevity data
-  # im dumb and survival data is in a separate file,
-  # jdates were calculated using the year so the format is different from d23 lol,
-  # hence a lot of convolution
-source("../2023/helpers_tents.R")
-
-d23_longevity <- data_longevity %>%
-  filter(!is.na(jdate.died)) %>%
-  select(id, sex, trt, jdate.ec, jdate.died) %>%
-  rename(jdate.lec = jdate.ec,
-         jdate.lsurv = jdate.died)
-
-rm(data_tstats, data_hatch, data_longevity,
-   labels.alltrts, labels.exptrts, RYB,
-   x_err_ncoll, x_err_ncollf, y_err_hrate)
-
-
-# function making ---------------------------------------------------------
+#library(patchwork) # for plot_layout
 
 
 ## some useful generics ----------------------------------------------------
@@ -188,11 +160,5 @@ calc.ssmoredev <- function(data){
   return(Reduce(full_join, (list(ss_moredev, ss_moredev.sex))))
   
 }
-
-
-# df prepping -------------------------------------------------------------
-
-# things for modeling
-
 
   
