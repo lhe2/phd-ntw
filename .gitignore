@@ -42,3 +42,4 @@ ntw_prelim-analysis.nb copy.html
 */figs/*
 */data/*
 notes/*
+*/02-wrangle/*.R
