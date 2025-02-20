@@ -15,6 +15,7 @@ library(lme4)
 source(here::here("set-paths.R"))
 source(here::here(bin_paths24$wrangle, "ntw-compare.R"))
 ```
+
 # pupal survival
 
 ```{r}
@@ -36,15 +37,20 @@ anova(mod.surv_minT, mod.surv_meanT, test = "Chisq")
 
 ```
 
-
 # pupal mass
+
+## 01. first attempts
 
 what affects pupal mass? Tmin, sex, year, pop?
 
 (numbering is just based on when i ran them lol)
 
-```{r 01. full models}
-# test the full complex int mod vs the full additive model
+```{r}
+# 01: test the full complex int mod vs the full additive model
+# mods.pmass <- list(int_01 = lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex),
+#                    add_01 = lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex))
+#names(mods.pmass)
+
 mod.pmass_int01 <- lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex)
 mod.pmass_add01 <- lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex)
 
@@ -55,8 +61,8 @@ anova(mod.pmass_int01)
 anova(mod.pmass_add01)
 ```
 
-
-```{r 02: look at int mod again}
+```{r}
+# 02: look at int mod again
 # based on plotting the pupal masses by temp/sex/yr/pop. which ints matter?
 
 # drop year
@@ -75,11 +81,12 @@ anova(mod.pmass_int02, mod.pmass_int03, test = "Chisq") # no sig diff, so keep s
 anova(mod.pmass_int02)
 ```
 
-- `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
-  - *** = minT; pop
-  - * = sex, minT*pop
+-   `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
+    -   minT; pop = `***`
+    -   sex, minT:pop = `*`
 
-```{r 03: look into the additive mods some more}
+```{r}
+# 03: look into the additive mods some more
 # drop year
 mod.pmass_add02 <- lm(mass.pupa ~ minT + pop + sex, data = ntw_expt.sex)
 
@@ -88,10 +95,26 @@ anova(mod.pmass_int02, mod.pmass_add02, test = "Chisq") # no sig diff
 
 idt this one is right lol bc year def makes a difference
 
+## 02. post 250220 joel mtg
+
+try the 2 way interactions only....
+
+```{r}
+# mods.pmass <- list(mods.pmass,
+#                    n2way_01 =lm(mass.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt.sex))
+  # ONE DAY... we'll figure it out shoving models into lists lol
+
+mod.pmass_n2way01 <- lm(mass.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt.sex)
+
+anova(mod.pmass_n2way01)
+# *** yr, minT, pop
+# * sex, minT:pop
+```
 
 # time to pup
 
-```{r 01: full models}
+```{r}
+# 01 full models
 mod.pdev_int01 <- lm(tt.pupa ~ year*minT*pop*sex, data = ntw_expt)
 mod.pdev_add01 <- lm(tt.pupa ~ year+minT+pop+sex, data = ntw_expt)
 
@@ -100,5 +123,5 @@ anova(mod.pdev_int01, mod.pdev_add01, test = "Chisq")
 anova(mod.pdev_int01)
 anova(mod.pdev_add01)
 ```
-- intmod is better?
 
+intmod is better?

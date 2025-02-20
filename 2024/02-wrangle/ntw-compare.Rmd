@@ -346,7 +346,7 @@ ntw_expt <- ntw_wide %>%
 ```{r specific ntw filters}
 # omit accidental deaths (so either pmd, pup, LPI)
 ntw_expt.surv <- ntw_expt %>%
-  filter(is.pup != 2) 
+  filter(is.pup != 2)
 
 # omit unsexed pupa
 ntw_expt.sex <- ntw_expt %>%
