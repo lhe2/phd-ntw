@@ -7,7 +7,11 @@ date: "2025-02-20"
 
 wrangling data for 2024 entsoc poster.
 
-final code is purled to a `.R` script, rerun final step as needed to update the wrangling for analyses
+final code is purled to a `.R` script, rerun `purl()` step as needed to update the wrangling for analyses
+
+```{r eval=FALSE, include=FALSE, purl=FALSE}
+knitr::purl("entsoc.Rmd")
+```
 
 other notes:
 
@@ -368,16 +372,12 @@ d_btwn <- d_repro %>%
   filter(trt.ref == "btwn")
 ```
 
-# 5. export to .R
+# 5. remove extra dfs
+
 ```{r cleanup}
 rm(backup_d23.all, backup_d23.init)
 
 rm(dad, dtents)
-```
-
-
-```{r purl=FALSE}
-knitr::purl("entsoc.Rmd")
 ```
 
 

@@ -7,7 +7,11 @@ date: "2025-02-20"
 
 wrangling data for 2024 data only.
 
-final code is purled to a `.R` script, rerun final step as needed to update the wrangling for analyses
+final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
+
+```{r eval=FALSE, include=FALSE, purl=FALSE}
+knitr::purl("ntw.Rmd")
+```
 
 # 1. loading & defining
 
@@ -166,11 +170,5 @@ surv_summf <- surv_summary %>%
 
 dev_summf <- dev_summary %>%
   filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
-```
-
-# 4. export to .R
-
-```{r purl=FALSE}
-knitr::purl("ntw.Rmd")
 ```
 

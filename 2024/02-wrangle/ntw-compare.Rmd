@@ -7,7 +7,11 @@ date: "2025-02-19
 
 wrangling data for 2023 v 2024 comparisons. 
 
-final code is purled to a `.R` script, rerun step 6 as needed to update the wrangling for analyses
+final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
+
+```{r eval=FALSE, include=FALSE, purl=FALSE}
+knitr::purl("ntw-compare.Rmd")
+```
 
 other notes:
 
@@ -349,7 +353,7 @@ ntw_expt.sex <- ntw_expt %>%
   filter(!is.na(sex))
 ```
 
-# 6. export to .R
+# 6. cleanup
 
 ```{r cleanup}
 rm(test, test2)
@@ -357,10 +361,5 @@ rm(test, test2)
 rm(calc.devstats, calc.ssadj, calc.ssmoredev)
  
 rm(all, d23, d23_longevity, d24)
-```
-
-
-```{r purl=FALSE}
-knitr::purl("ntw-compare.Rmd")
 ```
 
