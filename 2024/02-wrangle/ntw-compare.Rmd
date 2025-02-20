@@ -153,11 +153,11 @@ d24 <- d24 %>%
 # 3. merging
 
 ```{r final df}
-all <- merge(d24, d23, all = TRUE
-             ) %>%
+all <- merge(d24, d23, all = TRUE) %>%
   drop_na(id) %>%
-  select(-c("instar.enter",
-            ))
+  select(-c("instar.enter")) %>%
+  mutate(is.pup = surv.outcome)
+
 
 # drop things that died in 1 day
   # 2025-01-23: can i do this??????
@@ -174,6 +174,8 @@ all <- all %>%
          year = factor(year, levels = c(2023, 2024)),
          is.sup = case_when(sup == 0 ~ 0,
                             sup > 1 ~ 1),
+         is.ec = case_when(!is.na(jdate.eclose) ~ 1,
+                               is.pup == 1 & is.na(jdate.eclose) ~ 0),
          for.ntw = case_when(#year == 2023 & cohort %in% c("A", "B") ~ "N",
                              trt %in% c(260, 419, 426, 433) ~ "Y",
                              TRUE ~ "N"),
@@ -271,15 +273,15 @@ ss_devall <- ntw_wide %>%
   filter(!(diet == "TB" & pop == "lab")) %>%
   group_by(year, diet, pop, trt) %>%
   summarise(n.tot = n(),
-            n.pmd = sum(na.omit(surv.outcome == 0)),
-            n.misc = sum(na.omit(surv.outcome == 2)),
-            n.pup = sum(na.omit(surv.outcome == 1)),
-            n.sup = sum(na.omit(surv.outcome == 1 & sup > 0)),
+            n.pmd = sum(na.omit(is.pup == 0)),
+            n.misc = sum(na.omit(is.pup == 2)),
+            n.pup = sum(na.omit(is.pup == 1)),
+            n.sup = sum(na.omit(is.pup == 1 & sup > 0)),
             n.dev = n.tot - n.misc, # = pmd + pups of any sup
-            n.5th = sum(na.omit(sup == 0 & surv.outcome == 1)),
-            n.6th = sum(na.omit(sup == 6 & surv.outcome == 1)),
-            n.7th = sum(na.omit(sup == 7 & surv.outcome == 1)),
-            n.8th = sum(na.omit(sup == 8 & surv.outcome == 1)),
+            n.5th = sum(na.omit(sup == 0 & is.pup == 1)),
+            n.6th = sum(na.omit(sup == 6 & is.pup == 1)),
+            n.7th = sum(na.omit(sup == 7 & is.pup == 1)),
+            n.8th = sum(na.omit(sup == 8 & is.pup == 1)),
             p.pmd = round(n.pmd/n.dev, digits = 3),
             p.sup = round(n.sup/n.dev, digits = 3),
             p.5th = round(n.5th/n.dev, digits = 3),
@@ -293,7 +295,7 @@ ss_devall <- ntw_wide %>%
 ss_devpmd <- ntw_wide %>%
   mutate(trt = as.factor(trt)) %>%
   filter(!(diet == "TB" & pop == "lab")) %>%
-  filter(surv.outcome == 1) %>%
+  filter(is.pup == 1) %>%
   group_by(year, diet, pop, trt) %>%
   summarise(n.tot = n(),
             n.5th = sum(na.omit(sup == 0)),
@@ -340,7 +342,7 @@ ntw_expt <- ntw_wide %>%
 ```{r specific ntw filters}
 # omit accidental deaths (so either pmd, pup, LPI)
 ntw_expt.surv <- ntw_expt %>%
-  filter(surv.outcome != 2) 
+  filter(is.pup != 2) 
 
 # omit unsexed pupa
 ntw_expt.sex <- ntw_expt %>%

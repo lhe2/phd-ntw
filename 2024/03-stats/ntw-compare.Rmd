@@ -20,9 +20,9 @@ source(here::here(bin_paths24$wrangle, "ntw-compare.R"))
 ```{r}
 # scrappy modeling for 250213 mtg -- ignore lol
 
-mod.surv_minT <- glm(surv.outcome ~ minT*pop, data = ntw_expt.surv, family = "binomial") # need to add `year`
+mod.surv_minT <- glm(is.pup ~ minT*pop, data = ntw_expt.surv, family = "binomial") # need to add `year`
 
-# mod.surv_meanT <- glm(surv.outcome ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
+# mod.surv_meanT <- glm(is.pup ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
   # ignore meanT bc it's confounded w minT
 
 anova(mod.surv_minT, mod.surv_meanT, test = "Chisq") 
