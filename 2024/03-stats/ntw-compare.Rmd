@@ -1,0 +1,75 @@
+---
+title: "03-stats/ntw-compare"
+date: "2025-02-19
+---
+
+# setup
+
+```{r}
+here::i_am("2024/03-stats/ntw-compare.Rmd")
+library(here)
+
+library(tidyverse)
+library(lme4)
+
+source(here::here("set-paths.R"))
+source(here::here(bin_paths24$wrangle, "ntw-compare.R"))
+```
+## pupal survival
+
+```{r}
+mod.surv_minT <- glm(surv.outcome ~ minT*pop, data = ntw_expt.surv, family = "binomial")
+# mod.surv_meanT <- glm(surv.outcome ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
+  # ignore meanT bc it's confounded w minT
+
+anova(mod.surv_minT, mod.surv_meanT, test = "Chisq") 
+
+```
+
+
+## pupal mass
+
+what affects pupal mass? Tmin, sex, year, pop?
+
+(numbering is just based on when i ran them lol)
+
+```{r}
+# 01: test the full complex vs the full additive model
+mod.pmass_int01 <- lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex)
+mod.pmass_add01 <- lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex)
+
+anova(mod.pmass_int01, mod.pmass_add01, test = "Chisq") # no sig diff btwn add/int: add is better
+```
+
+
+```{r}
+# 02: look at int mod again after plotting the pupal masses by temp/sex/yr/pop. which ints matter?
+
+# drop year
+mod.pmass_int02 <- lm(mass.pupa ~ minT*pop*sex, data = ntw_expt.sex) 
+
+anova(mod.pmass_int01, mod.pmass_int02, test = "Chisq") # temp*pop*sex is better
+
+anova(mod.pmass_int02)
+
+# drop sex
+mod.pmass_int03 <- lm(mass.pupa ~ minT*pop, data = ntw_expt.sex) 
+
+anova(mod.pmass_int02, mod.pmass_int03, test = "Chisq") # no sig diff, so keep sex?
+
+# which terms matter?
+anova(mod.pmass_int02)
+```
+
+- `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
+  - *** = minT; pop
+  - * = sex, minT*pop
+
+```{r}
+# 03: look into the additive mods
+mod.pmass_add02 <- lm(mass.pupa ~ minT + pop + sex, data = ntw_expt.sex)
+
+anova(mod.pmass_int02, mod.pmass_add02, test = "Chisq") # no sig diff
+```
+
+

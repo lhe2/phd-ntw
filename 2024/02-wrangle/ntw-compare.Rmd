@@ -36,6 +36,9 @@ source(here::here(bin_paths24$util, "ntw-compare.R"))
 ```{r load 2324 dev data}
 d23 <- read.csv(here(bin_paths23$data, "clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023)
 d24 <- read.csv(here(bin_paths24$data, "ntw.csv"), header = TRUE) %>% mutate(year = 2024)
+
+test <- d23
+#d23 <- test
 ```
 
 - adult longevity data was very convolutedly calculated and i am now suffering the consequences
@@ -232,13 +235,18 @@ ntw_wide <- filter(all_wide, for.ntw == "Y")
 
 ```{r}
 # apply calcs to data
-ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
+#ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
 
-ss_ntw <- Reduce(full_join, ss_all[[1]]) %>% 
-  calc.ssadj()
+# ss_ntw <- Reduce(full_join, ss_all[[1]]) %>% 
+#   calc.ssadj()
 
 # ss_cvf <- Reduce(full_join, ss_all[[2]]) %>%
 #   calc.ssadj()
+
+ss_ntw <- ntw_wide %>%
+  calc.devstats() %>%
+  Reduce(full_join, .) %>%
+  calc.ssadj()
 ```
 
 ## - dev ss variations
@@ -336,6 +344,15 @@ ntw_expt.sex <- ntw_expt %>%
 ```
 
 # 6. export to .R
+
+```{r cleanup}
+rm(test, test2)
+
+rm(calc.devstats, calc.ssadj, calc.ssmoredev)
+ 
+rm(all, d23, d23_longevity, d24)
+```
+
 
 ```{r purl=FALSE}
 knitr::purl("ntw-compare.Rmd")
