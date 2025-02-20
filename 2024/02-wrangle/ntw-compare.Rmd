@@ -7,8 +7,14 @@ date: "2025-02-19
 
 wrangling data for 2023 v 2024 comparisons. 
 
-final code is purled to a `.R` script, rerun step 6 as needed
+final code is purled to a `.R` script, rerun step 6 as needed to update the wrangling for analyses
 
+other notes:
+
+- 2025-02-13: commenting out/moved out some of the 26/33 vs ±0/7 stuff.
+
+
+# 1. loading & defining
 
 ```{r about}
 # wrangle/ntw-compare.R
@@ -17,9 +23,6 @@ final code is purled to a `.R` script, rerun step 6 as needed
 # source() this in corresponding analysis scripts.
 ```
 
-
-# 1. loading & defining
-
 ```{r load utils}
 library(tidyverse)
 
@@ -27,6 +30,7 @@ here::i_am("2024/02-wrangle/ntw-compare.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
+source(here::here(bin_paths24$util, "ntw-compare.R"))
 ```
 
 ```{r load 2324 dev data}
@@ -178,9 +182,11 @@ all <- all %>%
 ```
 
 
-# 4. plotting df prep (math)
+# 4. figs df prep (math)
 
-## pivot
+## - pivot
+
+2025-01-20: filtering out diet wonkiness here lol. we can revisit it later if needed
 
 ```{r}
 all_wide <- all %>%
@@ -218,7 +224,11 @@ ntw_wide <- filter(all_wide, for.ntw == "Y")
 #cvf_wide <- filter(all_wide, for.const == "Y")
 ```
 
-## stage-specific summary stats
+## - stage-specific summary stats
+
+2025-01-20 troubleshooting:
+- https://stackoverflow.com/questions/73533852/create-multiple-dataframes-based-on-the-dates-of-another-dataframe-in-r
+- https://stackoverflow.com/a/24376207/3358227
 
 ```{r}
 # apply calcs to data
@@ -231,7 +241,7 @@ ss_ntw <- Reduce(full_join, ss_all[[1]]) %>%
 #   calc.ssadj()
 ```
 
-## dev ss variations
+## - dev ss variations
 
 ```{r}
 ss_moredev <- ntw_wide %>%
@@ -239,7 +249,10 @@ ss_moredev <- ntw_wide %>%
   calc.ssmoredev()
 ```
 
-## dev outcomes
+## - dev outcomes
+
+//todo
+- 2025-02-04: try to group by surv outcome maybe... (instead of splitting into 2 dfs)
 
 ```{r}
 # pmds + sup of those that pup'ed
@@ -297,7 +310,13 @@ ss_devpmd2 <- ss_devpmd %>%
     filter(stage %in% c("5th", "6th", "7th"))
 ```
 
+
+
 # 5. stats df prep (filtering)
+
+- filter bugs for modeling: 
+  - exptal bugs only (D = 40, N = 19/26/40)
+  - field on TB and lab on LD
 
 ```{r general ntw filter}
 ntw_expt <- ntw_wide %>%

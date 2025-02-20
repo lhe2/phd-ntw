@@ -12,6 +12,7 @@ here::i_am("2024/02-wrangle/ntw-compare.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
+source(here::here(bin_paths24$util, "ntw-compare.R"))
 
 
 ## ----load 2324 dev data------------------------------------------------------------------------
