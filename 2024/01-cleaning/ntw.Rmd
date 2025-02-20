@@ -20,7 +20,7 @@ date: "2024-09-23"
 here::i_am("2024/01-cleaning/ntw.Rmd")
 library(here)
 
-source(here::here("set-2024-paths.R"))
+source(here::here("set-paths.R"))
 source(here::here(bin_paths$bin, "import-gsheets.R"))
 ```
 

@@ -3,7 +3,7 @@
 
 # pathfinding with 'here'
 
-here::i_am("set-2024-paths.R")
+here::i_am("set-paths.R")
 library(here)
 
 bin_paths24 <- list(y24 = here("2024"),
