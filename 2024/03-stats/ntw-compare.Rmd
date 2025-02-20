@@ -9,7 +9,7 @@ date: "2025-02-19
 here::i_am("2024/03-stats/ntw-compare.Rmd")
 library(here)
 
-library(tidyverse)
+#library(tidyverse)
 library(lme4)
 
 source(here::here("set-paths.R"))

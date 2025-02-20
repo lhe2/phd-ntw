@@ -322,6 +322,8 @@ ss_devpmd2 <- ss_devpmd %>%
 
 # 5. stats df prep (filtering)
 
+(lowkey this could go into the stats script instead...)
+
 - filter bugs for modeling: 
   - exptal bugs only (D = 40, N = 19/26/40)
   - field on TB and lab on LD
