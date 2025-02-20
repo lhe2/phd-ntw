@@ -518,9 +518,20 @@ p1 + p2 +
 
 # dmass
 
-## - check decrease
+## - check decrease (R^2)
 
 is decrease in mass from pup to ec proportional?
+
+```{r}
+summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "expt")))$r.squared
+# 0.5518755
+
+summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "ctrl")))$r.squared
+# 0.6266585
+
+summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab"))))$r.squared
+# 0.7310885
+```
 
 ```{r}
 ntw_wide %>%
@@ -552,18 +563,47 @@ ntw_wide %>%
 
 ```
 
+seems like yes (in both the ctrls and exptal bugs)
+
+
+## - check decrease (slope)
+
 ```{r}
-summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "expt")))$r.squared
-# 0.5518755
+# expt NTs only
+coef(lm(mass.eclose ~ mass.pupa , data = filter(ntw_wide, minT == 19)))[2] # 0.392141
+coef(lm(mass.eclose ~ mass.pupa , data = filter(ntw_wide, minT == 26 & trt.type == "expt")))[2] # 0.4787052 
+coef(lm(mass.eclose ~ mass.pupa , data = filter(ntw_wide, minT == 33)))[2] #  0.285198 
 
-summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab") & trt.type == "ctrl")))$r.squared
-# 0.6266585
-
-summary(lm(mass.eclose ~ mass.pupa, data = filter(ntw_wide, !(diet == "TB" & pop == "lab"))))$r.squared
-# 0.7310885
+# ctrls, expts, all
+coef(lm(mass.eclose ~ mass.pupa , data = filter(ntw_wide, trt.type == "ctrl")))[2] # 0.4372342
+coef(lm(mass.eclose ~ mass.pupa , data = filter(ntw_wide, trt.type == "expt")))[2] # 0.4012044
+coef(lm(mass.eclose ~ mass.pupa , data = ntw_wide))[2] # 0.428684
 ```
 
-seems like yes (in both the ctrls and exptal bugs)
+```{r}
+ntw_wide %>%
+  #filter(trt.type == "expt") %>%
+  mutate(trt.type = factor(trt.type, levels = c("expt", "ctrl"))) %>%
+  ggplot(aes(y = mass.eclose, x = mass.pupa, 
+             col = minT, fill = minT,
+             shape = trt.type, lty = trt.type)) +
+  geom_point() +
+  geom_smooth(data = filter(ntw_wide, trt.type == "expt"),
+              method = "lm", alpha = 0.25,
+              show.legend = FALSE) +
+  theme_bw() +
+  scale_color_manual(values = bin_aes$pals$col3) +
+  scale_fill_manual(values = bin_aes$pals$col3) +
+  annotate("text", x = 1500, y = 3750, label = "40-26 = 0.479", col = "#D95F02") +
+  annotate("text", x = 1500, y = 3500, label = "26-26 = 0.437") +
+  annotate("text", x = 1500, y = 3250, label = "all = 0.429") +
+  annotate("text", x = 1500, y = 3000, label = "40-19 = 0.392", col = "#1B9E77") +
+  annotate("text", x = 1500, y = 2750, label = "40-33 = 0.285", col = "#7570B3") +
+  labs(caption = "mass pup vs mass eclosion (slopes of exptal groups)") 
+```
+
+
+
 
 ## - by sex
 
