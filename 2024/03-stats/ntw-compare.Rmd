@@ -9,41 +9,55 @@ date: "2025-02-19
 here::i_am("2024/03-stats/ntw-compare.Rmd")
 library(here)
 
-#library(tidyverse)
+library(tidyverse)
 library(lme4)
 
 source(here::here("set-paths.R"))
 source(here::here(bin_paths24$wrangle, "ntw-compare.R"))
 ```
-## pupal survival
+# pupal survival
 
 ```{r}
-mod.surv_minT <- glm(surv.outcome ~ minT*pop, data = ntw_expt.surv, family = "binomial")
+# scrappy modeling for 250213 mtg -- ignore lol
+
+mod.surv_minT <- glm(surv.outcome ~ minT*pop, data = ntw_expt.surv, family = "binomial") # need to add `year`
+
 # mod.surv_meanT <- glm(surv.outcome ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
   # ignore meanT bc it's confounded w minT
 
 anova(mod.surv_minT, mod.surv_meanT, test = "Chisq") 
+```
+
+```{r}
+# actual modeling attempts w/ MuMin and things
+
+
+
 
 ```
 
 
-## pupal mass
+# pupal mass
 
 what affects pupal mass? Tmin, sex, year, pop?
 
 (numbering is just based on when i ran them lol)
 
-```{r}
-# 01: test the full complex vs the full additive model
+```{r 01. full models}
+# test the full complex int mod vs the full additive model
 mod.pmass_int01 <- lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex)
 mod.pmass_add01 <- lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex)
 
 anova(mod.pmass_int01, mod.pmass_add01, test = "Chisq") # no sig diff btwn add/int: add is better
+
+# just look at the variables
+anova(mod.pmass_int01)
+anova(mod.pmass_add01)
 ```
 
 
-```{r}
-# 02: look at int mod again after plotting the pupal masses by temp/sex/yr/pop. which ints matter?
+```{r 02: look at int mod again}
+# based on plotting the pupal masses by temp/sex/yr/pop. which ints matter?
 
 # drop year
 mod.pmass_int02 <- lm(mass.pupa ~ minT*pop*sex, data = ntw_expt.sex) 
@@ -65,11 +79,26 @@ anova(mod.pmass_int02)
   - *** = minT; pop
   - * = sex, minT*pop
 
-```{r}
-# 03: look into the additive mods
+```{r 03: look into the additive mods some more}
+# drop year
 mod.pmass_add02 <- lm(mass.pupa ~ minT + pop + sex, data = ntw_expt.sex)
 
 anova(mod.pmass_int02, mod.pmass_add02, test = "Chisq") # no sig diff
 ```
 
+idt this one is right lol bc year def makes a difference
+
+
+# time to pup
+
+```{r 01: full models}
+mod.pdev_int01 <- lm(tt.pupa ~ year*minT*pop*sex, data = ntw_expt)
+mod.pdev_add01 <- lm(tt.pupa ~ year+minT+pop+sex, data = ntw_expt)
+
+anova(mod.pdev_int01, mod.pdev_add01, test = "Chisq")
+
+anova(mod.pdev_int01)
+anova(mod.pdev_add01)
+```
+- intmod is better?
 

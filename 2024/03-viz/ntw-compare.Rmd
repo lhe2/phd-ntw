@@ -18,7 +18,7 @@ library(patchwork)
 
 source(here::here("set-paths.R"))
 source(here::here(bin_paths24$wrangle, "ntw-compare.R"))
-source(here::here(bin_paths24$doviz, "aesthetics.R"))
+source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 ```
 
 troubleshooting ref
@@ -256,6 +256,69 @@ p1 + p2 +
 
 ```
 
+## - larva only (time to pup)
+
+```{r}
+p1 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.tt, x = minT,
+             color = stage, 
+             group = interaction(pop, stage)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_wrap(~year) + # orig
+  # facet_grid(stage~year, scales = "free_y"
+  #            ) +
+  theme_bw()
+
+p1
+
+
+p2 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "ctrl") %>%
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.tt, x = year,
+             color = stage, 
+             group = interaction(pop, stage)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  #geom_point(aes(alpha = year), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  geom_point(#fill = NA, 
+             size = 2) +
+  labs(x = "year") +
+  facet_wrap(~trt.type) + # orig
+  # facet_grid(stage~trt.type, scales = "free_y"
+  #            ) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  labs(caption = "do lower NTs reduce pup dev time?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "development time (days)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#1B9E77")) &
+  scale_fill_manual(values = c("#1B9E77")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
+  ylim(c(15, 37))
+
+```
+
 # mass
 
 ## - by sex
@@ -440,8 +503,8 @@ p1 + p2 +
        y = "mass (g)") &
   #guides(color = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = aes_sex[[1]]) &
-  scale_color_manual(values = aes_sex[[3]]) &
+  scale_shape_manual(values = bin_aes$sexes$ptfill_all) &
+  scale_color_manual(values = bin_aes$sexes$colall) &
   #scale_fill_manual(values = c("#D95F02", "#7570B3")) &
   theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 
@@ -451,8 +514,6 @@ p1 + p2 +
   - pop, field < lab
   - minT, interacting with lab
   - sex can prob be ignored
-
-
 
 
 # dmass
@@ -466,6 +527,7 @@ ntw_wide %>%
   filter(!is.na(sex)) %>%
   filter(!(diet == "TB" & pop == "lab") #& trt.type == "expt"
          ) %>%
+  filter(trt.type == "expt") %>%
   ggplot(aes(y = mass.eclose, x = mass.pupa, 
              #lty = sex
              )) +
@@ -483,8 +545,9 @@ ntw_wide %>%
               ) +
   annotate("text", label = "R^2 = 0.731 (all)", color = "blue", x = 1100, y = 4000) +
   theme_bw() +
-  scale_color_manual(values = aes_3col) +
+  scale_color_manual(values = bin_aes$pals$col3) +
   labs(caption = "mass pup vs mass eclosion") +
+  #facet_wrap(~trt.type) +
   xlim(c(500, 8100))
 
 ```
