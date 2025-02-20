@@ -7,15 +7,22 @@ date: "2024-09-23"
 
 = (pulling a lot of of stuff from the 2023 analyses lol)
 
+2025-02-20: mostly superceded by the 23v24 analyses now!!!
+
 ## - questions
 
 - [ ] how do 2024 ctrls compare to 2023 ctrls?
 
 
 ```{r message = FALSE}
-source("./helpers_ntw.R") # need run cleaning.Rmd beforehand if gsheet has been updated
+here::i_am("2024/03-viz/ntw.Rmd")
+library(here)
 
+library(tidyverse)
 library(ggrepel)
+
+source(here::here("set-paths.R"))
+source(here::here(bin_paths24$wrangle, "ntw.R"))
 
 # INCASE: bring this back if u need it and are breaking things
   # library(tidyverse)
@@ -31,52 +38,14 @@ library(ggrepel)
 
 ## - dev outcomes barplot (sup, pmd)
 
-table (for sanity check)
 
-```{r}
-outcomes_table <- wide_all %>%
-  filter(!is.na(surv.outcome)) %>% # excludes things that are still developing
-  mutate(diet = case_when(diet == "LD" ~ "lab diet",
-                          diet == "TB" ~ "tobacco diet"),
-         diet = factor(diet, levels = c("tobacco diet", "lab diet"))
-         ) %>%
-  group_by(pop, diet, labs.trt) %>%
-  summarise(n = n(),
-            n.pmd = sum(na.omit(surv.outcome == 1)),
-            n.misc = sum(na.omit(surv.outcome == 2)),
-            n.surv = n - n.pmd - n.misc,
-            pct.pmd = round(n.pmd/(n-n.misc)*100, digits = 1),
-            n.sup = sum(na.omit(sup > 0)),
-            pct.sup = round(n.sup/n*100, digits = 1),
-            pct.6th = round(sum(na.omit(sup == 6))/n.sup*100, digits = 1),
-            pct.7th = round(sum(na.omit(sup == 7))/n.sup*100, digits = 1),
-            pct.8th = round(sum(na.omit(sup == 8))/n.sup*100, digits = 1)
-            )
-
-outcomes_table
-```
 
 barplot
 
-```{r}
-# data formatting and filtering
-outcomes <- wide_all %>%
-  mutate(sup = case_when(surv.outcome == 1 ~ "pmd",
-                         (surv.outcome == 0 & (is.na(sup) | sup == 0)) ~ "5",
-                         surv.outcome == 0 & sup > 5  ~ as.character(sup)),
-         sup = factor(sup, levels = c("pmd", "5", "6", "7", "8")),
-         diet = case_when(diet == "LD" ~ "lab diet",
-                          diet == "TB" ~ "tobacco diet"),
-         diet = factor(diet, levels = c("tobacco diet", "lab diet"))
-         #trt = factor(sup)
-         ) %>%
-  filter(surv.outcome == 0 | surv.outcome == 1) # excludes things w/ alt deaths/bugs still developing
-  #filter(!is.na(sup) | surv.outcome == 2 | !is.na(surv.outcome)) 
-```
 
 ```{r}  
 # plots
-  # needs outcomes_table from prev prev section
+  # needs outcomes_table 
 
 
 ## all bugs
@@ -122,39 +91,7 @@ outcomes %>%
 
 # 2. main development stats (big 3)
 
-## - df prep
-
 = look at avg pupal mass and avg time to pup (see if need to filter out diet stuff later)
-
-df prep
-
-```{r}
-# remove pmd
-dev_nopmd <- wide_all %>%
-  filter(surv.outcome != 1 | is.na(surv.outcome)) # incl in progress stuff
-```
-
-calculations
-
-```{r}
-dev_summary <- dev_nopmd %>%
-  group_by(pop, diet, labs.trt, 
-           trt.type, minT, #sex #revisit this when theres more LOL
-           ) %>%
-  summarise(n = n(), # todo: 2024-10-08 this doesnt look right tbh LOL... maybe bc of the in-progress ones?
-            avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
-            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
-            avg.mass = mean(na.omit(mass.pupa)),
-            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))))
-
-surv_summary <- wide_all %>%
-  filter(surv.outcome != 2) %>% # omit accidental deaths
-  group_by(pop, diet, labs.trt, 
-           trt.type, minT) %>%
-  summarise(n = n(),
-            n.pmd = sum(surv.outcome == 1), 
-            prop.survpup = round(1-(n.pmd/n), digits=2))
-```
 
 ## - plots (all data)
 
@@ -215,22 +152,6 @@ dev_summary %>%
 
 = per mtg recommendations, focus on lab bugs on LD vs field bugs on TB; omit the 26 constant trt for clarity
 
-
-filtering
-
-```{r}
-# needs outputs of 'df prep'
-
-surv_summf <- surv_summary %>%
-  filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
-
-dev_summf <- dev_summary %>%
-  filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
-```
-
-
-
-plotting
 
 ```{r}
 # survival

@@ -1,0 +1,176 @@
+---
+title: "02-wrangle/ntw"
+date: "2025-02-20"
+---
+
+# 0. preamble
+
+wrangling data for 2024 data only.
+
+final code is purled to a `.R` script, rerun final step as needed to update the wrangling for analyses
+
+# 1. loading & defining
+
+```{r about}
+# wrangle/ntw.R
+
+# knitted wrangling code for 2024 ntw dev figs/analyses.
+# source() this in corresponding analysis scripts.
+
+# note that this script has mostly been superseded for the 23v24 analyses and
+# is meant to be more of a reference!
+```
+
+```{r load utils}
+library(tidyverse)
+
+here::i_am("2024/02-wrangle/ntw.Rmd")
+library(here)
+
+source(here::here("set-paths.R"))
+```
+
+```{r load data}
+wide_all <- read.csv(here::here(bin_paths24$data, "ntw.csv"), header = TRUE)
+```
+
+# 2. calculations & pivot
+
+```{r wide manipulations}
+## add trt labels (idk revisit this when u actually need it lol)
+wide_all <- wide_all %>%
+  mutate(labs.trt = case_when(trt == 260 ~ "26±0°C",
+                              trt == 419 ~ "40-19°C",
+                              trt == 426 ~ "40-26°C",
+                              trt == 433 ~ "40-33°C"))
+
+# calculate instar lengths
+wide_all <- wide_all %>%
+  filter(instar.enter == "hatch") %>%
+  select(-c("jdate.enter", "instar.enter")) %>%
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
+         tt.7th = jdate.7th - jdate.hatch,
+         tt.wander = jdate.wander - jdate.hatch,
+         tt.pupa = jdate.pupa - jdate.hatch,
+         tt.eclose = jdate.eclose - jdate.pupa,
+         #tt.exit = jdate.exit - jdate.hatch, # time to dev outcome
+         #tt.surv = jdate.surv - jdate.eclose, # time spent as adult
+         )
+
+# this needs to be jdate.enter if including those that entered later in the expt?
+# wide_all <- wide_all %>%
+#   filter(instar.enter %in% c("hatch", "2nd")) %>% # drops those super late entered things
+#   mutate(tt.3rd = jdate.3rd - jdate.enter,
+#          tt.4th = jdate.4th - jdate.enter,
+#          tt.5th = jdate.5th - jdate.enter,
+#          tt.6th = jdate.6th - jdate.enter,
+#          tt.7th = jdate.7th - jdate.enter,
+#          tt.wander = jdate.wander - jdate.enter,
+#          tt.pupa = jdate.pupa - jdate.enter,
+#          tt.eclose = jdate.eclose - jdate.pupa,
+#          #tt.exit = jdate.exit - jdate.enter, # time to dev outcome
+#          #tt.surv = jdate.surv - jdate.eclose, # time spent as adult
+#          )
+```
+
+```{r pivot}
+long_all <- wide_all %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+               names_to = c(".value", "instar"),
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
+  drop_na(jdate) %>%
+  filter(instar != "2nd") %>% # want to keep "hatch" for mathing
+  drop_na(tt) # drops NA's if an individual didnt reach a certain stage
+```
+
+# 3. viz df prep
+
+## - sups/dev outcomes
+
+table for sanity check
+
+```{r dev outcomes table}
+outcomes_table <- wide_all %>%
+  filter(!is.na(surv.outcome)) %>% # excludes things that are still developing
+  mutate(diet = case_when(diet == "LD" ~ "lab diet",
+                          diet == "TB" ~ "tobacco diet"),
+         diet = factor(diet, levels = c("tobacco diet", "lab diet"))
+         ) %>%
+  group_by(pop, diet, labs.trt) %>%
+  summarise(n = n(),
+            n.pmd = sum(na.omit(surv.outcome == 1)),
+            n.misc = sum(na.omit(surv.outcome == 2)),
+            n.surv = n - n.pmd - n.misc,
+            pct.pmd = round(n.pmd/(n-n.misc)*100, digits = 1),
+            n.sup = sum(na.omit(sup > 0)),
+            pct.sup = round(n.sup/n*100, digits = 1),
+            pct.6th = round(sum(na.omit(sup == 6))/n.sup*100, digits = 1),
+            pct.7th = round(sum(na.omit(sup == 7))/n.sup*100, digits = 1),
+            pct.8th = round(sum(na.omit(sup == 8))/n.sup*100, digits = 1)
+            )
+
+outcomes_table
+```
+
+```{r dev outcomes df formatting}
+# data formatting and filtering
+outcomes <- wide_all %>%
+  mutate(sup = case_when(surv.outcome == 1 ~ "pmd",
+                         (surv.outcome == 0 & (is.na(sup) | sup == 0)) ~ "5",
+                         surv.outcome == 0 & sup > 5  ~ as.character(sup)),
+         sup = factor(sup, levels = c("pmd", "5", "6", "7", "8")),
+         diet = case_when(diet == "LD" ~ "lab diet",
+                          diet == "TB" ~ "tobacco diet"),
+         diet = factor(diet, levels = c("tobacco diet", "lab diet"))
+         #trt = factor(sup)
+         ) %>%
+  filter(surv.outcome == 0 | surv.outcome == 1) # excludes things w/ alt deaths/bugs still developing
+  #filter(!is.na(sup) | surv.outcome == 2 | !is.na(surv.outcome)) 
+```
+
+## - dev/surv summ stats
+
+```{r calc dev, surv summ stats}
+# remove pmds
+dev_nopmd <- wide_all %>%
+  filter(surv.outcome != 1 | is.na(surv.outcome)) # incl in progress stuff
+
+# dev summary stats
+dev_summary <- dev_nopmd %>%
+  group_by(pop, diet, labs.trt, 
+           trt.type, minT, #sex #revisit this when theres more LOL
+           ) %>%
+  summarise(n = n(), # todo: 2024-10-08 this doesnt look right tbh LOL... maybe bc of the in-progress ones?
+            avg.tt = mean(na.omit(jdate.pupa - jdate.hatch)),
+            se.tt = sd(na.omit(jdate.pupa - jdate.hatch))/sqrt(length(na.omit(jdate.pupa - jdate.hatch))),
+            avg.mass = mean(na.omit(mass.pupa)),
+            se.mass = sd(na.omit(mass.pupa)/sqrt(length(na.omit(mass.pupa)))))
+
+# surv summary stats
+surv_summary <- wide_all %>%
+  filter(surv.outcome != 2) %>% # omit accidental deaths
+  group_by(pop, diet, labs.trt, 
+           trt.type, minT) %>%
+  summarise(n = n(),
+            n.pmd = sum(surv.outcome == 1), 
+            prop.survpup = round(1-(n.pmd/n), digits=2))
+```
+
+```{r filter out lab bugs on TB diet}
+surv_summf <- surv_summary %>%
+  filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
+
+dev_summf <- dev_summary %>%
+  filter(!(pop == "lab" & diet == "TB") & trt.type == "expt")
+```
+
+# 4. export to .R
+
+```{r purl=FALSE}
+knitr::purl("ntw.Rmd")
+```
+
