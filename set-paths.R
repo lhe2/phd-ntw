@@ -8,8 +8,6 @@ library(here)
 
 bin_paths24 <- list(y24 = here("2024"),
                     data = here("2024", "data"),
-                    bin = here("2024", "00-bin"),
-                    util = here("2024", "00-util"),
                     clean = here("2024", "01-cleaning"),
                     wrangle = here("2024", "02-wrangle"),
                     doviz = here("2024", "03-viz"),

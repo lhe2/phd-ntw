@@ -16,12 +16,16 @@ date: "2024-09-23"
 ```{r message = FALSE}
 
 ##### if doing a major update of the sheet, archive the old one first
+library(tidyr)
+library(purrr)
+library(dplyr)
+library(lubridate) # for handling time stuff
+library(googlesheets4)
 
 here::i_am("2024/01-cleaning/ntw.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths$bin, "import-gsheets.R"))
 ```
 
 googlesheets import
