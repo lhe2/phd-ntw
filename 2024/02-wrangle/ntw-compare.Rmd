@@ -10,7 +10,8 @@ wrangling data for 2023 v 2024 comparisons.
 final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
-knitr::purl("ntw-compare.Rmd")
+knitr::purl("ntw-compare.Rmd", "ntw-compare_p.R")
+
 ```
 
 other notes:

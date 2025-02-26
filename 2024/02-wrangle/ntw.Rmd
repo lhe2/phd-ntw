@@ -10,7 +10,7 @@ wrangling data for 2024 data only.
 final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
-knitr::purl("ntw.Rmd")
+knitr::purl("ntw.Rmd", "ntw_p.R")
 ```
 
 # 1. loading & defining

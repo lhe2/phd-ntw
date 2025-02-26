@@ -39,4 +39,4 @@ vignettes/*.pdf
 */data/*
 notes/*
 archive/*
-*/02-wrangle/*.R
+*/02-wrangle/*_p.R

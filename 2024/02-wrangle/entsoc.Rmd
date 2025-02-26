@@ -10,7 +10,7 @@ wrangling data for 2024 entsoc poster.
 final code is purled to a `.R` script, rerun `purl()` step as needed to update the wrangling for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
-knitr::purl("entsoc.Rmd")
+knitr::purl("entsoc.Rmd", "entsoc_p.R")
 ```
 
 other notes:
