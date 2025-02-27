@@ -11,7 +11,6 @@ final code is purled to a `.R` script, manually rerun `purl()` as needed to upda
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
 knitr::purl("ntw-compare.Rmd", "ntw-compare_p.R")
-
 ```
 
 other notes:
@@ -331,20 +330,20 @@ ss_devpmd2 <- ss_devpmd %>%
 
 # 5. stats df prep (filtering)
 
-(lowkey this could go into the stats script instead...)
+2025-02-26: moved these into the stats script for easier manipulation, just changing the chunk header for now
 
 - filter bugs for modeling: 
   - exptal bugs only (D = 40, N = 19/26/40)
   - field on TB and lab on LD
 
-```{r general ntw filter}
+```{r general ntw filter, purl=FALSE}
 ntw_expt <- ntw_wide %>%
   filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
   mutate(dmass = mass.pupa - mass.eclose,
          rate.pup = mass.pupa/tt.pupa)
 ```
 
-```{r specific ntw filters}
+```{r specific ntw filters, purl=FALSE}
 # omit accidental deaths (so either pmd, pup, LPI)
 ntw_expt.surv <- ntw_expt %>%
   filter(is.pup != 2)

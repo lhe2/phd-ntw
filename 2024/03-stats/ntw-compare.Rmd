@@ -7,12 +7,13 @@ date: "2025-02-19"
 
 dates in this doc are for when i first did this stuff bc a lot of the modeling is based off inputs from joel mtgs on/before corresponding dates LOL
 
+## loading
+
 ```{r}
 here::i_am("2024/03-stats/ntw-compare.Rmd")
 library(here)
 
 library(tidyverse)
-library(lme4)
 library(lme4) # for lmer..
 
 source(here::here("set-paths.R"))
@@ -20,10 +21,29 @@ source(here::here(bin_paths24$wrangle, "ntw-compare_p.R"))
 rm(filter.2pops, se)
 ```
 
-# pupal survival
+## df prep
 
 ```{r}
-# scrappy modeling for 250213 mtg -- ignore lol
+# focusing on exptal bugs only that weren't lab on TB
+ntw_expt <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
+  mutate(dmass = mass.pupa - mass.eclose,
+         rate.pup = mass.pupa/tt.pupa)
+```
+
+```{r}
+# other subsets
+
+# omit accidental deaths (so either pmd, pup, LPI)
+ntw_expt.surv <- ntw_expt %>%
+  filter(is.pup != 2)
+
+# omit unsexed pupa
+ntw_expt.sex <- ntw_expt %>%
+  filter(!is.na(sex))
+```
+
+
 # pupal survival
 
 - what to do w/ modeling from 250213 joel mtg: 
