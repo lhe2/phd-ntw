@@ -14,7 +14,8 @@ here::i_am("2024/03-stats/ntw-compare.Rmd")
 library(here)
 
 library(tidyverse)
-library(lme4) # for lmer..
+#library(lme4) # for lmer.. for tent stuff
+library(MuMIn) # for survival nested model comparisons
 
 source(here::here("set-paths.R"))
 source(here::here(bin_paths24$wrangle, "ntw-compare_p.R"))
@@ -23,7 +24,7 @@ rm(filter.2pops, se)
 
 ## df prep
 
-```{r}
+```{r general exptal bug filter}
 # focusing on exptal bugs only that weren't lab on TB
 ntw_expt <- ntw_wide %>%
   filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
@@ -31,9 +32,7 @@ ntw_expt <- ntw_wide %>%
          rate.pup = mass.pupa/tt.pupa)
 ```
 
-```{r}
-# other subsets
-
+```{r other subsets}
 # omit accidental deaths (so either pmd, pup, LPI)
 ntw_expt.surv <- ntw_expt %>%
   filter(is.pup != 2)
@@ -42,6 +41,22 @@ ntw_expt.surv <- ntw_expt %>%
 ntw_expt.sex <- ntw_expt %>%
   filter(!is.na(sex))
 ```
+
+```{r mumin subsets}
+# bc apparently this pkg cant handle NAs
+  # all surv to pups
+  # all surv to ecs
+
+# select relevant variables
+ntw_mumin.dfs <- list(df = select(ntw_expt.surv, c("year", "pop", "minT", "is.pup", 
+                                                   "is.sup", "sup", "is.ec")))
+
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(pupd = filter(ntw_mumin.dfs$df, is.pup == 1)),
+                   list(ecd = filter(ntw_mumin.dfs$df, is.ec == 1)))
+# colSums(is.na(ntw_mumin.dfs$pupd)) > 0 # check
+```
+
 
 
 # pupal survival
@@ -53,6 +68,9 @@ ntw_expt.sex <- ntw_expt %>%
   - check surv to pup
   - of the surv, who's sup?
   - pup to eclosion?
+  
+- mumin pdf reading notes
+  - arm.glm?
 
 ## 250213
 
@@ -67,13 +85,47 @@ mod.surv_meanT <- glm(is.pup ~ meanT*pop, data = ntw_expt.surv, family = "binomi
 anova(mod.surv_minT, mod.surv_meanT, test = "Chisq") 
 ```
 
-```{r}
-# actual modeling attempts w/ MuMin and things
+## 250226 mumining
 
+actual modeling attempts w/ MuMIn and things. see the `mumin` df prep code chunk
 
+roadmap:
+1. generate set of candidate models (full interaction, full additive, null)
+2. use mumin::nested?
 
+refs:
+- https://sites.google.com/site/rforfishandwildlifegrads/home/mumin_usage_examples
+- https://rdrr.io/cran/MuMIn/man/nested.html
 
+```{r manual selection no sup}
+# fit candidate models for pup surv (general, ignoring is.sup)
+mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT, 
+                                data = ntw_mumin.dfs$df, family = "binomial"),
+                  fulladd = glm(is.pup ~ year + pop + minT, 
+                                data = ntw_mumin.dfs$df, family = "binomial"),
+                  null = glm(is.pup ~ 1, 
+                                data = ntw_mumin.dfs$df, family = "binomial"))
+
+# picking models..
+out.psurv <- model.sel(mod.psurv$fullint, mod.psurv$fulladd, mod.psurv$null)
+
+nested(out.psurv)
 ```
+
+```{r dredge no sup}
+# remove nas
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(nona = na.omit(ntw_mumin.dfs$df[1:4])))
+
+dredge(glm(is.pup ~ year*pop*minT, 
+           data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail))
+```
+
+so when i google "model.sel vs dredge mumin" apparently i should `dredge` first, pick some nice candidates, then throw them into `model.sel`, see also https://uoftcoders.github.io/rcourse/lec09-model-selection.html#a_more_realistic_example
+
+idrk any of this means so stopping here for today lol
+
+
 
 # pupal mass
 
