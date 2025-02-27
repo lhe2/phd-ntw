@@ -1,6 +1,6 @@
 ---
 title: "02-wrangle/ntw-compare"
-date: "2025-02-19
+date: "2025-02-19"
 ---
 
 # 0. preamble

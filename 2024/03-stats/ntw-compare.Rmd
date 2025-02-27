@@ -1,9 +1,11 @@
 ---
 title: "03-stats/ntw-compare"
-date: "2025-02-19
+date: "2025-02-19"
 ---
 
-# setup
+# preamble
+
+dates in this doc are for when i first did this stuff bc a lot of the modeling is based off inputs from joel mtgs on/before corresponding dates LOL
 
 ```{r}
 here::i_am("2024/03-stats/ntw-compare.Rmd")
@@ -11,19 +13,35 @@ library(here)
 
 library(tidyverse)
 library(lme4)
+library(lme4) # for lmer..
 
 source(here::here("set-paths.R"))
 source(here::here(bin_paths24$wrangle, "ntw-compare_p.R"))
+rm(filter.2pops, se)
 ```
 
 # pupal survival
 
 ```{r}
 # scrappy modeling for 250213 mtg -- ignore lol
+# pupal survival
 
+- what to do w/ modeling from 250213 joel mtg: 
+  - look into nested model comparisons (try MuMin first, then AICcmodaug). compare the interaction (temp, pop, year), then additive, then simplest
+
+- qns:
+  - check surv to pup
+  - of the surv, who's sup?
+  - pup to eclosion?
+
+## 250213
+
+scrappy attempts pre 250213 joel mtg, ignore these for the most part
+
+```{r}
 mod.surv_minT <- glm(is.pup ~ minT*pop, data = ntw_expt.surv, family = "binomial") # need to add `year`
 
-# mod.surv_meanT <- glm(is.pup ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
+mod.surv_meanT <- glm(is.pup ~ meanT*pop, data = ntw_expt.surv, family = "binomial")
   # ignore meanT bc it's confounded w minT
 
 anova(mod.surv_minT, mod.surv_meanT, test = "Chisq") 
@@ -39,7 +57,7 @@ anova(mod.surv_minT, mod.surv_meanT, test = "Chisq")
 
 # pupal mass
 
-## 01. first attempts
+## 250213
 
 what affects pupal mass? Tmin, sex, year, pop?
 
@@ -49,7 +67,7 @@ what affects pupal mass? Tmin, sex, year, pop?
 # 01: test the full complex int mod vs the full additive model
 # mods.pmass <- list(int_01 = lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex),
 #                    add_01 = lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex))
-#names(mods.pmass)
+# names(mods.pmass)
 
 mod.pmass_int01 <- lm(mass.pupa ~ year*minT*pop*sex, data = ntw_expt.sex)
 mod.pmass_add01 <- lm(mass.pupa ~ year + minT + pop + sex, data = ntw_expt.sex)
@@ -73,7 +91,7 @@ anova(mod.pmass_int01, mod.pmass_int02, test = "Chisq") # temp*pop*sex is better
 anova(mod.pmass_int02)
 
 # drop sex
-mod.pmass_int03 <- lm(mass.pupa ~ minT*pop, data = ntw_expt.sex) 
+mod.pmass_int03 <- lm(mass.pupa ~ minT*pop, data = ntw_expt.sex)
 
 anova(mod.pmass_int02, mod.pmass_int03, test = "Chisq") # no sig diff, so keep sex?
 
@@ -81,9 +99,11 @@ anova(mod.pmass_int02, mod.pmass_int03, test = "Chisq") # no sig diff, so keep s
 anova(mod.pmass_int02)
 ```
 
--   `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
-    -   minT; pop = `***`
-    -   sex, minT:pop = `*`
+- `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
+
+  - minT; pop = `***`
+  
+  - sex, minT:pop = `*`
 
 ```{r}
 # 03: look into the additive mods some more
@@ -95,9 +115,9 @@ anova(mod.pmass_int02, mod.pmass_add02, test = "Chisq") # no sig diff
 
 idt this one is right lol bc year def makes a difference
 
-## 02. post 250220 joel mtg
+## 250220
 
-try the 2 way interactions only....
+per 250220 joel mtg: try the 2 way interactions only....
 
 ```{r}
 # mods.pmass <- list(mods.pmass,
@@ -113,6 +133,8 @@ anova(mod.pmass_n2way01)
 
 # time to pup
 
+## 250213
+
 ```{r}
 # 01 full models
 mod.pdev_int01 <- lm(tt.pupa ~ year*minT*pop*sex, data = ntw_expt)
@@ -125,3 +147,37 @@ anova(mod.pdev_add01)
 ```
 
 intmod is better?
+
+## 250220
+
+per 250220 joel mtg, try 2 way interactions
+
+```{r}
+mod.pdev_n2way01 <- lm(tt.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt)
+
+anova(mod.pdev_n2way01)
+# *** = yr, minT, pop, yr:minT
+# * = yr:pop
+
+# sex isn't rly relevant here yet so omit
+mod.pdev_n2way02 <- lm(tt.pupa ~ (year + minT + pop)^2, data = ntw_expt)
+anova(mod.pdev_n2way02)
+# *** = yr, minT, pop
+# ** = year:minT
+# * = yr:pop
+
+
+# yr matters, is it bc of the field bug timing?
+mod.pdev_n2way03a <- lm(tt.pupa ~ (year*minT), data = filter(ntw_expt, pop == "lab"))
+mod.pdev_n2way03b <- lm(tt.pupa ~ (year*minT), data = filter(ntw_expt, pop == "field"))
+anova(mod.pdev_n2way03a)
+anova(mod.pdev_n2way03b)
+# actually, it's the lab bugs lol. prob bc we keep selecting for faster bugs in colony
+
+```
+
+# for later
+
+## fecundity (23v24)
+
+## fertility (2023 only)
