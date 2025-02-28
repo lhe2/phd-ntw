@@ -33,7 +33,7 @@ library(googlesheets4)
 
 # tents/hatch data
 data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1854350692", sheet = "tents", range = "A:N", col_types = "c", na = c("", "n/a"))
-data_tentstats <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", sheet = "tent stats", range = "A:P", col_types = "c", na = c("", "#REF!", "#N/A"))
+data_tentstats <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", sheet = "tent stats", range = "A:Q", col_types = "c", na = c("", "#REF!", "#N/A"))
 
 # for when i mess up!
 ogtents <- list(data_tents, data_tentstats)
@@ -58,6 +58,7 @@ data_tentstats <- data_tentstats %>%
          n.coll = "eggs collected",
          n.new = added,
          n.curr = alive,
+         n.ovi = "females laying",
          n.rem = removed,
          n.died = died)
 ```
@@ -101,7 +102,7 @@ write.csv(data_tents, "~/Documents/repos/ntw/2024/data/clean-longevity.csv", row
 write.csv(data_tents, paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_clean-longevity.csv"), row.names = FALSE)
 
 write.csv(data_tentstats, "~/Documents/repos/ntw/2024/data/clean-fertility.csv", row.names = FALSE)
-write.csv(data_tentstats, paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_clean-fertility"), row.names = FALSE)
+write.csv(data_tentstats, paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_clean-fertility.csv"), row.names = FALSE)
 ```
 
 ```{r}

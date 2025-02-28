@@ -5,7 +5,7 @@ date: "2025-02-19"
 
 # 0. preamble
 
-wrangling data for 2023 v 2024 comparisons. 
+wrangling data for 2023 v 2024 development comparisons. 
 
 final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
 
@@ -21,9 +21,9 @@ other notes:
 # 1. loading & defining
 
 ```{r about}
-# wrangle/ntw-compare.R
+# wrangle/compare-dev.R
 
-# knitted wrangling code for ntw comparison figs/analyses.
+# knitted wrangling code for ntw development comparison figs/analyses.
 # source() this in corresponding analysis scripts.
 ```
 
