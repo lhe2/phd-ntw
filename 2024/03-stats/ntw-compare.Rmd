@@ -43,7 +43,8 @@ ntw_expt.sex <- ntw_expt %>%
 ```
 
 ```{r mumin subsets}
-# bc apparently this pkg cant handle NAs
+# bc apparently this pkg cant handle NAs bc "all models must be fit to the same data" 
+# when comparing fits, so subset:
   # all surv to pups
   # all surv to ecs
 
@@ -57,20 +58,16 @@ ntw_mumin.dfs <- c(ntw_mumin.dfs,
 # colSums(is.na(ntw_mumin.dfs$pupd)) > 0 # check
 ```
 
-
-
 # pupal survival
 
-- what to do w/ modeling from 250213 joel mtg: 
-  - look into nested model comparisons (try MuMin first, then AICcmodaug). compare the interaction (temp, pop, year), then additive, then simplest
-
-- qns:
-  - check surv to pup
-  - of the surv, who's sup?
-  - pup to eclosion?
-  
-- mumin pdf reading notes
-  - arm.glm?
+-   what to do w/ modeling from 250213 joel mtg:
+    -   look into nested model comparisons (try MuMin first, then AICcmodaug). compare the interaction (temp, pop, year), then additive, then simplest
+-   qns:
+    -   check surv to pup
+    -   of the surv, who's sup?
+    -   pup to eclosion?
+-   mumin pdf reading notes
+    -   arm.glm?
 
 ## 250213
 
@@ -89,17 +86,46 @@ anova(mod.surv_minT, mod.surv_meanT, test = "Chisq")
 
 actual modeling attempts w/ MuMIn and things. see the `mumin` df prep code chunk
 
-roadmap:
-1. generate set of candidate models (full interaction, full additive, null)
-2. use mumin::nested?
+roadmap: 
 
-refs:
-- https://sites.google.com/site/rforfishandwildlifegrads/home/mumin_usage_examples
-- https://rdrr.io/cran/MuMIn/man/nested.html
+1. generate set of candidate models (full interaction, full additive, null) 
+2. ~~use mumin::nested?~~
+
+refs: 
+
+- <https://sites.google.com/site/rforfishandwildlifegrads/home/mumin_usage_examples> 
+- <https://rdrr.io/cran/MuMIn/man/nested.html>
+
+so when i google "model.sel vs dredge mumin" apparently i should `dredge` first, pick some nice candidates base off dredge results, then throw them into `model.sel`, see also <https://uoftcoders.github.io/rcourse/lec09-model-selection.html#a_more_realistic_example>
+
+```{r dredge no sup}
+# need to remove nas & have model fitting break when fitting to NA data to compare fits correctly,
+# so either the global option options(na.action = "na.fail") before dredge() or 
+# set that option in the global model function call
+
+# remove nas
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(nona = na.omit(ntw_mumin.dfs$df[1:4])))
+
+out.psurv <- list(dredge = dredge(glm(is.pup ~ year*pop*minT, 
+                                      data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail), 
+                                  #extra = c("R^2", F = function(x)
+                                  #summary(x)$fstatistic[[1]])
+                                  ))
+out.psurv$dredge
+
+out.psurv <- c(out.psurv,
+               dredge.out = list(get.models(out.psurv$dredge, subset = weight > 0.01)))
+
+out.psurv$dredge.out[["64"]]
+out.psurv$dredge.out[["128"]]
+```
 
 ```{r manual selection no sup}
-# fit candidate models for pup surv (general, ignoring is.sup)
+# fit candidate models for pup surv (looking generally at sup, ignoring is.sup stuff for now)
 mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT, 
+                                data = ntw_mumin.dfs$df, family = "binomial"),
+                  n2way = glm(is.pup ~ (year + pop + minT)^2,
                                 data = ntw_mumin.dfs$df, family = "binomial"),
                   fulladd = glm(is.pup ~ year + pop + minT, 
                                 data = ntw_mumin.dfs$df, family = "binomial"),
@@ -107,25 +133,20 @@ mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT,
                                 data = ntw_mumin.dfs$df, family = "binomial"))
 
 # picking models..
-out.psurv <- model.sel(mod.psurv$fullint, mod.psurv$fulladd, mod.psurv$null)
+out.psurv <- c(out.psurv,
+               modsel = list(model.sel(mod.psurv$fullint, mod.psurv$n2way, 
+                                       mod.psurv$fulladd, mod.psurv$null)))
+out.psurv$modsel
 
 nested(out.psurv)
+anova(mod.psurv$fullint, test = "Chisq")
+anova(mod.psurv$n2way, test = "Chisq")
+anova(mod.psurv$fullint, mod.psurv$n2way, test = "Chisq") # no sig diff!
 ```
-
-```{r dredge no sup}
-# remove nas
-ntw_mumin.dfs <- c(ntw_mumin.dfs, 
-                   list(nona = na.omit(ntw_mumin.dfs$df[1:4])))
-
-dredge(glm(is.pup ~ year*pop*minT, 
-           data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail))
-```
-
-so when i google "model.sel vs dredge mumin" apparently i should `dredge` first, pick some nice candidates, then throw them into `model.sel`, see also https://uoftcoders.github.io/rcourse/lec09-model-selection.html#a_more_realistic_example
 
 idrk any of this means so stopping here for today lol
 
-
+post-mtg: data gives support that the 2-way interactions matter while the 3-way is kinda meh but not a bad model either!
 
 # pupal mass
 
@@ -171,11 +192,11 @@ anova(mod.pmass_int02, mod.pmass_int03, test = "Chisq") # no sig diff, so keep s
 anova(mod.pmass_int02)
 ```
 
-- `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
+-   `mass.pupa ~ minT*pop*sex` seems good, with the following sig ints:
 
-  - minT; pop = `***`
-  
-  - sex, minT:pop = `*`
+    -   minT; pop = `***`
+
+    -   sex, minT:pop = `*`
 
 ```{r}
 # 03: look into the additive mods some more
