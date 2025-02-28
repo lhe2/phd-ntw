@@ -10,7 +10,7 @@ dates in this doc are for when i first did this stuff bc a lot of the modeling i
 ## loading
 
 ```{r}
-here::i_am("2024/03-stats/ntw-compare.Rmd")
+here::i_am("2024/03-stats/compare-dev.Rmd")
 library(here)
 
 library(tidyverse)
@@ -18,7 +18,7 @@ library(tidyverse)
 library(MuMIn) # for survival nested model comparisons
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "ntw-compare_p.R"))
+source(here::here(bin_paths24$wrangle, "compare-dev_p.R"))
 rm(filter.2pops, se)
 ```
 

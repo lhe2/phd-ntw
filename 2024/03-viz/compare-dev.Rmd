@@ -10,14 +10,14 @@ goal: compare 2023 and 2024 ntw development data.
 wip: need to do fertility data...
 
 ```{r}
-here::i_am("2024/03-viz/ntw-compare.Rmd")
+here::i_am("2024/03-viz/compare-dev.Rmd")
 library(here)
 
 library(tidyverse)
 library(patchwork)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "ntw-compare.R"))
+source(here::here(bin_paths24$wrangle, "compare-dev.R"))
 source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 ```
 

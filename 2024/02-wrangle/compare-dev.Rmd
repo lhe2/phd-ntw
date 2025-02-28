@@ -1,5 +1,5 @@
 ---
-title: "02-wrangle/ntw-compare"
+title: "02-wrangle/compare-dev"
 date: "2025-02-19"
 ---
 
@@ -10,7 +10,7 @@ wrangling data for 2023 v 2024 comparisons.
 final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
-knitr::purl("ntw-compare.Rmd", "ntw-compare_p.R")
+knitr::purl("compare-dev.Rmd", "compare-dev_p.R")
 ```
 
 other notes:
@@ -32,11 +32,11 @@ library(tidyverse)
 library(conflicted)
 conflicts_prefer(dplyr::filter)
 
-here::i_am("2024/02-wrangle/ntw-compare.Rmd")
+here::i_am("2024/02-wrangle/compare-dev.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "ntw-compare_util.R"))
+source(here::here(bin_paths24$wrangle, "compare-dev_util.R"))
 ```
 
 ```{r load 2324 dev data}
@@ -62,6 +62,7 @@ rm(data_tstats, data_hatch, data_longevity,
    labels.alltrts, labels.exptrts, RYB,
    x_err_ncoll, x_err_ncollf, y_err_hrate)
 ```
+
 
 # 2. formatting
 
