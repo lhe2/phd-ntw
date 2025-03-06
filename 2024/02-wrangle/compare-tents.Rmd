@@ -10,7 +10,7 @@ wrangling data for 2023 v 2024 tent data comparisons.
 final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
-#knitr::purl("compare-tents.Rmd", "compare-tents_p.R")
+knitr::purl("compare-tents.Rmd", "compare-tents_p.R")
 ```
 
 
@@ -56,12 +56,26 @@ d23 <- d23 %>%
 
 d24 <- d24 %>%
   rename(id = uid2,
-         date = date.coll,
-         # n.new.f = n.new,
-         # n.curr.f = n.curr,
-         ) %>%
+         date = date.coll) %>%
   select(-c("combo", "notes"))
+
+# have a merged version of 23-24
+all <- d24 %>%
+  rename(n.new.f = n.new,
+         n.curr.f = n.curr,
+         n.rem.f = n.rem,
+         n.died.f = n.died,
+         trt.sex = sex) %>%
+  mutate(trt.f = trt,
+         trt.temp = trt) %>%
+  bind_rows(., d23) %>%
+  select(names(d23))
+  
 ```
+
+testing map/lappy to apply fn to more 3 dfs at once lol. want the dfs separated eventually bc only some of them are getting merged
+
+- https://stackoverflow.com/questions/47140756/map-with-purrr-multiple-dataframes-and-have-those-modified-dataframes-as-the-out
 
 ```{r standardise column format}
 # column standardising
@@ -72,11 +86,30 @@ fix.cols <- function(data){
            year = as.factor(year))
 }
 
-d23 <- fix.cols(d23)
+all <- fix.cols(all)
 d24 <- fix.cols(d24)
 
-rm(fix.cols)
+# apply column fixing to dfs,
+# keep separate to stitch them together in certain ways later
+# temp <- list(d23 = d23, d24 = d24, d242 = d242)
+# temp <- lapply(temp, fix.cols)
+# list2env(temp, envir = .GlobalEnv)
+#all <- merge(d23, d242, all = TRUE)
 ```
+
+
+```{r map testing, eval=FALSE, include=FALSE, purl=FALSE}
+# make d23, d24, d242
+test <- list(d23 = d23, d24 = d24, d242 = d242)
+  # naming here skips needing to do: names(df) <- c(...)
+
+#lapply(test, fix.cols) %>% list2env(., .GlobalEnv) # idt the . pronoun works like this lol
+
+test <- lapply(test, fix.cols)
+list2env(test, envir = .GlobalEnv)
+```
+
+
 
 
 # 3. adding/fixing stuff
@@ -91,21 +124,30 @@ d24 <- d24 %>%
          trt.type = case_when(trt == 260 ~ "ctrl",
                               TRUE ~ "expt"))
 
-d23 <- d23 %>%
-  mutate(trt.type = case_when(trt.m == trt.f ~ "win",
+#d23 <- d23 %>%
+all <- all %>%
+  mutate(id.room = as.factor(case_when(year == 2024 ~ 107,
+                                       TRUE ~ as.numeric(id.room))),
+         trt.type = case_when(year == 2024 & trt.f == 260 ~ "ctrl",
+                              year == 2024 & trt.f > 260 ~ "expt",
+                              trt.m == trt.f ~ "win",
                               TRUE ~ "btwn"),
          trt.sex = case_when(trt.m > trt.f ~ "m",
-                             trt.m < trt.f ~ "f",
+                             year == 2024 | trt.m < trt.f ~ "f",
                              TRUE ~ "both"),
          trt.temp = as.factor(case_when(trt.m > trt.f ~ trt.m,
-                              trt.m < trt.f ~ trt.f,
-                              TRUE ~ trt.m)))
+                                        year == 2024 | trt.m < trt.f ~ trt.f,
+                                        TRUE ~ trt.m)),
+         trt.m = as.factor(trt.m),
+         trt.f = as.factor(trt.f))
 ```
 
 
 ## - correcting d23 egg counts
 
 2025-02-28: lowkey seems like i dont actually need this anymore lol (apparently i fixed stuff at some point) but keeping for ref
+
+ripped this code from `entsoc` btw
 
 ```{r d23 egg count fix, eval=FALSE, include = FALSE, purl=FALSE}
 # determine actual # of ovipositing females
@@ -157,7 +199,7 @@ rm(cond, ovifix, negovi, lastovi)
 # cleanup
 
 ```{r cleanup}
-rm(moreinfo, 
+rm(#moreinfo, fix.cols, temp,
    jic)
 ```
 

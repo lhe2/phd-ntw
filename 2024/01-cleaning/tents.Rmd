@@ -1,24 +1,27 @@
 ---
-title: "tent cleaning"
+title: "01-cleaning/tents"
 date: "2025-01-13"
 ---
 
 stealing from `2023/cleaning_tents.Rmd` again!!
 
+(cleans 2024 tents data only)
 
 # roadmap
 
-1. load data & packages
-2. cleaning: prefiltering, fix columns, add columns, value fixing
-3. save output
+1.  load data & packages
+2.  cleaning: prefiltering, fix columns, add columns, value fixing
+3.  save output
 
 # 1. load data & packages
+
 ```{r message = FALSE}
 library(conflicted)
 library(dplyr)
 conflicts_prefer(dplyr::filter)
 library(tidyr)
 library(purrr)
+library(stringr)
 
 # to load data from gsheets
 library(googlesheets4)
@@ -45,6 +48,7 @@ ogtents <- list(data_tents, data_tentstats)
 # 2. cleaning
 
 ## - column/row dropping/stdising
+
 ```{r}
 data_tents <- select(data_tents, -c("mass.eclose", "uid", "id.cage"))
 
@@ -64,6 +68,7 @@ data_tentstats <- data_tentstats %>%
 ```
 
 ## - data formatting
+
 ```{r}
 tentlist <- list(data_tents, data_tentstats)
 #data_tents <- tentlist[[1]]
@@ -91,7 +96,6 @@ data_tentstats <- data_tentstats %>%
 
 ```
 
-
 # 3. extracting notes & saving outputs
 
 ```{r}
@@ -113,8 +117,3 @@ rm(today,
    fix.values,
    tentlist, tentlist_clean)
 ```
-
-
-
-
-

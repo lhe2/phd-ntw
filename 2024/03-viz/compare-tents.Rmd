@@ -1,11 +1,21 @@
 ---
-title: "fertility analyses"
+title: "03-viz/compare-tents"
 date: "2025-01-13"
 ---
 
-# 0. load data, helper fns
-```{r message=FALSE}
-source("./helpers_tents.R")
+viz for comparing 2023 and 2024 fertility data
+
+# setup
+```{r}
+here::i_am("2024/03-viz/compare-tents.Rmd")
+library(here)
+
+library(tidyverse)
+library(patchwork)
+
+source(here::here("set-paths.R"))
+source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
+source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 ```
 
 # 1. longevity
@@ -37,3 +47,4 @@ summ_longevity %>%
 
 
 # 2. egg laying
+
