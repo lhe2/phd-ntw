@@ -138,7 +138,7 @@ out.psurv <- c(out.psurv,
                                        mod.psurv$fulladd, mod.psurv$null)))
 out.psurv$modsel
 
-nested(out.psurv)
+nested(out.psurv$mod.sel)
 anova(mod.psurv$fullint, test = "Chisq")
 anova(mod.psurv$n2way, test = "Chisq")
 anova(mod.psurv$fullint, mod.psurv$n2way, test = "Chisq") # no sig diff!
@@ -147,6 +147,37 @@ anova(mod.psurv$fullint, mod.psurv$n2way, test = "Chisq") # no sig diff!
 idrk any of this means so stopping here for today lol
 
 post-mtg: data gives support that the 2-way interactions matter while the 3-way is kinda meh but not a bad model either!
+
+## 250306 sups & carryover
+
+```{r}
+# if you survived, were you sup?
+
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(nona.sup = na.omit(ntw_mumin.dfs$pupd[1:5])))
+
+out.psurv <- c(out.psurv, 
+               dredge.sup = list(dredge(glm(is.sup ~ year*pop*minT, 
+                                            data = ntw_mumin.dfs$nona.sup, family = "binomial", na.action = na.fail)))
+               )
+
+out.psurv$dredge.sup
+
+out.psurv <- c(out.psurv,
+               dredge.outsup = list(get.models(out.psurv$dredge.sup, subset = weight > 0.05)))
+
+out.psurv$dredge.outsup
+
+out.psurv <- c(out.psurv,
+               modsel.sup = list(model.sel(out.psurv$dredge.outsup[["56"]], out.psurv$dredge.outsup[["64"]],
+                                           out.psurv$dredge.outsup[["48"]], out.psurv$dredge.outsup[["128"]])))
+
+out.psurv$modsel.sup
+
+
+```
+
+
 
 # pupal mass
 
