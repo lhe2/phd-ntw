@@ -5,6 +5,14 @@ date: "2025-01-13"
 
 viz for comparing 2023 and 2024 fertility data
 
+for 2023, should look at:
+
+- hatch prop vs avg eggs/f per trt (btwn and win)
+
+for 2024, should look at
+
+- avg eggs/f per trt
+
 # setup
 ```{r}
 here::i_am("2024/03-viz/compare-tents.Rmd")
@@ -18,8 +26,40 @@ source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
 source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 ```
 
-# 1. longevity
-```{r calc stats}
+## df setup
+
+```{r}
+# sums are for across whole existence of cage/tent (`t.duration`)
+  # pre-emptively filtering out the field pop bc they never wanna lay eggs
+ss_fert <- dall %>%
+  group_by(year, pop, trt.temp,
+           trt.type, trt.sex) %>%
+  summarise(n.reps = n_distinct(id),
+            n.f = sum(n.new.f, na.rm=TRUE),
+            n.colled = sum(n.coll, na.rm=TRUE),
+            #avg.colled = mean(n.coll, na.rm=TRUE),
+            se.colled = se(n.coll),
+            avg.colledperf = n.colled/n.f,
+            n.hatched = sum(n.hatch, na.rm=TRUE),
+            #avg.hatched = mean(n.hatch, na.rm=TRUE),
+            se.hatched = se(n.hatch),
+            p.hatched = n.hatched/n.colled,
+            se.phatched = sqrt(p.hatched*(1-p.hatched)/n.colled),
+            t.duration = max(jdate) - min(jdate)) %>% 
+  mutate(across(ends_with("hatched"), ~ case_when(is.nan(.) ~ NA_real_,
+                                                  year == 2023 ~ as.numeric(.))),
+         across(starts_with(c("n", "avg", "se", "p")), ~ round(., digits = 3)),
+         minT = case_when(trt.temp == 419 ~ 19,
+                          trt.temp %in% c(260, 426) ~ 26,
+                          TRUE ~ 33),
+         minT = factor(minT, levels = c(19, 26, 33)),
+         for.comparef = case_when(year == 2024 |
+                                    (year == 2023 & (trt.sex == "f" | trt.temp == 260)) ~ "Y")) %>%
+  filter(pop == "lab")
+
+# remove the 2023-win-f? (must be the solo f?) -- jk they fall out naturally when u keep the lab pop only
+
+```
 summ_longevity <- data_longevity %>%
   mutate(surv = jdate.surv - jdate.eclose) %>%
   group_by(expt.type, pop, #sex, 
@@ -42,9 +82,54 @@ summ_longevity %>%
   geom_text(aes(label = n), hjust = -1, vjust = 0.75) +
   theme_bw() 
   #facet_wrap(~sex)
-
 ```
 
 
-# 2. egg laying
+```{r}
+# tents math from 2023 for ref... 
+
+summ_hatch <- data_tstats %>%
+  group_by(#id.tent,
+           trt.f, trt.m, pop,
+           #trt.win, trt.btwn, 
+           trt.type,
+           trt.pair
+           ) %>%
+  summarise(n.tents = n_distinct(id.tent),
+            n.collected = sum(n.coll, na.rm = TRUE),
+            se.coll =  sd(na.omit(n.coll))/sqrt(length(na.omit(n.coll))),
+            n.hatched = sum(n.tothatch, na.rm = TRUE),
+            se.hatched = sd(na.omit(n.tothatch))/sqrt(length(na.omit(n.tothatch))),
+            n.females = sum(n.new.f, na.rm = TRUE),
+            #start = first(jdate), end = last(jdate),
+            t.duration = max(jdate) - min(jdate),
+            rate.hatch = n.hatched/n.collected,
+            se.hatch = sqrt(rate.hatch*(1-rate.hatch)/n.collected),  # check ???
+            rate.hatchperf = rate.hatch/n.females,
+            se.hatch = sqrt(rate.hatchperf*(1-rate.hatchperf/n.collected)),
+            rate.f = round(n.collected/n.females, digits = 1)
+            ) %>%
+  drop_na(trt.m) %>% # drop tents w/o males
+  mutate(trt.win = case_when(trt.f == trt.m & trt.f == 260 ~ "26-26",
+                             trt.f == trt.m & trt.f == 419 ~ "40-19",
+                             trt.f == trt.m & trt.f == 426 ~ "40-26",
+                             trt.f == trt.m & trt.f == 433 ~ "40-33"),
+         trt.btwn = case_when(trt.type == "ctrl" ~ "26-26", 
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 419 | trt.m == 419) ~ "40-19",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 426 | trt.m == 426) ~ "40-26",
+                              (trt.type == "hs F" | trt.type == "hs M") & (trt.f == 433 | trt.m == 433) ~ "40-33"),
+         # min.f = case_when(trt.f == 260 | trt.f == 426 ~ 26,
+         #                   trt.f == 419 ~ 19,
+         #                   trt.f == 433 ~ 33), 
+         # min.m = case_when(trt.m == 260 | trt.m == 426 ~ 26,
+         #                   trt.m == 419 ~ 19,
+         #                   trt.m == 433 ~ 33),
+         trt.parent = case_when(trt.f == 260 & trt.m == 260 ~ 260,
+                                trt.f == 419 | trt.m == 419 ~ 419,
+                                trt.f == 426 | trt.m == 426 ~ 426,
+                                trt.f == 433 | trt.m == 433 ~ 433),
+         # trt.combo = paste0(trt.f, "-", trt.m),
+         # min.combo = paste0(min.f, "-", min.m)
+         )
+```
 

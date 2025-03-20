@@ -37,9 +37,14 @@ source(here::here("set-paths.R"))
 d23 <- read.csv(here(bin_paths23$data, "clean-tentstats.csv"), header = TRUE) %>% mutate(year = 2023)
 d24 <- read.csv(here(bin_paths24$data, "clean-fertility.csv"), header = TRUE) %>% mutate(year = 2024)
 
+# drop a tent from 2023 that was reared up differently
+d23 <- filter(d23, id.tent != "107-I")
+
 jic <- list(d23 = d23,
             d24 = d24)
 ```
+
+
 
 # 2. standardising cols, format
 
@@ -60,7 +65,7 @@ d24 <- d24 %>%
   select(-c("combo", "notes"))
 
 # have a merged version of 23-24
-all <- d24 %>%
+dall <- d24 %>%
   rename(n.new.f = n.new,
          n.curr.f = n.curr,
          n.rem.f = n.rem,
@@ -86,7 +91,7 @@ fix.cols <- function(data){
            year = as.factor(year))
 }
 
-all <- fix.cols(all)
+dall <- fix.cols(dall)
 d24 <- fix.cols(d24)
 
 # apply column fixing to dfs,
@@ -125,21 +130,24 @@ d24 <- d24 %>%
                               TRUE ~ "expt"))
 
 #d23 <- d23 %>%
-all <- all %>%
+dall <- dall %>%
   mutate(id.room = as.factor(case_when(year == 2024 ~ 107,
                                        TRUE ~ as.numeric(id.room))),
          trt.type = case_when(year == 2024 & trt.f == 260 ~ "ctrl",
                               year == 2024 & trt.f > 260 ~ "expt",
-                              trt.m == trt.f ~ "win",
-                              TRUE ~ "btwn"),
+                              trt.m != trt.f ~ "btwn",
+                              TRUE ~ "win"
+                              #trt.m == trt.f ~ "win",
+                              #TRUE ~ "btwn"
+                              ),
+         trt.type = factor(trt.type, levels = c("win", "btwn", "ctrl", "expt")),
          trt.sex = case_when(trt.m > trt.f ~ "m",
-                             year == 2024 | trt.m < trt.f ~ "f",
+                             is.na(trt.m) | year == 2024 | trt.m < trt.f ~ "f",
                              TRUE ~ "both"),
          trt.temp = as.factor(case_when(trt.m > trt.f ~ trt.m,
-                                        year == 2024 | trt.m < trt.f ~ trt.f,
-                                        TRUE ~ trt.m)),
-         trt.m = as.factor(trt.m),
-         trt.f = as.factor(trt.f))
+                                        is.na(trt.m) | year == 2024 | trt.m < trt.f ~ trt.f,
+                                        TRUE ~ trt.m))) %>%
+  mutate(across(c(trt.f, trt.m, trt.temp), as.factor))
 ```
 
 
