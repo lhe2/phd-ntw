@@ -1,0 +1,80 @@
+---
+title: "03-viz/compare-tents"
+date: "2025-03-20"
+---
+
+# setup
+```{r}
+here::i_am("2024/03-stats/compare-tents.Rmd")
+library(here)
+
+library(tidyverse)
+#library(lme4) # for lmer.. for tent stuff
+#library(MuMIn) # for survival nested model comparisons
+
+source(here::here("set-paths.R"))
+source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
+```
+
+## - df prep
+
+```{r setting up blank lists}
+dfs <- list()
+mods <- list()
+```
+
+```{r general df mods}
+# add binaries for modeling
+dall <- dall %>%
+  mutate(is.hsF = case_when(trt.sex %in% c("f", "both") ~ 1,
+                            TRUE ~ 0),
+         is.hsM = case_when(trt.sex %in% c("m", "both") ~ 1,
+                            TRUE ~ 0))
+```
+
+```{r egg laying}
+# ignore the hatching for now
+dfs <- list_assign(dfs, 
+                   df23 = dall %>%
+                     filter(year == 2023) %>%
+                     group_by(id) %>%
+                     mutate(n.coll.overall = sum(n.coll, na.rm = TRUE),
+                            n.f.overall = sum(n.new.f, na.rm=TRUE),
+                            n.collperovi.overall = n.coll.overall/n.f.overall,
+                            jdate.rel = jdate - first(jdate)
+                     ) %>%
+                     group_by(jdate.rel, .add = TRUE) %>%
+                     mutate(n.coll.daily = sum(n.coll, na.rm = TRUE),
+                            #n.hatch.daily = sum(n.hatch, na.rm = TRUE)
+                            n.collperovi.daily = n.coll.daily/n.ovi)
+)
+
+# 2023 ver ref
+# summ_hatchall <- data_tstats %>%
+#   replace(is.na(.), 0) %>%
+#   group_by(id.tent) %>%
+#   mutate(jdate.rel = jdate - first(jdate)) %>%
+#   group_by(jdate.rel) %>%
+#   mutate(n.tothatch.pertent = sum(n.tothatch),
+#          n.coll.pertent = sum(n.coll)) %>%
+#   ungroup() %>%
+#   group_by(trt.f, trt.m, pop) %>%
+#   mutate(n.tothatch.overall = sum(n.tothatch),
+#          n.coll.overall = sum(n.coll),
+#          #n.duration.overall = jdate-first(jdate),
+#          # below borrowed from LB hatching stuff
+#          n.collected = sum(n.coll),
+#          n.hatched = sum(n.tothatch),
+#          n.females = sum(n.new.f),
+#          prop.hatch = n.hatched/n.collected,
+#          rate.collf = n.collected/n.females,
+#          lt.hprop = log(prop.hatch + 1)) 
+#   
+# summ_hatchmod <- summ_hatchall %>%
+#   filter(n.tothatch.overall > 0)
+
+dfs <- list_assign(dfs, df23_nona = na.omit(dfs$df23))
+  
+```
+
+
