@@ -39,14 +39,13 @@ d24 <- read.csv(here(bin_paths24$data, "clean-fertility.csv"), header = TRUE) %>
 
 # drop a tent from 2023 that was reared up differently
 d23 <- filter(d23, id.tent != "107-I")
-
-jic <- list(d23 = d23,
-            d24 = d24)
 ```
 
 
 
-# 2. standardising cols, format
+# 2. standardising cols, format; col fixes
+
+## - renaming
 
 ```{r rename cols}
 # renaming columns
@@ -64,6 +63,76 @@ d24 <- d24 %>%
          date = date.coll) %>%
   select(-c("combo", "notes"))
 
+jic <- list(d23 = d23,
+            d24 = d24)
+```
+
+
+## - fixing d23 egg counts
+
+2025-02-28: lowkey seems like i dont actually need this anymore lol (apparently i fixed stuff at some point) but keeping for ref
+2025-03-20: no u *do* need this for doing stats, manual calcs throw in some extra negs that need to be fixed here
+
+ripped this code from `entsoc` btw
+
+```{r d23 egg fixes}
+# determine actual # of ovipositing females
+  # 2025-02-28 dont actually need this anymore bc "females.laying" is manually calculated in the gsheet!
+# dtents <- dtents %>%
+#   mutate_at(c(6:14), ~replace_na(., 0)) %>% 
+#   group_by(id.tent) %>%
+#   mutate(jdate.rel = jdate - first(jdate)) %>%
+#   ungroup() %>%
+#   group_by(id.tent, trt.f, trt.m, trt.sex, jdate.rel) %>%
+#   arrange(jdate.rel, .by_group = TRUE) %>%
+#   mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
+#          n.ovi = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
+#   ungroup()
+
+
+# where n.ovipositing females <= 0 but n.collected > 0, add the # eggs collected to the day before
+# (or last date of ovipositing females)
+
+# first, figure out the rows
+#cond <- (d23$n.coll > 0 & d23$n.ovi == 0)
+cond <- (d23$n.coll > 0 & d23$n.ovi <= 0)
+
+ovifix <- d23 %>%
+  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
+  subset(cond | lead(cond) | lead(cond, n=2)) #%>% View() 
+
+negovi <- ovifix[ovifix$n.ovi <= 0, ]
+
+lastovi <- ovifix[ovifix$n.curr.f > 0 & ovifix$n.ovi >= 1, ]
+
+#test <- c(negovi$index, lastovi$index)
+
+# then, edit values
+# summ_rate$n.coll[negovi$index] <- 0
+d23 <- d23 %>% 
+  mutate(n.coll = case_when(rownames(.) %in% negovi$index ~ 0,
+                            rownames(.) %in% lastovi$index ~ n.coll + 1,
+                            !(rownames(.) %in% c(negovi$index, lastovi$index)) ~ as.numeric(n.coll)),
+         n.ovi = case_when(n.ovi < 0 ~ 0, # needs to be ≥ 0 for modeling math
+                           TRUE ~ as.numeric(n.ovi))
+  )
+
+
+# check: ovifix2 should be blank
+cond2 <- (d23$n.coll > 0 & d23$n.ovi <= 0)
+
+ovifix2 <- d23 %>%
+  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
+  subset(cond | lead(cond) | lead(cond, n=2)) #%>% View() 
+
+# removing extra 0's
+# dtents <- dtents %>%
+#   filter(!(n.coll == 0 & n.ovi == 0))
+  # tbh not sure why i did this in the old version. this drops a few #s here and there
+```
+
+## - merging, standardising dfs
+```{r merge 2324 dfs}
 # have a merged version of 23-24
 dall <- d24 %>%
   rename(n.new.f = n.new,
@@ -75,12 +144,7 @@ dall <- d24 %>%
          trt.temp = trt) %>%
   bind_rows(., d23) %>%
   select(names(d23))
-  
 ```
-
-testing map/lappy to apply fn to more 3 dfs at once lol. want the dfs separated eventually bc only some of them are getting merged
-
-- https://stackoverflow.com/questions/47140756/map-with-purrr-multiple-dataframes-and-have-those-modified-dataframes-as-the-out
 
 ```{r standardise column format}
 # column standardising
@@ -102,6 +166,9 @@ d24 <- fix.cols(d24)
 #all <- merge(d23, d242, all = TRUE)
 ```
 
+testing map/lappy to apply fn to more 3 dfs at once lol. want the dfs separated eventually bc only some of them are getting merged
+
+- https://stackoverflow.com/questions/47140756/map-with-purrr-multiple-dataframes-and-have-those-modified-dataframes-as-the-out
 
 ```{r map testing, eval=FALSE, include=FALSE, purl=FALSE}
 # make d23, d24, d242
@@ -115,11 +182,7 @@ list2env(test, envir = .GlobalEnv)
 ```
 
 
-
-
-# 3. adding/fixing stuff
-
-## - adding extra columns
+# 3. adding extra columns
 
 ```{r add more cols}
 d24 <- d24 %>%
@@ -151,63 +214,12 @@ dall <- dall %>%
 ```
 
 
-## - correcting d23 egg counts
-
-2025-02-28: lowkey seems like i dont actually need this anymore lol (apparently i fixed stuff at some point) but keeping for ref
-
-ripped this code from `entsoc` btw
-
-```{r d23 egg count fix, eval=FALSE, include = FALSE, purl=FALSE}
-# determine actual # of ovipositing females
-  # 2025-02-28 dont actually need this anymore bc "females.laying" is manually calculated in the gsheet!
-# dtents <- dtents %>%
-#   mutate_at(c(6:14), ~replace_na(., 0)) %>% 
-#   group_by(id.tent) %>%
-#   mutate(jdate.rel = jdate - first(jdate)) %>%
-#   ungroup() %>%
-#   group_by(id.tent, trt.f, trt.m, trt.sex, jdate.rel) %>%
-#   arrange(jdate.rel, .by_group = TRUE) %>%
-#   mutate(#n.laying = n.curr.f + n.died.f, .after = "n.curr.f",
-#          n.ovi = dplyr::lag(n.curr.f, default = first(n.curr.f)) + n.died.f, .after = "n.curr.f") %>%
-#   ungroup()
-
-
-# where n.ovipositing females = 0 but n.collected > 0, add the # eggs collected to the day before
-# (or last date of ovipositing females)
-
-# first, figure out the rows
-cond <- (d23$n.coll > 0 & d23$n.ovi == 0)
-
-ovifix <- d23 %>%
-  mutate(index = as.numeric(rownames(.)), .before = 1) %>%
-  subset(cond | lead(cond) | lead(cond, n=2)) #%>% View() 
-
-negovi <- ovifix[ovifix$n.ovi < 0, ]
-
-lastovi <- ovifix[ovifix$n.curr.f > 0 & ovifix$n.ovi >= 1, ]
-
-#test <- c(negovi$index, lastovi$index)
-
-# then, edit values
-# summ_rate$n.coll[negovi$index] <- 0
-d23 <- d23 %>% 
-  mutate(n.coll = case_when(rownames(.) %in% negovi$index ~ 0,
-                            rownames(.) %in% lastovi$index ~ n.coll + 1,
-                            !(rownames(.) %in% c(negovi$index, lastovi$index)) ~ as.numeric(n.coll)
-                            ))
-
-rm(cond, ovifix, negovi, lastovi)
-
-# removing extra 0's
-# dtents <- dtents %>%
-#   filter(!(n.coll == 0 & n.ovi == 0))
-  # tbh not sure why i did this in the old version. this drops a few #s here and there
-```
-
 # cleanup
 
 ```{r cleanup}
-rm(#moreinfo, fix.cols, temp,
-   jic)
+rm(#moreinfo, temp,
+   fix.cols, jic)
+
+rm(cond, ovifix, negovi, lastovi, cond2, ovifix2)
 ```
 
