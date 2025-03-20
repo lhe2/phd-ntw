@@ -26,6 +26,74 @@ source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
 source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 ```
 
+## helper functions
+```{r helper functions}
+# do math
+se <- function(x){
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
+}
+```
+
+```{r more helper fn testing}
+# aes
+## lazy error bars: call column names with quotes
+
+get_err <- function(vector){
+  # make an if? (if vector = a #, use it (so can just set width = to it), but if not then do math below)
+  return(max(vector, na.rm=TRUE)*1.02*0.02) # set err bar width to 2% of max axis + 2%
+}
+
+# mean = col w/ "avg", 
+geom_yerr <- function(#.data, 
+                      mean, se, x
+                      #, wd = 0.9
+                      ){
+  # if(missing(wid)){
+  #   wid = max(cur_data()[[mean]])*0.02
+  # }
+  
+  # if(missing(wid)) x <- cur_data_all()[[mean]]
+  #   wid <- max(x)*0.02
+    
+  list(geom_errorbar(aes(ymin = .data[[mean]] - .data[[se]], 
+                         ymax = .data[[mean]] + .data[[se]],
+                         #width = wd # can i set width to "get_err(x)" here? using whats alrdy declared?
+                         #width = get_err(.data[[mean]])
+                         #width = get_err(.data)
+                         #width = data[[mapping]][[x]][[2]] # maybe sth to do with envir = parent.frame() lol
+                         width = get_err(.data[[x]])
+                         )))
+}
+
+geom_xerr <- function(mean, se, y
+                      #, ht = 0.9
+                      ){
+  list(geom_errorbarh(aes(xmin = .data[[mean]] - .data[[se]], 
+                          xmax = .data[[mean]] + .data[[se]],
+                          #height = ht,
+                          height = get_err(.data[[y]]))))
+}
+```
+
+holy fuk been trying to figure out how to do custom error bars FOREVER see here:
+
+- https://stackoverflow.com/questions/22309285/how-to-use-a-variable-to-specify-column-name-in-ggplot
+- https://stackoverflow.com/questions/62961284/having-trouble-with-a-custom-geom-that-transforms-single-row-aesthetics-to-multi (sorta outside the scope but interesting)
+
+but auto-width is still an issue:
+
+- https://stackoverflow.com/questions/19420903/width-of-error-bars-in-line-plot-using-ggplot2/29059601#29059601 (use 0.02 of axis range)
+- https://stackoverflow.com/questions/7705345/how-can-i-extract-plot-axes-ranges-for-a-ggplot2-object
+- https://stackoverflow.com/questions/28370249/correct-way-to-specifiy-optional-arguments-in-r-functions
+- https://stackoverflow.com/questions/69109106/default-arguments-not-being-recognized-in-custom-function-using-dplyr
+- https://stackoverflow.com/questions/53767647/write-a-function-with-default-column-name-inputs-in-dplyrmutate
+- https://dplyr.tidyverse.org/articles/programming.html#one-or-more-user-supplied-expressions
+- https://stackoverflow.com/questions/79195871/passing-a-global-object-value-to-a-custom-ggplot-function-argument
+- https://stackoverflow.com/questions/2641653/pass-a-data-frame-column-name-to-a-function
+- https://forum.posit.co/t/extending-ggplot-to-take-lists-and-make-the-internal-elements-of-that-list-available-to-custom-geoms/29870/3
+
+- https://forum.posit.co/t/accessing-ggplots-inherited-data-object-inside-custom-layer/114718 *ughh this is exactly what im trying to do*
+
 ## df setup
 
 ```{r}
@@ -59,6 +127,22 @@ ss_fert <- dall %>%
 
 # remove the 2023-win-f? (must be the solo f?) -- jk they fall out naturally when u keep the lab pop only
 
+```
+
+
+# plots
+
+```{r}
+ss_fert %>%
+  filter(year == 2023) %>%
+  ggplot(aes(y = p.hatched, x = avg.colledperf,
+             col = minT, shape = trt.sex)) +
+  geom_point() +
+  geom_yerr("p.hatched", "se.phatched", "avg.colledperf") +
+  geom_xerr("avg.colledperf", "se.colled", "p.hatched") +
+  facet_wrap(~trt.type)
+
+  
 ```
 summ_longevity <- data_longevity %>%
   mutate(surv = jdate.surv - jdate.eclose) %>%
