@@ -62,6 +62,11 @@ geom_yerr <- function(#.data,
                          #width = get_err(.data)
                          #width = data[[mapping]][[x]][[2]] # maybe sth to do with envir = parent.frame() lol
                          width = get_err(.data[[x]])
+                         
+                         # if(is.character(x))
+                         #   {
+                         #   width = get_err(.data[[x]])
+                         # } else width = x
                          )))
 }
 
@@ -108,6 +113,8 @@ ss_fert <- dall %>%
             #avg.colled = mean(n.coll, na.rm=TRUE),
             se.colled = se(n.coll),
             avg.colledperf = n.colled/n.f,
+            #test = n.coll/n.ovi, 
+            #se.colledperf = sd(na.omit(n.coll)/na.omit(n.ovi))/sqrt(length(na.omit(n.coll)/na.omit(n.ovi))),
             n.hatched = sum(n.hatch, na.rm=TRUE),
             #avg.hatched = mean(n.hatch, na.rm=TRUE),
             se.hatched = se(n.hatch),
@@ -134,16 +141,104 @@ ss_fert <- dall %>%
 
 ```{r}
 ss_fert %>%
-  filter(year == 2023) %>%
+  filter(year == 2023 #& trt.temp != 260
+         ) %>%
+  mutate(trt.temp = as.factor(trt.temp)) %>%
   ggplot(aes(y = p.hatched, x = avg.colledperf,
-             col = minT, shape = trt.sex)) +
-  geom_point() +
+             col = trt.temp, shape = trt.sex)) +
+  geom_point(size = 1.5) +
   geom_yerr("p.hatched", "se.phatched", "avg.colledperf") +
   geom_xerr("avg.colledperf", "se.colled", "p.hatched") +
-  facet_wrap(~trt.type)
-
-  
+  geom_text(aes(label = n.f), vjust = -0.6, hjust = -0.65,
+            show.legend = FALSE) +
+  facet_grid(~trt.type, labeller = as_labeller(c(`win` = "both sexes HS'd",
+                                                 `btwn` = "1 sex HS'd"))) +
+  labs(caption = "2023 hatch proportion/egg laying;\nn = total females, se = se total collected",
+       y = "hatch proportion",
+       x = "avg eggs collected per day",
+       shape = "heat-treated sex",
+       color = "larval rearing\ntemperature (°C)") +
+  scale_color_manual(values = bin_aes$temp4$col, labels = bin_aes$temp4$labswC) +
+  scale_shape_manual(values = bin_aes$sexes$ptfill_all, 
+                     #limits = c("f", "m")
+                     ) +
+  theme_bw()
 ```
+
+```{r}
+ss_fert %>%
+  filter(year == 2024) %>%
+  mutate(trt.temp = as.factor(trt.temp),
+         trt.type = factor(trt.type, levels = c("expt", "ctrl"))) %>%
+  ggplot(aes(y = avg.colledperf, x = minT,
+             col = trt.temp,)) +
+  geom_point(size = 1.5) +
+  geom_errorbar(aes(ymin = avg.colledperf - se.colled, 
+                    ymax = avg.colledperf + se.colled,
+                    width = 0.15)) +
+  #geom_yerr("avg.colledperf", "se.colled", "minT") +
+  geom_text(aes(label = n.f), vjust = -0.6, hjust = -0.65,
+            show.legend = FALSE) +
+  facet_grid(~trt.type, labeller = as_labeller(c(`expt` = "40-X°C",
+                                                 `ctrl` = "26-26°C"))) +
+  labs(caption = "2024 egg laying;\nn = total females; se = se total collected",
+       y = "avg eggs collected per day",
+       x = "minimum rearing temperature (°C)") +
+  scale_color_manual(values = bin_aes$temp4$col) +
+  guides(color = "none") +
+  theme_bw()
+```
+
+```{r}
+# 23 and 24
+ss_fert %>%
+  filter(trt.temp != 260 & trt.sex != "m") %>%
+  mutate(trt.temp = as.factor(trt.temp),
+         trt.type = "expt") %>% 
+  # prob need to redo the math lol and put the trts together in 2023...
+  ggplot(aes(y = avg.colledperf, x = minT, 
+             col = year, shape = trt.sex))+
+  geom_point(size = 1.5) +
+  geom_errorbar(aes(ymin = avg.colledperf - se.colled, 
+                    ymax = avg.colledperf + se.colled,
+                    width = 0.15)) +
+  geom_text(aes(label = n.f), vjust = -0.6, hjust = -0.65,
+            show.legend = FALSE) +
+  geom_line(aes(lty = trt.sex, group = interaction(year, trt.sex))) +
+  facet_grid(~trt.type, labeller = as_labeller(c(`expt` = "40-X°C"))) +
+  labs(caption = "23v24 egg laying;\nn = total females; se = se total collected",
+       y = "avg eggs collected per day",
+       x = "minimum rearing temperature (°C)") +
+  #scale_color_manual(values = bin_aes$temp4$col) +
+  theme_bw()
+
+
+ss_fert %>%
+  filter(trt.temp == 260 | trt.sex == "m") %>%
+  mutate(trt.temp = as.factor(trt.temp),
+         trt.type = "ctrl") %>%
+  ggplot(aes(y = avg.colledperf, x = year, 
+             col = trt.temp, shape = trt.sex))+
+  geom_point(size = 1.5) +
+  geom_errorbar(aes(ymin = avg.colledperf - se.colled, 
+                    ymax = avg.colledperf + se.colled,
+                    width = 0.1)) +
+  geom_line(aes(lty = trt.temp,
+                group = interaction(trt.temp))) +
+  geom_text(aes(label = n.f), vjust = -0.6, hjust = -0.65,
+            show.legend = FALSE) +
+  facet_grid(~trt.type, labeller = as_labeller(c(`ctrl` = "26-26°C"))) +
+  labs(caption = "23v24 egg laying;\nn = total females; se = se total collected",
+       y = "avg eggs collected per day",
+       x = "minimum rearing temperature (°C)") +
+  scale_color_manual(values = bin_aes$temp4$col) +
+  theme_bw()
+```
+
+
+```{r longevity plot}
+# not that relevant anymore
+
 summ_longevity <- data_longevity %>%
   mutate(surv = jdate.surv - jdate.eclose) %>%
   group_by(expt.type, pop, #sex, 
@@ -151,9 +246,7 @@ summ_longevity <- data_longevity %>%
   summarise(n = n(),
             avg.surv = mean(na.omit(surv)),
             se.surv = sd(na.omit(surv))/sqrt(length(na.omit(surv))))
-```
 
-```{r plot}
 summ_longevity %>%
   filter(expt.type == "expt") %>%
   #filter(!(pop == "lab" & diet.type == "TB")) %>% 
