@@ -139,6 +139,8 @@ ss_fert <- dall %>%
 
 # plots
 
+## 2023 lay + hatch
+
 ```{r}
 ss_fert %>%
   filter(year == 2023 #& trt.temp != 260
@@ -164,6 +166,7 @@ ss_fert %>%
                      ) +
   theme_bw()
 ```
+## 2024 laying
 
 ```{r}
 ss_fert %>%
@@ -188,6 +191,8 @@ ss_fert %>%
   guides(color = "none") +
   theme_bw()
 ```
+
+## 23 v 24 laying
 
 ```{r}
 # 23 and 24
@@ -235,7 +240,7 @@ ss_fert %>%
   theme_bw()
 ```
 
-
+# old stuff not relevant
 ```{r longevity plot}
 # not that relevant anymore
 
