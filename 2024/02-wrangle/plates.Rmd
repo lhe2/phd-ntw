@@ -55,55 +55,87 @@ sod$pre <- rename(sod$pre, abs.pre = "Raw Data (450)") #mutate(sod$pre, read = "
 sod$post <- rename(sod$post, abs.post = "Raw Data (450)") #mutate(sod$post, read = "post")
 
 sod <- list_assign(sod, merge = merge(sod$pre, sod$post, all = TRUE))
+
 sod$merge <- sod$merge %>%
   rename(id = "Well",
-         type = "Content")
+         type = "Content") %>%
+  filter(!(id %in% c("A03", "B02", "C02", "E02", "G02", "H01"))) # removing bad stds
 ```
 
 ```{r edit values}
-sod$merge %>%
-  mutate(id.row = str_sub(id, 1, 1),
-         id.col = as.numeric(str_sub(id, 2, 3)),
-         type = case_when(id.col < 4 | id %in% c("G08", "G09") ~ "std",
-                          TRUE ~ "unk"),
-         cxn = case_when(type == "std" & id.row == "A" ~ 4,
-                         type == "std" & id.row == "B" ~ 2,
-                         type == "std" & id.row == "C" ~ 1,
-                         type == "std" & id.row == "D" ~ 0.5,
-                         type == "std" & id.row == "E" ~ 0.25,
-                         type == "std" & id.row == "F" ~ 0.125,
-                         type == "std" & id.row == "G" ~ 0.0625,
-                         type == "std" & id.row == "H" ~ 0),
-         trt = case_when(id.row %in% c("A", "B", "C") & id.col %in% c(4, 5) ~ "ctrl",
-                         (id.row %in% c("D", "E", "F") & id.col %in% c(4, 5)) | 
-                           (id.row %in% c("E", "F", "G") & id.col %in% c(6, 7)) ~ "26",
-                          (id.row %in% c("G", "H") & id.col %in% c(4, 5)) |
-                             (id.row %in% c("A", "H") & id.col %in% c(6, 7)) |
-                           (id.row %in% c("A", "B") & id.col %in% c(8, 9)) ~ "33",
-                         (id.row %in% c("B", "C", "D") & id.col %in% c(6, 7)) |
-                           (id.row %in% c("C", "D", "E") & id.col %in% c(8, 9)) ~ "36"),
-         time = case_when(id.row %in% c("A", "B", "C") & id.col %in% c(4, 5) ~ 0,
-                          (trt %in% c("26", "33") & id.col %in% c(4, 5)) |
-                            id.row %in% c("A", "B", "C", "D") & id.col %in% c(6, 7) ~ 1,
-                          (id.row %in% c("E", "F", "G", "H") & id.col %in% c(6, 7)) |
-                            id.row %in% c("A", "B", "C", "D", "E", "F") & id.col %in% c(8, 9) ~ 2),
-         rep.biol = case_when((id.row %in% c("A", "D", "G") & id.col %in% c(4, 5)) |
-                                (id.row %in% c("B", "E", "H") & id.col %in% c(6, 7)) |
-                                (id.row == "C" & id.col %in% c(8, 9)) ~ 1,
-                              (id.row %in% c("B", "E", "H") & id.col %in% c(4, 5)) |
-                                (id.row %in% c("C", "F") & id.col %in% c(6, 7)) |
-                                (id.row %in% c("A", "D") & id.col %in% c(8, 9)) ~ 2,
-                                (id.row %in% c("C", "F") & id.col %in% c(4, 5)) |
-                                (id.row %in% c("A", "D", "G") & id.col %in% c(6, 7)) |
-                                (id.row %in% c("C", "E") & id.col %in% c(8, 9)) ~ 3),
-         rep.tech = case_when(id.col %in% c(1, 4, 6, 8) ~ 1,
-                              id.col == 3 ~ 3,
-                              TRUE ~ 2),
-         dil = case_when(type == "unk" ~ 4)
-         )
-
-# custom mutate no XO blank std
+sod <- list_assign(sod, all = sod$merge %>%
+                     mutate(id.row = str_sub(id, 1, 1),
+                            id.col = as.numeric(str_sub(id, 2, 3), .after = "id")) %>%
+                     mutate(type = case_when(id.col < 4 | id %in% c("G08", "G09") ~ "std",
+                                             TRUE ~ "unk"),
+                            sod.cxn = case_when(id.row == "A" & id.col < 4 ~ 4,
+                                            id.row == "B" & id.col < 4 ~ 2,
+                                            id.row == "C" & id.col < 4 ~ 1,
+                                            id.row == "D" & id.col < 4 ~ 0.5,
+                                            id.row == "E" & id.col < 4 ~ 0.25,
+                                            id.row == "F" & id.col < 4 ~ 0.125,
+                                            id.row == "G" & id.col < 4 ~ 0.0625,
+                                            id.row == "H" & id.col < 4 ~ 0),
+                            trt = case_when(id.row %in% c("A", "B", "C") & id.col %in% c(4, 5) ~ "ctrl",
+                                            (id.row %in% c("D", "E", "F") & id.col %in% c(4, 5)) | 
+                                              (id.row %in% c("E", "F", "G") & id.col %in% c(6, 7)) ~ "26",
+                                            (id.row %in% c("G", "H") & id.col %in% c(4, 5)) |
+                                              (id.row %in% c("A", "H") & id.col %in% c(6, 7)) |
+                                              (id.row %in% c("A", "B") & id.col %in% c(8, 9)) ~ "33",
+                                            (id.row %in% c("B", "C", "D") & id.col %in% c(6, 7)) |
+                                              (id.row %in% c("C", "D", "E") & id.col %in% c(8, 9)) ~ "36"),
+                            time = case_when(id.row %in% c("A", "B", "C") & id.col %in% c(4, 5) ~ 0,
+                                             (trt %in% c("26", "33") & id.col %in% c(4, 5)) |
+                                               id.row %in% c("A", "B", "C", "D") & id.col %in% c(6, 7) ~ 1,
+                                             (id.row %in% c("E", "F", "G", "H") & id.col %in% c(6, 7)) |
+                                               id.row %in% c("A", "B", "C", "D", "E") & id.col %in% c(8, 9) ~ 2),
+                            rep.biol = case_when((id.row %in% c("A", "D", "G") & id.col %in% c(4, 5)) |
+                                                   (id.row %in% c("B", "E", "H") & id.col %in% c(6, 7)) |
+                                                   (id.row == "C" & id.col %in% c(8, 9)) ~ 1,
+                                                 (id.row %in% c("B", "E", "H") & id.col %in% c(4, 5)) |
+                                                   (id.row %in% c("C", "F") & id.col %in% c(6, 7)) |
+                                                   (id.row %in% c("A", "D") & id.col %in% c(8, 9)) ~ 2,
+                                                 (id.row %in% c("C", "F") & id.col %in% c(4, 5)) |
+                                                   (id.row %in% c("A", "D", "G") & id.col %in% c(6, 7)) |
+                                                   (id.row %in% c("B", "E") & id.col %in% c(8, 9)) ~ 3),
+                            rep.tech = case_when(id.col %in% c(1, 4, 6, 8) ~ 1,
+                                                 id.col == 3 ~ 3,
+                                                 TRUE ~ 2),
+                            dil = case_when(type == "unk" ~ 4),
+                            id.sample = case_when(type == "std" & sod.cxn >= 0 ~ paste0(type, "-", sod.cxn),
+                                                  id %in% c("G08", "G09") ~ "std-no XO",
+                                                  id %in% c("F08", "F09") ~ "unk-buffer",
+                                                  TRUE ~ paste0(type, "-", trt, "-T", time, "-", rep.biol))
+                     )
+)
 
 ```
+
+```{r calcs}
+# subtr blanked plate and use for lin sod rate, idk if 4pl is needed still
+sod <- list_assign(sod, vals = list())
+
+sod <- list_assign(sod, calcs = sod$all %>%
+                     mutate(abs.blanked = abs.post - abs.pre, .after = "abs.post") %>%
+                     group_by(sod.cxn, type, trt, time, rep.biol, id.sample) %>%
+                     summarise(avg.abs = mean(abs.blanked))
+                   )
+
+sod$vals <- list_modify(sod$vals, maxabs = as.numeric(sod$calcs[sod$calcs$id.sample == "std-0", "avg.abs"]))
+
+sod <- list_modify(sod, calcs = sod$calcs %>%
+                     mutate(sod.linrate = sod$vals$maxabs/avg.abs)
+                   )
+#temp <- sod  
+```
+
+```{r get std curve}
+sod <- list_merge(sod, vals = coef(lm(sod.linrate ~ sod.cxn, data = filter(sod$calcs, type == "std" & !is.na(sod.cxn)))))
+
+ggplot(filter(sod$calcs, type == "std" & !is.na(sod.cxn)), aes(sod.cxn, sod.linrate)) + geom_point() # good enough
+
+
+```
+
 
 
