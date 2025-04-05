@@ -50,6 +50,8 @@ sod <- list_assign(sod,
 
 # 2. do stuff
 
+## - plate wrangling and blanking
+
 ```{r merge dfs}
 sod$pre <- rename(sod$pre, abs.pre = "Raw Data (450)") #mutate(sod$pre, read = "pre")
 sod$post <- rename(sod$post, abs.post = "Raw Data (450)") #mutate(sod$post, read = "post")
@@ -112,14 +114,23 @@ sod <- list_assign(sod, all = sod$merge %>%
 ```
 
 ```{r calcs}
-# subtr blanked plate and use for lin sod rate, idk if 4pl is needed still
+# subtr blanked plate 
 sod <- list_assign(sod, vals = list())
 
 sod <- list_assign(sod, calcs = sod$all %>%
                      mutate(abs.blanked = abs.post - abs.pre, .after = "abs.post") %>%
                      group_by(sod.cxn, type, trt, time, rep.biol, id.sample) %>%
-                     summarise(avg.abs = mean(abs.blanked))
+                     summarise(avg.abs = mean(abs.blanked)) %>%
+                     ungroup()
                    )
+
+```
+
+## - lin sod rate (sigma aldritch method)
+
+```{r get std curve}
+# determining lin sod rate per the sigma kit
+# idk if 4pl is needed still
 
 sod$vals <- list_modify(sod$vals, maxabs = as.numeric(sod$calcs[sod$calcs$id.sample == "std-0", "avg.abs"]))
 
@@ -127,13 +138,60 @@ sod <- list_modify(sod, calcs = sod$calcs %>%
                      mutate(sod.linrate = sod$vals$maxabs/avg.abs)
                    )
 #temp <- sod  
+
+sod <- list_merge(sod, vals = coef(lm(sod.linrate ~ sod.cxn,
+                                       data = filter(sod$calcs, type == "std" & !is.na(sod.cxn)))))
+
+
+p <- ggplot(filter(sod$calcs, type == "std" & !is.na(sod.cxn)), aes(sod.cxn, sod.linrate)) + 
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(y = "linearised SOD activity rate",
+       x = "SOD concentration (units/mL)\n(standards)",
+       caption = "y = 7.76x + 4.35; R^2 = 0.8591")
+
+p
+# good enough
+
 ```
 
-```{r get std curve}
-sod <- list_merge(sod, vals = coef(lm(sod.linrate ~ sod.cxn, data = filter(sod$calcs, type == "std" & !is.na(sod.cxn)))))
+```{r calc sod cxn for unks}
 
-ggplot(filter(sod$calcs, type == "std" & !is.na(sod.cxn)), aes(sod.cxn, sod.linrate)) + geom_point() # good enough
+sod <- list_modify(sod, calcs = sod$calcs %>%
+                     mutate(sod.cxn = case_when(type == "unk" ~ 
+                                                  ((sod.linrate - sod$vals[['(Intercept)']])/sod$vals$sod.cxn)*8.5*4, 
+                                                TRUE ~ sod.cxn)
+                            ))
+# unk SOD cxn = [(LSRsample - int) * well volume DF * DF]/slope
 
+p +
+  geom_point(filter(sod$calcs, type == "unk"), mapping = aes(col = as.factor(time), shape = trt)) #lmfao
+
+ggplot(filter(sod$calcs, type == "unk" & !is.na(time)), aes(x = sod.cxn, y = sod.linrate,
+                                             #shape = as.factor(time), 
+                                             #col = trt,
+                                             col = as.factor(time)
+                                             )) +
+  geom_point() +
+  facet_wrap(~trt)
+
+# SIGH
+
+```
+
+## - 4pl?
+
+```{r}
+# calc inhibition rate % (also from sigma...)
+
+sod <- list_modify(sod, calcs = sod$calcs %>%
+                     mutate(sod.inhibrate = (sod$vals$maxabs - avg.abs)/sod$vals$maxabs * 100)
+                   )
+
+p <- ggplot(filter(sod$calcs, type == "std"), aes(y = sod.inhibrate, x = log(sod.cxn))) +
+  geom_point()
+
+p # this sorta looks like the curve from oxisresearch at least ...
 
 ```
 
