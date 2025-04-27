@@ -61,9 +61,9 @@ ntw_mumin.dfs <- c(ntw_mumin.dfs,
                    list(ecd = filter(ntw_mumin.dfs$df, is.ec == 1)))
 ```
 
-# 01. pup survival
+# [x] 01. pup survival
 
-## fig
+## [x] fig
 
 ```{r}
 p1 <- ss_ntw %>% 
@@ -116,9 +116,9 @@ p1 + p2 +
 ```
 
 
-## stats
+## [x] stats
 
-### dredge
+### - dredge
 ```{r}
 # remove nas
 ntw_mumin.dfs <- c(ntw_mumin.dfs, 
@@ -144,7 +144,7 @@ out.psurv <- c(out.psurv,
 out.psurv$dredge.out # subset of models based on weight
 ```
 
-### manual selection
+### - manual selection
 ```{r}
 mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT, 
                                 data = ntw_mumin.dfs$df, family = "binomial"),
@@ -164,16 +164,16 @@ nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psur
 
 
 
-# 02. supernumerary stuff (later)
+# [ ] 02. supernumerary stuff (later)
 
-## fig
+## [ ] fig
 
-## stats
+## [ ] stats
 
 
-# 03. pup mass/adult mass
+# [x] 03. pup mass/adult mass
 
-## fig
+## [x] fig
 
 ```{r}
 # NTs on pupal/adult mass
@@ -248,7 +248,7 @@ p1 + p2 +
 
 
 
-## stats
+## [x] stats
 
 ```{r}
 # pup mass
@@ -271,17 +271,102 @@ mod %>%
 ```
 
 
-# 04. pup time/ad longevity
+# [x] 04. pup time/ad longevity
 
-## fig
+## [x] fig
 
-## stats
+```{r}
+p1 <- ss_ntw %>% 
+  filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
+  ggplot(aes(y = avg.tt, x = minT,
+             color = stage, 
+             group = interaction(pop, stage, trt.type)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  #facet_wrap(~year) + # orig
+  facet_grid(pop~year, scales = "free_y") +
+  theme_bw()
+
+p1
 
 
-# 05. fertility/fecundity
+p2 <- ss_ntw %>% 
+  filter(stage %in% c("la", "ad") & trt.type == "ctrl" & !(sex %in% c("m", "f"))) %>%
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.tt, x = year,
+             color = stage, 
+             group = interaction(pop, stage, trt.type)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  #geom_point(aes(alpha = year), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  geom_point(#fill = NA, 
+             size = 2) +
+  labs(x = "year") +
+  #facet_wrap(~trt.type) + # orig
+  facet_grid(pop~trt.type, scales = "free_y") +
+  theme_bw()
 
-## fig
+p2
 
-## fertility stats
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs reduce pup dev time?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "time to pupation / adult longevity (days)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  #scale_shape_manual(values = c(24, 22)) &
+  scale_color_manual(values = c("#1B9E77",  "#7570B3", "#D95F02"), labels = c("larva", "adult", "pupa")) &
+  scale_fill_manual(values = c("#1B9E77",  "#7570B3", "#D95F02"), labels = c("larva", "adult", "pupa")) &
+  #ylim(c(15, 37)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 
-## fecundity stats
+```
+
+
+## [x] stats
+
+```{r}
+# time to pup
+anova(lm(tt.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt, na.action = na.omit)) # sex is ns, so focus on 2way
+
+mod <- anova(lm(tt.pupa ~ (year + minT + pop)^2, data = ntw_expt, na.action = na.omit))
+mod
+
+mod %>%
+  write.csv(., here(out_path, "pup-time_anova.csv"))
+```
+
+```{r}
+# ad long
+anova(lm(tt.surv ~ (year + minT + pop + sex)^2, data = ntw_expt.sex, na.action = na.omit)) # sex is ns so drop
+
+mod <- anova(lm(tt.surv ~ (year + minT + pop)^2, data = ntw_expt.sex, na.action = na.omit))
+
+mod
+
+mod %>%
+  write.csv(., here(out_path, "ad-longevity_anova.csv"))
+```
+
+
+
+# [ ] 05. fertility/fecundity
+
+## [ ] fig
+
+## [ ] fertility stats
+
+## [ ] fecundity stats
