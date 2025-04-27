@@ -1,0 +1,287 @@
+---
+title: "feas figs and stats"
+date: "2025-04-27"
+---
+
+goal: to have this all in one place (bc i also forgot to do some lol)
+
+(these are just the aim 1 results)
+
+# setup
+
+## - loading
+```{r}
+here::i_am("2024/03-viz/feasibility.Rmd")
+library(here)
+
+library(tidyverse)
+library(patchwork)
+library(lme4) # for glms and lms
+library(MuMIn) # for model dredging
+
+source(here::here("set-paths.R"))
+source(here::here(bin_paths24$wrangle, "compare-dev_p.R"))
+source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
+source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
+
+out_path <- here(bin_paths24$y24, "figs", "feasibility")
+```
+
+## - stats df prep
+```{r general exptal bug filter}
+# focusing on exptal bugs only that weren't lab on TB
+ntw_expt <- ntw_wide %>%
+  filter(!(diet == "TB" & pop == "lab") & trt.type == "expt") %>%
+  mutate(dmass = mass.pupa - mass.eclose,
+         rate.pup = mass.pupa/tt.pupa)
+```
+
+```{r other subsets}
+# omit accidental deaths (so either pmd, pup, LPI)
+ntw_expt.surv <- ntw_expt %>%
+  filter(is.pup != 2)
+
+# omit unsexed pupa
+ntw_expt.sex <- ntw_expt %>%
+  filter(!is.na(sex))
+```
+
+```{r mumin subsets}
+# bc apparently this pkg cant handle NAs bc "all models must be fit to the same data" 
+# when comparing fits, so subset:
+  # all surv to pups
+  # all surv to ecs
+
+# select relevant variables
+ntw_mumin.dfs <- list(df = select(ntw_expt.surv, c("year", "pop", "minT", "is.pup", 
+                                                   "is.sup", "sup", "is.ec")))
+
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(pupd = filter(ntw_mumin.dfs$df, is.pup == 1)),
+                   list(ecd = filter(ntw_mumin.dfs$df, is.ec == 1)))
+```
+
+# 01. pup survival
+
+## fig
+
+```{r}
+p1 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "expt") %>% 
+  ggplot(aes(y = prop.survpup, x = minT,
+             color = stage, 
+             lty = pop, shape = year,
+             group = interaction(pop, trt.type))) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
+  labs(x = "minimum temperature (°C)") +
+  facet_wrap(~year) +
+  theme_bw()
+
+p1
+
+
+p2 <- ss_ntw %>% 
+  filter(stage == "la" & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = prop.survpup, x = year,
+             color = stage, 
+             lty = pop, shape = year,
+             group = interaction(pop, trt.type))) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
+  facet_wrap(~trt.type) +
+  theme_bw()
+
+p2
+```
+
+```{r}
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs increase survival to pup?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population",
+       y = "proportion survived to pupation") &
+  guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(1, 16)) &
+  scale_color_manual(values = "#1B9E77") &
+  ylim(c(0, 1))
+```
+
+
+## stats
+
+### dredge
+```{r}
+# remove nas
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(nona = na.omit(ntw_mumin.dfs$df[1:4])))
+
+out.psurv <- list(dredge = dredge(glm(is.pup ~ year*pop*minT, 
+                                      data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail), 
+                                  #extra = c("R^2", F = function(x)
+                                  #summary(x)$fstatistic[[1]])
+                                  ))
+out.psurv$dredge
+
+dredge(glm(is.pup ~ year*pop*minT, data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>%
+  subset(., weight > 0.01) %>%
+  as.data.frame(.) %>% write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_dredge.csv"))
+
+dredge(glm(is.pup ~ year*pop*minT, 
+           data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>% subset(., weight > 0.01)
+
+out.psurv <- c(out.psurv,
+               dredge.out = list(get.models(out.psurv$dredge, subset = weight > 0.01)))
+
+out.psurv$dredge.out # subset of models based on weight
+```
+
+### manual selection
+```{r}
+mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT, 
+                                data = ntw_mumin.dfs$df, family = "binomial"),
+                  n2way = glm(is.pup ~ (year + pop + minT)^2,
+                                data = ntw_mumin.dfs$df, family = "binomial"),
+                  fulladd = glm(is.pup ~ year + pop + minT, 
+                                data = ntw_mumin.dfs$df, family = "binomial"),
+                  null = glm(is.pup ~ 1, 
+                                data = ntw_mumin.dfs$df, family = "binomial"))
+
+model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null) %>%
+  as.data.frame(.) %>%
+  write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_man-modsel.csv"))
+
+nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null))
+```
+
+
+
+# 02. supernumerary stuff (later)
+
+## fig
+
+## stats
+
+
+# 03. pup mass/adult mass
+
+## fig
+
+```{r}
+# NTs on pupal/adult mass
+
+p1 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  #filter(!(stage == "ad" & sex == "all")) %>%
+  filter(sex != "all") %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.mass, x = minT,
+             color = stage, fill = stage, 
+             shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = stage), size = 2) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(pop
+             ~year, scales = "free_y") +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  #filter(!(stage == "ad" & sex == "all")) %>%
+  filter(sex != "all") %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.mass, x = year,
+             color = stage, fill = stage, 
+             shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(#aes(alpha = year), 
+             size = 2) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "year") +
+  facet_grid(pop
+               ~trt.type, scales = "free_y") +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs lead to larger mass?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(#lty = "population",
+       y = "mass (g)") &
+  #guides(color = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(24, 22)) &
+  scale_color_manual(values = c("#D95F02", "#7570B3", "#1B9E77"), labels = c("pupa", "adult", "larva")) &
+  scale_fill_manual(values = c("#D95F02", "#7570B3", "#1B9E77"), labels = c("pupa", "adult", "larva")) &
+  #scale_alpha_manual(values = c(0.1,1)) &
+  #ylim(c(0.75, 7.25)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+
+
+```
+
+
+
+## stats
+
+```{r}
+# pup mass
+mod.pmass_n2way01 <- lm(mass.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt.sex, na.action = na.omit)
+anova(mod.pmass_n2way01)
+
+anova(mod.pmass_n2way01) %>%
+  write.csv(., here(out_path, "pup-mass_anova.csv"))
+```
+
+```{r}
+# adult mass
+anova(lm(mass.eclose ~ (year*minT*pop*sex), data = ntw_expt.sex, na.action = na.omit))
+mod <- anova(lm(mass.eclose ~ (year + minT + pop + sex)^2, data = ntw_expt.sex, na.action = na.omit)) # better
+anova(lm(mass.eclose ~ year+minT+pop+sex, data = ntw_expt.sex, na.action = na.omit))
+
+mod
+mod %>% 
+  write.csv(., here(out_path, "ad-mass_anova.csv"))
+```
+
+
+# 04. pup time/ad longevity
+
+## fig
+
+## stats
+
+
+# 05. fertility/fecundity
+
+## fig
+
+## fertility stats
+
+## fecundity stats
