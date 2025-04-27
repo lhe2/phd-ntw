@@ -27,7 +27,7 @@ source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 out_path <- here(bin_paths24$y24, "figs", "feasibility")
 ```
 
-## - stats df prep
+## - dev stats df prep
 ```{r general exptal bug filter}
 # focusing on exptal bugs only that weren't lab on TB
 ntw_expt <- ntw_wide %>%
@@ -60,6 +60,91 @@ ntw_mumin.dfs <- c(ntw_mumin.dfs,
                    list(pupd = filter(ntw_mumin.dfs$df, is.pup == 1)),
                    list(ecd = filter(ntw_mumin.dfs$df, is.ec == 1)))
 ```
+
+## - fert df prep
+
+### - for figs
+
+```{r}
+se <- function(x){
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
+}
+```
+
+
+```{r}
+# for figs
+# sums are for across whole existence of cage/tent (`t.duration`)
+  # pre-emptively filtering out the field pop bc they never wanna lay eggs
+ss_fert <- dall %>%
+  group_by(year, pop, trt.temp,
+           trt.type, trt.sex) %>%
+  summarise(n.reps = n_distinct(id),
+            n.f = sum(n.new.f, na.rm=TRUE),
+            n.colled = sum(n.coll, na.rm=TRUE),
+            #avg.colled = mean(n.coll, na.rm=TRUE),
+            se.colled = se(n.coll),
+            avg.colledperf = n.colled/n.f,
+            #test = n.coll/n.ovi, 
+            #se.colledperf = sd(na.omit(n.coll)/na.omit(n.ovi))/sqrt(length(na.omit(n.coll)/na.omit(n.ovi))),
+            n.hatched = sum(n.hatch, na.rm=TRUE),
+            #avg.hatched = mean(n.hatch, na.rm=TRUE),
+            se.hatched = se(n.hatch),
+            p.hatched = n.hatched/n.colled,
+            se.phatched = sqrt(p.hatched*(1-p.hatched)/n.colled),
+            t.duration = max(jdate) - min(jdate)) %>% 
+  mutate(across(ends_with("hatched"), ~ case_when(is.nan(.) ~ NA_real_,
+                                                  year == 2023 ~ as.numeric(.))),
+         across(starts_with(c("n", "avg", "se", "p")), ~ round(., digits = 3)),
+         minT = case_when(trt.temp == 419 ~ 19,
+                          trt.temp %in% c(260, 426) ~ 26,
+                          TRUE ~ 33),
+         minT = factor(minT, levels = c(19, 26, 33)),
+         for.comparef = case_when(year == 2024 |
+                                    (year == 2023 & (trt.sex == "f" | trt.temp == 260)) ~ "Y")) %>%
+  filter(pop == "lab")
+```
+
+### - for stats
+
+```{r setting up blank lists for outputs}
+dfs <- list() 
+mods <- list()
+```
+
+## - df prep
+
+```{r general df modifications}
+# add binaries for modeling
+dall <- dall %>%
+  mutate(is.hsF = case_when(trt.sex %in% c("f", "both") ~ 1,
+                            TRUE ~ 0),
+         is.hsM = case_when(trt.sex %in% c("m", "both") ~ 1,
+                            TRUE ~ 0))
+```
+
+```{r egg laying}
+# ignore the hatching for now
+dfs <- list_assign(dfs, 
+                   df23 = dall %>%
+                     filter(year == 2023) %>%
+                     group_by(id) %>%
+                     mutate(n.coll.overall = sum(n.coll, na.rm = TRUE),
+                            n.f.overall = sum(n.new.f, na.rm=TRUE),
+                            n.collperovi.overall = n.coll.overall/n.f.overall,
+                            n.hatched.overall = sum(n.hatch, na.rm =TRUE),
+                            p.hatched = n.hatched.overall/n.coll.overall,
+                            jdate.rel = jdate - first(jdate)
+                     ) %>%
+                     group_by(jdate.rel, .add = TRUE) %>%
+                     mutate(n.coll.daily = sum(n.coll, na.rm = TRUE),
+                            #n.hatch.daily = sum(n.hatch, na.rm = TRUE)
+                            n.collperovi.daily = n.coll.daily/n.ovi)
+)
+
+#View(dfs[["df23"]])
+```
+
 
 # [x] 01. pup survival
 
@@ -496,13 +581,76 @@ mod %>%
 
 # [ ] 05. fertility/fecundity
 
-## [ ] fig
+
+## [x] fig
 
 ```{r}
+ss_fert %>%
+  filter(year == 2023 #& trt.temp != 260
+         ) %>%
+  mutate(trt.temp = as.factor(trt.temp),
+         trt.type = factor(trt.type, levels = c("win", "btwn"))) %>%
+  ggplot(aes(y = p.hatched, x = avg.colledperf,
+             col = trt.temp, shape = trt.sex)) +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymax = p.hatched + se.phatched, ymin = p.hatched - se.phatched, width = 300*0.04)) +
+  geom_errorbarh(aes(xmax = avg.colledperf + se.colled, xmin = avg.colledperf - se.colled, height = 0.2*0.025)) +
+  geom_text(aes(label = n.f), vjust = -0.7, hjust = -0.65,
+            show.legend = FALSE) +
+  facet_grid(~trt.type, labeller = as_labeller(c(`win` = "both sexes HS'd",
+                                                 `btwn` = "1 sex HS'd"))) +
+  labs(#caption = "2023 hatch proportion/egg laying;\nn = total females, se = se total collected",
+       y = "hatch proportion (overall)",
+       x = "mean eggs collected per female (overall)",
+       shape = "heat-treated sex",
+       color = "larval rearing\ntemperature (°C)") +
+  scale_color_manual(#values = bin_aes$temp4$col, 
+                     values = c("#4393ce", "darkgoldenrod1", "#fd8d3c", "#d94701"),
+                     labels = bin_aes$temp4$labswC) +
+  scale_shape_manual(#values = bin_aes$sexes$ptfill_all, 
+                     values = c(4, 16, 1),
+                     #limits = c("f", "m")
+                     ) +
+  theme_bw()
+```
+
+
+## [x] fertility stats
+
+```{r warning=FALSE}
+mods <- list_assign(mods, 
+                    y23.overall = glm(n.collperovi.overall ~ trt.temp*is.hsF*is.hsM, 
+                                       data = dfs$df23, family = "poisson")) 
+
+mod <- anova(mods$y23.overall, test = "Chisq")
+mod
+
+mod %>%
+  write.csv(here(out_path, "fecundity_anova.csv"))
+```
+
+
+## [ ] fecundity stats
+
+```{r}
+# logit transform response
+dfs <- list_assign(dfs, 
+                   hatchstats = dfs$df23 %>%
+                     mutate(z.logit = log(p.hatched/(1-p.hatched)), # dont use lol
+                            z.mod = p.hatched + 0.005,
+                            z.logit2 = log((z.mod/(1-z.mod))))
+)
+```
+
+```{r}
+mod <- anova(lm(z.logit2 ~ as.factor(trt.temp)*is.hsF*is.hsM, 
+   data = dfs$hatchstats, na.action = na.omit))
+mod
+
+mod %>%
+  write.csv(here(out_path, "fitness.csv"))
 
 ```
 
 
-## [ ] fertility stats
 
-## [ ] fecundity stats
