@@ -176,7 +176,7 @@ nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psur
 ## [x] fig
 
 ```{r}
-# NTs on pupal/adult mass
+# NTs on pupal/adult mass (colored by stage)
 
 p1 <- ss_ntw %>% 
   mutate(sex = case_when(is.na(sex) ~ "both",
@@ -195,7 +195,7 @@ p1 <- ss_ntw %>%
                  color = stage), size = 2) +
   #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
-  facet_grid(pop
+  facet_grid(stage
              ~year, scales = "free_y") +
   theme_bw()
 
@@ -219,7 +219,7 @@ p2 <- ss_ntw %>%
              size = 2) +
   #geom_point(fill = NA, size = 2) +
   labs(x = "year") +
-  facet_grid(pop
+  facet_grid(stage
                ~trt.type, scales = "free_y") +
   theme_bw()
 
@@ -243,6 +243,74 @@ p1 + p2 +
   #ylim(c(0.75, 7.25)) &
   theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 
+```
+
+```{r}
+# NTs on pupal/adult mass (colored by pop)
+
+p1 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  #filter(!(stage == "ad" & sex == "all")) %>%
+  filter(sex != "all") %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "expt") %>% #View()
+  ggplot(aes(y = avg.mass, x = minT,
+             color = pop, 
+             shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = pop), size = 2) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(stage
+             ~year, scales = "free_y") +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  mutate(sex = case_when(is.na(sex) ~ "both",
+                         TRUE ~ as.character(sex))) %>%
+  #filter(!(stage == "ad" & sex == "all")) %>%
+  filter(sex != "all") %>%
+  filter((stage == "pu" | stage == "ad") & trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.mass, x = year,
+             color = pop, 
+             shape = sex,
+             group = interaction(pop, stage, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(#aes(alpha = year), 
+             size = 2) +
+  labs(x = "year") +
+  facet_grid(stage
+               ~trt.type, scales = "free_y") +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs lead to larger mass?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population",
+       color = "population",
+       y = "adult | pupal mass (g)") &
+  guides(fill = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_shape_manual(values = c(17, 15)) &
+  scale_color_manual(values = c("#41b6c4", "#225ea8"), labels = c("field", "lab")) &
+  scale_fill_manual(values = c("#41b6c4", "#225ea8")) &
+  #ylim(c(0.75, 7.25)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 
 ```
 
@@ -276,6 +344,7 @@ mod %>%
 ## [x] fig
 
 ```{r}
+# colored by stg
 p1 <- ss_ntw %>% 
   filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
   ggplot(aes(y = avg.tt, x = minT,
@@ -290,7 +359,7 @@ p1 <- ss_ntw %>%
   #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
   #facet_wrap(~year) + # orig
-  facet_grid(pop~year, scales = "free_y") +
+  facet_grid(stage~year, scales = "free_y") +
   theme_bw()
 
 p1
@@ -311,7 +380,7 @@ p2 <- ss_ntw %>%
              size = 2) +
   labs(x = "year") +
   #facet_wrap(~trt.type) + # orig
-  facet_grid(pop~trt.type, scales = "free_y") +
+  facet_grid(stage~trt.type, scales = "free_y") +
   theme_bw()
 
 p2
@@ -334,6 +403,68 @@ p1 + p2 +
   theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 
 ```
+
+```{r}
+# colored by pop
+p1 <- ss_ntw %>% 
+  filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
+  ggplot(aes(y = avg.tt, x = minT,
+             color = pop, 
+             group = interaction(pop, stage, trt.type)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = pop), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  #facet_wrap(~year) + # orig
+  facet_grid(stage~year, scales = "free_y") +
+  theme_bw()
+
+p1
+
+
+p2 <- ss_ntw %>% 
+  filter(stage %in% c("la", "ad") & trt.type == "ctrl" & !(sex %in% c("m", "f"))) %>%
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.tt, x = year,
+             color = pop, 
+             group = interaction(pop, stage, trt.type)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  #geom_point(aes(alpha = year), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  geom_point(#fill = NA, 
+             size = 2) +
+  labs(x = "year") +
+  #facet_wrap(~trt.type) + # orig
+  facet_grid(stage~trt.type, scales = "free_y") +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs reduce pup dev time?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population", color = "population",
+       y = "adult longevity | time to pupation (days)") &
+  guides(fill = "none") &
+  scale_linetype_manual(values = c("dashed", "solid"), labels = c("field", "lab")) &
+  #scale_shape_manual(values = c(19)) &
+  scale_color_manual(values = c("#41b6c4", "#225ea8"), labels = c("field", "lab")) &
+  scale_fill_manual(values = c("#41b6c4", "#225ea8")) &
+  #ylim(c(15, 37)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+
+```
+
 
 
 ## [x] stats
@@ -366,6 +497,11 @@ mod %>%
 # [ ] 05. fertility/fecundity
 
 ## [ ] fig
+
+```{r}
+
+```
+
 
 ## [ ] fertility stats
 
