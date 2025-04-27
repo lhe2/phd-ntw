@@ -24,9 +24,26 @@ source(here::here(bin_paths24$wrangle, "compare-dev_p.R"))
 source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
 source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
 
-out_path <- here(bin_paths24$y24, "figs", "feasibility")
 ```
 
+## - output
+```{r}
+out_path <- here(bin_paths24$y24, "figs", "feasibility")
+
+list.files(path=here(out_path), pattern="-modsel\\.csv", full.names = TRUE) %>% 
+  lapply(read_csv) %>% 
+  purrr::reduce(merge, all = TRUE) %>% 
+  write.csv(., here(out_path, "final_modelsel-results.csv"))
+
+list.files(path=here(out_path), pattern="_anova\\.csv", full.names = TRUE) %>% 
+  lapply(read_csv) %>% 
+  purrr::reduce(merge, all = TRUE) %>%
+  write.csv(., here(out_path, "final_anova-results.csv"))
+
+
+```
+
+# df prep
 ## - dev stats df prep
 ```{r general exptal bug filter}
 # focusing on exptal bugs only that weren't lab on TB
@@ -111,8 +128,6 @@ ss_fert <- dall %>%
 dfs <- list() 
 mods <- list()
 ```
-
-## - df prep
 
 ```{r general df modifications}
 # add binaries for modeling
@@ -218,7 +233,8 @@ out.psurv$dredge
 
 dredge(glm(is.pup ~ year*pop*minT, data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>%
   subset(., weight > 0.01) %>%
-  as.data.frame(.) %>% write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_dredge.csv"))
+  mutate(from = "pup surv dredge") %>%
+  as.data.frame(.) %>% write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_dredge-modsel.csv"))
 
 dredge(glm(is.pup ~ year*pop*minT, 
            data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>% subset(., weight > 0.01)
@@ -241,6 +257,7 @@ mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT,
                                 data = ntw_mumin.dfs$df, family = "binomial"))
 
 model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null) %>%
+  mutate(from = "pup surv man modsel") %>%
   as.data.frame(.) %>%
   write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_man-modsel.csv"))
 
@@ -409,6 +426,8 @@ mod.pmass_n2way01 <- lm(mass.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt
 anova(mod.pmass_n2way01)
 
 anova(mod.pmass_n2way01) %>%
+  as.data.frame() %>%
+  mutate(from = "pup mass") %>%
   write.csv(., here(out_path, "pup-mass_anova.csv"))
 ```
 
@@ -420,6 +439,8 @@ anova(lm(mass.eclose ~ year+minT+pop+sex, data = ntw_expt.sex, na.action = na.om
 
 mod
 mod %>% 
+  as.data.frame() %>%
+  mutate(from = "ad mass") %>%
   write.csv(., here(out_path, "ad-mass_anova.csv"))
 ```
 
@@ -562,6 +583,8 @@ mod <- anova(lm(tt.pupa ~ (year + minT + pop)^2, data = ntw_expt, na.action = na
 mod
 
 mod %>%
+  as.data.frame() %>%
+  mutate(from = "pup time") %>%
   write.csv(., here(out_path, "pup-time_anova.csv"))
 ```
 
@@ -574,12 +597,14 @@ mod <- anova(lm(tt.surv ~ (year + minT + pop)^2, data = ntw_expt.sex, na.action 
 mod
 
 mod %>%
+  as.data.frame() %>%
+  mutate(from = "ad longevity") %>%
   write.csv(., here(out_path, "ad-longevity_anova.csv"))
 ```
 
 
 
-# [ ] 05. fertility/fecundity
+# [x] 05. fertility/fecundity
 
 
 ## [x] fig
@@ -626,11 +651,13 @@ mod <- anova(mods$y23.overall, test = "Chisq")
 mod
 
 mod %>%
+  as.data.frame() %>%
+  mutate(from = "laying") %>%
   write.csv(here(out_path, "fecundity_anova.csv"))
 ```
 
 
-## [ ] fecundity stats
+## [x] fecundity stats
 
 ```{r}
 # logit transform response
@@ -648,7 +675,9 @@ mod <- anova(lm(z.logit2 ~ as.factor(trt.temp)*is.hsF*is.hsM,
 mod
 
 mod %>%
-  write.csv(here(out_path, "fitness.csv"))
+  as.data.frame() %>%
+  mutate(from = "hatching") %>%
+  write.csv(here(out_path, "fitness_anova.csv"))
 
 ```
 
