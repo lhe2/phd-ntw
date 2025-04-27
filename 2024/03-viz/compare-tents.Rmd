@@ -145,23 +145,30 @@ ss_fert <- dall %>%
 ss_fert %>%
   filter(year == 2023 #& trt.temp != 260
          ) %>%
-  mutate(trt.temp = as.factor(trt.temp)) %>%
+  mutate(trt.temp = as.factor(trt.temp),
+         trt.type = factor(trt.type, levels = c("win", "btwn"))) %>%
   ggplot(aes(y = p.hatched, x = avg.colledperf,
              col = trt.temp, shape = trt.sex)) +
-  geom_point(size = 1.5) +
-  geom_yerr("p.hatched", "se.phatched", "avg.colledperf") +
-  geom_xerr("avg.colledperf", "se.colled", "p.hatched") +
-  geom_text(aes(label = n.f), vjust = -0.6, hjust = -0.65,
+  geom_point(size = 2) +
+  #geom_yerr("p.hatched", "se.phatched", "avg.colledperf") +
+  geom_errorbar(aes(ymax = p.hatched + se.phatched, ymin = p.hatched - se.phatched, width = 300*0.04)) +
+  #geom_xerr("avg.colledperf", "se.colled", "p.hatched") +
+  geom_errorbarh(aes(xmax = avg.colledperf + se.colled, xmin = avg.colledperf - se.colled, height = 0.2*0.025)) +
+  geom_text(aes(label = n.f), vjust = -0.7, hjust = -0.65,
             show.legend = FALSE) +
   facet_grid(~trt.type, labeller = as_labeller(c(`win` = "both sexes HS'd",
                                                  `btwn` = "1 sex HS'd"))) +
-  labs(caption = "2023 hatch proportion/egg laying;\nn = total females, se = se total collected",
-       y = "hatch proportion",
-       x = "avg eggs collected per day",
+  labs(#caption = "2023 hatch proportion/egg laying;\nn = total females, se = se total collected",
+       y = "hatch proportion (overall)",
+       #x = "avg eggs collected per day",
+       x = "mean eggs collected per female (overall)",
        shape = "heat-treated sex",
        color = "larval rearing\ntemperature (°C)") +
-  scale_color_manual(values = bin_aes$temp4$col, labels = bin_aes$temp4$labswC) +
-  scale_shape_manual(values = bin_aes$sexes$ptfill_all, 
+  scale_color_manual(#values = bin_aes$temp4$col, 
+                     values = c("#4393ce", "darkgoldenrod1", "#fd8d3c", "#d94701"),
+                     labels = bin_aes$temp4$labswC) +
+  scale_shape_manual(#values = bin_aes$sexes$ptfill_all, 
+                     values = c(4, 16, 1),
                      #limits = c("f", "m")
                      ) +
   theme_bw()
@@ -241,7 +248,7 @@ ss_fert %>%
 ```
 
 # old stuff not relevant
-```{r longevity plot}
+```{r longevity plot, eval = FALSE}
 # not that relevant anymore
 
 summ_longevity <- data_longevity %>%
@@ -267,7 +274,7 @@ summ_longevity %>%
 ```
 
 
-```{r}
+```{r, eval = FALSE}
 # tents math from 2023 for ref... 
 
 summ_hatch <- data_tstats %>%

@@ -1,5 +1,5 @@
 ---
-title: "03-viz/compare-tents"
+title: "03-stats/compare-tents"
 date: "2025-03-20"
 ---
 
@@ -33,8 +33,7 @@ dall <- dall %>%
                             TRUE ~ 0))
 ```
 
-```{r egg laying}
-# ignore the hatching for now
+```{r egg stats}
 dfs <- list_assign(dfs, 
                    df23 = dall %>%
                      filter(year == 2023) %>%
@@ -42,6 +41,8 @@ dfs <- list_assign(dfs,
                      mutate(n.coll.overall = sum(n.coll, na.rm = TRUE),
                             n.f.overall = sum(n.new.f, na.rm=TRUE),
                             n.collperovi.overall = n.coll.overall/n.f.overall,
+                            n.hatched.overall = sum(n.hatch, na.rm =TRUE),
+                            p.hatched = n.hatched.overall/n.coll.overall,
                             jdate.rel = jdate - first(jdate)
                      ) %>%
                      group_by(jdate.rel, .add = TRUE) %>%
@@ -193,3 +194,34 @@ trt.temp:is.hsF:is.hsM  0     0.00        20     2591.0
 # so additive terms matter and HS trt of the male for egg production (why the male LOL..)
 # maybe things to look into: eff of # of females? daily rate? (depends on what the "unit" of the response variable is...)
 ```
+
+# hatching
+
+## - 2025-04-27
+```{r}
+# logit transform response
+dfs <- list_assign(dfs, 
+                   hatchstats = dfs$df23 %>%
+                     mutate(z.logit = log(p.hatched/(1-p.hatched)), # dont use lol
+                            z.mod = p.hatched + 0.005,
+                            z.logit2 = log((z.mod/(1-z.mod))))
+)
+#View(dfs[["hatchstats"]])
+```
+
+```{r}
+# try as a LM...
+anova(lm(z.logit2 ~ as.factor(trt.temp)*is.hsF*is.hsM, 
+   data = dfs$hatchstats, na.action = na.omit))
+
+
+# try as a binomial...
+# (not working... lol)
+anova(glm(c(n.hatched.overall, n.coll.overall) ~ as.factor(trt.temp)*is.hsF*is.hsM, 
+   data = dfs$hatchstats, family = "binomial"))
+
+anova(glm(c(n.hatched.overall, n.coll.overall-n.hatched.overall) ~ factor(trt.temp)*is.hsF*is.hsM, 
+   data = dfs$hatchstats, family = "binomial", na.action = na.omit))
+```
+
+
