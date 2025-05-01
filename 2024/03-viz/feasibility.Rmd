@@ -11,7 +11,7 @@ a lot of stuff is copied from their respective Rmds
 
 ## - loading
 ```{r}
-here::i_am("2024/03-viz/feasibility.Rmd")
+here::i_am("2024/feasibility.Rmd")
 library(here)
 
 library(tidyverse)
@@ -23,25 +23,29 @@ source(here::here("set-paths.R"))
 source(here::here(bin_paths24$wrangle, "compare-dev_p.R"))
 source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
 source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
-
 ```
 
-## - output
+## - data output
 ```{r}
-out_path <- here(bin_paths24$y24, "figs", "feasibility")
+# define paths for figs and csvs
+out_data <- here(bin_paths24$data, "2025-feasibility")
+#out_fig <-here("figs", "2025-feasibility")
+```
 
-list.files(path=here(out_path), pattern="-modsel\\.csv", full.names = TRUE) %>% 
+```{r eval=FALSE}
+# run after all the csvs have been generated!!!!
+
+list.files(path=here(out_data), pattern="-modsel\\.csv", full.names = TRUE) %>% 
   lapply(read_csv) %>% 
   purrr::reduce(merge, all = TRUE) %>% 
-  write.csv(., here(out_path, "final_modelsel-results.csv"))
+  write.csv(., here(out_data, "final_modelsel-results.csv"))
 
-list.files(path=here(out_path), pattern="_anova\\.csv", full.names = TRUE) %>% 
+list.files(path=here(out_data), pattern="_anova\\.csv", full.names = TRUE) %>% 
   lapply(read_csv) %>% 
   purrr::reduce(merge, all = TRUE) %>%
-  write.csv(., here(out_path, "final_anova-results.csv"))
-
-
+  write.csv(., here(out_data, "final_anova-results.csv"))
 ```
+
 
 # df prep
 ## - dev stats df prep
@@ -340,7 +344,7 @@ out.psurv$modsel.sup
 
 ## [x] fig
 
-```{r}
+```{r eval=FALSE}
 # NTs on pupal/adult mass (colored by stage)
 
 p1 <- ss_ntw %>% 
@@ -493,7 +497,7 @@ anova(mod.pmass_n2way01)
 anova(mod.pmass_n2way01) %>%
   as.data.frame() %>%
   mutate(from = "pup mass") %>%
-  write.csv(., here(out_path, "pup-mass_anova.csv"))
+  write.csv(., here(out_data, "pup-mass_anova.csv"))
 ```
 
 ```{r}
@@ -506,7 +510,7 @@ mod
 mod %>% 
   as.data.frame() %>%
   mutate(from = "ad mass") %>%
-  write.csv(., here(out_path, "ad-mass_anova.csv"))
+  write.csv(., here(out_data, "ad-mass_anova.csv"))
 ```
 
 
@@ -514,9 +518,9 @@ mod %>%
 
 ## [x] fig
 
-```{r}
 sex doesnt matter based on stats so omit from figs
 
+```{r eval=FALSE}
 # colored by stg
 p1 <- ss_ntw %>% 
   filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
@@ -652,7 +656,7 @@ mod
 mod %>%
   as.data.frame() %>%
   mutate(from = "pup time") %>%
-  write.csv(., here(out_path, "pup-time_anova.csv"))
+  write.csv(., here(out_data, "pup-time_anova.csv"))
 ```
 
 ```{r}
@@ -666,7 +670,7 @@ mod
 mod %>%
   as.data.frame() %>%
   mutate(from = "ad longevity") %>%
-  write.csv(., here(out_path, "ad-longevity_anova.csv"))
+  write.csv(., here(out_data, "ad-longevity_anova.csv"))
 ```
 
 
@@ -720,7 +724,7 @@ mod
 mod %>%
   as.data.frame() %>%
   mutate(from = "laying") %>%
-  write.csv(here(out_path, "fecundity_anova.csv"))
+  write.csv(here(out_data, "fecundity_anova.csv"))
 ```
 
 
@@ -744,8 +748,7 @@ mod
 mod %>%
   as.data.frame() %>%
   mutate(from = "hatching") %>%
-  write.csv(here(out_path, "fitness_anova.csv"))
-
+  write.csv(here(out_data, "fitness_anova.csv"))
 ```
 
 
