@@ -3,9 +3,9 @@ title: "feas figs and stats"
 date: "2025-04-27"
 ---
 
-goal: to have this all in one place (bc i also forgot to do some lol)
+goal: compiling aim 1 results/figs for feasibility
 
-(these are just the aim 1 results)
+a lot of stuff is copied from their respective Rmds
 
 # setup
 
@@ -76,6 +76,10 @@ ntw_mumin.dfs <- list(df = select(ntw_expt.surv, c("year", "pop", "minT", "is.pu
 ntw_mumin.dfs <- c(ntw_mumin.dfs, 
                    list(pupd = filter(ntw_mumin.dfs$df, is.pup == 1)),
                    list(ecd = filter(ntw_mumin.dfs$df, is.ec == 1)))
+
+# remove nas
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(nona = na.omit(ntw_mumin.dfs$df[1:4])))
 ```
 
 ## - fert df prep
@@ -170,7 +174,7 @@ p1 <- ss_ntw %>%
   filter(stage == "la" & trt.type == "expt") %>% 
   ggplot(aes(y = prop.survpup, x = minT,
              color = stage, 
-             lty = pop, shape = year,
+             lty = pop, #shape = year,
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
@@ -187,7 +191,7 @@ p2 <- ss_ntw %>%
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = prop.survpup, x = year,
              color = stage, 
-             lty = pop, shape = year,
+             lty = pop, #shape = year,
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
@@ -210,7 +214,7 @@ p1 + p2 +
        y = "proportion survived to pupation") &
   guides(color = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(1, 16)) &
+  #scale_shape_manual(values = c(1, 16)) &
   scale_color_manual(values = "#1B9E77") &
   ylim(c(0, 1))
 ```
@@ -220,10 +224,7 @@ p1 + p2 +
 
 ### - dredge
 ```{r}
-# remove nas
-ntw_mumin.dfs <- c(ntw_mumin.dfs, 
-                   list(nona = na.omit(ntw_mumin.dfs$df[1:4])))
-
+# automated model selection with dredge
 out.psurv <- list(dredge = dredge(glm(is.pup ~ year*pop*minT, 
                                       data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail), 
                                   #extra = c("R^2", F = function(x)
@@ -234,8 +235,9 @@ out.psurv$dredge
 dredge(glm(is.pup ~ year*pop*minT, data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>%
   subset(., weight > 0.01) %>%
   mutate(from = "pup surv dredge") %>%
-  as.data.frame(.) %>% write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_dredge-modsel.csv"))
+  as.data.frame(.) %>% write.csv(., here(out_data, "surv_dredge-modsel.csv"))
 
+# look only at automatically selected models with weight > 0.01
 dredge(glm(is.pup ~ year*pop*minT, 
            data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>% subset(., weight > 0.01)
 
@@ -243,6 +245,12 @@ out.psurv <- c(out.psurv,
                dredge.out = list(get.models(out.psurv$dredge, subset = weight > 0.01)))
 
 out.psurv$dredge.out # subset of models based on weight
+
+summary(out.psurv$dredge.out$`64`)
+summary(out.psurv$dredge.out$`128`)
+
+# model averaging?
+model.avg(out.psurv$dredge) 
 ```
 
 ### - manual selection
@@ -257,20 +265,75 @@ mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT,
                                 data = ntw_mumin.dfs$df, family = "binomial"))
 
 model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null) %>%
+  as.data.frame() %>%
   mutate(from = "pup surv man modsel") %>%
-  as.data.frame(.) %>%
-  write.csv(., here(bin_paths24$y24, "figs", "feasibility", "surv_man-modsel.csv"))
+    write.csv(., here(out_data, "surv_man-modsel.csv"))
 
+# are they nested?
 nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null))
 ```
 
 
 
-# [ ] 02. supernumerary stuff (later)
+# [x] 02. supernumerary stuff
 
-## [ ] fig
+## [x] figs
 
-## [ ] stats
+```{r}
+ss_devall2 %>%
+  ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  geom_bar(position = "stack", 
+           #position = position_fill(reverse = TRUE),
+           stat = "identity") + 
+  facet_grid(~interaction(pop,year), scale = "free", 
+             #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+             ) +
+  #geom_col() + facet_wrap(year~pop) +
+  labs(caption = "pmds + instars of pups",
+       fill = "stage",
+       x = "D-N treatment (°C)",
+       y = "proportion") +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"), guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x.bottom = element_text(angle = 90)) +
+  scale_fill_brewer(palette = "Blues", direction = -1) +
+  theme_bw()
+```
+
+
+## [x] stats (dredge/auto only)
+
+```{r}
+# if you survived, were you sup? (all models)
+ntw_mumin.dfs <- c(ntw_mumin.dfs, 
+                   list(nona.sup = na.omit(ntw_mumin.dfs$pupd[1:5])))
+
+out.psurv <- c(out.psurv, 
+               dredge.sup = list(dredge(glm(is.sup ~ year*pop*minT, 
+                                            data = ntw_mumin.dfs$nona.sup, family = "binomial", na.action = na.fail)))
+               )
+
+out.psurv$dredge.sup
+
+
+# look at models with weight > 0.05
+out.psurv <- c(out.psurv,
+               dredge.outsup = list(get.models(out.psurv$dredge.sup, subset = weight > 0.05)))
+
+out.psurv$dredge.outsup
+
+model.sel(out.psurv$dredge.outsup) %>%
+  as.data.frame(.) %>%
+  mutate(from = "sup auto modsel") %>%
+  write.csv(., here(out_data, "sup_auto-modsel.csv"))
+
+# (manually pull them out)
+out.psurv <- c(out.psurv,
+               modsel.sup = list(model.sel(out.psurv$dredge.outsup[["56"]], out.psurv$dredge.outsup[["64"]],
+                                           out.psurv$dredge.outsup[["48"]], out.psurv$dredge.outsup[["128"]])))
+
+out.psurv$modsel.sup
+```
+
 
 
 # [x] 03. pup mass/adult mass
@@ -292,6 +355,7 @@ p1 <- ss_ntw %>%
              group = interaction(pop, stage, sex)
              )) +
   geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  #geom_text(aes(label = n), vjust = -0.75, hjust = -0.75, size = 3) + 
   geom_line(aes(lty = pop), alpha = 1) +
   geom_point(aes(#alpha = year, 
                  color = stage), size = 2) +
@@ -319,6 +383,7 @@ p2 <- ss_ntw %>%
   geom_line(aes(lty = pop), alpha = 1) +
   geom_point(#aes(alpha = year), 
              size = 2) +
+  #geom_text(aes(label = n), vjust = -0.75, hjust = -0.75, size = 3) +
   #geom_point(fill = NA, size = 2) +
   labs(x = "year") +
   facet_grid(stage
@@ -450,6 +515,8 @@ mod %>%
 ## [x] fig
 
 ```{r}
+sex doesnt matter based on stats so omit from figs
+
 # colored by stg
 p1 <- ss_ntw %>% 
   filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
