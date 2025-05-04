@@ -76,8 +76,9 @@ rm(data_tstats, data_hatch, data_longevity,
 
 # filter rows and rename columns
 d23 <- d23 %>%
-  filter(reason.ignore != "lost" | src != "F1" #| !is.na(final.fate)
-           ) %>% 
+  filter(reason.ignore != "lost" | is.na(reason.ignore) #| !is.na(final.fate)
+         ) %>% 
+  filter(src != "F1") %>% 
   filter(trt.stage %in% c("260-hatch", "267-hatch", "330-hatch", "337-hatch", "419-hatch","433-hatch")) %>%
   filter(expt.group %in% c("A", "B", "C", "D", "E", "F", "H")) %>%
   rename(trt = treatment,
@@ -93,18 +94,28 @@ d23$trt[d23$trt == 337] <- 426
 #                                 TRUE ~ as.character(final.fate))
 #          )
 
+# more filtering (remaining "lost" things and early field pmds; <1 day deaths)
 d23 <- d23 %>%
-  mutate(fate = case_when(notes.ignore %in% c("culled larva", "cut", "hot larva", "lost", "wet diet") ~ "other"))
+  filter(!(notes.ignore == "early field" & final.fate == "pmd") | is.na(notes.ignore)) %>%
+  # filter(jdate.exit - jdate.enter > 1 |
+  #          (is.na(jdate.exit) & (is.na(jdate.pmd) | (jdate.pmd - jdate.enter > 1)))) %>% View()
+  mutate(notes.ignore = case_when(notes.ignore == "early field" & id == 217 ~ NA_character_,
+                                  TRUE ~ notes.ignore))
+
+d23 <- d23 %>%
+  mutate(final.fate = case_when(notes.ignore %in% c("culled larva", "cut", "hot larva", "wet diet") ~ "other"))
 
 # match values to d24
 d23 <- d23 %>%
   mutate(sup = case_when(!is.na(jdate.7th) ~ 7,
                          !is.na(jdate.6th) ~ 6,
-                         (is.na(jdate.pmd) & !is.na(jdate.pupa) |
-                            is.na(jdate.6th) & !is.na(jdate.pupa)) ~ 0), # for things that died as pups
+                         # (is.na(jdate.pmd) & !is.na(jdate.pupa) |
+                         #    is.na(jdate.6th) & !is.na(jdate.pupa)) ~ 0), # for things that died as pups
+                         is.na(jdate.pmd) & (!is.na(jdate.pupa) | !is.na(jdate.LP)) ~ 0),
          # case_when(sup = 0 & !is.na(jdate.5th) ~ NA_real_,
          #                 TRUE ~ as.numeric(sup)),
-         surv.outcome = case_when(fate == "other" | (is.na(jdate.pmd) & is.na(jdate.pupa)) ~ 2,
+         surv.outcome = case_when(final.fate == "other" | 
+                                    (is.na(jdate.pmd) & is.na(jdate.pupa) & is.na(jdate.LP)) ~ 2,
                                   !is.na(date.pupa) | !is.na(date.LP) ~ 1,
                                   !is.na(date.pmd) ~ 0,
                                   #TRUE ~ 2
@@ -245,6 +256,8 @@ ntw_wide <- filter(all_wide, for.ntw == "Y")
 - https://stackoverflow.com/a/24376207/3358227
 
 ```{r}
+# see/load utility fns in separate .R
+
 # apply calcs to data
 #ss_all <- lapply(list(ntw_wide, cvf_wide), calc.devstats)
 
