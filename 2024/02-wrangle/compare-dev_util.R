@@ -27,7 +27,7 @@ filter.2pops <- function(data){
 ### do calcs
 calc.devstats <- function(data){
   
-  # larval stats
+  # larval stats, ttpup = days
   ss_la <- data %>%
     group_by(year, pop, trt.type, minT,
     ) %>%
@@ -41,12 +41,30 @@ calc.devstats <- function(data){
               # prop.survpup = round(1-(n.pmd/n), digits=2),
               n = n(),
               n.misc = sum(na.omit(surv.outcome == 2)), # things that died by accident
-              n.dev = n - n.misc, 
-              n.pmd = sum(na.omit(surv.outcome == 1)),
-              n.pup = sum(na.omit(surv.outcome == 0)),
-              prop.survpup = round(1 - (n.pup/n.dev), digits = 2)
+              n.dev = n - n.misc, # larvae counted for growth stats
+              n.pmd = sum(na.omit(surv.outcome == 0)),
+              n.pup = sum(na.omit(surv.outcome == 1)),
+              prop.survpup = round(n.pup/n.dev, digits = 2)
     ) %>% 
     mutate(stage = "la",
+           pup.dev = "days",
+           is.sep = "N")
+  
+  # larval stats, ttpup = 1/days
+  ss_la2 <- data %>%
+    group_by(year, pop, trt.type, minT,
+    ) %>%
+    summarise(avg.tt = mean(na.omit(1/tt.pupa)),
+              se.tt = se(na.omit(1/tt.pupa)),
+              n = n(),
+              n.misc = sum(na.omit(surv.outcome == 2)), # things that died by accident
+              n.dev = n - n.misc, # larvae counted for growth stats
+              n.pmd = sum(na.omit(surv.outcome == 0)),
+              n.pup = sum(na.omit(surv.outcome == 1)),
+              prop.survpup = round(n.pup/n.dev, digits = 2)
+    ) %>% 
+    mutate(stage = "la",
+           pup.dev = "rate",
            is.sep = "N")
   
   # pupal stats by sex
@@ -109,7 +127,7 @@ calc.devstats <- function(data){
            sex = "all",
            is.sep = "N")
   
-  return(list(ss_la, ss_pu.sex, ss_pu, ss_ad.sex, ss_ad))
+  return(list(ss_la, ss_la2, ss_pu.sex, ss_pu, ss_ad.sex, ss_ad))
   
 }
 
