@@ -102,7 +102,7 @@ d23 <- d23 %>%
   mutate(notes.ignore = case_when(notes.ignore == "early field" & id == 217 ~ NA_character_,
                                   TRUE ~ notes.ignore))
 
-testa <- d23
+#testa <- d23
 ```
 
 ```{r 2023 LPI and exit date handling}
@@ -113,7 +113,7 @@ testa <- d23
 d23_longevity[d23_longevity$id == 1415, "sex"] <- "f" # fix data
 
 d23 <- merge(d23, d23_longevity, all = TRUE)
-testb <- d23
+#testb <- d23
 
 # redo exit dates
 d23 <- d23 %>%

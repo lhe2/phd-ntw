@@ -47,7 +47,7 @@ calc.devstats <- function(data){
               prop.survpup = round(n.pup/n.dev, digits = 2)
     ) %>% 
     mutate(stage = "la",
-           pup.dev = "days",
+           z.type = "days",
            is.sep = "N")
   
   # larval stats, ttpup = 1/days
@@ -64,7 +64,7 @@ calc.devstats <- function(data){
               prop.survpup = round(n.pup/n.dev, digits = 2)
     ) %>% 
     mutate(stage = "la",
-           pup.dev = "rate",
+           z.type = "rate",
            is.sep = "N")
   
   # pupal stats by sex
@@ -109,6 +109,23 @@ calc.devstats <- function(data){
               n = sum(na.omit(!is.na(jdate.eclose)))
     ) %>%
     mutate(stage = "ad",
+           z.type = "final", 
+           is.sep = "Y")
+  
+  # adult pct change in mass
+  ss_ad.delta <- data %>%
+    filter(!is.na(jdate.eclose)) %>%
+    group_by(year, pop, trt.type, minT, sex) %>%
+    summarise(avg.tt = mean(na.omit(tt.surv)),
+              se.tt = se(tt.surv),
+              # avg.tt = mean(na.omit(jdate.surv - jdate.eclose)),
+              # se.tt = sd(na.omit(jdate.surv - jdate.eclose))/sqrt(length(na.omit(jdate.surv - jdate.eclose))),
+              avg.mass = mean(na.omit((mass.eclose - mass.pupa)/mass.pupa*100)),
+              se.mass = sd(na.omit((mass.eclose - mass.pupa)/mass.pupa*100)/sqrt(length(na.omit((mass.eclose - mass.pupa)/mass.pupa*100)))),
+              n = sum(na.omit(!is.na(jdate.eclose)))
+    ) %>%
+    mutate(stage = "ad",
+           z.type = "pdelta", 
            is.sep = "Y")
   
   # adult stats combined sexes
@@ -125,9 +142,10 @@ calc.devstats <- function(data){
     ) %>%
     mutate(stage = "ad",
            sex = "all",
+           z.type = "final",
            is.sep = "N")
   
-  return(list(ss_la, ss_la2, ss_pu.sex, ss_pu, ss_ad.sex, ss_ad))
+  return(list(ss_la, ss_la2, ss_pu.sex, ss_pu, ss_ad.sex, ss_ad.delta, ss_ad))
   
 }
 
