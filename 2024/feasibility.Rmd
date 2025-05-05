@@ -48,7 +48,17 @@ list.files(path=here(out_data), pattern="_anova\\.csv", full.names = TRUE) %>%
 
 
 # df prep
-## - dev stats df prep
+## - dev figs & stats df prep
+```{r eval=FALSE}
+# calc pup dev rate
+ss_ntw <- ss_ntw %>%
+    mutate(avg.devrate = case_when(is.na(avg.devrate) ~ avg.tt,
+                                 TRUE ~ as.numeric(avg.devrate)),
+           se.devrate = case_when(is.na(se.devrate) ~ se.tt,
+                                TRUE ~ as.numeric(se.devrate)))
+```
+
+
 ```{r general exptal bug filter}
 # focusing on exptal bugs only that weren't lab on TB
 ntw_expt <- ntw_wide %>%
@@ -68,8 +78,7 @@ ntw_expt.sex <- ntw_expt %>%
 ```
 
 ```{r mumin subsets}
-# bc apparently this pkg cant handle NAs bc "all models must be fit to the same data" 
-# when comparing fits, so subset:
+# for mumin-ing, removing NAs in:
   # all surv to pups
   # all surv to ecs
 
@@ -171,10 +180,11 @@ dfs <- list_assign(dfs,
 
 # [x] 01. pup survival
 
-## [x] fig
+## [2] fig
 
 ```{r}
 p1 <- ss_ntw %>% 
+  filter(z.type != "days") %>%
   filter(stage == "la" & trt.type == "expt") %>% 
   ggplot(aes(y = prop.survpup, x = minT,
              color = stage, 
@@ -191,6 +201,7 @@ p1
 
 
 p2 <- ss_ntw %>% 
+  filter(z.type != "days") %>%
   filter(stage == "la" & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = prop.survpup, x = year,
@@ -281,7 +292,7 @@ nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psur
 
 # [x] 02. supernumerary stuff
 
-## [x] figs
+## [2] figs
 
 ```{r}
 ss_devall2 %>%
@@ -342,7 +353,7 @@ out.psurv$modsel.sup
 
 # [x] 03. pup mass/adult mass
 
-## [x] fig
+## [2] fig
 
 ```{r eval=FALSE}
 # NTs on pupal/adult mass (colored by stage)
@@ -416,10 +427,15 @@ p1 + p2 +
 
 ```
 
+### - by pop
+
+cant rlly make sense of the percent change in mass from pup -> ec (i think sex could probably be omitted) so we'll just ignore it for now
+
 ```{r}
 # NTs on pupal/adult mass (colored by pop)
 
 p1 <- ss_ntw %>% 
+  filter(!(stage == "ad" & z.type == "pdelta")) %>% #final/pdelta for the other one
   mutate(sex = case_when(is.na(sex) ~ "both",
                          TRUE ~ as.character(sex))) %>%
   #filter(!(stage == "ad" & sex == "all")) %>%
@@ -438,11 +454,13 @@ p1 <- ss_ntw %>%
   labs(x = "minimum temperature (°C)") +
   facet_grid(stage
              ~year, scales = "free_y") +
+  #geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   theme_bw()
 
 p1
 
 p2 <- ss_ntw %>% 
+  filter(!(stage == "ad" & z.type == "pdelta")) %>% #final/pdelta for the other one
   mutate(sex = case_when(is.na(sex) ~ "both",
                          TRUE ~ as.character(sex))) %>%
   #filter(!(stage == "ad" & sex == "all")) %>%
@@ -458,6 +476,7 @@ p2 <- ss_ntw %>%
   geom_line(aes(lty = pop), alpha = 1) +
   geom_point(#aes(alpha = year), 
              size = 2) +
+  #geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   labs(x = "year") +
   facet_grid(stage
                ~trt.type, scales = "free_y") +
@@ -474,10 +493,13 @@ p1 + p2 +
   theme(legend.position = "top") &
   labs(lty = "population",
        color = "population",
-       y = "adult | pupal mass (g)") &
+       y = "adult | pupal mass (g)",
+       #y = "% change in mass post-eclosion | pupal mass (g)" # change as needed
+       ) &
   guides(fill = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  scale_shape_manual(values = c(17, 15)) &
+  #scale_shape_manual(values = c(17, 15)) &
+  scale_shape_manual(values = c(16, 1)) &
   scale_color_manual(values = c("#41b6c4", "#225ea8"), labels = c("field", "lab")) &
   scale_fill_manual(values = c("#41b6c4", "#225ea8")) &
   #ylim(c(0.75, 7.25)) &
@@ -516,7 +538,7 @@ mod %>%
 
 # [x] 04. pup time/ad longevity
 
-## [x] fig
+## [2] fig
 
 sex doesnt matter based on stats so omit from figs
 
@@ -581,9 +603,15 @@ p1 + p2 +
 
 ```
 
+### - by pop
 ```{r}
 # colored by pop
 p1 <- ss_ntw %>% 
+  # rename(avg.tt2 = avg.devrate,
+  #        se.tt2 = se.devrate) %>%
+    mutate(n = case_when(stage == "la" ~ n.pup,
+                       TRUE ~ n)) %>%
+  filter(!(stage == "la" & z.type == "days")) %>% # change to "rate" if want days
   filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
   ggplot(aes(y = avg.tt, x = minT,
              color = pop, 
@@ -597,6 +625,7 @@ p1 <- ss_ntw %>%
   #geom_point(fill = NA, size = 2) +
   labs(x = "minimum temperature (°C)") +
   #facet_wrap(~year) + # orig
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   facet_grid(stage~year, scales = "free_y") +
   theme_bw()
 
@@ -604,6 +633,11 @@ p1
 
 
 p2 <- ss_ntw %>% 
+  # rename(avg.tt2 = avg.devrate,
+  #        se.tt2 = se.devrate) %>%
+  mutate(n = case_when(stage == "la" ~ n.pup,
+                       TRUE ~ n)) %>%
+  filter(!(stage == "la" & z.type == "days")) %>% # change to "rate" if want days
   filter(stage %in% c("la", "ad") & trt.type == "ctrl" & !(sex %in% c("m", "f"))) %>%
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = avg.tt, x = year,
@@ -618,6 +652,7 @@ p2 <- ss_ntw %>%
              size = 2) +
   labs(x = "year") +
   #facet_wrap(~trt.type) + # orig
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   facet_grid(stage~trt.type, scales = "free_y") +
   theme_bw()
 
@@ -631,7 +666,9 @@ p1 + p2 +
               widths = c(2:1)) &
   theme(legend.position = "top") &
   labs(lty = "population", color = "population",
-       y = "adult longevity | time to pupation (days)") &
+       #y = "adult longevity | time to pupation (days)"
+       y = "adult longevity (days) | pupation rate (1/days)"
+       ) &
   guides(fill = "none") &
   scale_linetype_manual(values = c("dashed", "solid"), labels = c("field", "lab")) &
   #scale_shape_manual(values = c(19)) &
