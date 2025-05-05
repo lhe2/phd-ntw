@@ -187,12 +187,12 @@ p1 <- ss_ntw %>%
   filter(z.type != "days") %>%
   filter(stage == "la" & trt.type == "expt") %>% 
   ggplot(aes(y = prop.survpup, x = minT,
-             color = stage, 
+             color = pop, 
              lty = pop, #shape = year,
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
-  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   labs(x = "minimum temperature (°C)") +
   facet_wrap(~year) +
   theme_bw()
@@ -205,19 +205,17 @@ p2 <- ss_ntw %>%
   filter(stage == "la" & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = prop.survpup, x = year,
-             color = stage, 
+             color = pop, 
              lty = pop, #shape = year,
              group = interaction(pop, trt.type))) +
   geom_line() +
   geom_point(size = 2) +
-  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5) +
+  geom_text(aes(label = n.dev), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
   facet_wrap(~trt.type) +
   theme_bw()
 
 p2
-```
 
-```{r}
 # merge
 p1 + p2 +
   #labs(caption = "do lower NTs increase survival to pup?") +
@@ -226,11 +224,13 @@ p1 + p2 +
               widths = c(2:1)) &
   theme(legend.position = "top") &
   labs(lty = "population",
+       color = "population",
        y = "proportion survived to pupation") &
-  guides(color = "none") &
+  #guides(color = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
-  #scale_shape_manual(values = c(1, 16)) &
-  scale_color_manual(values = "#1B9E77") &
+  scale_shape_manual(values = c(1, 16)) &
+  #scale_color_manual(values = "#1B9E77") &
+  scale_color_manual(values = c("#41b6c4", "#225ea8")) &
   ylim(c(0, 1))
 ```
 
