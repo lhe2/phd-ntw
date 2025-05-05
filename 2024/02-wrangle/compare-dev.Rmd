@@ -342,13 +342,20 @@ ss_devall <- ntw_wide %>%
             n.6th = sum(na.omit(sup == 6 & is.pup == 1)),
             n.7th = sum(na.omit(sup == 7 & is.pup == 1)),
             n.8th = sum(na.omit(sup == 8 & is.pup == 1)),
-            p.pmd = round(n.pmd/n.dev, digits = 3), 
-            p.sup = round(n.sup/n.dev, digits = 3), # any pup with 6+ instars
-            p.5th = round(n.5th/n.dev, digits = 3), # pup in 5... etc
-            p.6th = round(n.6th/n.dev, digits = 3),
-            p.7th = round(n.7th/n.dev, digits = 3),
-            p.8th = round(n.8th/n.dev, digits = 3)
+            p.pmd = n.pmd/n.dev, 
+            p.sup = n.sup/n.dev, # any pup with 6+ instars
+            p.5th = n.5th/n.dev, # pup in 5... etc
+            p.6th = n.6th/n.dev,
+            p.7th = n.7th/n.dev,
+            p.8th = n.8th/n.dev,
+            #tot = n.dev - (n.5th + n.6th + n.7th + n.8th), # = pmds
+            #p.tot = p.pmd + p.5th + p.6th + p.7th + p.8th
             )
+
+## troubleshooting...
+# ntw_wide %>%
+#   filter(is.pup == 1) %>% View()
+ # check: pup but not ec; pmd = d before pup
 
 
 # sup of those that pmd'd (i.e pmd6 + pmd7 + ...)
