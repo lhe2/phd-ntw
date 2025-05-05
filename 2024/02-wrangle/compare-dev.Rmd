@@ -66,7 +66,7 @@ rm(data_tstats, data_hatch, data_longevity,
 
 # 2. formatting
 
-```{r match 2023 to 2024}
+```{r filtering 2023 data}
 # pick relevant data and rename columns/values to match 2024
 
 # troubleshooting: compare column names
@@ -102,6 +102,45 @@ d23 <- d23 %>%
   mutate(notes.ignore = case_when(notes.ignore == "early field" & id == 217 ~ NA_character_,
                                   TRUE ~ notes.ignore))
 
+testa <- d23
+```
+
+```{r 2023 LPI and exit date handling}
+# address LPIs/post-pupal deaths to avoid wonkiness
+#write.csv(d23, "~/Desktop/d23temp.csv")
+
+# append longevity data to d23
+d23_longevity[d23_longevity$id == 1415, "sex"] <- "f" # fix data
+
+d23 <- merge(d23, d23_longevity, all = TRUE)
+testb <- d23
+
+# redo exit dates
+d23 <- d23 %>%
+  mutate(is.LPI = case_when(!is.na(date.LP) ~ 1,
+                            TRUE ~ 0),
+         jdate.pupa = case_when(!is.na(jdate.LP) ~ jdate.LP, # treat LPs like pups
+                                TRUE ~ jdate.pupa),
+         jdate.15 = case_when(!is.na(jdate.eclose) & is.na(jdate.pupa) ~ NA_integer_,
+                              TRUE ~ jdate.15),
+         jdate.surv = case_when(!is.na(jdate.lsurv) ~ jdate.lsurv,
+                                TRUE ~ as.numeric(jdate.surv))) %>%
+  select(-c("jdate.lec", "jdate.lsurv")) %>%
+         # correcting exit dates...
+  mutate(across(starts_with("jdate"), as.numeric)) %>% 
+  mutate(jdate.exit2 = case_when(!is.na(jdate.surv) ~ jdate.surv,
+                                 !is.na(jdate.eclose) ~ jdate.eclose,
+                                 !is.na(jdate.pmd) ~ jdate.pmd,
+                                 !is.na(jdate.exit) ~ jdate.exit)) %>% 
+  mutate(jdate.exit2 = case_when(is.na(jdate.exit2) & !is.na(jdate.pupa) ~ jdate.pupa + 70,  # assume dead, non-diapausing
+                                 TRUE ~ jdate.exit2)) %>% # anything else got lost
+         # correcting jdate.pmd: any pups should not have an empty jdate 
+  mutate(jdate.pmd = case_when(!is.na(jdate.pupa) ~ NA_real_, # only pmd if no pup
+                               TRUE ~ jdate.pmd))
+
+```
+
+```{r matching 2023 binaries to 2024}
 d23 <- d23 %>%
   mutate(final.fate = case_when(notes.ignore %in% c("culled larva", "cut", "hot larva", "wet diet") ~ "other"))
 
@@ -111,12 +150,15 @@ d23 <- d23 %>%
                          !is.na(jdate.6th) ~ 6,
                          # (is.na(jdate.pmd) & !is.na(jdate.pupa) |
                          #    is.na(jdate.6th) & !is.na(jdate.pupa)) ~ 0), # for things that died as pups
-                         is.na(jdate.pmd) & (!is.na(jdate.pupa) | !is.na(jdate.LP)) ~ 0),
+                          is.na(jdate.pmd) & (!is.na(jdate.pupa) | !is.na(jdate.LP)) ~ 0),
+                         #is.na(jdate.pmd) & !is.na(jdate.pupa) ~ 0),
          # case_when(sup = 0 & !is.na(jdate.5th) ~ NA_real_,
          #                 TRUE ~ as.numeric(sup)),
          surv.outcome = case_when(final.fate == "other" | 
-                                    (is.na(jdate.pmd) & is.na(jdate.pupa) & is.na(jdate.LP)) ~ 2,
+                                    #(is.na(jdate.pmd) & is.na(jdate.pupa) & is.na(jdate.LP)) ~ 2,
+                                    (is.na(jdate.pmd) & is.na(jdate.pupa)) ~ 2,
                                   !is.na(date.pupa) | !is.na(date.LP) ~ 1,
+                                  #!is.na(date.pupa) & !is.na(jdate.exit2) ~ 1,
                                   !is.na(date.pmd) ~ 0,
                                   #TRUE ~ 2
                                   ),
@@ -144,7 +186,7 @@ test2 <- d23
 
 d23 <- d23 %>%
   select(-c("jdate.collected", "jdate.15", "jdate.stuck",
-            "jdate.exit", "jdate.LP", "jdate.died")) %>% # d23 exclusives
+            "jdate.exit", "jdate.exit2", "jdate.LP", "jdate.died")) %>% # d23 exclusives
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
            "instar.enter", starts_with(c("jdate", "mass")), 
            "sex",
@@ -152,10 +194,6 @@ d23 <- d23 %>%
            "sup", "surv.outcome", "year"
           ))
 
-# append longevity data to d23
-d23_longevity[d23_longevity$id == 1415, "sex"] <- "f" # fix data
-
-d23 <- merge(d23, d23_longevity, all = TRUE)
 ```
 
 
@@ -226,14 +264,15 @@ all_wide <- all %>%
          tt.pupa = jdate.pupa - jdate.hatch,
          tt.eclose = jdate.eclose - jdate.pupa,
          tt.surv = jdate.surv - jdate.eclose,
-         tt.lsurv = jdate.lsurv - jdate.lec, # for d23 longevity
+         #tt.lsurv = jdate.lsurv - jdate.lec, # for d23 longevity
          tt.pmd = jdate.pmd - jdate.hatch
-         )  %>%
-  # drop extra d23 longevity columns
-  mutate(tt.surv = case_when(is.na(tt.surv) ~ as.numeric(tt.lsurv),
-                             TRUE ~ as.numeric(tt.surv))) %>%
-  #filter(year == 2023 & sex == "f" & !is.na(jdate.lsurv)) %>% View()
-  select(-c("jdate.lsurv", "jdate.lec", "tt.lsurv"))
+         )  
+# %>%
+#   # drop extra d23 longevity columns
+#   mutate(tt.surv = case_when(is.na(tt.surv) ~ as.numeric(tt.lsurv),
+#                              TRUE ~ as.numeric(tt.surv))) %>%
+#   #filter(year == 2023 & sex == "f" & !is.na(jdate.lsurv)) %>% View()
+#   select(-c("jdate.lsurv", "jdate.lec", "tt.lsurv"))
 
 all_long <- all_wide %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
