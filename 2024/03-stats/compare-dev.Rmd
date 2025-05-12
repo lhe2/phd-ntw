@@ -177,6 +177,67 @@ out.psurv$modsel.sup
 
 ```
 
+## 250512 random yr feas followup
+
+try to model `year` as a random effect per feasibility suggestions
+
+```{r}
+mod <- glmer(is.pup ~ pop*minT + (1|year), data = ntw_mumin.dfs$df, family = "binomial", na.action = "na.fail")
+
+summary(mod)
+dredge(mod)
+
+
+# Fixed effects:
+#               Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)    -1.5555     0.3407  -4.566 4.98e-06 ***
+# poplab          1.4851     0.3246   4.575 4.76e-06 ***
+# minT26          0.7202     0.2848   2.529   0.0114 *  
+# minT33          0.5656     0.3005   1.882   0.0598 .  
+# poplab:minT26   0.6559     0.4468   1.468   0.1421    
+# poplab:minT33  -0.7972     0.4279  -1.863   0.0625 .
+
+# Model selection table 
+#     (Int) mnT pop mnT:pop df   logLik  AICc delta weight
+# 8 -1.5550   +   +       +  7 -425.006 864.2  0.00  0.982
+# 4 -1.5390   +   +          5 -431.024 872.1  7.97  0.018
+
+# try reordering minTs relative to 26...
+mod2 <- ntw_mumin.dfs$df %>%
+  mutate(minT = factor(minT, levels = c(33, 26, 19)),
+         pop = factor(pop, levels = c("lab", "field"))) %>%
+  glmer(is.pup ~ pop*minT + (1|year), data = ., family = "binomial", na.action = "na.fail")
+
+summary(mod2)
+# when lab is ref,
+  # when 26 is ref, 19 = * and 33 = ns
+  # when 33 is ref, 26 = ns, 19 = *
+# (lots of stuff moves around depending on whos the ref lol)
+```
+
+so pop definitely matters overall... and temp matters sorta depending on whos the ref pop/temp
+
+```{r}
+# compare rand yr to fixed yr (in the 2way)
+
+df <- ntw_mumin.dfs$df #%>%
+  # mutate(minT = factor(minT, levels = c(33, 26, 19)),
+  #        pop = factor(pop, levels = c("lab", "field")))
+
+mod <- lme4::glmer(is.pup ~ pop*minT + (1|year), data = df, family = "binomial", na.action = "na.fail")
+mod2 <- glm(is.pup ~ (year + pop + minT)^2, data = df, family = "binomial", na.action = "na.fail")
+
+anova(mod, mod2, test = "Chisq")
+# they are def different models lol
+
+model.sel(mod, mod2)
+# glmer has lower negative LL tho glm has lower AIC
+```
+
+soooo tldr:
+- not exactly clear which model is better (yr as rand vs yr as fixed?)... and that the glm/glmer are different
+- predictor significance varies in the glmer depending on the reference level (of `pop` and `minT`)
+
 
 
 # pupal mass
@@ -299,9 +360,3 @@ anova(mod.pdev_n2way03b)
 # actually, it's the lab bugs lol. prob bc we keep selecting for faster bugs in colony
 
 ```
-
-# for later
-
-## fecundity (23v24)
-
-## fertility (2023 only)
