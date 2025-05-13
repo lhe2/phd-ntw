@@ -7,6 +7,8 @@ goal: compiling aim 1 results/figs for feasibility
 
 a lot of stuff is copied from their respective Rmds
 
+followups also done in their respective Rmds
+
 # setup
 
 ## - loading
@@ -288,6 +290,7 @@ model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null)
 nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null))
 ```
 
+followup: yr as random effect?
 
 
 # [x] 02. supernumerary stuff

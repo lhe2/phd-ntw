@@ -25,6 +25,8 @@ other notes:
 
 # knitted wrangling code for ntw development comparison figs/analyses.
 # source() this in corresponding analysis scripts.
+
+print(paste0("last updated: ", format(Sys.time(), "%Y-%m-%d")))
 ```
 
 ```{r load utils}
