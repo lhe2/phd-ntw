@@ -165,6 +165,7 @@ calc.ssadj <- function(data){
 calc.ssmoredev <- function(data){
   moredev <- data %>%
     mutate(dmass = (mass.pupa - mass.eclose)/1000,
+           masspupl = log(mass.pupa),
            rate.pup = (mass.pupa/tt.pupa)/1000,
            rate.puplog = log(mass.pupa)/tt.pupa)
   
@@ -173,6 +174,10 @@ calc.ssmoredev <- function(data){
     summarise(n = n(),
               avg.dmass = mean(na.omit(dmass)),
               se.dmass = se(dmass),
+              avg.masspupl = mean(na.omit(masspupl)),
+              se.masspupl = se(masspupl),
+              avg.tt = mean(na.omit(tt.pupa)),
+              se.tt = se(tt.pupa),
               avg.ratepup = mean(na.omit(rate.pup)),
               se.ratepup = se(rate.pup),
               avg.ratepupl = mean(na.omit(rate.puplog)),
@@ -185,6 +190,10 @@ calc.ssmoredev <- function(data){
     summarise(n = n(),
               avg.dmass = mean(na.omit(dmass)),
               se.dmass = se(dmass),
+              avg.masspupl = mean(na.omit(masspupl)),
+              se.masspupl = se(masspupl),
+              avg.tt = mean(na.omit(tt.pupa)),
+              se.tt = se(tt.pupa),
               avg.ratepup = mean(na.omit(rate.pup)),
               se.ratepup = se(rate.pup),
               avg.ratepupl = mean(na.omit(rate.puplog)),
