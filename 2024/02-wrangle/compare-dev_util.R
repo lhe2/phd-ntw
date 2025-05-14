@@ -22,10 +22,10 @@ filter.2pops <- function(data){
 
 ## calcing stats and then stitching it together ----------------------------
 
-## stage-specific summary stats (need wide data)
+## 23v24 ntw stage-specific summary stats
 
 ### do calcs
-calc.devstats <- function(data){
+calc.devstats <- function(data){ # use wide data
   
   # larval stats, ttpup = days
   ss_la <- data %>%
@@ -150,7 +150,7 @@ calc.devstats <- function(data){
 }
 
 ### pull together
-calc.ssadj <- function(data){
+calc.ssadj <- function(data){ # use wide data
   data <- data %>%
     mutate(stage = factor(stage, levels = c("la", "pu", "ad")),
            avg.mass = avg.mass/1000,
@@ -159,10 +159,10 @@ calc.ssadj <- function(data){
 
 
 
-## more dev stats
+## 23v24 more dev stats
   # 2025-02-13: maybe smush into another fn lol
 
-calc.ssmoredev <- function(data){
+calc.ssmoredev <- function(data){ # use wide data
   moredev <- data %>%
     mutate(dmass = (mass.pupa - mass.eclose)/1000,
            masspupl = log(mass.pupa),
@@ -203,4 +203,57 @@ calc.ssmoredev <- function(data){
   
 }
 
+
+## 2v2 vs ntw instar-specific stats (needs wide data)
+
+# for comparing 2x2 vs ntw growth for 2025-05 bsft
+
+calc.instats <- function(data){ # use long data
+  
+  data <- data %>%
+    filter(is.sup == 0) %>%
+    mutate(logmass = log(mass),
+           devrate = mass/tt,
+           ldevrate = logmass/tt)
+  
+  ss <- data %>%
+    filter(instar %in% c("3rd", "4th", "5th", "pupa")) %>%
+    group_by(pop, trt, instar, meanT, flucT) %>%
+    summarise(n = n(),
+              avg.mass = mean(na.omit(mass)), # mass in mg
+              se.mass = se(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = se(logmass),
+              avg.tt = mean(tt),
+              se.tt = se(tt),
+              # # ttrate = 1/tt,
+              # # avg.ttrate = mean(na.omit(ttrate)),
+              # # se.ttrate = se(ttrate),
+              avg.devrate = mean(na.omit(devrate)),
+              se.devrate = se(devrate),
+              avg.ldevrate = mean(na.omit(ldevrate)),
+              se.ldevrate = se(ldevrate)
+              ) %>%
+    mutate(year = "both")
+  
+  ss_year <- data %>%
+    filter(instar %in% c("3rd", "4th", "5th", "pupa")) %>%
+    group_by(year, pop, trt, instar, meanT, flucT) %>%
+    summarise(n = n(),
+              avg.mass = mean(na.omit(mass)), # mass in mg
+              se.mass = se(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = se(logmass),
+              avg.tt = mean(tt),
+              se.tt = se(tt),
+              avg.devrate = mean(na.omit(devrate)),
+              se.devrate = se(devrate),
+              avg.ldevrate = mean(na.omit(ldevrate)),
+              se.ldevrate = se(ldevrate)
+    )
+
+  return(Reduce(full_join, (list(ss, ss_year))))
+  
+  
+}
   

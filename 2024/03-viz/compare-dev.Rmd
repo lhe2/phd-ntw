@@ -3,7 +3,7 @@ title: "ntw 2023 v 2024 comparisons data viz"
 date: "2024-10-08"
 ---
 
-# setup
+# - setup
 
 goal: compare 2023 and 2024 ntw development data. 
 
@@ -1111,5 +1111,148 @@ p1 + p2 +
   xlim(c(19, 35))
   
 
+```
+
+
+#  ---- ntw vs 2x2 ----
+
+sorta recreating kingsolver 2015 figs
+
+## - df setup
+```{r}
+# subset ntw vs 2x2
+vs_long <- all_long %>%
+  filter(pop == "lab" & diet == "LD") %>%
+  select(-for.const) %>%
+  mutate(for.temps = case_when(year == 2023 & cohort %in% c("A", "B") ~ "Y",
+                               TRUE ~ "N")) %>%
+  filter(for.temps == "Y" | for.ntw == "Y") %>% 
+  mutate(for.vs = case_when(for.temps == "Y" & for.ntw == "Y" ~ 2,
+                            for.temps == "N" & for.ntw == "Y" ~ 1,
+                            for.temps == "Y" & for.ntw == "N" ~ 0))
+
+vs_long.ntw <- filter(vs_long, for.ntw == "Y")
+vs_long.temps <- filter(vs_long, for.temps == "Y")
+```
+
+```{r}
+# ss calcs
+ss_vs.ntw <- vs_long.ntw %>%
+  calc.instats() %>%
+  mutate(for.vs = "ntw")
+
+ss_vs.temps <- vs_long.temps %>%
+  calc.instats() %>%
+  mutate(for.vs = "temps")
+
+ss_vs <- Reduce(full_join, (list(ss_vs.ntw, ss_vs.temps))) %>%
+  filter(pop == "lab") %>% # can remove later if want to incl field
+  mutate(for.vs = factor(for.vs, levels = c("temps", "ntw")),
+         meanT = factor(meanT, levels = c(26, 29.5, 33, 36.5)),
+         flucT = factor(flucT, levels = c(0, 3.5, 7, 10.5)))
+
+```
+
+## - rates vs mean T (fig 5)
+```{r}
+ss_vs %>%
+  filter(instar == "pupa" & year == "both") %>%
+  ggplot(aes(x = meanT, y = avg.ldevrate,
+             lty = flucT, color = flucT, shape = flucT)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = flucT)) +
+  facet_wrap(for.vs ~ ., scales = "free_x") +
+  scale_color_hue(direction = -1)
+
+ss_vs %>%
+  filter(instar == "pupa" & year == "both") %>%
+  ggplot(aes(x = meanT, y = avg.ldevrate,
+             lty = flucT, color = flucT, shape = for.vs)) +
+  geom_point(size = 3) +
+  geom_line(aes(group = interaction(flucT, for.vs))) +
+  scale_color_hue(direction = -1)
+```
+## - rates vs flucT
+```{r}
+ss_vs %>%
+  filter(instar == "pupa" & year == "both") %>%
+  ggplot(aes(x = flucT, y = avg.ldevrate,
+             lty = meanT, color = meanT, shape = for.vs)) +
+  geom_point(size = 3) +
+  geom_line(aes(group = interaction(meanT, for.vs))) +
+  scale_color_hue(direction = -1)
+```
+## mean vs flucts
+
+```{r}
+ss_vs %>%
+  filter(instar == "pupa" & year == "both") %>%
+  ggplot(aes(y = meanT, x = flucT, 
+             shape = for.vs, lty = for.vs)) +
+  geom_point(aes(color = avg.ldevrate, #size = avg.ldevrate
+                 ), 
+             size = 3, 
+             position = position_dodge(0.1)
+             ) +
+  geom_line(aes(group = for.vs), 
+            #position = position_dodge(0.1)
+            ) 
+
+# this is so goofy lol
+```
+
+## - mass vs days (fig 2)
+
+```{r}
+# color by meanT
+ss_vs %>%
+  mutate(trt = factor(trt)) %>%
+  filter(#instar == "pupa" & 
+           year == "both") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = meanT, lty = meanT, shape = flucT)) +
+  geom_point(size = 2) +
+  geom_line() +
+  facet_wrap(for.vs ~ .) +
+  guides(lty = "none") +
+  scale_color_hue(direction = -1)
+
+# color by flucT
+ss_vs %>%
+  mutate(trt = factor(trt)) %>%
+  filter(#instar == "pupa" & 
+           year == "both") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = flucT, lty = flucT, shape = meanT)) +
+  geom_point(size = 2) +
+  geom_line() +
+  facet_wrap(for.vs ~ .) +
+  guides(lty = "none") +
+  scale_color_hue(direction = -1)
+
+
+# combined col by meanT
+ss_vs %>%
+  mutate(trt = factor(trt)) %>%
+  filter(#instar == "pupa" & 
+           year == "both") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = meanT, lty = flucT, shape = for.vs)) +
+  geom_point(size = 2) +
+  geom_line() +
+  #guides(lty = "none") +
+  scale_color_hue(direction = -1)
+
+# combined col by flucT
+ss_vs %>%
+  mutate(trt = factor(trt)) %>%
+  filter(#instar == "pupa" & 
+           year == "both") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = flucT, lty = meanT, shape = for.vs)) +
+  geom_point(size = 2) +
+  geom_line() +
+  #guides(lty = "none") +
+  scale_color_hue(direction = -1)
 ```
 
