@@ -146,7 +146,10 @@ ss_fert %>%
   filter(year == 2023 #& trt.temp != 260
          ) %>%
   mutate(trt.temp = as.factor(trt.temp),
-         trt.type = factor(trt.type, levels = c("win", "btwn"))) %>%
+         trt.type = factor(trt.type, levels = c("win", "btwn")),
+         # trt.sex = case_when(trt.type == "btwn" ~ trt.sex,
+         #                     TRUE ~ NA_character_)
+         ) %>%
   ggplot(aes(y = p.hatched, x = avg.colledperf,
              col = trt.temp, shape = trt.sex)) +
   geom_point(size = 2) +
@@ -156,21 +159,31 @@ ss_fert %>%
   geom_errorbarh(aes(xmax = avg.colledperf + se.colled, xmin = avg.colledperf - se.colled, height = 0.2*0.025)) +
   geom_text(aes(label = n.f), vjust = -0.7, hjust = -0.65,
             show.legend = FALSE) +
-  facet_grid(~trt.type, labeller = as_labeller(c(`win` = "both sexes HS'd",
-                                                 `btwn` = "1 sex HS'd"))) +
+  # facet_grid(~trt.type, labeller = as_labeller(c(`win` = "both sexes HS'd",
+  #                                                `btwn` = "1 sex HS'd"))) + 
+  facet_grid(~trt.type, labeller = as_labeller(c(`win` = "treatment effects?",
+                                                 `btwn` = "sex-specific effects?"))) +
   labs(#caption = "2023 hatch proportion/egg laying;\nn = total females, se = se total collected",
-       y = "hatch proportion (overall)",
+       y = "proportion eggs hatched",
        #x = "avg eggs collected per day",
-       x = "mean eggs collected per female (overall)",
+       x = "eggs laid per female",
        shape = "heat-treated sex",
        color = "larval rearing\ntemperature (°C)") +
-  scale_color_manual(#values = bin_aes$temp4$col, 
-                     values = c("#4393ce", "darkgoldenrod1", "#fd8d3c", "#d94701"),
+  # feas variation
+  # scale_color_manual(#values = bin_aes$temp4$col, 
+  #                    values = c("#4393ce", "darkgoldenrod1", "#fd8d3c", "#d94701"),
+  #                    labels = bin_aes$temp4$labswC) +
+  # scale_shape_manual(#values = bin_aes$sexes$ptfill_all, 
+  #                    values = c(4, 16, 1),
+  #                    #limits = c("f", "m")
+  #                    ) +
+  # bsft variation
+  scale_color_manual(values = c("deepskyblue3", "darkorchid4", "deeppink3", "darkgoldenrod2"),
                      labels = bin_aes$temp4$labswC) +
-  scale_shape_manual(#values = bin_aes$sexes$ptfill_all, 
-                     values = c(4, 16, 1),
-                     #limits = c("f", "m")
+  scale_shape_manual(values = c(both = 3, f = 16, m = 1),
+                     breaks = c("f", "m")
                      ) +
+  #ylim(c(-0.1, 0.21)) +
   theme_bw()
 ```
 ## 2024 laying

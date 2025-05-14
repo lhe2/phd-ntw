@@ -319,7 +319,79 @@ p1 + p2 +
 
 ```
 
-# mass
+## - 1/days by pop (bsft)
+
+```{r}
+# colored by pop
+p1 <- ss_ntw %>% 
+    mutate(n = case_when(stage == "la" ~ n.pup,
+                       TRUE ~ n)) %>%
+  filter(stage == "la" & z.type == "rate" & trt.type == "expt") %>%
+  ggplot(aes(y = avg.tt, x = minT,
+             color = pop, 
+             group = interaction(pop, stage, trt.type)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = pop), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  #facet_wrap(~year) + # orig
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  facet_grid(~year, scales = "free_y") +
+  theme_bw()
+
+p1
+
+
+p2 <- ss_ntw %>% 
+  # rename(avg.tt2 = avg.devrate,
+  #        se.tt2 = se.devrate) %>%
+  mutate(n = case_when(stage == "la" ~ n.pup,
+                       TRUE ~ n)) %>%
+  filter(stage == "la" & z.type == "rate" & trt.type == "ctrl") %>%
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.tt, x = year,
+             color = pop, 
+             group = interaction(pop, stage, trt.type)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt, ymax = avg.tt + se.tt), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  #geom_point(aes(alpha = year), size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  geom_point(#fill = NA, 
+             size = 2) +
+  labs(x = "year") +
+  #facet_wrap(~trt.type) + # orig
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  facet_grid(~trt.type, scales = "free_y") +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs reduce pup dev time?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population", color = "population",
+       #y = "adult longevity | time to pupation (days)"
+       y = "growth rate (1/days)"
+       ) &
+  guides(fill = "none") &
+  scale_linetype_manual(values = c("dashed", "solid"), labels = c("field", "lab")) &
+  #scale_shape_manual(values = c(19)) &
+  scale_color_manual(values = c("#41b6c4", "#225ea8"), labels = c("field", "lab")) &
+  #ylim(c(15, 37)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+
+```
+
+# mass (all stages)
 
 ## - by sex
 
@@ -458,6 +530,8 @@ p1 + p2 +
 
 how does pup mass look across yrs, pops, trts, sexes, temps? (getting some intuition of what to do for modeling)
 
+## - by sex
+
 ```{r}
 # NTs on pupal mass
 
@@ -514,6 +588,87 @@ p1 + p2 +
   - pop, field < lab
   - minT, interacting with lab
   - sex can prob be ignored
+
+## - by pop (bsft)
+
+```{r}
+p1 <- ss_ntw %>% 
+  filter(stage == "pu") %>%
+  # mutate(sex = case_when(is.na(sex) ~ "both",
+  #                        TRUE ~ as.character(sex))) %>%
+  # filter(sex != "all") %>%
+  filter(sex == "all") %>%
+  filter(trt.type == "expt") %>%
+  ggplot(aes(y = avg.mass, x = minT,
+             color = pop, 
+             #shape = sex,
+             #group = interaction(pop, sex)
+             group = pop
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(aes(#alpha = year, 
+                 color = pop), size = 2) +
+  #geom_point(fill = NA, size = 2) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(#sex
+             ~year, 
+             #scales = "free_y"
+             ) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  theme_bw()
+
+p1
+
+p2 <- ss_ntw %>% 
+  filter(stage == "pu") %>%
+  # mutate(sex = case_when(is.na(sex) ~ "both",
+  #                        TRUE ~ as.character(sex))) %>%
+  # filter(sex != "all") %>%
+  filter(sex == "all") %>%
+  filter(trt.type == "ctrl") %>% 
+  mutate(trt.type = "control (26/26 °C)") %>%
+  ggplot(aes(y = avg.mass, x = year,
+             color = pop, 
+             #shape = sex,
+             #group = interaction(pop, sex),
+             group = pop
+             )) +
+  geom_errorbar(aes(ymin = avg.mass - se.mass, ymax = avg.mass + se.mass), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(#aes(alpha = year), 
+             size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(#sex
+             ~trt.type, 
+             #scales = "free_y"
+             ) +
+  theme_bw()
+
+p2
+
+# merge
+p1 + p2 +
+  #labs(caption = "do lower NTs lead to larger mass?") +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population",
+       color = "population",
+       y = "pupal mass (g)",
+       ) &
+  #guides(fill = "none") &
+  scale_linetype_manual(values = c("dashed", "solid"), labels = c("field", "lab")) &
+  #scale_shape_manual(values = c(17, 15)) &
+  scale_shape_manual(values = c(16, 1)) &
+  scale_color_manual(values = c("#41b6c4", "#225ea8"), labels = c("field", "lab")) & 
+  #scale_fill_manual(values = c("#41b6c4", "#225ea8")) &
+  #ylim(c(0.75, 7.25)) &
+  ylim(c(2.1, 6.8)) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
 
 
 # dmass
@@ -715,7 +870,9 @@ p1 + p2 +
   theme(strip.background.y = element_blank(), strip.text.y = element_blank())
 ```
 
-# pup growth rate 
+# ---- moredev ----
+
+# pup growth rate (g/days)
 
 ## - both sexes
 
@@ -770,6 +927,59 @@ p1 + p2 +
   scale_linetype_manual(values = c("dashed", "solid")) &
   scale_color_manual(values = c("#D95F02", "#7570B3")) &
   theme(strip.background.y = element_blank(), strip.text.y = element_blank())
+```
+
+```{r}
+# color by pop
+p1 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "expt") %>%
+  ggplot(aes(y = avg.ratepupl, x = minT,
+             shape = sex, color = pop,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepupl - se.ratepupl, ymax = avg.ratepupl + se.ratepupl), width = 0.25) +
+  geom_line(aes(lty = pop), alpha = 1) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "minimum temperature (°C)") +
+  facet_grid(sex~year) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>% 
+  filter(sex == "both" & 
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.ratepupl, x = year,
+             shape = sex, color = pop,
+             group = interaction(pop, sex)
+             )) +
+  geom_errorbar(aes(ymin = avg.ratepupl - se.ratepupl, ymax = avg.ratepupl + se.ratepupl), width = 0.25) +
+  geom_line(aes(lty = pop)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = n), hjust = -0.25, vjust = -0.5, show.legend = FALSE) +
+  labs(x = "year") +
+  facet_grid(~trt.type) +
+  #scale_color_manual(values = aes_2col) +
+  theme_bw()
+
+p2
+
+
+p1 + p2 +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top") &
+  labs(lty = "population", col = "population",
+       y = "growth rate [ln(g)/days]") &
+  guides(shape = "none") &
+  scale_linetype_manual(values = c("dashed", "solid")) &
+  scale_color_manual(values = c("#41b6c4", "#225ea8")) &
+  theme(strip.background.y = element_blank(), strip.text.y = element_blank()) &
+  ylim(c(0.21, 0.49))
 ```
 
 
@@ -830,5 +1040,76 @@ p1 + p2 +
 ```
 
 
+# pup growth (g vs days)
 
+trying to make figs like kingsolver ea 2015 j exp biol (fig 2) idk if itll work tho lol
+
+```{r}
+ss_moredev %>%
+  filter(trt.type == "expt" & sex == "both") %>%
+  ggplot(aes(y = avg.masspupl, x = avg.tt,
+             col = year
+             )) +
+  geom_point(aes(#col = year, 
+                 shape = pop), size = 3) +
+  geom_line(aes(group = year,
+                lty = year)) +
+  facet_wrap(~minT) +
+  scale_shape_manual(values = c(1, 19))
+# weird and very non-intuitive ngl LOL
+
+
+p1 <- ss_moredev %>%
+  filter(trt.type == "expt" & sex == "both") %>%
+  ggplot(aes(y = avg.masspupl, x = avg.tt,
+             col = minT
+             )) +
+  geom_point(aes(#col = year, 
+                 shape = pop), size = 2.5) +
+  geom_line(aes(group = minT,
+                lty = minT)) +
+  facet_wrap(year ~ .) +
+  scale_shape_manual(values = c(1, 19)) +
+  #scale_color_manual(values = bin_aes$temp3$col) +
+  scale_color_hue(direction = -1) +
+  labs(y = "ln mass (g)", x = "age (days)",
+       shape = "population",
+       col = "minimum\ntemperature (°C)", lty = "minimum\ntemperature (°C)") +
+  theme_bw()
+
+p1
+
+p2 <- ss_moredev %>%
+  filter(trt.type == "ctrl" & sex == "both") %>%
+  ggplot(aes(y = avg.masspupl, x = avg.tt,
+             #col = minT
+             )) +
+  # geom_point(aes(#col = year, 
+  #                shape = pop), size = 2.5) +
+  # geom_line(aes(group = year,
+  #               lty = year)) +
+  geom_point(aes(shape = year), size = 2.5) +
+  geom_line(aes(lty = pop)) +
+  facet_wrap(trt.type ~ .) +
+  scale_shape_manual(values = c(2, 17)) +
+  #scale_color_manual(values = bin_aes$temp3$col) +
+  scale_color_hue(direction = -1) +
+  labs(y = "ln mass (g)", x = "age (days)",
+       #shape = "population", lty = "year"
+       shape = "year", lty = "population") +
+  theme_bw()
+
+p2
+
+p1 + p2 + 
+  plot_layout(#guides = "collect",
+              axes = "collect",
+              widths = c(2:1)) &
+  theme(legend.position = "top",
+        legend.direction = "vertical") &
+  ylim(c(7.65, 8.8)) &
+  xlim(c(19, 35))
+  
+
+```
 
