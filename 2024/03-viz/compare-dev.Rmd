@@ -974,7 +974,9 @@ p1 + p2 +
               widths = c(2:1)) &
   theme(legend.position = "top") &
   labs(lty = "population", col = "population",
-       y = "growth rate [ln(g)/days]") &
+       #y = "growth rate [ln(g)/days]"
+       y = "growth rate [ln(mg)/days]"
+       ) &
   guides(shape = "none") &
   scale_linetype_manual(values = c("dashed", "solid")) &
   scale_color_manual(values = c("#41b6c4", "#225ea8")) &
@@ -1109,9 +1111,164 @@ p1 + p2 +
         legend.direction = "vertical") &
   ylim(c(7.65, 8.8)) &
   xlim(c(19, 35))
-  
 
 ```
+## - expt only, yrs combined
+```{r}
+# the above but by instar...
+ss_ntw.ins <- all_long %>% calc.instats2()
+```
+
+
+```{r}
+# first attempts...
+
+# by minT
+ss_ntw.ins %>%
+  filter(year == "both") %>%
+  filter(trt.type != "ctrl") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             #col = minT, 
+             #col = year,
+             lty = pop, shape = pop)) +
+  geom_point(size = 2) +
+  geom_line(aes(group = interaction(minT, year, pop))) +
+  #facet_wrap(year ~ minT) +
+  facet_wrap(~ minT) +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+
+# by pop
+labs <- c("40 - 33°C\n(36.5 ± 3.5°C)\n", "40 - 26°C\n(33 ± 7°C)\n",  "40 - 19°C\n(29.5 ± 10.5°C)\n")
+ss_ntw.ins %>%
+  filter(year == "both") %>%
+  filter(trt.type != "ctrl") %>%
+  mutate(pop = factor(pop, levels = c("lab", "field")),
+         minT = factor(minT, levels = c(33, 26, 19))) %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = minT, 
+             #col = year,
+             lty = minT, shape = minT)) +
+  geom_point(size = 2.5) +
+  geom_line(aes(group = interaction(minT, year, pop)), lwd = 0.75) +
+  #geom_errorbar(aes(ymax = avg.logmass + se.logmass, ymin = avg.logmass - se.logmass)) + # too small to see lol
+  #facet_wrap(year ~ minT) +
+  facet_wrap(~ pop) +
+  #scale_color_hue(direction = -1) +
+  xlim(c(0, 28)) +
+  labs(y = "ln(mass)", x = "age (days)",
+       #col = "night temperature", shape = "night temperature", lty = "night temperature"
+       ) +
+  scale_color_manual(values = c("darkgoldenrod2", "deeppink3", "darkorchid4"), 
+                     #labels = c("19°C", "26°C", "33°C"),
+                     labels = labs,
+                     name = "") + 
+  scale_shape_discrete(#labels = c("19°C", "26°C", "33°C"),
+                       labels = labs,
+                       name = "") +
+  scale_linetype_discrete(#labels = c("19°C", "26°C", "33°C"),
+                          labels = labs,
+                          name = "") +
+  ylim(c(3.4, 8.8)) + # to match w 2x2 fig axes for alignment in ppt
+  theme_bw()
+```
+
+
+## - incl ctrl (sep)
+
+```{r}
+p1 <- ss_ntw.ins %>%
+  filter(year == "both" &
+           trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = pop, lty = pop)) +
+  geom_point(size = 1.75) +
+  geom_line(lwd = 0.75) +
+  #geom_errorbar(aes(ymax = avg.logmass + se.logmass, ymin = avg.logmass - se.logmass), width = 0.5) +
+  facet_grid(year ~ trt.type, labeller = labeller(trt.type = as_labeller(c(`ctrl` = "control (26/26°C)")))) +
+  scale_linetype_manual(values = c("dashed", "solid"), name = "") +
+  scale_color_manual(values = c("#41b6c4", "#225ea8"), name = "") + 
+  theme_bw() +
+  theme(strip.background.y = element_blank(),
+        strip.text.y = element_blank())
+
+p1
+
+labs <- c("40 - 33°C\n(36.5 ± 3.5°C)\n", "40 - 26°C\n(33 ± 7°C)\n",  "40 - 19°C\n(29.5 ± 10.5°C)\n")
+
+p2 <- ss_ntw.ins %>%
+  filter(year == "both" &
+           trt.type == "expt") %>%
+  mutate(pop = factor(pop, levels = c("lab", "field")),
+         minT = factor(minT, levels = c(33, 26, 19))) %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = minT, lty = minT, shape = minT)) +
+  geom_point(size = 1.75) +
+  geom_line(aes(group = interaction(minT, year, pop)), lwd = 0.75) +
+  #geom_errorbar(aes(ymax = avg.logmass + se.logmass, ymin = avg.logmass - se.logmass)) + # too small to see lol
+  facet_grid(year ~ pop) +
+  #scale_color_hue(direction = -1) +
+  labs(#y = "ln(mass)", x = "age (days)",
+       #col = "night temperature", shape = "night temperature", lty = "night temperature"
+       ) +
+  scale_color_manual(values = c("darkgoldenrod2", "deeppink3", "darkorchid4"), 
+                     labels = labs, name = "") + 
+  scale_shape_discrete(labels = labs, name = "") +
+  scale_linetype_discrete(labels = labs, name = "") +
+  theme_bw() +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+p2
+
+
+p1 + p2 +
+  plot_layout(guides = "collect",
+              axes = "collect",
+              widths = c(1:2)) &
+  theme(legend.position = "top",
+        strip.background.y = element_blank(),
+        strip.text.y = element_blank()
+        ) &
+  geom_point(size = 2) &
+  ylim(c(3.2, 9)) &
+  xlim(c(2.8, 34)) &
+  labs(y = "ln[mass (mg)]", x = "days (age)") &
+  guides(color = "none", lty = "none", shape = "none")
+```
+## - incl ctrl (together)
+```{r}
+labs <- c("26 - 26°C\n(26 ± 0°C)\n", "40 - 33°C\n(36.5 ± 3.5°C)\n", 
+          "40 - 26°C\n(33 ± 7°C)\n",  "40 - 19°C\n(29.5 ± 10.5°C)\n")
+
+ss_ntw.ins %>%
+  filter(year == "both") %>%
+  mutate(trt = case_when(trt.type == "expt" ~ case_when(minT == 19 ~ 419,
+                                                        minT == 26 ~ 426,
+                                                        minT == 33 ~ 433),
+                         TRUE ~ 260)) %>%
+  mutate(pop = factor(pop, levels = c("lab", "field")),
+         trt = factor(trt, levels = c(260, 433, 426, 419))) %>%
+  #filter(trt.type == "ctrl") %>%
+  ggplot(aes(y = avg.logmass, x = avg.tt,
+             col = trt, lty = trt, shape = trt)) +
+  geom_point(size = 2) +
+  geom_line(lwd = 0.8) +
+  facet_grid(~pop) +
+  labs(y = "ln[mass (mg)]", x = "days (age)",
+       ) +
+  scale_color_manual(values = c("deepskyblue3", 
+                                "darkgoldenrod2", "deeppink3", "darkorchid4"
+                                ),
+                     labels = labs, name = ""
+                     ) +
+  scale_shape_discrete(labels = labs, name = "") +
+  scale_linetype_discrete(labels = labs, name = "") +
+  #guides(color = "none", shape = "none", lty = "none") +
+  theme_bw()
+```
+
 
 
 #  ---- ntw vs 2x2 ----

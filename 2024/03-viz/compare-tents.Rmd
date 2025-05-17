@@ -145,7 +145,8 @@ ss_fert <- dall %>%
 ss_fert %>%
   filter(year == 2023 #& trt.temp != 260
          ) %>%
-  mutate(trt.temp = as.factor(trt.temp),
+  mutate(#trt.temp = as.factor(trt.temp),
+         trt.temp = factor(trt.temp, levels = c(260, 433, 426, 419)),
          trt.type = factor(trt.type, levels = c("win", "btwn")),
          # trt.sex = case_when(trt.type == "btwn" ~ trt.sex,
          #                     TRUE ~ NA_character_)
@@ -168,7 +169,7 @@ ss_fert %>%
        #x = "avg eggs collected per day",
        x = "eggs laid per female",
        shape = "heat-treated sex",
-       color = "larval rearing\ntemperature (°C)") +
+       color = "larval rearing\nregime") +
   # feas variation
   # scale_color_manual(#values = bin_aes$temp4$col, 
   #                    values = c("#4393ce", "darkgoldenrod1", "#fd8d3c", "#d94701"),
@@ -178,12 +179,14 @@ ss_fert %>%
   #                    #limits = c("f", "m")
   #                    ) +
   # bsft variation
-  scale_color_manual(values = c("deepskyblue3", "darkorchid4", "deeppink3", "darkgoldenrod2"),
-                     labels = bin_aes$temp4$labswC) +
-  scale_shape_manual(values = c(both = 3, f = 16, m = 1),
-                     breaks = c("f", "m")
-                     ) +
+    scale_shape_manual(values = c(both = 3, f = 16, m = 1),
+                       breaks = c("f", "m")) +
+  scale_color_manual(#values = c("deepskyblue3", "darkorchid4", "deeppink3", "darkgoldenrod2"),
+                     #labels = bin_aes$temp4$labswC
+                     values = c("deepskyblue3", "darkgoldenrod2", "deeppink3", "darkorchid4"),
+                     labels = c("26-26°C", "40-33°C", "40-26°C", "40-19°C")) +
   #ylim(c(-0.1, 0.21)) +
+  guides(shape = guide_legend(nrow = 1)) +
   theme_bw()
 ```
 ## 2024 laying
