@@ -204,9 +204,9 @@ calc.ssmoredev <- function(data){ # use wide data
 }
 
 
-## 2v2 vs ntw instar-specific stats (needs wide data)
+## 2v2 vs ntw instar-specific stats (needs long data)
 
-# for comparing 2x2 vs ntw growth for 2025-05 bsft
+### for comparing 2x2 vs ntw growth for 2025-05 bsft
 
 calc.instats <- function(data){ # use long data
   
@@ -254,6 +254,57 @@ calc.instats <- function(data){ # use long data
 
   return(Reduce(full_join, (list(ss, ss_year))))
   
+}
+
+
+
+## instar-specific stats based off max/minTs
+
+calc.instats2 <- function(data){ # use long data
   
+  data <- data %>%
+    filter(is.sup == 0) %>%
+    mutate(logmass = log(mass),
+           devrate = mass/tt,
+           ldevrate = logmass/tt)
+  
+  ss <- data %>%
+    filter(instar %in% c("3rd", "4th", "5th", "pupa")) %>%
+    group_by(pop, instar, minT, trt.type) %>%
+    summarise(n = n(),
+              avg.mass = mean(na.omit(mass)), # mass in mg
+              se.mass = se(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = se(logmass),
+              avg.tt = mean(tt),
+              se.tt = se(tt),
+              # # ttrate = 1/tt,
+              # # avg.ttrate = mean(na.omit(ttrate)),
+              # # se.ttrate = se(ttrate),
+              avg.devrate = mean(na.omit(devrate)),
+              se.devrate = se(devrate),
+              avg.ldevrate = mean(na.omit(ldevrate)),
+              se.ldevrate = se(ldevrate)
+    ) %>%
+    mutate(year = "both")
+  
+  ss_year <- data %>%
+    filter(instar %in% c("3rd", "4th", "5th", "pupa")) %>%
+    group_by(year, pop, instar, minT, trt.type) %>%
+    summarise(n = n(),
+              avg.mass = mean(na.omit(mass)), # mass in mg
+              se.mass = se(mass),
+              avg.logmass = mean(na.omit(logmass)),
+              se.logmass = se(logmass),
+              avg.tt = mean(tt),
+              se.tt = se(tt),
+              avg.devrate = mean(na.omit(devrate)),
+              se.devrate = se(devrate),
+              avg.ldevrate = mean(na.omit(ldevrate)),
+              se.ldevrate = se(ldevrate)
+    )
+  
+  return(Reduce(full_join, (list(ss, ss_year))))
+
 }
   
