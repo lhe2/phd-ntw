@@ -40,3 +40,4 @@ vignettes/*.pdf
 notes/*
 archive/*
 */02-wrangle/*_p.R
+*/products/*
