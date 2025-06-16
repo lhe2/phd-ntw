@@ -1,0 +1,132 @@
+---
+title: "2025 TDT data cleaning"
+date: "2025-06-14"
+---
+
+# 0. roadmap
+
+1. load data & packages; pre-filtering
+2. column formatting + rearrangement
+3. save output into `2025/data/`
+
+
+# 1. load data & packages
+
+```{r message = FALSE}
+
+##### if doing a major update of the sheet, archive the old one first
+library(tidyr)
+library(purrr)
+library(dplyr)
+#library(lubridate) # for handling time stuff
+library(googlesheets4)
+
+here::i_am("2025/cleaning-tdt.Rmd")
+library(here)
+
+source(here::here("set-paths.R"))
+```
+
+googlesheets import
+
+```{r}
+# need to correct dates (add 2025)
+raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+                  sheet = "jun 2025 pilot",
+                  col_types = "c",
+                  na = c("#VALUE!")) %>%
+  drop_na() %>%
+  na_if("--") %>% na_if("")
+
+data <- raw %>% 
+  rename(trt = treatment) %>%
+  mutate(trt.recover = case_when(trt.type == "ctrl" ~ NA_character_,
+                                 TRUE ~ trt.recover)) %>%
+  select(-trt.type)
+```
+
+# 2. content fixing and standardising
+
+filtering, value fixing, column formatting
+
+```{r}
+# pull out accidentally culled before 3rd (fate = 2, instar.exit < 3)
+data <- data %>%
+  filter(!(fate == 2 & instar.exit < 3) | is.na(fate)) # retain is.na(fate) for things still developing
+
+data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = "&") 
+  # replaces commas w/ &'s to avoid csv breakage after export
+
+data <- data %>%
+    #mutate(across(starts_with()))
+    mutate(across(c(trt, trt.enter, trt.recover, trt.duration, id, instar.exit, fate,
+                    starts_with(c("mass.", "dv."))
+                    ), as.numeric)) %>%
+    mutate(across(starts_with("date."), as.Date, format = "%m/%d")) %>%
+    mutate(across(starts_with("time."), hm))
+
+# might need to keep "expt type" to separate out 40 ctrl from other "ctrls" ?
+```
+
+
+```{r}
+# other filters
+
+# data <- data %>%
+#   dplyr::filter(!(notes.ignore %in% c("early pmd", "lost"))) # dropping things that died in 1 day or got lost
+# 
+# data <- select(data, -c("date.LPI", "date.15")) # not rly needed for analyses/LPI is empty lol
+
+
+# value fixing
+# data[, -ncol(data)] <- lapply(data[, -ncol(data)], gsub, pattern="\\?", replacement = "") 
+#   # removes `?`s from all columns excepts notes column (assuming its the last col in the df)
+
+
+# data[, 'id'] <- lapply(data[, 'id'], gsub, pattern="\\.\\d", replacement = "") 
+#   # turns the repeat entries into whole numbers so theres no decimals going on after as.numeric(id)
+```
+
+julian date conversions
+
+```{r}
+data <- data %>%
+  mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
+  mutate(across(starts_with("jdate."), as.numeric)) %>%
+  mutate(jdate.exit = case_when(!is.na(jdate.culled) ~ jdate.culled,
+                                !is.na(jdate.died) ~ jdate.died)) %>%
+  select(-c(jdate.died, jdate.culled))
+```
+
+
+# 3. saving output & tidying up
+
+```{r}
+# setup
+today <- format(Sys.time(), "%y%m%d-%H%M")
+
+data <- mutate(data, across(starts_with("time."), as.character))
+  # breaks write_csv if left as a `lubridate` object
+```
+
+```{r}
+# export
+# TODO convert these to here() later
+write.csv(raw, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today, "_raw.csv"), row.names = FALSE)
+write.csv(data, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today, "_clean-full.csv"), row.names = FALSE)
+
+# extract the useful stuff
+data <- data %>%
+  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("dv", "jdate", "mass")), "instar.exit", "fate"))
+
+write.csv(data, file = paste0(here(bin_paths25$data), "/clean-working.csv"), row.names = FALSE)
+```
+
+remove troubleshooting objects
+
+```{r}
+rm(today, data, raw)
+```
+
+
+
