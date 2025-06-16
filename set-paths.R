@@ -6,6 +6,9 @@
 here::i_am("set-paths.R")
 library(here)
 
+bin_paths25 <- list(y25 = here("2025"),
+                    data = here("2025", "data"))
+
 bin_paths24 <- list(y24 = here("2024"),
                     data = here("2024", "data"),
                     clean = here("2024", "01-cleaning"),
