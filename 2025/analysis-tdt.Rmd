@@ -1,0 +1,222 @@
+---
+title: "tdt viz n stats"
+date: "2025-06-16"
+---
+
+# preamble
+
+combined viz/stats for tdt stuff until i can be bothered to split them apart
+
+## loading
+
+```{r}
+here::i_am("2025/analysis-tdt.Rmd")
+library(here)
+
+library(tidyverse)
+#library(MuMIn) # for survival nested model comparisons
+library(survival) # for fitting KM curves
+library(survminer) # for plotting KM curves
+
+source(here::here("set-paths.R"))
+#source(here::here(bin_paths$y25, "compare-dev_p.R"))
+
+data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE) # can remove once wrangle script is done...
+```
+
+
+# km curves
+
+```{r df prep for in progress data}
+# for now, censor if they get to 4th
+data <- data %>%
+  mutate(fate = case_when(!is.na(jdate.4th) ~ 1,
+                          TRUE ~ as.numeric(fate)))
+
+# for bugs in progress, arbitrarily add today as a censor...?
+data <- data %>%
+  mutate(now = as.numeric(as.Date(today(), format = "%j")), 
+         dv.exit = case_when(is.na(jdate.exit) ~ now + 25580,
+                                TRUE ~ dv.exit),
+         fate = case_when(dv.exit == now ~ 1,
+                          TRUE ~ fate))
+
+
+
+# change duration to when entered (aka subtr out the buffer)
+
+```
+
+
+```{r df prep for km fits}
+# also JK for km curves, 1 = death and 0 = censored
+# and adding other exit info...
+km.data <- data %>% 
+  #drop_na(fate) %>%
+  mutate(km.status = case_when(!is.na(jdate.4th) ~ 0,
+                          !is.na(jdate.exit) ~ 1),
+         # not sure how to incorporate the dv stuff for 4ths...
+         km.exit = case_when(!is.na(jdate.4th) ~ jdate.4th + 25580,
+                             !is.na(dv.exit) ~ dv.exit),
+         instar.exit = case_when(!is.na(jdate.4th) ~ 4,
+                                 TRUE ~ as.numeric(instar.exit)),
+         is.40 = case_when(trt.enter == 40 ~ "Y",
+                          TRUE ~ "N"),
+         is.ctrl = case_when(trt < 100 ~ "Y",
+                             TRUE ~ "N"),
+         trt.recover = case_when(is.ctrl == "Y" ~ trt.enter,
+                                 TRUE ~ trt.recover))
+```
+
+
+```{r}
+# fit all
+fit <- survfit(Surv(km.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km.data)
+fit <- survfit(Surv(km.exit, km.status) ~ trt, data = km.data)
+
+           # linetype = c("1", "1", "1", "1",
+           #              "2", "2", "2",
+           #              "3", "3", "3"),
+           palette = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")
+           )  
+
+
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_fill_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_linetype_manual(values = c("1", "1", "1", "1",
+                                   "2", "2", "2",
+                                   "3", "3", "3"))
+
+
+
+
+ggsurvplot(fit, data = km.data,
+           #conf.int = TRUE,
+           xlim = c(45823, 45841),
+           facet.by = "trt.duration",
+           #linetype = "strata",
+           #palette = "strata")
+           )
+
++ 
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_fill_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_linetype_manual(values = c("1", "1", "1", "1",
+                                   "2", "2", "2",
+                                   "3", "3", "3"))
+
+
+
+fit <- survfit(Surv(km.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km.data)
+#fit <- survfit(coxph(Surv(km.exit, km.status) ~ trt, data = km.data))
+
+
+ggsurvplot(fit, data = km.data, 
+           #conf.int = TRUE,
+           xlim = c(45823, 45839),
+           facet.by = "trt.duration",
+           #group.by = c("trt.recover", "trt.duration"),
+           #palette = "trt.recover",
+           palette = "strata"
+           #linetype = "trt.duration",
+           ) +
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", 
+                                "deepskyblue", "skyblue1", "goldenrod1", "darkorange1")) +
+  scale_fill_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", 
+                                "deepskyblue", "skyblue1", "goldenrod1", "darkorange1"))
+
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1"),
+                     labels = c(19, 26, 33, 40)) +
+  scale_linetype_manual(#values = c("0" = 1, "24" = 2, "48" = 3),
+                        values = c(1, 2, 3),
+                        labels = c("0", "24", "48"))
+  
+  
+  
+  
+  
+# colorRampPalette(c(startcol, endcol))(ngroups)
+  
+# autoplot(fit, data)+ scale_color_manual, full
+  
+  
+  
+  
+  
+ggsurvplot(fit, data = km.data,
+           #conf.int = TRUE,
+           xlim = c(45823, 45841),
+           facet.by = "trt.duration",
+           #palette = viridis_pal(option = "H", direction = -1)(10)
+           palette = hcl.colors(10, palette = "Roma")
+           #linetype = "strata",
+           #palette = "strata")
+           ) +
+  labs(caption = "2025-06-18 15:57 data; starting from hatch")
+```
+
+```{r}
+# try subsets
+subset <- km.data %>% filter(,
+                             #trt > 100 & trt < 200,
+                             is.40 == "Y",
+                             #is.ctrl == "Y"
+                             #trt %in% c(133, 233)
+                             )
+
+fit <- survfit(Surv(km.exit, km.status) ~ trt + trt.duration + trt.recover, data = subset)
+#fit <- survfit(Surv(km.exit, km.status) ~ trt.recover + trt.duration, data = subset)
+
+
+#summary(fit)
+#autoplot(fit)
+
+ggsurvplot(fit, data = subset, 
+           conf.int = TRUE,
+           xlim = c(45823, 45839),
+           #facet.by = "trt.recover",
+           group.by = c("trt.recover", "trt.duration"),
+           #palette = "trt.recover",
+           #linetype = "trt.duration",
+           ) +
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1"),
+                     labels = c(19, 26, 33, 40)) +
+  scale_linetype_manual(#values = c("0" = 1, "24" = 2, "48" = 3),
+                        values = c(1, 2, 3),
+                        labels = c("0", "24", "48"))
+  
+  
+  # scale_color_manual(values = c(c("19", "119", "219") = "deepskyblue", 
+  #                               c("26", "126", "226") = "skyblue1",
+  #                               c("33", "133", "233") = "goldenrod1",
+  #                               "40" = "darkorange1")) +
+  # scale_linetype_manual(values = c(c("19", "26", "33", "40") = 1,
+  #                                  c("119", "126", "133") = 2,
+  #                                  c("219", "226", "233") = 3))
+
+  # scale_linetype_manual(values = c("19" = 1, "26" = 1, "33" = 1, "40" = 1,
+  #                                  "119" = 2, "126" = 2, "133" = 2,
+  #                                  "219" = 3, "226" = 3, "233" = 3))
+```
+
+```{r}
+fit <- survfit(coxph(Surv(km.exit, km.status) ~ trt, data = subset))
+#library(ggplot2)
+autoplot(fit)
+
+```
+
+
+
+
+
