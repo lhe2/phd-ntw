@@ -18,7 +18,7 @@ date: "2025-06-14"
 library(tidyr)
 library(purrr)
 library(dplyr)
-#library(lubridate) # for handling time stuff
+library(lubridate) # for handling time stuff
 library(googlesheets4)
 
 here::i_am("2025/cleaning-tdt.Rmd")
@@ -42,12 +42,13 @@ data <- raw %>%
   rename(trt = treatment) %>%
   mutate(trt.recover = case_when(trt.type == "ctrl" ~ NA_character_,
                                  TRUE ~ trt.recover)) %>%
-  select(-trt.type)
+  select(-c(trt.type, starts_with("dv"))) %>%
+  mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .)))
 ```
 
 # 2. content fixing and standardising
 
-filtering, value fixing, column formatting
+filtering, value fixing
 
 ```{r}
 # pull out accidentally culled before 3rd (fate = 2, instar.exit < 3)
@@ -57,15 +58,70 @@ data <- data %>%
 data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = "&") 
   # replaces commas w/ &'s to avoid csv breakage after export
 
-data <- data %>%
-    #mutate(across(starts_with()))
-    mutate(across(c(trt, trt.enter, trt.recover, trt.duration, id, instar.exit, fate,
-                    starts_with(c("mass.", "dv."))
-                    ), as.numeric)) %>%
-    mutate(across(starts_with("date."), as.Date, format = "%m/%d")) %>%
-    mutate(across(starts_with("time."), hm))
+```
 
-# might need to keep "expt type" to separate out 40 ctrl from other "ctrls" ?
+column formatting, date-time fixing
+
+```{r}
+data <- data %>%
+    mutate(across(c(trt, trt.enter, trt.recover, trt.duration, id, instar.exit, fate,
+                    #starts_with("mass.", "dv."))
+                    starts_with("mass")), as.numeric))
+    #mutate(across(starts_with("date."), as.Date, format = "%m/%d")) #%>%
+    #mutate(across(starts_with("time."), hm)) # breaks parsing bc converts to "HH MM SS"
+
+# add '2025' to yrs bc i didnt do it in gsheets, convert to D-T objects, calculate the actual decimal hrs
+# bc gsheets does it differently from R
+data <- data %>%
+  #mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) %>%
+  mutate(dh.hatch = as_datetime(paste(date.hatch, time.hatch), format = "%Y/%m/%d %H:%M"),
+         dh.enter = as_datetime(paste(date.enter, time.enter), format = "%Y/%m/%d %H:%M"),
+         dh.recover = as_datetime(paste(date.return, time.recover), format = "%Y/%m/%d %H:%M"),
+         dh.return = as_datetime(paste(date.return, time.return), format = "%Y/%m/%d %H:%M"),
+         dh.exit = case_when(!is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
+                             !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M"),)
+         ) %>%
+  mutate(across(starts_with("dh."), ~ as.numeric(as.Date(., format = "%j") + hour(.) + minute(.)/60)))
+
+# TODO might need to keep "expt type" to separate out 40 ctrl from other "ctrls" ?
+
+```
+
+```{r eval=FALSE, include=FALSE}
+## TODO archive later, but refer back to for date-time futzing lol
+
+# fix dv.<stage> bc gsheets doesnt do it the same as R lol --> convert to numeric
+  # as.Date = date only
+data %>%
+  mutate(dv.test = as_datetime(paste(date.hatch, time.hatch), 
+                               format = "%Y-%m-%d %H:%M"),
+         time.test2 = hour(dv.test),
+         time.test = hour(as_datetime(time.hatch, format = "%H:%M")),
+         j.test = as.numeric(as.Date(dv.test, format = "%j") + 
+                               as.numeric(as.Date(time.hatch, format = "%H:%M"))/60),
+         # j.test2 = as.numeric(as.Date(dv.test, format = "%j") + 
+         #                       as.numeric(hour(time.hatch)) +
+         #                        as.numeric(minute(time.hatch)/60)),
+         .before = 1)
+
+
+data %>% # combine the <stages> and then convert
+  mutate(across(starts_with("date"), as.Date, format = "%m/%d"),
+         across(starts_with("time"), as_datetime, format = "%H:%M"),
+         .before = 1)
+
+
+data %>%
+  mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) %>%
+  mutate(dt.hatch = as_datetime(paste(date.hatch, time.hatch), format = "%Y/%m/%d %H:%M"),
+         dt.enter = as_datetime(paste(date.enter, time.enter), format = "%Y/%m/%d %H:%M"),
+         dt.recover = as_datetime(paste(date.return, time.recover), format = "%Y/%m/%d %H:%M"),
+         dt.return = as_datetime(paste(date.return, time.return), format = "%Y/%m/%d %H:%M"),
+         dt.died = case_when(!is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
+                             !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M"),),
+         )
+
+
 ```
 
 
@@ -105,7 +161,7 @@ data <- data %>%
 # setup
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
-data <- mutate(data, across(starts_with("time."), as.character))
+#data <- mutate(data, across(starts_with("time."), as.character))
   # breaks write_csv if left as a `lubridate` object
 ```
 
@@ -117,9 +173,9 @@ write.csv(data, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today,
 
 # extract the useful stuff
 data <- data %>%
-  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("dv", "jdate", "mass")), "instar.exit", "fate"))
+  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("dh", "jdate", "mass")), "instar.exit", "fate"))
 
-write.csv(data, file = paste0(here(bin_paths25$data), "/clean-working.csv"), row.names = FALSE)
+write.csv(data, file = paste0(here(bin_paths$y25$data), "/clean-working.csv"), row.names = FALSE)
 ```
 
 remove troubleshooting objects
