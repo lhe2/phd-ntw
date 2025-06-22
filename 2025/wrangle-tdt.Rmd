@@ -151,5 +151,9 @@ km.data <- data %>%
 ```
 
 
+```{r cleanup}
+#rm(max)
+
+```
 
 

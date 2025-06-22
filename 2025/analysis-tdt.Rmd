@@ -21,56 +21,15 @@ library(survminer) # for plotting KM curves
 source(here::here("set-paths.R"))
 #source(here::here(bin_paths$y25, "compare-dev_p.R"))
 
-data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE) # can remove once wrangle script is done...
-```
-
-
-# km curves
-
-```{r df prep for in progress data}
-# for now, censor if they get to 4th
-data <- data %>%
-  mutate(fate = case_when(!is.na(jdate.4th) ~ 1,
-                          TRUE ~ as.numeric(fate)))
-
-# for bugs in progress, arbitrarily add today as a censor...?
-data <- data %>%
-  mutate(now = as.numeric(as.Date(today(), format = "%j")), 
-         dv.exit = case_when(is.na(jdate.exit) ~ now + 25580,
-                                TRUE ~ dv.exit),
-         fate = case_when(dv.exit == now ~ 1,
-                          TRUE ~ fate))
-
-# change duration to when entered (aka subtr out the buffer)
-
-```
-
-
-```{r df prep for km fits}
-# also JK for km curves, 1 = death and 0 = censored
-# and adding other exit info...
-km.data <- data %>% 
-  #drop_na(fate) %>%
-  mutate(km.status = case_when(!is.na(jdate.4th) ~ 0,
-                          !is.na(jdate.exit) ~ 1),
-         # not sure how to incorporate the dv stuff for 4ths...
-         km.exit = case_when(!is.na(jdate.4th) ~ jdate.4th + 25580,
-                             !is.na(dv.exit) ~ dv.exit),
-         instar.exit = case_when(!is.na(jdate.4th) ~ 4,
-                                 TRUE ~ as.numeric(instar.exit)),
-         is.40 = case_when(trt.enter == 40 ~ "Y",
-                          TRUE ~ "N"),
-         is.ctrl = case_when(trt < 100 ~ "Y",
-                             TRUE ~ "N"),
-         trt.recover = case_when(is.ctrl == "Y" ~ trt.enter,
-                                 TRUE ~ trt.recover))
+#data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE) # can remove once wrangle script is done...
+source(here(bin_paths$y25, "wrangle-tdt_p.R"))
 ```
 
 
 ```{r}
 # fit all
-fit <- survfit(Surv(km.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km.data)
-fit <- survfit(Surv(km.exit, km.status) ~ trt, data = km.data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt, data = km$data)
 
            # linetype = c("1", "1", "1", "1",
            #              "2", "2", "2",
@@ -94,7 +53,7 @@ fit <- survfit(Surv(km.exit, km.status) ~ trt, data = km.data)
 
 
 
-ggsurvplot(fit, data = km.data,
+ggsurvplot(fit, data = km$data,
            #conf.int = TRUE,
            xlim = c(45823, 45841),
            facet.by = "trt.duration",
@@ -115,11 +74,11 @@ ggsurvplot(fit, data = km.data,
 
 
 
-fit <- survfit(Surv(km.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km.data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
 #fit <- survfit(coxph(Surv(km.exit, km.status) ~ trt, data = km.data))
 
 
-ggsurvplot(fit, data = km.data, 
+ggsurvplot(fit, data = km$data, 
            #conf.int = TRUE,
            xlim = c(45823, 45839),
            facet.by = "trt.duration",
@@ -151,7 +110,7 @@ ggsurvplot(fit, data = km.data,
   
   
   
-ggsurvplot(fit, data = km.data,
+ggsurvplot(fit, data = km$data,
            #conf.int = TRUE,
            xlim = c(45823, 45841),
            facet.by = "trt.duration",
@@ -165,14 +124,14 @@ ggsurvplot(fit, data = km.data,
 
 ```{r}
 # try subsets
-subset <- km.data %>% filter(,
+subset <- km$data %>% filter(,
                              #trt > 100 & trt < 200,
                              is.40 == "Y",
                              #is.ctrl == "Y"
                              #trt %in% c(133, 233)
                              )
 
-fit <- survfit(Surv(km.exit, km.status) ~ trt + trt.duration + trt.recover, data = subset)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt + trt.duration + trt.recover, data = subset)
 #fit <- survfit(Surv(km.exit, km.status) ~ trt.recover + trt.duration, data = subset)
 
 
@@ -208,7 +167,7 @@ ggsurvplot(fit, data = subset,
 ```
 
 ```{r}
-fit <- survfit(coxph(Surv(km.exit, km.status) ~ trt, data = subset))
+fit <- survfit(coxph(Surv(dh.exit, km.status) ~ trt, data = subset))
 #library(ggplot2)
 autoplot(fit)
 
