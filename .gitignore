@@ -41,3 +41,5 @@ notes/*
 archive/*
 */02-wrangle/*_p.R
 */products/*
+*_p.R
+*archive/*
