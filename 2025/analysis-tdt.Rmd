@@ -41,8 +41,6 @@ data <- data %>%
          fate = case_when(dv.exit == now ~ 1,
                           TRUE ~ fate))
 
-
-
 # change duration to when entered (aka subtr out the buffer)
 
 ```

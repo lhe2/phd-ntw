@@ -147,6 +147,7 @@ julian date conversions
 
 ```{r}
 data <- data %>%
+  mutate(across(starts_with("date."), as.Date, "%Y/%m/%d")) %>%
   mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric)) %>%
   mutate(jdate.exit = case_when(!is.na(jdate.culled) ~ jdate.culled,
@@ -173,7 +174,7 @@ write.csv(data, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today,
 
 # extract the useful stuff
 data <- data %>%
-  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("dh", "jdate", "mass")), "instar.exit", "fate"))
+  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate"))
 
 write.csv(data, file = paste0(here(bin_paths$y25$data), "/clean-working.csv"), row.names = FALSE)
 ```
