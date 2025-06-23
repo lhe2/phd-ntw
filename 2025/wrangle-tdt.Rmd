@@ -96,7 +96,8 @@ km <- list_assign(km, data = data %>%
 
 # add binaries; calc other times
 km <- list_assign(km, data = km$data %>% mutate(exit.fromhatch = dh.exit - dh.hatch,
-                                                exit.fromrecover = dh.exit - dh.hatch,
+                                                exit.fromenter = dh.exit - dh.enter,
+                                                exit.fromrecover = dh.exit - dh.recover,
                                                 exit.fromreturn = dh.exit - dh.return,
                                                 
                                                 is.40C = case_when(trt.enter == 40 ~ "Y",
