@@ -9,7 +9,7 @@ wrangling 2025 tdt data
 
 final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
 
-```{r eval=FALSE, include=FALSE, purl=FALSE}
+```{r wrangle setup and purling, eval=FALSE, include=FALSE, purl=FALSE}
 # run manually when new wrangle script is needed
 knitr::purl("wrangle-tdt.Rmd", "wrangle-tdt_p.R")
 
@@ -32,15 +32,14 @@ knitr::purl("wrangle-tdt.Rmd", paste0(here(bin_paths$y25$root),
 ```
 
 ```{r load utils}
-# library(tidyverse)
-# library(conflicted)
-# conflicts_prefer(dplyr::filter)
-
-here::i_am("2025/wrangle-tdt.Rmd")
+#here::i_am("2025/analysis-tdt.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle))
+
+library(tidyverse)
+# library(conflicted)
+# conflicts_prefer(dplyr::filter)
 ```
 
 ```{r load data}
@@ -66,7 +65,6 @@ data <- data %>%
                           TRUE ~ fate))
 
 # change duration to when entered (aka subtr out the buffer)
-
 ```
 
 ```{r} 
