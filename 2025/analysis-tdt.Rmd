@@ -3,30 +3,56 @@ title: "tdt viz n stats"
 date: "2025-06-16"
 ---
 
-# preamble
+# preamble & loading
 
 combined viz/stats for tdt stuff until i can be bothered to split them apart
 
-## loading
+
+```{r}
+library(tidyverse)
+#library(MuMIn) # for survival nested model comparisons
+library(survival) # for fitting 
+library(survminer) # for plotting
+```
 
 ```{r}
 here::i_am("2025/analysis-tdt.Rmd")
 library(here)
 
-library(tidyverse)
-#library(MuMIn) # for survival nested model comparisons
-library(survival) # for fitting KM curves
-library(survminer) # for plotting KM curves
-
 source(here::here("set-paths.R"))
 #source(here::here(bin_paths$y25, "compare-dev_p.R"))
 
 #data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE) # can remove once wrangle script is done...
-source(here(bin_paths$y25, "wrangle-tdt_p.R"))
+source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
 ```
 
+# todo
+
+- shelf effects: look at starting exit-fromenter...
+
+# * setup (lists)
+
+## making surv objects
+```{r}
+# set up surv objects
+
+survObj <- list()
+
+survObj <- list_assign(survObj, 
+                       fromHatch = Surv(km$subsets$expts$exit.fromhatch, km$subsets$expts$km.status),
+                       fromEnter = Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status),
+                       fromRecovery = Surv(km$subsets$expts$exit.fromrecover, km$subsets$expts$km.status),
+                       fromReturn = Surv(km$subsets$expts$exit.fromreturn, km$subsets$expts$km.status))
+```
+
+## model fits
 
 ```{r}
+fits <- list()
+```
+# (archive) initial attempts
+
+```{r eval=FALSE, include=FALSE}
 # fit all
 fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
 fit <- survfit(Surv(dh.exit, km.status) ~ trt, data = km$data)
@@ -122,7 +148,7 @@ ggsurvplot(fit, data = km$data,
   labs(caption = "2025-06-18 15:57 data; starting from hatch")
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # try subsets
 subset <- km$data %>% filter(,
                              #trt > 100 & trt < 200,
@@ -166,7 +192,7 @@ ggsurvplot(fit, data = subset,
   #                                  "219" = 3, "226" = 3, "233" = 3))
 ```
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 fit <- survfit(coxph(Surv(dh.exit, km.status) ~ trt, data = subset))
 #library(ggplot2)
 autoplot(fit)
