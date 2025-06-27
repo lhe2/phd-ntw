@@ -26,10 +26,6 @@ source(here::here("set-paths.R"))
 source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
 ```
 
-# todo
-
-- shelf effects: look at starting exit-fromenter...
-
 # * setup (lists)
 
 ## making surv objects
@@ -38,19 +34,330 @@ source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
 
 survObj <- list()
 
+# 2025-06-22 coxph attempts
+
+- todo
+  - [x] shelf effects: look at starting exit-fromenter...
+
+- notes:
+  - also worked on: 2025-06-23, 2025-06-24
+  - 2025-06-27: 
+    - lowkey the fits arent that correct bc 1) the exit dates are calced wrong and 2) the `dh.<stage>` stuff was sorta assigned wrong (i think)
+    - also i calced recovery time wrong lmao (used return time...)
+  
+
+
+```{r}
 survObj <- list_assign(survObj, 
                        fromHatch = Surv(km$subsets$expts$exit.fromhatch, km$subsets$expts$km.status),
                        fromEnter = Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status),
                        fromRecovery = Surv(km$subsets$expts$exit.fromrecover, km$subsets$expts$km.status),
-                       fromReturn = Surv(km$subsets$expts$exit.fromreturn, km$subsets$expts$km.status))
+                       fromReturn = Surv(km$subsets$expts$exit.fromreturn, km$subsets$expts$km.status)
+                       )
 ```
 
-## model fits
+
+## survdiffing (**)
+
+- NOTE this is where `kmdf` is
+
+```{r trying survdiff interactions, eval=FALSE}
+
+## so google ai says that survdiff is not intended to work w interaction terms LOL... sure!
+
+##### trying to figure out how to get the interaction to show up but idky something about it breaks the formula
+  # renaming to nicer vars doesnt work...
+
+#survdiff(survObj$fromHatch ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover)
+# trying to pick out the columns names to get the interaction to work. see other attempts below
+           # pluck(km$subsets, expts, trt.recover):pluck(km$subsets, expts, trt.duration))
+           # 
+           # hoist(as.data.frame(km$subsets), "trt.recover"):hoist(as.data.frame(km$subsets), "trt.duration"))
+           # 
+           # km$subsets$[expts][km$subsets$expts$,]:km$subsets[expts][km$subsets$expts$trt.recover,])
+
+
+#### other attempts 
+
+# kmdf <- km$subsets$expts %>%
+#   rename(duration = trt.duration,
+#          recover = trt.recover,
+#          fromrec = exit.fromrecover,
+#          stat = km.status)
+# make a subset so naming is nicer, apparently u shouldnt use $ in formulas
+# 
+# survdiff(Surv(fromrec, stat) ~ 
+#           duration + recover + interaction(duration, recover), data = kmdf) 
+# this is bad (dont use interaction() cuz its ≠ to using :)
+# 
+# survdiff(Surv(fromrec, stat) ~ 
+#           duration + recover + duration:recover, data = kmdf) # doesnt work
+# 
+#survdiff(formula = Surv(kmdf$fromrec, kmdf$stat) ~ duration + recover + duration:recover, data = kmdf) # doesnt work
+
+
+### 3
+
+# survdiff(survObj$fromHatch ~ poly(c(km$subsets$expts$trt.duration, km$subsets$expts$trt.recover), n = 2)) 
+  # im totally using poly() wrong here but idr how to use it. but also def not what im looking for
+
+### 4 am i going nuts
+
+# anova(lm(fromrec ~ duration*recover, data = kmdf)) # i am not...
+
+```
+
+
+```{r eval=FALSE}
+# survdiff starting from hatch time
+## recovery temp + duration
+
+survdiff(survObj$fromHatch ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover 
+         #+ `km$subsets$expts$trt.recover`:`km$subsets$expts$trt.duration`
+         )
+
+#                                                                    N Observed Expected (O-E)^2/E (O-E)^2/V
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=19 40       40     42.8   0.17690   0.23620
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=26 45       45     39.2   0.86120   1.06911
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=33 45       45     40.6   0.46881   0.58530
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=19 44       44     42.0   0.09789   0.12282
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=26 45       45     54.9   1.79965   2.40490
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=33 45       45     44.5   0.00545   0.00693
+#  Chisq= 3.7  on 5 degrees of freedom, p= 0.6 
+
+
+#######
+
+# survdiff starting from enter time
+## recovery temp + duration
+
+survdiff(survObj$fromEnter ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover)
+
+#                                                                    N Observed Expected (O-E)^2/E (O-E)^2/V
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=19 40       40     47.7    1.2533     1.623
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=26 45       45     38.5    1.1097     1.365
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=33 45       45     32.3    5.0291     6.070
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=19 44       44     46.9    0.1740     0.223
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=26 45       45     55.6    2.0166     2.760
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=33 45       45     43.1    0.0843     0.106
+#  Chisq= 10.4  on 5 degrees of freedom, p= 0.06 
+
+
+#######
+
+
+# looking for diffs starting at recovery
+## based on recovery temp
+survdiff(survObj$fromRecovery ~ km$subsets$expts$trt.recover)
+
+#                                  N Observed Expected (O-E)^2/E (O-E)^2/V
+# km$subsets$expts$trt.recover=19 84       84     84.7   0.00617   0.00976
+# km$subsets$expts$trt.recover=26 90       90     94.1   0.18157   0.29812
+# km$subsets$expts$trt.recover=33 90       90     85.1   0.27711   0.43458
+#  Chisq= 0.5  on 2 degrees of freedom, p= 0.8 
+
+survdiff(survObj$fromRecovery ~ km$subsets$expts$trt.duration)
+## based on recovery period
+#                                    N Observed Expected (O-E)^2/E (O-E)^2/V
+# km$subsets$expts$trt.duration=24 130      130      123      0.45     0.894
+# km$subsets$expts$trt.duration=48 134      134      141      0.39     0.894
+#  Chisq= 0.9  on 1 degrees of freedom, p= 0.3 
+
+
+survdiff(survObj$fromRecovery ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover)
+# (cant do the interaction)
+
+#                                                                    N Observed Expected (O-E)^2/E (O-E)^2/V
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=19 40       40     42.8   0.17690   0.23620
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=26 45       45     39.2   0.86120   1.06911
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=33 45       45     40.6   0.46881   0.58530
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=19 44       44     42.0   0.09789   0.12282
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=26 45       45     54.9   1.79965   2.40490
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=33 45       45     44.5   0.00545   0.00693
+#  Chisq= 3.7  on 5 degrees of freedom, p= 0.6
+
+
+########
+
+# survdiff starting from returning time
+## recovery temp + duration
+survdiff(survObj$fromReturn ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover)
+
+#                                                                    N Observed Expected (O-E)^2/E (O-E)^2/V
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=19 40       40     42.8   0.17690   0.23620
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=26 45       45     39.2   0.86120   1.06911
+# km$subsets$expts$trt.duration=24, km$subsets$expts$trt.recover=33 45       45     40.6   0.46881   0.58530
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=19 44       44     42.0   0.09789   0.12282
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=26 45       45     54.9   1.79965   2.40490
+# km$subsets$expts$trt.duration=48, km$subsets$expts$trt.recover=33 45       45     44.5   0.00545   0.00693
+#  Chisq= 3.7  on 5 degrees of freedom, p= 0.6 
+
+```
+## cphing
+
+### fitting cph
+
+#### effects of recovery temp and duration
+```{r}
+# for all:
+# n= 264, number of events= 264 
+
+fits <- list_assign(fits, cph.enter = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration), 
+                                               data = km$subsets$expts))
+summary(fits$cph.enter)
+
+#                                coef  exp(coef)   se(coef)      z      p
+# trt.recover               0.0671178  1.0694215  0.0347183  1.933   0.0532 .
+# trt.duration              0.0235347  1.0238138  0.0246043  0.957   0.3388  
+# trt.recover:trt.duration -0.0012162  0.9987846  0.0009202 -1.322   0.1863  
+#
+# Concordance= 0.562  (se = 0.018 )
+# Likelihood ratio test= 8.4  on 3 df,   p=0.04
+# Wald test            = 8.92  on 3 df,   p=0.03
+# Score (logrank) test = 9.02  on 3 df,   p=0.03
+
+fits <- list_assign(fits, cph.recovery = coxph(survObj$fromRecovery ~ trt.recover * as.factor(trt.duration), 
+                                               data = km$subsets$expts))
+summary(fits$cph.recovery)
+#                                coef  exp(coef)   se(coef)      z Pr(>|z|)
+# trt.recover               0.0279399  1.0283338  0.0350318  0.798    0.425
+# trt.duration              0.0116693  1.0117376  0.0248779  0.469    0.639
+# trt.recover:trt.duration -0.0006269  0.9993733  0.0009280 -0.676    0.499
+# 
+# Concordance= 0.535  (se = 0.019 )
+# Likelihood ratio test= 1.54  on 3 df,   p=0.7
+# Wald test            = 1.57  on 3 df,   p=0.7
+# Score (logrank) test = 1.58  on 3 df,   p=0.7
+
+
+fits <- list_assign(fits, cph.return = coxph(survObj$fromReturn ~ trt.recover * as.factor(trt.duration), 
+                                             data = km$subsets$expts))
+summary(fits$cph.return)
+#                                coef  exp(coef)   se(coef)      z Pr(>|z|)
+# trt.recover               0.0279399  1.0283338  0.0350318  0.798    0.425
+# trt.duration              0.0116693  1.0117376  0.0248779  0.469    0.639
+# trt.recover:trt.duration -0.0006269  0.9993733  0.0009280 -0.676    0.499
+# 
+# Concordance= 0.535  (se = 0.019 )
+# Likelihood ratio test= 1.54  on 3 df,   p=0.7
+# Wald test            = 1.57  on 3 df,   p=0.7
+# Score (logrank) test = 1.58  on 3 df,   p=0.7
+
+fits <- list_assign(fits, cph.return2 = coxph(survObj$fromReturn ~ trt.recover * trt.duration, 
+                                             data = km$subsets$expts))
+summary(fits$cph.return2)
+# same results as above
+
+fits <- list_assign(fits, cph.return3 = coxph(survObj$fromReturn ~ as.factor(trt.recover) * trt.duration, 
+                                             data = km$subsets$expts))
+summary(fits$cph.return3)
+
+#                                            coef exp(coef)  se(coef)      z Pr(>|z|)
+# as.factor(trt.recover)26               0.711290  2.036617  0.497724  1.429    0.153
+# as.factor(trt.recover)33               0.419369  1.521002  0.496156  0.845    0.398
+# trt.duration                           0.005547  1.005563  0.009358  0.593    0.553
+# as.factor(trt.recover)26:trt.duration -0.020138  0.980063  0.012938 -1.557    0.120
+# as.factor(trt.recover)33:trt.duration -0.009401  0.990643  0.012886 -0.730    0.466
+# 
+# Concordance= 0.536  (se = 0.023 )
+# Likelihood ratio test= 3.75  on 5 df,   p=0.6
+# Wald test            = 3.65  on 5 df,   p=0.6
+# Score (logrank) test = 3.67  on 5 df,   p=0.6
+
+```
+
+so the cph fits only really matter starting from the enter time?
+
+#### shelf effects
 
 ```{r}
-fits <- list()
+# looking at shelf effects
+
+fits <- list_assign(fits, cph.shelf = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration) * shelf, 
+                                               data = km$subsets$expts))
+summary(fits$cph.shelf)
+
+
+fits <- list_assign(fits, cph.shelf2 = coxph(survObj$fromEnter ~ shelf + trt.recover * as.factor(trt.duration), 
+                                               data = km$subsets$expts))
+summary(fits$cph.shelf2)
+
+fits <- list_assign(fits, cph.shelf3 = coxph(survObj$fromEnter ~ shelf + trt.recover * trt.duration, 
+                                               data = km$subsets$expts))
+summary(fits$cph.shelf3)
 ```
-# (archive) initial attempts
+
+tldr in all cases, `trt.recover` becomes signif once u throw in the shelf LOL.. (generally p < 0.5)
+
+### plotting cph
+
+```{r eval=FALSE}
+# plot cphs...
+# plot(x = fits$cph.recovery$linear.predictors,
+#      y = fits$cph.recovery$residuals,
+#      data = km$subsets$expts, 
+#      #facet.by = trt.recovery
+#      )
+  # this is not how to use survival::plot.coxph lolol (cph doesnt give u a survival curve per se. its a regression)
+
+autoplot(survfit(coxph(survObj$fromReturn ~ trt.recover * trt.duration, 
+                                             data = km$subsets$expts)),
+         facets = TRUE,
+         )
+```
+
+```{r eval=FALSE}
+# per google:
+# check if prop hazards assumption is met (is HR betwn groups constant over time?)
+  # https://stats.stackexchange.com/questions/560975/how-to-interpret-schoenfield-residual-plot
+ggcoxzph(cox.zph(fits$cph.enter), ggtheme = theme_minimal())
+ggcoxzph(cox.zph(fits$cph.recovery), ggtheme = theme_minimal())
+ggcoxzph(cox.zph(fits$cph.return), ggtheme = theme_minimal())
+
+# TODO idk what im doing here so... lets revisit later
+```
+
+```{r}
+fit <- survfit(Surv(kmdf$exit.fromenter, kmdf$stat) ~ recover + duration, data = kmdf) 
+# ok survfit super doesnt like "subsets" being in the df name lol
+
+# kmdf_summ <- kmdf %>%
+#   group_by(trt)
+#   summarise()
+
+ggsurvplot(fit, 
+           data = kmdf,
+           conf.int = TRUE,
+           #xlim = c(45823, 45841),
+           #facet.by = "trt.duration",
+           facet.by = "duration",
+           #linetype = "strata",
+           palette = "strata") +
+  
+  # i think the stuff for vline needs to come from a separate df LOL...
+  # also, lowkey not sure how this works considering the time depends on the hatch day... (avg them??)
+  
+  geom_vline(xintercept = kmdf$dh.recover - kmdf$dh.exit, #tried w dh.enter, kinda wonky
+             #color = "red"
+             #aes(xintercept = kmdf$dh.recover - kmdf$dh.enter, color = kmdf$recover)
+             ) +
+  geom_vline(xintercept = kmdf$return - kmdf$df.exit,
+             color = "blue")
+
+# TODO idk gotta think about wtf im plotting for this one a bit... draw it out
+  
+```
+
+
+
+
+
+
+
+
+# initial attempts
+
+## km curves
 
 ```{r eval=FALSE, include=FALSE}
 # fit all
