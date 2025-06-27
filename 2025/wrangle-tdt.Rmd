@@ -48,24 +48,6 @@ data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE)
 
 # 2. prep for km
 
-```{r df prep for in progress data, eval=FALSE, include=FALSE, purl=FALSE}
-## TODO figure out what to do w this... need to wrangle the data a bit tho (see below section)
-
-# for now, censor if they get to 4th
-data <- data %>%
-  mutate(fate = case_when(!is.na(jdate.4th) ~ 1,
-                          TRUE ~ as.numeric(fate)))
-
-# for bugs in progress, arbitrarily add today as a censor...?
-data <- data %>%
-  mutate(now = as.numeric(as.Date(today(), format = "%j")),
-         dv.exit = case_when(is.na(jdate.exit) ~ now + 25580,
-                                TRUE ~ dv.exit),
-         fate = case_when(dv.exit == now ~ 1,
-                          TRUE ~ fate))
-
-# change duration to when entered (aka subtr out the buffer)
-```
 
 ```{r} 
 ## TODO calc times + exit points for km
@@ -124,11 +106,31 @@ km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.re
 
 ```
 
+## - (archived)
 
+```{r df prep for in progress data, eval=FALSE, include=FALSE, purl=FALSE}
+## originally for doing analysis while bugs were in progress...
+## TODO figure out what to do w this... need to wrangle the data a bit tho (see below section)
+
+# for now, censor if they get to 4th
+data <- data %>%
+  mutate(fate = case_when(!is.na(jdate.4th) ~ 1,
+                          TRUE ~ as.numeric(fate)))
+
+# for bugs in progress, arbitrarily add today as a censor...?
+data <- data %>%
+  mutate(now = as.numeric(as.Date(today(), format = "%j")),
+         dv.exit = case_when(is.na(jdate.exit) ~ now + 25580,
+                                TRUE ~ dv.exit),
+         fate = case_when(dv.exit == now ~ 1,
+                          TRUE ~ fate))
+
+# change duration to when entered (aka subtr out the buffer)
+```
 
 ```{r df prep for km fits, eval=FALSE, include=FALSE, purl=FALSE}
 
-### TODO holding onto this just in case but otherwise rewritten above
+### TODO wonky bc it uses the old julian dates, but holding onto this cuz just in case but otherwise rewritten above
 
 # also JK for km curves, 1 = death and 0 = censored
 # and adding other exit info...
