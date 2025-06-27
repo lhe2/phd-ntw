@@ -76,7 +76,7 @@ data <- data %>%
   #mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) %>%
   mutate(dh.hatch = as_datetime(paste(date.hatch, time.hatch), format = "%Y/%m/%d %H:%M"),
          dh.enter = as_datetime(paste(date.enter, time.enter), format = "%Y/%m/%d %H:%M"),
-         dh.recover = as_datetime(paste(date.return, time.recover), format = "%Y/%m/%d %H:%M"),
+         dh.recover = as_datetime(paste(date.recover, time.recover), format = "%Y/%m/%d %H:%M"),
          dh.return = as_datetime(paste(date.return, time.return), format = "%Y/%m/%d %H:%M"),
          dh.exit = case_when(!is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
                              !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M"),)
