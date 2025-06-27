@@ -92,12 +92,16 @@ km <- list_assign(km, data = data %>%
 # add some binaries; recalc other times
 
 km <- list_assign(km, data = km$data %>% mutate(
-                                                # exit times, except this doesnt make sense lol so use the tt.times
+                                                # exit times, except this doesnt make sense lol... recalc w tt.times?
                                                 # exit.fromhatch = dh.exit - dh.hatch,
                                                 # exit.fromenter = dh.exit - dh.enter,
                                                 # exit.fromrecover = dh.exit - dh.recover,
                                                 # exit.fromreturn = dh.exit - dh.return,
                                                 
+                                                exit.fromenter = tt.exit - tt.enter,
+                                                exit.fromrecover = tt.exit - tt.recover,
+                                                exit.fromreturn = tt.exit - tt.return,
+  
                                                 is.40C = case_when(trt.enter == 40 ~ "Y",
                                                                    TRUE ~ "N"),
                                                 is.ctrl = case_when(trt < 100 ~ "Y",
