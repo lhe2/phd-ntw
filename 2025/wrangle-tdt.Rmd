@@ -48,9 +48,10 @@ data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE)
 
 # 2. prep for km
 
+## - calc exit times; recode events
 
 ```{r} 
-## TODO calc times + exit points for km
+# recode exit times
 
 
 # find max dh.exit for expt bugs, use this # as the basis for the others (add +1 to it?)
@@ -64,21 +65,38 @@ max <- data %>%
 km <- list()
 
 # recode times for ctrls... (tho they will be dropped later lol)
+  # things that die before recovery/returning should be NA!!!!!
 km <- list_assign(km, data = data %>%
                     mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 2,
                                                TRUE ~ dh.exit),
-                           dh.recover = case_when(is.na(dh.recover) ~ dh.enter,
+                           dh.recover = case_when(trt < 100 & is.na(dh.recover) ~ dh.enter,
                                                   TRUE ~ dh.recover),
-                           dh.return = case_when(is.na(dh.return) ~ dh.enter,
-                                                 TRUE ~ dh.return)
+                           dh.return = case_when(trt < 100 & is.na(dh.return) ~ dh.enter,
+                                                 TRUE ~ dh.return),
+                           
+                           ## standardise exit times by trt enter date (enter date = d0)
+                           # doesnt super make sense to start at hatch date..
+                           tt.enter = dh.enter - dh.enter,
+                           tt.recover = dh.recover - dh.enter,
+                           tt.return = dh.return - dh.enter,
+                           tt.exit = dh.exit - dh.enter,
+                           
                     )
                   )
 
-# add binaries; calc other times
-km <- list_assign(km, data = km$data %>% mutate(exit.fromhatch = dh.exit - dh.hatch,
-                                                exit.fromenter = dh.exit - dh.enter,
-                                                exit.fromrecover = dh.exit - dh.recover,
-                                                exit.fromreturn = dh.exit - dh.return,
+
+  
+```
+
+```{r}
+# add some binaries; recalc other times
+
+km <- list_assign(km, data = km$data %>% mutate(
+                                                # exit times, except this doesnt make sense lol so use the tt.times
+                                                # exit.fromhatch = dh.exit - dh.hatch,
+                                                # exit.fromenter = dh.exit - dh.enter,
+                                                # exit.fromrecover = dh.exit - dh.recover,
+                                                # exit.fromreturn = dh.exit - dh.return,
                                                 
                                                 is.40C = case_when(trt.enter == 40 ~ "Y",
                                                                    TRUE ~ "N"),
@@ -153,7 +171,7 @@ km.data <- data %>%
 
 
 ```{r cleanup}
-#rm(max)
+rm(max)
 
 ```
 
