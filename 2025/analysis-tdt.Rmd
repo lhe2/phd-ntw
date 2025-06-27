@@ -28,11 +28,112 @@ source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
 
 # * setup (lists)
 
-## making surv objects
 ```{r}
 # set up surv objects
 
 survObj <- list()
+
+# model fits
+
+fits <- list()
+
+```
+
+# 2025-06-27 redoing cox fits lmao
+
+cuz i love a fresh start!!!
+
+- goals
+  - [ ] set up km
+    - [ ] which is the best time frame to use?
+  - [ ] try a few cphs
+  
+## create fits
+
+```{r}
+survObj <- list_assign(survObj,
+                       fromEnter = Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status),
+                       fromRecovery = Surv(km$subsets$expts$exit.fromrecover, km$subsets$expts$km.status),
+                       fromReturn = Surv(km$subsets$expts$exit.fromreturn, km$subsets$expts$km.status)
+                       )
+```
+
+## visualise km
+
+```{r}
+# all exptal trts together
+obj <- Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = km$subsets$expts)
+
+ggsurvplot(fit, data = km$subsets$expts,
+           conf.int = TRUE,
+           #xlim = c(45823, 45841),
+           facet.by = "trt.recover",
+           #linetype = "strata",
+           palette = "strata"
+           ) +
+  geom_vline(xintercept = 2, color = "black") +
+  geom_vline(xintercept = 3, color = "#F8766D") +
+  geom_vline(xintercept = 4, color = "#00BFC4") +
+  labs(caption = "black = entered recovery; colored = returned to 40") +
+  theme(plot.caption = element_text(size = 10))
+
+```
+
+```{r}
+# everyone together
+obj <- Surv(km$data$exit.fromenter, km$data$km.status)
+fit <- survfit(obj ~ trt.lab + trt.duration + trt.recover, data = km$data)
+
+ggsurvplot(fit, data = km$data,
+           #conf.int = TRUE,
+           #xlim = c(45823, 45841),
+           facet.by = "trt.duration",
+           #linetype = "strata",
+           palette = "strata"
+           ) +
+  geom_vline(xintercept = 2, color = "black") +
+  geom_vline(xintercept = 3, color = "#F8766D") +
+  geom_vline(xintercept = 4, color = "#00BFC4")
+
+```
+
+## coxphing
+
+```{r}
+fits <- list_assign(fits, 
+                    cph.enter = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration), data = km$subsets$expts),
+                    cph.recovery = coxph(survObj$fromRecovery ~ trt.recover * as.factor(trt.duration), data = km$subsets$expts),
+                    cph.return = coxph(survObj$fromReturn ~ trt.recover * as.factor(trt.duration), data = km$subsets$expts),
+                    )
+
+summary(fits$cph.enter)
+summary(fits$cph.recovery)
+summary(fits$cph.return)
+```
+
+```{r}
+obj <- Surv(km$subsets$only40$exit.fromenter, km$subsets$only40$km.status)
+obj2 <- Surv(km$subsets$only40$exit.fromreturn, km$subsets$only40$km.status)
+fits <- list_assign(fits, 
+                    cph.enter.addshelf = coxph(obj ~ trt.recover * as.factor(trt.duration) + shelf, data = km$subsets$only40),
+                    cph.enter.intshelf = coxph(obj ~ trt.recover * as.factor(trt.duration) * shelf, data = km$subsets$only40),
+                    cph.return.addshelf = coxph(obj2 ~ trt.recover * as.factor(trt.duration) + shelf, data = km$subsets$only40),
+                    cph.return.intshelf = coxph(obj2 ~ trt.recover * as.factor(trt.duration) * shelf, data = km$subsets$only40),)
+
+summary(fits$cph.enter.addshelf)
+summary(fits$cph.enter.intshelf)
+summary(fits$cph.return.addshelf)
+summary(fits$cph.return.intshelf)
+```
+
+
+
+
+
+
+
+
 
 # 2025-06-22 coxph attempts
 
