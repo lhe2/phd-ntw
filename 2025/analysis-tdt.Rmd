@@ -39,14 +39,584 @@ fits <- list()
 
 ```
 
+```{r}
+# for testing
+testing <- list()
+```
+
+
+# 2025-06-27 post mtg fups
+
+TODO
+
+- [ ] look at survival props for 48h intervals
+- [ ] reviz km relative to recovery times...
+
+## look at surv props
+
+### attempt 3
+
+2025-06-29
+
+```{r}
+## code survival
+testing <- list_assign(testing, r3 = list())
+
+testing$r3 <- list_assign(testing$r3, df = km$data %>%
+                         filter(is.40C == "Y") %>%
+                         mutate(dh.recover = case_when(trt < 100 ~ NA_real_,
+                                                       TRUE ~ dh.recover),
+                                dh.return = case_when(trt < 100 ~ NA_real_,
+                                                      TRUE ~ dh.return),
+                                
+                                dh.enter48 = dh.enter + 2,
+                                dh.return48 = case_when(trt > 100 ~ dh.return + 2,
+                                                        trt < 100 ~ dh.enter48 + 2),
+                                
+                                status.enter = case_when(dh.exit > dh.enter ~ 1,
+                                                         TRUE ~ 0),
+                                status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
+                                                           TRUE ~ 0),
+                                status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
+                                                          trt < 100 ~ NA_real_,
+                                                          TRUE ~ 0),
+                                status.return48 = case_when(dh.exit > dh.return48 ~ 1,
+                                                            TRUE ~ 0)
+                         ))
+
+```
+
+#### attempt 3.4
+```{r}
+testfn.surv_ss4 <- function(longdata) {
+  
+  counts <- longdata %>%
+    #tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1),,
+           # n.tot2.enter = sum(!is.na(status.enter)),
+           # n.tot2.enter48 = sum(!is.na(status.enter48)),
+           # n.tot2.return = sum(!is.na(status.return)),
+           # n.tot2.return48 = sum(!is.na(status.return48)),
+           n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0 & status.enter == 1),
+           n.died.return = sum(status.return == 0 & status.enter48 == 1),
+           n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter48 == 1),
+                                       TRUE ~ sum(status.return48 == 0 & status.return == 1))) %>%
+    group_by(trt.duration, trt.recover) %>%
+    mutate(n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1)) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    unique() %>% ungroup()
+  
+  ## calc props
+  survprops <- counts %>%
+    select(-contains("died")) %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") 
+  
+  diedprops <- counts %>%
+    #tmp %>%
+    select(-c(trt.recover, contains("surv"))) %>% 
+    unique() %>% #View() %>%
+      ### troubleshooting counts
+    # pivot_longer(cols = starts_with(c("n.")),
+    #              names_prefix = "n\\.",
+    #              names_to = c(".value", "timept"), names_sep ="\\.") %>% View()
+    #group_by(trt.duration) %>%
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = n.died.return/n.tot.enter48,
+           p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+                                       TRUE ~ n.died.return48/n.tot.return)) %>%
+    select(c(trt.duration, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") #%>% View()
+    
+  ## merges
+  counts <- counts %>%
+    #tmp <- tmp %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.")
+  
+  survs <- counts %>%
+    filter(status == "surv") %>%
+    merge(., survprops) %>%
+    filter(status == "surv") %>%
+    select(-status)
+    
+  miscs <- counts %>%
+    filter(status != "surv") %>%
+    merge(., diedprops, all = TRUE) %>%
+    select(-trt.recover) %>%
+    rename(trt.recover = "status") %>%
+    unique()
+  
+  ss <- merge(survs, miscs, all = TRUE)
+   
+   return(ss)
+} 
+
+testing$r3 <- list_assign(testing$r3, ss4 = testfn.surv_ss4(testing$r3$df))
+
+```
+
+
+```{r}
+filter(testing$r3$ss4,
+       trt.duration == 24 & timept %in% c("enter48", "return")) %>% View()
+
+testing$r3$ss4 %>%
+  filter(trt.recover != "tot") %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~trt.duration)
+```
+
+
+#### attempt 3.3
+```{r}
+testfn.surv_ss3 <- function(longdata) {
+  
+  counts <- longdata %>%
+    tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1),
+           n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0),
+           n.died.return = sum(status.return == 0),
+           n.died.return48 = sum(status.return48 == 0)) %>%
+    ungroup() %>% group_by(trt.duration, trt.recover) %>%
+    mutate(n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1)) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    ungroup() %>% unique() #%>% View()
+
+props <- counts %>%
+  tmp2 <- tmp %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    group_by(trt.duration) %>%
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = 1 - p.surv.return,
+           p.died.return48 = 1 - p.surv.return48,
+           # p.died.return = n.died.return/n.tot.enter48,
+           # p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+           #                           TRUE ~ n.died.return48/n.tot.return),
+           
+           # p.died.enter48 = 1 - n.tot.enter48/n.tot.enter,
+           # p.died.return = 1 - n.tot.return/n.tot.enter48,
+           # p.died.return48 = case_when(trt.duration == 0 ~ 1 - n.tot.return48/n.tot.enter48,
+           #                           TRUE ~ 1 - n.tot.return48/n.tot.return)
+           ) %>%
+    #group_by(trt.recover) %>%
+    # mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+    #        p.surv.return = n.surv.return/n.tot.enter48,
+    #        p.surv.return48 = case_when(trt.duration == 0 ~ n.tot.return48/n.tot.enter48,
+    #                                  TRUE ~ n.surv.return48/n.tot.return),
+           # p.surv.enter48 = n.surv.enter48/n.surv.enter,
+           # p.surv.return = n.surv.return/n.surv.enter48,
+           # p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.surv.enter48,
+           #                           TRUE ~ n.surv.return48/n.surv.return)) %>%
+    ungroup() %>% unique() %>% 
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") %>% View()
+  
+  counts <- counts %>%
+  tmp <- tmp %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.")
+
+  ### separating survival and death #s   
+  survs <- merge(counts, props) %>%
+    filter(status == "surv") %>%
+    select(-status)
+    
+  miscs <- merge(counts, props, all = TRUE) %>%
+    
+    filter(status != "surv") %>%
+    select(-trt.recover) %>%
+    rename(trt.recover = "status") %>%
+    unique()
+  
+  ss <- merge(survs, miscs, all = TRUE)
+   
+   return(ss)
+} 
+
+testing$r3 <- list_assign(testing$r3, ss3 = testfn.surv_ss3(testing$r3$df))
+
+```
+
+
+```{r}
+filter(testing$r3$ss3,
+       trt.duration == 24 & timept %in% c("enter48", "return")) %>% View()
+
+testing$r3$ss3 %>%
+  filter(trt.recover != "tot") %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~trt.duration)
+```
+
+
+
+#### attempt 3.2
+```{r}
+## figure out survivors at each time pt
+testfn.surv_ss2 <- function(longdata){
+  
+  ## survivors
+  totalsurv <- longdata %>%
+    tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(tot.enter = sum(status.enter == 1),
+           tot.enter48 = sum(status.enter48 == 1),
+           tot.return = sum(status.return == 1),
+           tot.return48 = sum(status.return48 == 1),
+           ) %>%
+    group_by(trt.recover) %>%
+    mutate(n.enter = sum(status.enter == 1),
+           n.enter48 = sum(status.enter48 == 1),
+           n.return = sum(status.return == 1),
+           n.return48 = sum(status.return48 == 1)) %>%
+    select(c(trt.duration, trt.recover, starts_with(c("tot.", "n.")))) %>%
+    unique() %>%
+    ungroup() %>% View()
+  
+  propsurv <- totalsurv %>% 
+    #### ok this is overcounting a bit cuz its counting w/in each trt.recover.... i think
+    #### but i think "totalsruv" was done corerectly...
+    
+    
+    #tmp %>%
+    group_by(trt.duration, trt.recover) %>%
+    summarise(p.enter48 = n.enter48/n.enter,
+              p.return = n.return/n.enter48,
+              p.return48 = case_when(trt.duration == 0 ~ n.return48/n.enter48,
+                                  TRUE ~ n.return48/n.return),
+    ) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "timept"), names_sep = "\\.",
+                 values_drop_na = TRUE)%>%
+    mutate(trt.recover = as.character(trt.recover)) #%>% View()
+  
+  ## died
+  totaldied <- longdata %>%
+    #tmp3 <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    summarise(n.enter = sum(status.enter == 0),
+           n.enter48 = sum(status.enter48 == 0),
+           n.return = sum(status.return == 0),
+           n.return48 = sum(status.return48 == 0)) #%>% View()
+  
+  propdied <- totalsurv %>% 
+    #tmp2 <- tmp %>%
+    group_by(trt.duration) %>%
+    mutate(tot.enter = sum(n.enter),
+              tot.enter48 = sum(n.enter48),
+              tot.return = sum(n.return),
+              tot.return48 = sum(n.return48)) %>% #View()
+    mutate(ps.enter48 = tot.enter48/tot.enter,
+              ps.return = tot.return/tot.enter48,
+              ps.return48 = case_when(trt.duration == 0 ~ tot.return48/tot.enter48,
+                                  TRUE ~ tot.return48/tot.return)) %>% #View()
+    summarise(p.enter48 = 1 - ps.enter48,
+              p.return = 1 - ps.return,
+              p.return48 = 1- ps.return48) %>% #View()
+        pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "timept"), names_sep = "\\.",
+                 #values_drop_na = TRUE
+                 ) %>%
+    mutate(trt.recover = "died") #%>% View()
+   
+  ### pivot totals
+  totalsurv <- totalsurv %>%
+        pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "timept"), names_sep = "\\.") %>%
+    mutate(trt.recover = as.character(trt.recover))
+    
+  totaldied <- totaldied %>%
+    #tmp4 <- tmp3 %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "timept"), names_sep = "\\.",
+                 values_drop_na = TRUE) %>%
+    mutate(trt.recover = "died") #%>% View()
+  
+  ### merge
+  sssurv <- merge(totalsurv, propsurv,
+                  by = c("trt.duration", "trt.recover", "timept"),
+                  #all.x = TRUE,
+                  all = TRUE
+                  )
+  
+  ssdied <- merge(totaldied, propdied,
+                  #tmp2, tmp4,
+                   by = c("trt.recover", 
+                          "trt.duration", "timept"),
+                  #all.x = TRUE,
+                  all = TRUE
+                  ) #%>% View()
+  
+  ss <- rbind(sssurv, ssdied) %>% 
+    mutate(p = case_when(is.na(p) ~ 0,
+                         TRUE ~ p)) %>%
+    unique()
+  
+  return(ss)
+
+}
+
+testing$r3 <- list_assign(testing$r3, ss2 = testfn.surv_ss2(testing$r3$df))
+```
+
+```{r}
+  # ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  # geom_bar(position = "stack", 
+  #          #position = position_fill(reverse = TRUE),
+  #          stat = "identity") + 
+  # facet_grid(~interaction(pop,year), scale = "free", 
+  #            #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+  #            ) +
+
+testing$r3$ss2 %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_col(stat = "identity") +
+  facet_grid(~trt.duration, drop = TRUE)
+
+filter(testing$r3$ss2,
+       trt.duration == 24 & timept == "enter48") %>% View()
+
+```
+
+
+#### attempt 3.1
+```{r}
+#### ok so pmd needs to be treated as its own "trt" lol (for the fill)
+testfn.surv_ss <- function(longdata){
+  
+  totals <- longdata %>%
+    group_by(trt, trt.duration, trt.recover) %>%
+    summarise(#n.initial = n(), # dont rly need bc we mostly just care abt "enter"
+              n.enter = sum(status.enter == 1),
+              n.enter48 = sum(status.enter48 == 1),
+              n.return = sum(status.return == 1),
+              n.return48 = sum(status.return48 == 1))
+            
+  props <- totals %>%
+    group_by(trt, trt.duration, trt.recover) %>%
+    summarise(p.surv.enter48 = n.enter48/n.enter,
+              p.surv.return = n.return/n.enter48,
+              p.surv.return48 = case_when(trt < 100 ~ n.return48/n.enter48,
+                                     trt > 100 ~ n.return48/n.return),
+              
+              p.died.enter48 = 1 - p.surv.enter48,
+              p.died.return = 1- p.surv.return,
+              p.died.return48 = 1 - p.surv.return48
+              ) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "type", "timept"), names_sep = "\\.",
+                 values_drop_na = TRUE)
+  
+  totals <- totals %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "timept"), names_sep = "\\.")
+  
+  ss <- merge(totals, props,
+              by = c("trt", "trt.duration", "trt.recover", "timept"),
+              all.x = TRUE
+              ) # maybe drop 40 ctrl "return" bc they dont exist
+  
+  return(ss)
+  
+}
+
+testing$r3 <- list_assign(testing$r3, ss = testfn.surv_ss(testing$r3$df))
+
+```
+
+```{r}
+testing$r3$ss %>%
+  #filter(type != "died") %>% 
+  select(-n) %>% 
+  ggplot(aes(y = p, x = timept, fill = interaction(as.factor(trt.recover), type))) +
+  geom_col(aes(position = "fill")) +
+  #ggplot(aes(y = p, x = timept, fill = as.factor(trt.recover))) +
+  #geom_col() +
+  facet_wrap(~trt.duration, scales = "free_x")
+```
+
+
+
+
+
+
+### attempt 2
+2025-06-28
+
+```{r}
+# TODO WIP calc survival props per 48h group
+  ## i think thisll be easier to just combine some dfs together... (i.e. calc some things separately)
+testing <- list_assign(testing, r2 = list())
+
+## attempt 2: split into trt groups after some binaries
+testing$r2 <- list_assign(testing$r2, df = km$data %>%
+                         filter(is.40C == "Y") %>%
+                         mutate(# alive at the start of the next time period?
+                           status.atenter = case_when(dh.exit > dh.enter ~ 1,
+                                                      TRUE ~ 0),
+                           status.atrecover = case_when(dh.exit > dh.recover ~ 1,
+                                                        TRUE ~ 0),
+                           status.atreturn = case_when(dh.exit > dh.return ~ 1,
+                                                       TRUE ~ 0),
+                           # 48h after the time period
+                           dh.enter2 = dh.enter + 2,
+                           dh.recover2 = dh.recover + 2,
+                           dh.return2 = dh.return + 2,
+                           
+                           # alive after 48h?
+                           status.atreturn2 = case_when(dh.exit > dh.return2 ~ 1,
+                                                        TRUE ~ 0)
+                         ))
+
+### summary stats
+testing$r2 <- list_assign(testing$r2, ss_bytrt = testing$r2$df %>%
+                                            group_by(trt, trt.recover, trt.duration) %>%
+                                            summarise(n.tot = n(),
+                                                      n.entered = sum(status.atenter == 1),
+                                                      n.enter48 = sum(status.atrecover == 1),
+                                                      n.recovered = sum(status.atreturn == 1),
+                                                      n.return48 = sum(status.atreturn2 == 1)
+                                            ) %>%
+                                            ungroup()
+                                          )
+testing$r2 <-
+  list_assign(testing$r2, ss_bydur = testing$r2$ss_bytrt %>%
+                pivot_wider(names_from = trt.recover, 
+                            values_from = starts_with("n."),
+                            values_fn = sum,
+                            #id_cols = values_fn(~ sum(.x, na.rm = TRUE))
+                ) %>%
+                group_by(trt.duration) %>%
+                summarise(tot.enter48 = sum(across(contains("enter48")), na.rm = TRUE),
+                          tot.entered = sum(across(contains("entered")), na.rm = TRUE),
+                          tot.recovered = sum(across(contains("recovered")), na.rm = TRUE),
+                          tot.return48 = sum(across(contains("return48")), na.rm = TRUE),
+                          p.surv.atrec = tot.enter48/tot.entered,
+                          p.died.atrec = 1 - p.surv.atrec,
+                          p.surv.atret = tot.recovered/tot.enter48,
+                          p.died.atret = 1 - p.surv.atret,
+                          p.surv.atret48 = tot.return48/tot.recovered,
+                          p.died.atret48 = 1 - p.surv.atret48
+                          )
+              )
+
+testing$r2 <-
+  list_assign(testing$r2, ss_bydur2 = testing$r2$ss_bydur %>%
+                rename(n.tot.atrec = tot.enter48,
+                       n.tot.atret = tot.recovered,
+                       n.tot.atret48 = tot.return48) %>%
+                pivot_longer(cols = starts_with(c("p.", "n.")),
+                             names_to = c(".value", "type", "time"), names_sep = "\\.")
+              )
+```
+
+```{r}
+testing$r2$ss_bydur2 %>%
+  ggplot(aes(x = time, y = p,
+             fill = type)) +
+  geom_col() +
+  geom_text(aes(label = n)) + ## "tot" is fuckin it up. it should be surv/died
+  facet_wrap(~trt.duration) +
+  scale_x_discrete(labels = c("48h after\n1st HS", "after <facet> hrs\nrecovery", "48h after\n2nd HS"),
+                   guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x = element_text(angle = 45, vjust = -1)) + 
+  labs(x = "timept",
+       y = "proportion")
+## time to add instars...
+```
+
+
+
+
+```{r eval=FALSE}
+## attempt 1:
+### does not work to combine dfs lol
+km$data %>%
+  filter(is.40C == "Y") %>%
+  mutate(status.atenter = case_when(dh.exit > dh.enter ~ 1,
+                                    TRUE ~ 0),
+         status.atrecover = case_when(dh.exit > dh.recover ~ 1,
+                                      TRUE ~ 0),
+         status.atreturn = case_when(dh.exit > dh.return ~ 1,
+                                     TRUE ~ 0)) %>%
+  group_by(trt.enter) %>% ## 1st df
+  mutate(n.tot = n(),
+         n.entered = sum(status.atenter == 1),
+         # atenter.tot = n(),
+         # atenter.died = sum(status.atenter == 0)
+         ) %>%
+  ungroup() %>%
+  group_by(trt.duration, trt.recover) %>% ## 2nd df
+  mutate(n.torecover = sum(status.atrecover == 1), # idk if this should go up w/ the prev..
+         n.toreturn = sum(status.atreturn == 1),
+         # atrecover.tot = sum(status.atrecover = 1),
+         # atrecover.died = sum(status.)
+         ) %>%
+  summarise(prop.survtoenter = n.entered/n.tot, # group by initial 48h
+            prop.survtorec = n.torecover/n.entered,
+            prop.survtoret = n.toreturn/n.torecover) %>%
+            # i wish there were sample sizes!!!! (prob gota do this separately)
+  unique() %>%
+  View()
+  
+  
+  
+  group_by(trt.enter) %>%
+  mutate(n.tothatch = n(),
+         n.totenter = sum(!is.na(jdate.recover))) %>% # merp doesnt work for the ctrls lol
+  ungroup() %>%
+  group_by(trt.duration, trt.enter) %>%
+  mutate(n.totrecover = sum(!is.na(jdate.return)))
+
+```
+
+
+
+
+
+
 # 2025-06-27 redoing cox fits lmao
 
 cuz i love a fresh start!!!
 
 - goals
-  - [ ] set up km
-    - [ ] which is the best time frame to use?
-  - [ ] try a few cphs
+  - [x] set up km
+    - [/] which is the best time frame to use?
+  - [x] try a few cphs
   
 ## create fits
 
@@ -98,7 +668,7 @@ ggsurvplot(fit, data = km$data,
 
 ```
 
-## coxphing
+## coxphing (trt + shelves)
 
 ```{r}
 fits <- list_assign(fits, 
@@ -111,6 +681,8 @@ summary(fits$cph.enter)
 summary(fits$cph.recovery)
 summary(fits$cph.return)
 ```
+
+tldr trt doesnt matter except except for longest time frame
 
 ```{r}
 obj <- Surv(km$subsets$only40$exit.fromenter, km$subsets$only40$km.status)
@@ -126,11 +698,7 @@ summary(fits$cph.enter.intshelf)
 summary(fits$cph.return.addshelf)
 summary(fits$cph.return.intshelf)
 ```
-
-
-
-
-
+tldr shelf effect outweighs trt effect...
 
 
 
