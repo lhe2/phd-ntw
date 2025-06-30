@@ -86,8 +86,110 @@ testing$r3 <- list_assign(testing$r3, df = km$data %>%
 
 ```
 
-#### attempt 3.4
+#### attempt 3.4 (**)
 ```{r}
+## colors deaths @ trt (i.e. lumps surivors)
+testfn.surv_ss4a <- function(longdata) {
+  
+  counts <- longdata %>%
+    #tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1),
+           n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1)) %>%
+    group_by(trt.duration, trt.recover) %>%
+    mutate(n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0 & status.enter == 1),
+           n.died.return = sum(status.return == 0 & status.enter48 == 1),
+           n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter48 == 1),
+                                       TRUE ~ sum(status.return48 == 0 & status.return == 1))) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    unique() %>% ungroup()
+  
+  ## calc props
+  survprops <- counts %>%
+    select(-c(trt.recover, contains("died"))) %>%
+    unique() %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    select(c(trt.duration, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") 
+  
+  diedprops <- counts %>%
+    #tmp %>%
+    select(-contains("surv")) %>% 
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = n.died.return/n.tot.enter48,
+           p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+                                       TRUE ~ n.died.return48/n.tot.return)) %>%
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") #%>% View()
+    
+  ## merges
+  counts <- counts %>%
+    #tmp <- tmp %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.")
+  
+  miscs <- counts %>%
+    filter(status != "surv") %>%
+    merge(., diedprops) %>%
+    filter(status != "surv") %>%
+    select(-status)
+    
+  survs <- counts %>%
+    filter(status == "surv") %>%
+    merge(., survprops, all = TRUE) %>%
+    select(-trt.recover) %>%
+    rename(trt.recover = "status") %>%
+    unique()
+  
+  ss <- merge(survs, miscs, all = TRUE)
+   
+   return(ss)
+} 
+
+testing$r3 <- list_assign(testing$r3, ss4a = testfn.surv_ss4a(testing$r3$df))
+
+```
+
+```{r}
+testing$r3$ss4a %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~trt.duration) +
+  labs(fill = "test temp (if died)", ## i.e. purple are survivors
+       ) 
+
+
+testing$r3$ss4a %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = as.factor(trt.duration), y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~timept) +
+  labs(fill = "test temp (if died)", ## i.e. purple are survivors
+       ) 
+```
+
+
+
+```{r}
+## colors survivors @ trt (i.e. lumps deaths)
 testfn.surv_ss4 <- function(longdata) {
   
   counts <- longdata %>%
@@ -175,19 +277,29 @@ testing$r3 <- list_assign(testing$r3, ss4 = testfn.surv_ss4(testing$r3$df))
 
 
 ```{r}
-filter(testing$r3$ss4,
-       trt.duration == 24 & timept %in% c("enter48", "return")) %>% View()
+# filter(testing$r3$ss4,
+#        trt.duration == 24 & timept %in% c("enter48", "return")) #%>% View()
 
 testing$r3$ss4 %>%
   filter(trt.recover != "tot") %>%
+  drop_na() %>%
   ggplot(aes(x = timept, y = p, fill = trt.recover)) +
   geom_bar(stat = "identity") +
-  facet_wrap(~trt.duration)
+  facet_grid(~trt.duration)
+
+
+testing$r3$ss4 %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = as.factor(trt.duration), y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~timept)
+  
 ```
 
 
 #### attempt 3.3
-```{r}
+```{r eval=FALSE}
 testfn.surv_ss3 <- function(longdata) {
   
   counts <- longdata %>%
@@ -271,7 +383,7 @@ testing$r3 <- list_assign(testing$r3, ss3 = testfn.surv_ss3(testing$r3$df))
 ```
 
 
-```{r}
+```{r eval=FALSE}
 filter(testing$r3$ss3,
        trt.duration == 24 & timept %in% c("enter48", "return")) %>% View()
 
@@ -285,7 +397,7 @@ testing$r3$ss3 %>%
 
 
 #### attempt 3.2
-```{r}
+```{r eval=FALSE}
 ## figure out survivors at each time pt
 testfn.surv_ss2 <- function(longdata){
   
@@ -393,7 +505,7 @@ testfn.surv_ss2 <- function(longdata){
 testing$r3 <- list_assign(testing$r3, ss2 = testfn.surv_ss2(testing$r3$df))
 ```
 
-```{r}
+```{r eval=FALSE}
   # ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
   # geom_bar(position = "stack", 
   #          #position = position_fill(reverse = TRUE),
@@ -414,7 +526,7 @@ filter(testing$r3$ss2,
 
 
 #### attempt 3.1
-```{r}
+```{r eval=FALSE}
 #### ok so pmd needs to be treated as its own "trt" lol (for the fill)
 testfn.surv_ss <- function(longdata){
   
@@ -458,7 +570,7 @@ testing$r3 <- list_assign(testing$r3, ss = testfn.surv_ss(testing$r3$df))
 
 ```
 
-```{r}
+```{r eval=FALSE}
 testing$r3$ss %>%
   #filter(type != "died") %>% 
   select(-n) %>% 
@@ -477,7 +589,7 @@ testing$r3$ss %>%
 ### attempt 2
 2025-06-28
 
-```{r}
+```{r eval=FALSE}
 # TODO WIP calc survival props per 48h group
   ## i think thisll be easier to just combine some dfs together... (i.e. calc some things separately)
 testing <- list_assign(testing, r2 = list())
@@ -544,7 +656,7 @@ testing$r2 <-
               )
 ```
 
-```{r}
+```{r eval=FALSE}
 testing$r2$ss_bydur2 %>%
   ggplot(aes(x = time, y = p,
              fill = type)) +
@@ -609,7 +721,7 @@ km$data %>%
 
 
 
-# 2025-06-27 redoing cox fits lmao
+# 2025-06-27 redoing cox fits lmao (**)
 
 cuz i love a fresh start!!!
 
