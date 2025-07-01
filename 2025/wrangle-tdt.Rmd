@@ -69,10 +69,12 @@ km <- list()
 km <- list_assign(km, data = data %>%
                     mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 2,
                                                TRUE ~ dh.exit),
-                           dh.recover = case_when(trt < 100 & is.na(dh.recover) ~ dh.enter,
-                                                  TRUE ~ dh.recover),
-                           dh.return = case_when(trt < 100 & is.na(dh.return) ~ dh.enter,
-                                                 TRUE ~ dh.return),
+                           
+                           ## ctrls should not have a recover/return time lol
+                           # dh.recover = case_when(trt < 100 & is.na(dh.recover) ~ dh.enter,
+                           #                        TRUE ~ dh.recover),
+                           # dh.return = case_when(trt < 100 & is.na(dh.return) ~ dh.enter,
+                           #                       TRUE ~ dh.return),
                            
                            ## standardise exit times by trt enter date (enter date = d0)
                            # doesnt super make sense to start at hatch date..

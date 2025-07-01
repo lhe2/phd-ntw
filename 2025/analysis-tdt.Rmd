@@ -62,12 +62,14 @@ TODO
 ## code survival
 testing <- list_assign(testing, r3 = list())
 
+
 testing$r3 <- list_assign(testing$r3, df = km$data %>%
                          filter(is.40C == "Y") %>%
-                         mutate(dh.recover = case_when(trt < 100 ~ NA_real_,
-                                                       TRUE ~ dh.recover),
-                                dh.return = case_when(trt < 100 ~ NA_real_,
-                                                      TRUE ~ dh.return),
+                         mutate(# ctrls should not have return/recover times
+                                # dh.recover = case_when(trt < 100 ~ NA_real_,
+                                #                        TRUE ~ dh.recover),
+                                # dh.return = case_when(trt < 100 ~ NA_real_,
+                                #                       TRUE ~ dh.return),
                                 
                                 dh.enter48 = dh.enter + 2,
                                 dh.return48 = case_when(trt > 100 ~ dh.return + 2,
