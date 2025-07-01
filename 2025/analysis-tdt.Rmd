@@ -88,6 +88,95 @@ testing$r3 <- list_assign(testing$r3, df = km$data %>%
 
 ```
 
+#### attempt 3.5
+
+```{r}
+# trying to just get the raw counts
+
+testing$r3 <- list_assign(testing$r3, counts = testing$test3 %>% 
+                            select(c(trt.duration, trt.recover, starts_with("status"))) %>%
+                            pivot_longer(cols = starts_with("status"),
+                                         names_to = c(".value", "timept"),
+                                         names_sep = "\\.") %>%
+                            drop_na() %>%
+                            mutate(status = case_when(status == 1 ~ "surv",
+                                                      status == 0 ~ "died"))
+                          )
+
+```
+
+```{r}
+testing$r3$counts %>%
+  ggplot(aes(x = timept, fill = interaction(status, trt.recover))) +
+  geom_bar(position = "fill") +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+testing$r3$counts %>%
+  ggplot(aes(x = timept, fill = interaction(status, trt.duration))) +
+  geom_bar(position = "fill") +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+testing$r3$counts %>%
+  ggplot(aes(x = as.factor(trt.recover), fill = interaction(status, trt.duration))) +
+  geom_bar(position = "fill") +
+  facet_grid(~timept, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+## this is it (more or less. needs some sample size #s in there, also missing the 24/48 LOL...)
+  # tmp %>% # counts data
+  # select(-c(trt.recover, contains(c("surv", "died")))) %>% 
+  #   unique() %>% 
+  #   summarise(enter = sum(n.tot.enter), 
+  #             enter48 = sum(n.tot.enter48), 
+  #             return = sum(n.tot.return, na.rm = TRUE), 
+  #             return48 = sum(n.tot.return48))
+
+testing$r3$counts %>%
+  filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  mutate(status = factor(status, levels = c("surv", "died"))) %>%
+  ggplot(aes(x = status, 
+             fill = interaction(trt.recover))) +
+  geom_bar(position = "fill") +
+  facet_grid(~timept, scales = "free",
+             labeller = as_labeller(c(`enter` = "enter (N = 303)", `enter48` = "enter48 (N = 161)",
+                                      `return` = "return (N = 109)", `return48` = "return48 (N = 68)"))) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_fill_manual(values = c("#8DA0CB", "#66C2A5", "#E78AC3", "#FC8D62")) + # RColorBrewer::brewer.pal(4, "Set2")
+  theme_bw()
+
+
+### kinda better...
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(#x = interaction(as.factor(trt.duration), status), 
+             #fill = as.factor(trt.recover)),
+             x = interaction(trt.duration, trt.recover),
+             fill = interaction(status, trt.recover)
+         ))+
+  geom_bar(position = "fill") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             ~timept,
+             scales = "free",
+             # labeller = as_labeller(c(`enter` = "enter (N = 303)", `enter48` = "enter48 (N = 161)",
+             #                          `return` = "return (N = 109)", `return48` = "return48 (N = 68)"))
+             ) +
+  scale_x_discrete(guide = guide_axis(angle = 45), # _manual if only changing the guides
+                   labels = c("24h", "48h", "24h", "48h", "24h", "48h", "0h")
+                   ) +
+  scale_fill_manual(values = c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", 
+                               "#FDBF6F", "#FF7F00", "#FB9A99", "#E31A1C")) + # RColorBrewer::brewer.pal(8, "Paired")
+  labs(y = "survival outcome", x = "recovery duration (h)", fill = "outcome x test temperature") +
+  theme_bw()
+```
+
+
+
 #### attempt 3.4 (**)
 
 ```{r}
@@ -166,6 +255,19 @@ testing$r3$ss4b %>%
   geom_col() +
   scale_alpha_manual(values = c(1, 0.6)) +
   facet_grid(~trt.duration) +
+  theme_minimal()
+
+
+testing$r3$ss4b %>%
+  drop_na() %>%
+  ggplot(aes(x = interaction(timept), y = p, 
+             #fill = interaction(trt.recover, status), # this works but its a lot
+             fill = status,
+             )) +
+  geom_col() +
+  scale_alpha_manual(values = c(1, 0.6)) +
+  facet_grid(~trt.recover) +
+  #facet_grid(~trt.duration) +
   theme_minimal()
 ```
 
