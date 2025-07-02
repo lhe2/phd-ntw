@@ -88,6 +88,137 @@ testing$r3 <- list_assign(testing$r3, df = km$data %>%
 
 ```
 
+#### attempt 3.6 (pt plot **)
+
+making point plots
+
+```{r}
+testing$r3 <- list_assign(testing$r3, 
+                          countsw = testing$r3$df %>% 
+                            group_by(trt.duration, trt.recover) %>%
+                            summarise(n.enter = sum(status.enter == 1),
+                                      n.enter48 = sum(status.enter48 == 1),
+                                      n.return = sum(status.return == 1),
+                                      n.return48 = sum(status.return48 == 1)))
+
+testing$r3 <- list_assign(testing$r3,
+                          countsl = testing$r3$countsw %>%
+                            pivot_longer(cols = starts_with("n."),
+                                         names_to = c(".value", "timept"), 
+                                         names_sep = "\\."))
+
+testing$r3 <- list_assign(testing$r3, ss6 = 
+                          testing$r3$countsl %>%
+  # mutate(grp.trtdur = paste0(trt.recover, "_", trt.duration),
+  #        grp.durtime = paste0(trt.duration, "_", timept)) %>%
+  group_by(trt.recover) %>% mutate(tot.trt = sum(n, na.rm = TRUE)) %>% 
+  group_by(trt.duration) %>% mutate(tot.dur = sum(n, na.rm = TRUE)) %>%
+  group_by(timept) %>% mutate(tot.timept = sum(n, na.rm = TRUE)) %>%
+  group_by(trt.recover, trt.duration) %>% mutate(tot.trtdur = sum(n, na.rm = TRUE)) %>%
+  group_by(trt.recover, timept) %>% mutate(tot.trttime = sum(n, na.rm = TRUE)) %>%
+  group_by(trt.duration, timept) %>% mutate(tot.durtime = sum(n, na.rm = TRUE)) %>%
+  mutate(across(starts_with("tot."), ~ na_if(., 0))) %>%
+  #select(-n) %>%
+  unique()
+  )
+
+
+testing$r3 <- list_assign(testing$r3, ss6b = 
+                            testing$r3$countsw %>%
+                            group_by(trt.duration, trt.recover) %>%
+                            mutate(prop.surv.enter48 = n.enter48/n.enter,
+                                   prop.surv.return = n.return/n.enter48,
+                                   prop.surv.return48 = case_when(trt.duration == 0 ~ n.return48/n.enter48,
+                                                                  TRUE ~ n.return48/n.return),
+                                   prop.died.enter48 = 1 - prop.surv.enter48,
+                                   prop.died.return = 1 - prop.surv.return,
+                                   prop.died.return48 = 1 - prop.surv.return48,
+                                   ) %>% 
+                            pivot_longer(cols = starts_with(c("prop")),
+                                         names_to = c(".value", "status", "timept"), names_sep = "\\.") %>% 
+                            mutate(n = case_when(timept == "enter48" ~ n.enter,
+                                                 timept == "return" ~ n.enter48,
+                                                 timept == "return48" ~ 
+                                                   case_when(trt.duration == 0 ~ n.enter48,
+                                                             TRUE ~ n.return)),
+                                   se = sqrt((prop * (1 - prop))/ n)
+                                   ## no se for proportions lol
+                                   ) %>%
+                            select(-starts_with("n.")) #%>% View()
+)
+
+```
+
+```{r}
+testing$r3$ss6b %>%
+  mutate(trt.recover = factor(trt.recover, levels = c(19, 26, 33, 40)),
+         trt.duration = factor(trt.duration)) %>%
+  filter(status == "died") %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             color = trt.duration,
+             group = trt.duration)) +
+  geom_point() +
+  geom_line() +
+  #geom_errorbar(aes(ymin = prop -  se, ymax = prop + se)) +
+  facet_grid(~timept, drop = TRUE)
+
+testing$r3$ss6b %>%
+  mutate(trt.recover = factor(trt.recover, levels = c(19, 26, 33, 40)),
+         trt.duration = factor(trt.duration)) %>%
+  filter(status == "died",
+         timept != "enter48"
+         #trt.recover != 40
+         ) %>%
+  drop_na() %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             color = trt.duration,
+             group = trt.duration)) +
+  geom_text(aes(label = n), vjust = -0.5, hjust = -0.2,
+            show.legend = FALSE) + 
+  geom_point() +
+  geom_line() +
+  #geom_errorbar(aes(ymin = prop -  se, ymax = prop + se)) +
+  facet_grid(~timept, drop = TRUE, scales = "free",
+             labeller = as_labeller(c(`return` = "0h after recovery",
+                                   `return48` = "48h after recovery"))) +
+  ylim(c(0, 1)) +
+  labs(y = "proportion died",
+       caption = "n = initial N")
+```
+
+
+```{r eval = FALSE}
+### not quite right but getting there...
+  ### would be way easier to just make a fig per timept then combine the timepts later??
+
+testing$r3$countsw %>%
+  mutate(prop = n.enter48/n.enter,
+         trt.recover = factor(trt.recover),
+         trt.duration = factor(trt.duration)) %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             lty = trt.duration,
+             group = trt.duration)) +
+  geom_point() +
+  geom_line()
+
+
+testing$r3$ss6 %>%
+  filter(timept != "enter") %>%
+  ### maybe just summarise on the fly...
+  mutate(trt.recover = factor(trt.recover),
+         trt.duration = factor(trt.duration),
+         prop = n/tot.trttime) %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.duration)
+             )) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~timept)
+
+```
+
+
 #### attempt 3.5
 
 ```{r}
@@ -173,7 +304,92 @@ testing$r3$counts %>%
                                "#FDBF6F", "#FF7F00", "#FB9A99", "#E31A1C")) + # RColorBrewer::brewer.pal(8, "Paired")
   labs(y = "survival outcome", x = "recovery duration (h)", fill = "outcome x test temperature") +
   theme_bw()
+
+
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(#x = interaction(as.factor(trt.duration), status), 
+             #fill = as.factor(trt.recover)),
+             x = trt.duration,
+             fill = trt.recover,
+             alpha = status,
+             group = interaction(status, trt.recover)
+         ))+
+  geom_bar(position = "fill") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             ~timept,
+             scales = "free",
+             # labeller = as_labeller(c(`enter` = "enter (N = 303)", `enter48` = "enter48 (N = 161)",
+             #                          `return` = "return (N = 109)", `return48` = "return48 (N = 68)"))
+             ) +
+  # scale_x_discrete(guide = guide_axis(angle = 45), # _manual if only changing the guides
+  #                  labels = c("24h", "48h", "24h", "48h", "24h", "48h", "0h")
+  #                  ) +
+  scale_fill_manual(values = c("#8DA0CB", "#66C2A5", "#E78AC3", "#FC8D62")) +
+  scale_alpha_manual(values = c(0.7, 1)) +
+  labs(y = "survival outcome", x = "recovery duration (h)", fill = "test temperature") +
+  theme_bw()
+
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(#x = interaction(as.factor(trt.duration), status), 
+             #fill = as.factor(trt.recover)),
+             x = trt.recover,
+             fill = trt.duration,
+             alpha = status,
+             #group = interaction(status, trt.recover)
+         ))+
+  geom_bar(position = "fill") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             ~timept,
+             scales = "free",
+             ) +
+  scale_fill_manual(values = c( "#FC8D62","#66C2A5", "#8DA0CB")) +
+  scale_alpha_manual(values = c(0.68, 1)) +
+  labs(y = "survival outcome", x = "test temperature",
+       fill = "recovery duration (h)", 
+       alpha = "survival outcome"
+       ) +
+  theme_bw()
+
+### meh not rlly it
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(
+             #x = interaction(status, trt.duration),
+             x = trt.duration,
+             fill = trt.recover,
+             #group = interaction(status, trt.recover)
+         ))+
+  geom_bar(#position = "fill",
+           stat = "count", position = "dodge") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             status~timept,
+             scales = "free", space = "free" ## for this to work it needs to be with geom_col on the summed data rip
+             ) +
+  #scale_fill_manual(values = c( "#FC8D62","#66C2A5", "#8DA0CB")) +
+  labs(y = "survival outcome", x = "test temperature",
+       fill = "recovery duration (h)", 
+       alpha = "survival outcome"
+       ) +
+  scale_fill_manual(values = c("#8DA0CB", "#66C2A5", "#E78AC3", "#FC8D62")) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  theme_bw()
 ```
+
+
 
 
 
