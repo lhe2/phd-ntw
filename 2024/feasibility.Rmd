@@ -53,11 +53,29 @@ list.files(path=here(out_data), pattern="_anova\\.csv", full.names = TRUE) %>%
 ## - dev figs & stats df prep
 ```{r eval=FALSE}
 # calc pup dev rate
-ss_ntw <- ss_ntw %>%
-    mutate(avg.devrate = case_when(is.na(avg.devrate) ~ avg.tt,
+# ss_ntw <- ss_ntw %>% 
+
+  ## breaking as of 2025-07-01 lmao...
+  ## ss_ntw needs to come from calc.instats() for the mutate() to work,
+  ## but it's coded in dev_utils.R as coming from calc.devstats()? so idk what happened
+
+#     mutate(avg.devrate = case_when(is.na(avg.devrate) ~ avg.tt,
+#                                  TRUE ~ as.numeric(avg.devrate)),
+#            se.devrate = case_when(is.na(se.devrate) ~ se.tt,
+#                                 TRUE ~ as.numeric(se.devrate)))
+
+ssw_ntw <- ntw_wide %>%
+  calc.devstats() %>%
+  Reduce(full_join, .) %>%
+  calc.ssadj()
+
+ssl_ntw <- all_long %>%
+  calc.instats() %>% 
+  mutate(avg.devrate = case_when(is.na(avg.devrate) ~ avg.tt,
                                  TRUE ~ as.numeric(avg.devrate)),
-           se.devrate = case_when(is.na(se.devrate) ~ se.tt,
+         se.devrate = case_when(is.na(se.devrate) ~ se.tt,
                                 TRUE ~ as.numeric(se.devrate)))
+  
 ```
 
 
@@ -184,8 +202,9 @@ dfs <- list_assign(dfs,
 
 ## [2] fig
 
+
 ```{r}
-p1 <- ss_ntw %>% 
+p1 <- ssw_ntw %>% 
   filter(z.type != "days") %>%
   filter(stage == "la" & trt.type == "expt") %>% 
   ggplot(aes(y = prop.survpup, x = minT,
@@ -202,7 +221,7 @@ p1 <- ss_ntw %>%
 p1
 
 
-p2 <- ss_ntw %>% 
+p2 <- ssw_ntw %>% 
   filter(z.type != "days") %>%
   filter(stage == "la" & trt.type == "ctrl") %>% 
   mutate(trt.type = "control (26/26 °C)") %>%
@@ -361,7 +380,8 @@ out.psurv$modsel.sup
 ```{r eval=FALSE}
 # NTs on pupal/adult mass (colored by stage)
 
-p1 <- ss_ntw %>% 
+p1 <- ssw_ntw %>% 
+  filter(!(stage == "ad" & (z.type == "pdelta" | sex == "all"))) %>%
   mutate(sex = case_when(is.na(sex) ~ "both",
                          TRUE ~ as.character(sex))) %>%
   #filter(!(stage == "ad" & sex == "all")) %>%
@@ -385,7 +405,8 @@ p1 <- ss_ntw %>%
 
 p1
 
-p2 <- ss_ntw %>% 
+p2 <- ssw_ntw %>% 
+  filter(!(stage == "ad" & (z.type == "pdelta" | sex == "all"))) %>%
   mutate(sex = case_when(is.na(sex) ~ "both",
                          TRUE ~ as.character(sex))) %>%
   #filter(!(stage == "ad" & sex == "all")) %>%
@@ -437,7 +458,7 @@ cant rlly make sense of the percent change in mass from pup -> ec (i think sex c
 ```{r}
 # NTs on pupal/adult mass (colored by pop)
 
-p1 <- ss_ntw %>% 
+p1 <- ssw_ntw %>% 
   filter(!(stage == "ad" & z.type == "pdelta")) %>% #final/pdelta for the other one
   mutate(sex = case_when(is.na(sex) ~ "both",
                          TRUE ~ as.character(sex))) %>%
@@ -462,7 +483,7 @@ p1 <- ss_ntw %>%
 
 p1
 
-p2 <- ss_ntw %>% 
+p2 <- ssw_ntw %>% 
   filter(!(stage == "ad" & z.type == "pdelta")) %>% #final/pdelta for the other one
   mutate(sex = case_when(is.na(sex) ~ "both",
                          TRUE ~ as.character(sex))) %>%
@@ -547,8 +568,10 @@ sex doesnt matter based on stats so omit from figs
 
 ```{r eval=FALSE}
 # colored by stg
-p1 <- ss_ntw %>% 
+p1 <- ssw_ntw %>% 
   filter(stage %in% c("la", "ad") & trt.type == "expt" & !(sex %in% c("m", "f"))) %>% #View()
+    filter(!(stage == "ad" & z.type == "pdelta")) %>%
+    filter(!(stage == "la" & z.type == "rate")) %>%
   ggplot(aes(y = avg.tt, x = minT,
              color = stage, 
              group = interaction(pop, stage, trt.type)
@@ -567,8 +590,10 @@ p1 <- ss_ntw %>%
 p1
 
 
-p2 <- ss_ntw %>% 
+p2 <- ssw_ntw %>% 
   filter(stage %in% c("la", "ad") & trt.type == "ctrl" & !(sex %in% c("m", "f"))) %>%
+  filter(!(stage == "ad" & z.type == "pdelta")) %>%
+  filter(!(stage == "la" & z.type == "rate")) %>%
   mutate(trt.type = "control (26/26 °C)") %>%
   ggplot(aes(y = avg.tt, x = year,
              color = stage, 
@@ -609,7 +634,7 @@ p1 + p2 +
 ### - by pop
 ```{r}
 # colored by pop
-p1 <- ss_ntw %>% 
+p1 <- ssw_ntw %>% 
   # rename(avg.tt2 = avg.devrate,
   #        se.tt2 = se.devrate) %>%
     mutate(n = case_when(stage == "la" ~ n.pup,
@@ -635,7 +660,7 @@ p1 <- ss_ntw %>%
 p1
 
 
-p2 <- ss_ntw %>% 
+p2 <- ssw_ntw %>% 
   # rename(avg.tt2 = avg.devrate,
   #        se.tt2 = se.devrate) %>%
   mutate(n = case_when(stage == "la" ~ n.pup,
