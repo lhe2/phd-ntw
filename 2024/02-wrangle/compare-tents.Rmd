@@ -34,8 +34,8 @@ source(here::here("set-paths.R"))
 ```
 
 ```{r load 2324 tent data}
-d23 <- read.csv(here(bin_paths23$data, "clean-tentstats.csv"), header = TRUE) %>% mutate(year = 2023)
-d24 <- read.csv(here(bin_paths24$data, "clean-fertility.csv"), header = TRUE) %>% mutate(year = 2024)
+d23 <- read.csv(here(bin_paths$y23$data, "clean-tentstats.csv"), header = TRUE) %>% mutate(year = 2023)
+d24 <- read.csv(here(bin_paths$y24$data, "clean-fertility.csv"), header = TRUE) %>% mutate(year = 2024)
 
 # drop a tent from 2023 that was reared up differently
 d23 <- filter(d23, id.tent != "107-I")

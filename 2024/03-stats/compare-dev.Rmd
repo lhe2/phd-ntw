@@ -18,7 +18,7 @@ library(tidyverse)
 library(MuMIn) # for survival nested model comparisons
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "compare-dev_p.R"))
+source(here::here(bin_paths$y24$wrangle, "compare-dev_p.R"))
 rm(filter.2pops, se)
 ```
 

@@ -22,8 +22,8 @@ library(tidyverse)
 library(patchwork)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
-source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
+source(here::here(bin_paths$y24$wrangle, "compare-tents_p.R"))
+source(here::here(bin_paths$y24$doviz, "aesthetics_util.R"))
 ```
 
 ## helper functions

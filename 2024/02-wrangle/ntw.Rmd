@@ -35,7 +35,7 @@ source(here::here("set-paths.R"))
 ```
 
 ```{r load data}
-wide_all <- read.csv(here::here(bin_paths24$data, "ntw.csv"), header = TRUE)
+wide_all <- read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE)
 ```
 
 # 2. calculations & pivot

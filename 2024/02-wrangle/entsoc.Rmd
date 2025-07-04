@@ -37,10 +37,10 @@ source(here::here("set-paths.R"))
 
 ```{r load data}
 # 2023 dev data
-d23 <- read.csv(here::here(bin_paths23$data,"clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023)
+d23 <- read.csv(here::here(bin_paths$y23$data,"clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023)
 
 # 2023 tent data
-source(here::here(bin_paths23$y23, "helpers_tents.R"))
+source(here::here(bin_paths$y23$root, "helpers_tents.R"))
 
 dtents <- data_tstats 
 #%>% select(-c("trt.type", "trt.pair"))

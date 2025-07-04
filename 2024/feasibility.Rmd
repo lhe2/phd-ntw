@@ -22,15 +22,15 @@ library(lme4) # for glms and lms
 library(MuMIn) # for model dredging
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "compare-dev_p.R"))
-source(here::here(bin_paths24$wrangle, "compare-tents_p.R"))
-source(here::here(bin_paths24$doviz, "aesthetics_util.R"))
+source(here::here(bin_paths$y24$wrangle, "compare-dev_p.R"))
+source(here::here(bin_paths$y24$wrangle, "compare-tents_p.R"))
+source(here::here(bin_paths$y24$doviz, "aesthetics_util.R"))
 ```
 
 ## - data output
 ```{r}
 # define paths for figs and csvs
-out_data <- here(bin_paths24$data, "2025-feasibility")
+out_data <- here(bin_paths$y24$data, "2025-feasibility")
 #out_fig <-here("figs", "2025-feasibility")
 ```
 

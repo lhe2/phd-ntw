@@ -13,7 +13,7 @@ library(tidyverse)
 library(lme4)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "entsoc_p.R"))
+source(here::here(bin_paths$y24$wrangle, "entsoc_p.R"))
 ```
 
 # pupal survival

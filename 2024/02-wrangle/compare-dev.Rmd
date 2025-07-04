@@ -38,12 +38,12 @@ here::i_am("2024/02-wrangle/compare-dev.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "compare-dev_util.R"))
+source(here::here(bin_paths$y24$wrangle, "compare-dev_util.R"))
 ```
 
 ```{r load 2324 dev data}
-d23 <- read.csv(here(bin_paths23$data, "clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023)
-d24 <- read.csv(here(bin_paths24$data, "ntw.csv"), header = TRUE) %>% mutate(year = 2024)
+d23 <- read.csv(here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023)
+d24 <- read.csv(here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>% mutate(year = 2024)
 
 test <- d23
 #d23 <- test
