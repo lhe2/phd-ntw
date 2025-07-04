@@ -22,7 +22,7 @@ library(tidyverse)
 library(ggrepel)
 
 source(here::here("set-paths.R"))
-source(here::here(bin_paths24$wrangle, "ntw.R"))
+source(here::here(bin_paths$y24$wrangle, "ntw.R"))
 
 # INCASE: bring this back if u need it and are breaking things
   # library(tidyverse)

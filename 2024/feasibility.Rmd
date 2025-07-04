@@ -249,10 +249,10 @@ out.psurv <- list(dredge = dredge(glm(is.pup ~ year*pop*minT,
                                   ))
 out.psurv$dredge
 
-dredge(glm(is.pup ~ year*pop*minT, data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>%
-  subset(., weight > 0.01) %>%
-  mutate(from = "pup surv dredge") %>%
-  as.data.frame(.) %>% write.csv(., here(out_data, "surv_dredge-modsel.csv"))
+# dredge(glm(is.pup ~ year*pop*minT, data = ntw_mumin.dfs$nona, family = "binomial", na.action = na.fail)) %>%
+#   subset(., weight > 0.01) %>%
+#   mutate(from = "pup surv dredge") %>%
+#   as.data.frame(.) %>% write.csv(., here(out_data, "surv_dredge-modsel.csv"))
 
 # look only at automatically selected models with weight > 0.01
 dredge(glm(is.pup ~ year*pop*minT, 
@@ -281,10 +281,10 @@ mod.psurv <- list(fullint = glm(is.pup ~ year*pop*minT,
                   null = glm(is.pup ~ 1, 
                                 data = ntw_mumin.dfs$df, family = "binomial"))
 
-model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null) %>%
-  as.data.frame() %>%
-  mutate(from = "pup surv man modsel") %>%
-    write.csv(., here(out_data, "surv_man-modsel.csv"))
+model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null) #%>%
+  # as.data.frame() %>%
+  # mutate(from = "pup surv man modsel") %>%
+  #   write.csv(., here(out_data, "surv_man-modsel.csv"))
 
 # are they nested?
 nested(model.sel(mod.psurv$fullint, mod.psurv$n2way, mod.psurv$fulladd, mod.psurv$null))
@@ -339,10 +339,10 @@ out.psurv <- c(out.psurv,
 
 out.psurv$dredge.outsup
 
-model.sel(out.psurv$dredge.outsup) %>%
-  as.data.frame(.) %>%
-  mutate(from = "sup auto modsel") %>%
-  write.csv(., here(out_data, "sup_auto-modsel.csv"))
+model.sel(out.psurv$dredge.outsup) #%>%
+  # as.data.frame(.) %>%
+  # mutate(from = "sup auto modsel") %>%
+  # write.csv(., here(out_data, "sup_auto-modsel.csv"))
 
 # (manually pull them out)
 out.psurv <- c(out.psurv,
@@ -519,10 +519,10 @@ p1 + p2 +
 mod.pmass_n2way01 <- lm(mass.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt.sex, na.action = na.omit)
 anova(mod.pmass_n2way01)
 
-anova(mod.pmass_n2way01) %>%
-  as.data.frame() %>%
-  mutate(from = "pup mass") %>%
-  write.csv(., here(out_data, "pup-mass_anova.csv"))
+# anova(mod.pmass_n2way01) %>%
+#   as.data.frame() %>%
+#   mutate(from = "pup mass") %>%
+#   write.csv(., here(out_data, "pup-mass_anova.csv"))
 ```
 
 ```{r}
@@ -532,10 +532,10 @@ mod <- anova(lm(mass.eclose ~ (year + minT + pop + sex)^2, data = ntw_expt.sex, 
 anova(lm(mass.eclose ~ year+minT+pop+sex, data = ntw_expt.sex, na.action = na.omit))
 
 mod
-mod %>% 
-  as.data.frame() %>%
-  mutate(from = "ad mass") %>%
-  write.csv(., here(out_data, "ad-mass_anova.csv"))
+# mod %>% 
+#   as.data.frame() %>%
+#   mutate(from = "ad mass") %>%
+#   write.csv(., here(out_data, "ad-mass_anova.csv"))
 ```
 
 
@@ -693,10 +693,10 @@ anova(lm(tt.pupa ~ (year + minT + pop + sex)^2, data = ntw_expt, na.action = na.
 mod <- anova(lm(tt.pupa ~ (year + minT + pop)^2, data = ntw_expt, na.action = na.omit))
 mod
 
-mod %>%
-  as.data.frame() %>%
-  mutate(from = "pup time") %>%
-  write.csv(., here(out_data, "pup-time_anova.csv"))
+# mod %>%
+#   as.data.frame() %>%
+#   mutate(from = "pup time") %>%
+#   write.csv(., here(out_data, "pup-time_anova.csv"))
 ```
 
 ```{r}
@@ -707,10 +707,10 @@ mod <- anova(lm(tt.surv ~ (year + minT + pop)^2, data = ntw_expt.sex, na.action 
 
 mod
 
-mod %>%
-  as.data.frame() %>%
-  mutate(from = "ad longevity") %>%
-  write.csv(., here(out_data, "ad-longevity_anova.csv"))
+# mod %>%
+#   as.data.frame() %>%
+#   mutate(from = "ad longevity") %>%
+#   write.csv(., here(out_data, "ad-longevity_anova.csv"))
 ```
 
 
@@ -761,10 +761,10 @@ mods <- list_assign(mods,
 mod <- anova(mods$y23.overall, test = "Chisq")
 mod
 
-mod %>%
-  as.data.frame() %>%
-  mutate(from = "laying") %>%
-  write.csv(here(out_data, "fecundity_anova.csv"))
+# mod %>%
+#   as.data.frame() %>%
+#   mutate(from = "laying") %>%
+#   write.csv(here(out_data, "fecundity_anova.csv"))
 ```
 
 
@@ -785,10 +785,10 @@ mod <- anova(lm(z.logit2 ~ as.factor(trt.temp)*is.hsF*is.hsM,
    data = dfs$hatchstats, na.action = na.omit))
 mod
 
-mod %>%
-  as.data.frame() %>%
-  mutate(from = "hatching") %>%
-  write.csv(here(out_data, "fitness_anova.csv"))
+# mod %>%
+#   as.data.frame() %>%
+#   mutate(from = "hatching") %>%
+#   write.csv(here(out_data, "fitness_anova.csv"))
 ```
 
 
