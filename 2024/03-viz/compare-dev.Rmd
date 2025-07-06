@@ -1046,6 +1046,44 @@ p1 + p2 +
 
 trying to make figs like kingsolver ea 2015 j exp biol (fig 2) idk if itll work tho lol
 
+## - with std errs
+
+```{r}
+ss_moredev2 <- ntw_wide %>% 
+    mutate(across(starts_with("mass"), log)) %>% 
+    group_by(year, pop, trt, trt.type, minT, flucT) %>%
+    summarise(across(starts_with("tt"), list(avg = ~ mean(., na.rm = TRUE), se = se), 
+                     .names = "{.fn}_{.col}" ),
+              across(starts_with("mass"), list(avg = ~ mean(., na.rm = TRUE), se = se), 
+                     .names = "{.fn}_{.col}" )) %>%
+    pivot_longer(starts_with(c("avg_tt", "se_tt", "avg_mass", "se_mass")),
+                             names_to = c(".value", "stage"),
+                             names_sep = "\\.") %>% 
+  mutate(across(starts_with(c("avg", "se")), ~ na_if(., "NaN"))) 
+```
+
+```{r}
+## error bars r pretty negligible...
+
+ss_moredev2 %>% 
+  filter(#trt.type != "ctrl" &
+           stage %in% c("3rd", "4th", "5th", "wander")) %>%
+  ggplot(aes(x = avg_tt, y = avg_mass,
+             color = interaction(minT, flucT))) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymin = avg_mass - se_mass, 
+                    ymax = avg_mass + se_mass), #width = 0.5
+                ) +
+  geom_errorbarh(aes(xmin = avg_tt - se_mass,
+                     xmax = avg_tt + se_mass), #height = 0.5
+                 ) +
+  facet_grid(year~pop)
+
+```
+
+
+## - (og figs)
 ```{r}
 ss_moredev %>%
   filter(trt.type == "expt" & sex == "both") %>%
