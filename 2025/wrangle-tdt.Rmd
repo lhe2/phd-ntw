@@ -56,9 +56,9 @@ data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE)
 ```{r}
 # find max dh.exit for expt bugs, use this # as the basis for the others (add +1 to it?)
 max <- data %>%
-  filter(trt > 100) %>%
+  filter(trt.enter ==  40) %>%
   group_by(cohort) %>%
-  summarise(max = max(dh.exit))
+  summarise(max = max(dh.exit, na.rm = TRUE))
 
 
 # create new list
@@ -157,6 +157,7 @@ km <- list_assign(km, data = km$data %>% mutate(km.status = case_when(dh.exit > 
                     select(-max))
 
 # extract subsets
+  # TODO 2025-07-16 want to delete this eventually.. but this is used in cohort A analyses
 km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
                                      expts = filter(km$data, trt.enter != trt.recover),
                                      only40 = filter(km$data, trt.enter == 40),
