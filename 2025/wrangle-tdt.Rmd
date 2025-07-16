@@ -7,13 +7,16 @@ date: "2025-06-16"
 
 wrangling 2025 tdt data
 
-final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses
+final code is purled to a `.R` script, manually rerun `purl()` as needed to update the wrangling script for analyses.
+
+(only need to run the `.Rmd` if troubleshooting, otherwise just run the `_p.R` from the corresponding wrangle scripts)
 
 ```{r wrangle setup and purling, eval=FALSE, include=FALSE, purl=FALSE}
 # run manually when new wrangle script is needed
+
 knitr::purl("wrangle-tdt.Rmd", "wrangle-tdt_p.R")
 
-# archive
+# run to archive the current .Rmd file
 here::i_am("2025/wrangle-tdt.Rmd")
 library(here)
 source(here::here("set-paths.R"))
@@ -50,9 +53,43 @@ data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE)
 
 ## - calc exit times; recode events
 
-```{r} 
-# recode exit times
+```{r}
+# find max dh.exit for expt bugs, use this # as the basis for the others (add +1 to it?)
+max <- data %>%
+  filter(trt > 100) %>%
+  group_by(cohort) %>%
+  summarise(max = max(dh.exit))
 
+
+# create new list
+km <- list()
+
+# recode times for ctrls... (tho they will be dropped later lol)
+  # things that die before recovery/returning should be NA!!!!!
+km <- list_assign(km, data = data %>%
+                    merge(., max) %>%
+                    mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 2,
+                                               TRUE ~ dh.exit), 
+                           
+                           ## standardise exit times by trt enter date (enter date = d0)
+                           # doesnt super make sense to start at hatch date..
+                           tt.enter = dh.enter - dh.enter,
+                           tt.recover = dh.recover - dh.enter,
+                           tt.return = dh.return - dh.enter,
+                           tt.exit = dh.exit - dh.enter) %>%
+                    
+                    ## remove hot bugs that do not have fates (i.e. got lost or sth)
+                    filter(!(trt >= 40 & is.na(fate)))
+                  )
+
+```
+
+
+
+```{r eval=FALSE, purl=FALSE, include = FALSE} 
+## this works for when there is only 1 cohort LOL
+
+# recode exit times
 
 # find max dh.exit for expt bugs, use this # as the basis for the others (add +1 to it?)
 max <- data %>%
@@ -85,8 +122,6 @@ km <- list_assign(km, data = data %>%
                            
                     )
                   )
-
-
   
 ```
 
@@ -118,7 +153,8 @@ km <- list_assign(km, data = km$data %>% mutate(
 # redo km statuses
   # 1 = death, 0 = censored
 km <- list_assign(km, data = km$data %>% mutate(km.status = case_when(dh.exit > max ~ 0,
-                                                                      TRUE ~ 1)))
+                                                                      TRUE ~ 1)) %>%
+                    select(-max))
 
 # extract subsets
 km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
@@ -178,7 +214,6 @@ km.data <- data %>%
 
 ```{r cleanup}
 rm(max)
-
 ```
 
 

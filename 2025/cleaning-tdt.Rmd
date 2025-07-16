@@ -9,12 +9,13 @@ date: "2025-06-14"
 2. column formatting + rearrangement
 3. save output into `2025/data/`
 
+re-run script whenever the gsheets gets updated
+
 
 # 1. load data & packages
 
 ```{r message = FALSE}
 
-##### if doing a major update of the sheet, archive the old one first
 library(tidyr)
 library(purrr)
 library(dplyr)
