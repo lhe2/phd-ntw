@@ -104,7 +104,7 @@ km <- list()
 # recode times for ctrls... (tho they will be dropped later lol)
   # things that die before recovery/returning should be NA!!!!!
 km <- list_assign(km, data = data %>%
-                    mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 2,
+                    mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 2, 
                                                TRUE ~ dh.exit),
                            
                            ## ctrls should not have a recover/return time lol
@@ -150,7 +150,7 @@ km <- list_assign(km, data = km$data %>% mutate(
                   )
 
 
-# redo km statuses
+# redo km statuses to be consistent with how the package expects it to be coded
   # 1 = death, 0 = censored
 km <- list_assign(km, data = km$data %>% mutate(km.status = case_when(dh.exit > max ~ 0,
                                                                       TRUE ~ 1)) %>%
@@ -161,6 +161,7 @@ km <- list_assign(km, data = km$data %>% mutate(km.status = case_when(dh.exit > 
 km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
                                      expts = filter(km$data, trt.enter != trt.recover),
                                      only40 = filter(km$data, trt.enter == 40),
+                                     recs = filter(km$data, trt > 40),
                                      rec24 = filter(km$data, trt == 40 | trt.duration == 24),
                                      rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
 
