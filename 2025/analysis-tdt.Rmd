@@ -92,18 +92,185 @@ calc.surv_ss <- function(widedata){
 ```
 
 
-survObj <- list()
 
-# model fits
+
+## TODOS & notes
+
+- 2025-07-16
+  - [ ] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
+  - [ ] figure out when my bugs start to enter in the km viz lol 😵‍💫 
+    - (idk if t0 = hatch or enter... also if the standardising is alrdy accounted for lol)
+    
+    
+notes
+
+- 2025-07-17 re: jdate vs dh
+  - cohort B: after updates to cleaning script, `dh` is calculated in days (should be hours, ideally)... jdate is calculated in days (so just be careful w axes)
+  - this will probably break some of the cohort A analyses lol
+
+# ## cohort B fups ##
+
+```{r}
+dfs <- list()
+
+survObjs <- list()
 
 fits <- list()
+```
 
+## 2025-07-16 first pass
+
+going to rerun analyses from cohort A just focusing on cohort B data
+
+TODO
+
+- [ ] R2 surv props
+- [ ] are there diffs in the kms?
+- [ ] compare R2 vs R1
+  - [ ] shelf effects?
+- [ ] 33 const cohort B are all getting filtered out for some reason...
+  
+```{r}
+dfs <- list_assign(dfs, r1 = list())
+
+survObjs <- list_assign(survObjs, r1 = list())
+
+fits <- list_assign(fits, r1 = list())
 ```
 
 ```{r}
-# for testing
-testing <- list()
+# actual conversion to decimal hours of km data
+km <- list_assign(km, data =  ogkm$data %>%
+                    mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
+
+km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
+                                     expts = filter(km$data, trt.enter != trt.recover),
+                                     only40 = filter(km$data, trt.enter == 40),
+                                     recs = filter(km$data, trt > 40),
+                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
+                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+
+dfs$r1 <- list_assign(dfs$r1, 
+                      allB = km$data %>% filter(cohort == "B"),
+                      hotB = km$data %>% filter(is.40C == "Y"),
+                      recB = dfs$r1$allB %>% filter(trt.duration > 0))
 ```
+
+### km R2 only
+```{r}
+# survfit doesnt like lists lol
+obj <- Surv(dfs$r1$allB$exit.fromenter, dfs$r1$allB$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$r1$allB)
+
+ggsurvplot(fit, data = dfs$r1$allB,
+           #facet.by = "trt.recover",
+           facet.by = "trt.duration"
+           ) +
+  geom_vline(xintercept = dfs$r1$allB$day.enter, color = "red") +
+  geom_vline(xintercept = dfs$r1$allB$day.recover, color = "skyblue") +
+  geom_vline(xintercept = dfs$r1$allB$day.return, color = "orange") +
+  labs(caption = "R2 tdt, time = hrs from enter")
+```
+
+### km both rounds 
+
+```{r}
+obj <- Surv(km$data$exit.fromenter, km$data$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = km$data)
+```
+
+```{r}
+group <- km$subsets$recs %>% 
+  group_by(cohort, trt.recover, trt.duration) %>% 
+  summarise(day.recover, day.return) %>%
+  drop_na() %>% unique()
+
+ggsurvplot(fit, data = km$data,
+           facet.by = c("cohort", "trt.duration"),) +
+    geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+      geom_vline(data = group, aes(xintercept = day.return), color = "orange") 
+  ## not sure why there's 2 return lines on cohort B/dur 48...
+
+
+ggsurvplot(fit, data = km$data,
+           facet.by = c("cohort", "trt.recover")) +
+    geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+        geom_vline(data = group, aes(xintercept = day.return), color = "orange") 
+
+
+ggsurvplot(fit, data = km$data,
+           facet.by = "cohort") +
+    geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+        geom_vline(data = group, aes(xintercept = day.return), color = "orange") 
+```
+
+### coxph trt durations
+
+```{r}
+### use round 2 data
+survObjs$r1 <- list_assign(survObjs$r1,
+                            fromEnter = Surv(dfs$r1$recB$exit.fromenter, dfs$r1$recB$km.status),
+                            fromRecovery = Surv(dfs$r1$recB$exit.fromrecover, dfs$r1$recB$km.status),
+                            fromReturn = Surv(dfs$r1$recB$exit.fromreturn, dfs$r1$recB$km.status)
+                            )
+
+fits$r1 <- list_assign(fits$r1,
+                    cph.enter = coxph(survObjs$r1$fromEnter ~ trt.recover * as.factor(trt.duration), 
+                                      data = dfs$r1$recB),
+                    cph.recovery = coxph(survObjs$r1$fromRecovery ~ trt.recover * as.factor(trt.duration), 
+                                         data = dfs$r1$recB),
+                    cph.return = coxph(survObjs$r1$fromReturn ~ trt.recover * as.factor(trt.duration),
+                                       data = dfs$r1$recB)
+                    )
+
+                                       
+summary(fits$r1$cph.enter)
+summary(fits$r1$cph.recovery)
+summary(fits$r1$cph.return)
+
+# yay !!!
+```
+
+### coxph shelves
+
+```{r}
+fits$r1 <- list_assign(fits$r1, shelves = list())
+
+fits$r1$shelves <- list_assign(fits$r1$shelves,
+                               enterAdd = coxph(survObjs$r1$fromEnter ~ 
+                                                  trt.recover * as.factor(trt.duration) + shelf,
+                                                data = dfs$r1$recB),
+                               enterInt = coxph(survObjs$r1$fromEnter ~ 
+                                                  trt.recover * as.factor(trt.duration) * shelf,
+                                                data = dfs$r1$recB),
+                               recoverAdd = coxph(survObjs$r1$fromRecovery ~ 
+                                                  trt.recover * as.factor(trt.duration) + shelf,
+                                                data = dfs$r1$recB),
+                               recoverInt = coxph(survObjs$r1$fromRecovery ~ 
+                                                  trt.recover * as.factor(trt.duration) * shelf,
+                                                data = dfs$r1$recB),
+                               returnAdd = coxph(survObjs$r1$fromReturn ~ 
+                                                  trt.recover * as.factor(trt.duration) + shelf,
+                                                data = dfs$r1$recB),
+                               returnInt = coxph(survObjs$r1$fromReturn ~ 
+                                                  trt.recover * as.factor(trt.duration) * shelf,
+                                                data = dfs$r1$recB))
+
+
+summary(fits$r1$shelves$enterAdd)
+summary(fits$r1$shelves$enterInt)
+summary(fits$r1$shelves$recoverAdd)
+summary(fits$r1$shelves$recoverInt)
+summary(fits$r1$shelves$returnAdd)
+summary(fits$r1$shelves$returnInt)
+
+# ehh..
+```
+
+
+
+
+
 
 # ## cohort A only ##
 
