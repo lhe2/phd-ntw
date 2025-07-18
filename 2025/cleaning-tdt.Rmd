@@ -12,10 +12,14 @@ date: "2025-06-14"
 re-run script whenever the gsheets gets updated
 
 
+TODO
+
+- [ ] check if `dh.<timept>` and `jdate` stuff are consistent/same as each other LOL...
+
+
 # 1. load data & packages
 
 ```{r message = FALSE}
-
 library(tidyr)
 library(purrr)
 library(dplyr)
@@ -59,6 +63,11 @@ data <- data %>%
 data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = "&") 
   # replaces commas w/ &'s to avoid csv breakage after export
 
+# fixing recover time for that one group or r2 bugs bc otherwise it messes things up
+data <- data %>%
+  mutate(time.return = case_when(trt > 200 & date.hatch == "2025/7/7" & 
+                                   !is.na(date.return) ~ as.character(time.hatch),
+                                 TRUE ~ as.character(time.return)))
 ```
 
 column formatting, date-time fixing
@@ -81,16 +90,21 @@ data <- data %>%
          dh.return = as_datetime(paste(date.return, time.return), format = "%Y/%m/%d %H:%M"),
          dh.exit = case_when(!is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
                              !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M")),
+         
+         ## testing
          # jdied = as.numeric(as.Date(date.died, format = "%Y/%m/%d")),
          # hdied = lubridate::hour(as_datetime(dh.exit)),
          # mdied = lubridate::minute(as_datetime(dh.exit)),
          # mdied2 = mdied/60,
          # dhdied = jdied + hdied + mdied2,
          # dhdied2 = jdied + hdied/24 + mdied2/86400,
-         # test = as.numeric(dh.exit)/(3600*24)
+         # ddied = as.Date(date.died, format = "%Y/%m/%d"),
+         # test = as.numeric(dh.exit)/(3600*24),
+         # test2 = format(as.Date(date.died, format = "%Y/%m/%d"), "%j")
          ) %>% #View()
   mutate(across(starts_with("dh."), ~ 
-                  as.numeric(.)/(3600*24) # cuz as.numeric(date-time) gives u seconds
+                  #as.numeric(.) # i dont think i need any additional conversion... (cuz of the julian??)
+                  as.numeric(.)/(60*60*24) # convert to hours (nvm convert to days again cuz julian is in days)
                   #as.numeric(as.Date(., format = "%Y/%m/%d")) + lubridate::hour(.) + lubridate::minute(.)/60)
          )) #%>% View()
 

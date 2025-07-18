@@ -68,15 +68,16 @@ km <- list()
   # things that die before recovery/returning should be NA!!!!!
 km <- list_assign(km, data = data %>%
                     merge(., max) %>%
-                    mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 2,
+                    mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 1, 
+                                               # only do max+1 bc round B ctrls were culled after +1 day
                                                TRUE ~ dh.exit), 
                            
-                           ## standardise exit times by trt enter date (enter date = d0)
-                           # doesnt super make sense to start at hatch date..
-                           tt.enter = dh.enter - dh.enter,
-                           tt.recover = dh.recover - dh.enter,
-                           tt.return = dh.return - dh.enter,
-                           tt.exit = dh.exit - dh.enter) %>%
+                           ## standardise event times by trt enter date 
+                           ## (doesnt super make sense to start at hatch date..)
+                           day.enter = dh.enter - dh.enter,
+                           day.recover = dh.recover - dh.enter,
+                           day.return = dh.return - dh.enter,
+                           day.exit = dh.exit - dh.enter) %>%
                     
                     ## remove hot bugs that do not have fates (i.e. got lost or sth)
                     filter(!(trt >= 40 & is.na(fate)))
@@ -135,10 +136,13 @@ km <- list_assign(km, data = km$data %>% mutate(
                                                 # exit.fromrecover = dh.exit - dh.recover,
                                                 # exit.fromreturn = dh.exit - dh.return,
                                                 
-                                                exit.fromenter = tt.exit - tt.enter,
-                                                exit.fromrecover = tt.exit - tt.recover,
-                                                exit.fromreturn = tt.exit - tt.return,
-  
+                                                # calc exit times using days standardised by expt enter date
+                                                # (i.e. d0 = expt enter date)
+                                                exit.fromenter = day.exit - day.enter,
+                                                exit.fromrecover = day.exit - day.recover,
+                                                exit.fromreturn = day.exit - day.return,
+                                                
+                                                # some filtering binaries and labels
                                                 is.40C = case_when(trt.enter == 40 ~ "Y",
                                                                    TRUE ~ "N"),
                                                 is.ctrl = case_when(trt < 100 ~ "Y",
