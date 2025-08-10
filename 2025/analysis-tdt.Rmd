@@ -153,7 +153,7 @@ km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.re
 dfs$r1 <- list_assign(dfs$r1, 
                       allB = km$data %>% filter(cohort == "B"),
                       hotB = km$data %>% filter(is.40C == "Y"),
-                      recB = dfs$r1$allB %>% filter(trt.duration > 0))
+                      recB = km$data %>% filter(cohort == "B" & trt.duration > 0))
 ```
 
 ### km R2 only
@@ -162,13 +162,22 @@ dfs$r1 <- list_assign(dfs$r1,
 obj <- Surv(dfs$r1$allB$exit.fromenter, dfs$r1$allB$km.status)
 fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$r1$allB)
 
+group <- km$subsets$recs %>% 
+  group_by(cohort, trt.recover, trt.duration) %>% 
+  summarise(day.enter, day.recover, day.return) %>%
+  filter(cohort == "B") %>%
+  drop_na() %>% unique()
+
 ggsurvplot(fit, data = dfs$r1$allB,
            #facet.by = "trt.recover",
-           facet.by = "trt.duration"
+           facet.by = "trt.duration",
+           #color = "strata"
            ) +
-  geom_vline(xintercept = dfs$r1$allB$day.enter, color = "red") +
-  geom_vline(xintercept = dfs$r1$allB$day.recover, color = "skyblue") +
-  geom_vline(xintercept = dfs$r1$allB$day.return, color = "orange") +
+  geom_vline(data = group, aes(xintercept = group$day.enter), color = "red") +
+  geom_vline(data = group, aes(xintercept = group$day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = group$day.return), color = "orange") +
+  #scale_color_manual(values = c("#4B1D91", "#AB1488", "#ECC000", "#E7D39A")) + 
+  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) +  
   labs(caption = "R2 tdt, time = hrs from enter")
 ```
 
@@ -186,22 +195,35 @@ group <- km$subsets$recs %>%
   drop_na() %>% unique()
 
 ggsurvplot(fit, data = km$data,
-           facet.by = c("cohort", "trt.duration"),) +
-    geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
-      geom_vline(data = group, aes(xintercept = day.return), color = "orange") 
-  ## not sure why there's 2 return lines on cohort B/dur 48...
+           facet.by = c("cohort", "trt.duration")) +
+  geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
+  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) 
+
+  
+  ggsurvplot(fit, data = km$data,
+             facet.by = c("cohort", "trt.recover")) +
+  geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
+  scale_color_manual(values = c("orange", "skyblue", "#009E73"))
 
 
 ggsurvplot(fit, data = km$data,
-           facet.by = c("cohort", "trt.recover")) +
-    geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
-        geom_vline(data = group, aes(xintercept = day.return), color = "orange") 
-
-
-ggsurvplot(fit, data = km$data,
-           facet.by = "cohort") +
-    geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
-        geom_vline(data = group, aes(xintercept = day.return), color = "orange") 
+           facet.by = "cohort",
+           #palette = "jco",
+           #palette = c("red","blue", "red", "red", "red", "red", "red", "red", "red", "red"),
+           # palette = c("#4B1D91", "#4B1D91", "#4B1D91", "#00A3B6","#00A3B6","#00A3B6", "#F9C25C","#F9C25C","#F9C25C", "#A71B4B",
+           #             "#4B1D91", "#4B1D91", "#4B1D91", "#00A3B6","#00A3B6","#00A3B6", "#F9C25C","#F9C25C","#F9C25C", "#A71B4B"),
+           # linetype = c(1, 2, 3, 1, 2, 3, 1, 2, 3, 1,
+           #              1, 2, 3, 1, 2, 3, 1, 2, 3, 1)
+           linetype = "strata",
+           font.legend = c(5)
+           ) +
+  geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
+  scale_color_manual(values = c("#4B1D91", "#4B1D91", "#4B1D91", "#00A3B6","#00A3B6","#00A3B6", "#F9C25C","#F9C25C","#F9C25C", "#A71B4B")) +
+  scale_linetype_manual(values = c(2, 1, 3, 2, 1, 3, 2, 1, 3, 2,
+                                   2, 1, 3, 2, 1, 3, 2, 1, 3, 2)) # not quite lining up right due to the cohort strata..
 ```
 
 ### coxph trt durations
@@ -267,8 +289,157 @@ summary(fits$r1$shelves$returnInt)
 # ehh..
 ```
 
+### survival props
+
+#### attempt 2
+
+```{r}
+dfs$r1 <- list_assign(dfs$r1, survprop2 = dfs$r1$allB %>%
+                        calc.surv_ssB2(),
+                      survprop2a = dfs$r1$allB %>%
+                        calc.surv_ssB2a(),
+                      )
+```
+
+```{r}
+dfs$r1$survprop2 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived (cumulative)")
+
+dfs$r1$survprop2 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived (cumulative)") +
+  theme_bw()
+
+## not sure why 26 is jumping up at hs0 lol
+
+dfs$r1$survprop2 %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion died (cumulative)") +
+  theme_bw()
 
 
+dfs$r1$survprop2a %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.8, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion died (each timept)") +
+  theme_bw()
+
+```
+
+
+
+
+#### attempt 1
+
+```{r}
+dfs$r1 <- list_assign(dfs$r1, survprop = dfs$r1$allB %>%
+                        calc.surv_ssB()
+                      )
+```
+
+```{r}
+## TODO 2025-07-20 mull over these a little more... not sure if the math is right
+
+dfs$r1$survprop %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived")
+
+dfs$r1$survprop %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "return72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived")
+# 48h at 19C is better than the other temps; 24h is worse for 19C than the other temps ?
+# 48h seems to slow things down.. 
+```
 
 
 
