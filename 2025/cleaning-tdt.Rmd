@@ -53,7 +53,7 @@ data <- raw %>%
 
 # 2. content fixing and standardising
 
-filtering, value fixing
+filtering
 
 ```{r}
 # pull out accidentally culled before 3rd (fate = 2, instar.exit < 3)
@@ -62,12 +62,20 @@ data <- data %>%
 
 data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = "&") 
   # replaces commas w/ &'s to avoid csv breakage after export
+```
 
-# fixing recover time for that one group or r2 bugs bc otherwise it messes things up
+value fixing
+
+```{r}
+# editing time data for some bugs bc otherwise things are messed up:
+  # recovery time for the day 2 pm R2 bugs
+  # hatch time for day 3 R3 bugs
 data <- data %>%
   mutate(time.return = case_when(trt > 200 & date.hatch == "2025/7/7" & 
                                    !is.na(date.return) ~ as.character(time.hatch),
-                                 TRUE ~ as.character(time.return)))
+                                 TRUE ~ as.character(time.return))) %>%
+  mutate(time.enter = case_when(date.hatch == "2025/7/25" & trt == 26  ~ "12:00",
+                                TRUE ~ as.character(time.return)))
 ```
 
 column formatting, date-time fixing
@@ -199,7 +207,8 @@ write.csv(data, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today,
 
 # extract the useful stuff
 data <- data %>%
-  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate"))
+  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate", 
+           "mass.return", "h.return"))
 
 write.csv(data, file = paste0(here(bin_paths$y25$data), "/clean-working.csv"), row.names = FALSE)
 ```
