@@ -29,75 +29,15 @@ source(here::here("set-paths.R"))
 ```{r}
 # data import
 source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
+source(here(bin_paths$y25$root, "analysis-tdt_utils.R")) # helper functions
 
 ogkm <- km #bc i am very indecisive w how im handling my data lol
 ```
 
-
-
-## useful functions
-
-```{r}
-# calc status and dh at certain expt timepoints
-
-# TODO make a version for hours
-
-calc.timepointbins <- function(widedata){
-  widedata %>% 
-    mutate(dh.enter48 = dh.enter + 2,
-           dh.return48 = case_when(trt > 100 ~ dh.return + 2,
-                                   trt < 100 ~ dh.enter48 + 2),
-           
-           status.enter = case_when(dh.exit > dh.enter ~ 1,
-                                    TRUE ~ 0),
-           status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
-                                      TRUE ~ 0),
-           status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
-                                     trt < 100 ~ NA_real_,
-                                     TRUE ~ 0),
-           status.return48 = case_when(dh.exit > dh.return48 ~ 1,
-                                       TRUE ~ 0)) %>%
-    return()
-}
-```
-
-```{r}
-## calc counts and surv props
-calc.surv_ss <- function(widedata){
-  widedata %>%
-    #dfs2$r1$allB %>% # tester data
-    calc.timepointbins() %>%
-    group_by(trt.duration, trt.recover) %>%
-    summarise(n.surv.enter = sum(status.enter == 1),
-              n.surv.enter48 = sum(status.enter48 == 1),
-              n.surv.return = sum(status.return == 1),
-              n.surv.return48 = sum(status.return48 == 1),
-              n.died.enter = sum(status.enter == 0),
-              n.died.enter48 = sum(status.enter48 == 0 & status.enter == 1),
-              n.died.return = sum(status.return == 0 & status.enter48 == 1),
-              n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter48 == 1),
-                                          TRUE ~ sum(status.return48 == 0 & status.return == 1)),
-              
-              prop.surv.enter48 = n.surv.enter48/n.surv.enter,
-              prop.surv.return = n.surv.return/n.surv.enter48,
-              prop.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.surv.enter48,
-                                             TRUE ~ n.surv.return48/n.surv.return),
-              prop.died.enter48 = 1 - prop.surv.enter48,
-              prop.died.return = 1 - prop.surv.return,
-              prop.died.return48 = 1 - prop.surv.return48) %>%
-    pivot_longer(cols = starts_with(c("n.", "prop")),
-                 names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
-    unique()
-}
-```
-
-
-
-
 ## TODOS & notes
 
 - 2025-07-16
-  - [ ] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
+  - [>] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
   - [ ] figure out when my bugs start to enter in the km viz lol 😵‍💫 
     - (idk if t0 = hatch or enter... also if the standardising is alrdy accounted for lol)
     
@@ -441,6 +381,7 @@ dfs$r1$survprop %>%
 # 48h seems to slow things down.. 
 ```
 
+======
 
 
 # ## cohort A only ##
