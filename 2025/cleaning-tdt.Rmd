@@ -78,7 +78,8 @@ data <- data %>%
                                 TRUE ~ as.character(time.return)))
 ```
 
-column formatting, date-time fixing
+
+column formatting & date-time fixing
 
 ```{r}
 data <- data %>%
@@ -183,6 +184,7 @@ data <- data %>%
   mutate(across(starts_with("date."), as.Date, "%Y/%m/%d")) %>%
   mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric)) %>%
+  # consolidate died/culled into "exit"
   mutate(jdate.exit = case_when(!is.na(jdate.culled) ~ jdate.culled,
                                 !is.na(jdate.died) ~ jdate.died)) %>%
   select(-c(jdate.died, jdate.culled))
