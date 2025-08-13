@@ -37,6 +37,7 @@ calc.timepointbins_days <- function(widedata){
 
 # (symmetry around 24h bc i culled B after 24h after the last 40 died)
 
+# (new timept names)
 calc.timepointbins_hoursB2 <- function(widedata){
   widedata %>% 
     mutate(#dh.enter = dh.enter,
@@ -116,6 +117,47 @@ calc.timepointbins_hoursA <- function(widedata){
 
 
 # calc counts and surv props ---------------------------
+
+# adds grouping by cohort
+calc.surv_ssB2b <- function(widedata){
+  widedata %>%
+    #dfs$r1$allB %>% # tester data
+    calc.timepointbins_hoursB2() %>% #View()
+    group_by(cohort, trt, trt.duration, trt.recover) %>%
+    summarise(n.surv.enter = sum(status.enter == 1),
+              n.surv.enter24 = sum(status.enter24 == 1),
+              n.surv.hs0 = sum(status.hs0 == 1),
+              n.surv.hs24 = sum(status.hs24 == 1),
+              n.surv.hs48 = sum(status.hs48 == 1),
+              n.surv.hs72 = sum(status.hs72 == 1),
+              
+              # count death if dead at current timept but alive at previous major timept
+              n.died.enter24 = sum(status.enter24 == 0),
+              n.died.hs0 = sum(status.hs0 == 0 & status.enter24 == 1),
+              n.died.hs24 = case_when(trt.duration == 0 ~ sum(status.hs24 == 0 & status.enter24 == 1),
+                                      TRUE ~ sum(status.hs24 == 0 & status.hs0 == 1)),
+              n.died.hs48 = case_when(trt.duration == 0 ~ sum(status.hs48 == 0 & status.enter24 == 1),
+                                      TRUE ~ sum(status.hs48 == 0 & status.hs24 == 1)),
+              n.died.hs72 = case_when(trt.duration == 0 ~ sum(status.hs72 == 0 & status.enter24 == 1),
+                                      TRUE ~ sum(status.hs72 == 0 & status.hs48 == 1)),
+              
+              # prop surv = alive at current timept/total entering initial timept
+              prop.surv.enter24 = n.surv.enter24/n.surv.enter,
+              prop.surv.hs0 = n.surv.hs0/n.surv.enter24,
+              prop.surv.hs24 = case_when(trt.duration == 0 ~ n.surv.hs24/n.surv.enter24,
+                                         TRUE ~ n.surv.hs24/n.surv.hs0),
+              prop.surv.hs48 = n.surv.hs48/n.surv.hs24,
+              prop.surv.hs72 = n.surv.hs72/n.surv.hs48,
+              
+              prop.died.enter24 = 1 - prop.surv.enter24,
+              prop.died.hs0 = 1 - prop.surv.hs0,
+              prop.died.hs24 = 1 - prop.surv.hs24,
+              prop.died.hs48 = 1 - prop.surv.hs48,
+              prop.died.hs72 = 1 - prop.surv.hs72) %>%
+    pivot_longer(cols = starts_with(c("n.", "prop")),
+                 names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
+    unique()
+}
 
 calc.surv_ssB2a <- function(widedata){
   widedata %>%

@@ -24,12 +24,12 @@ library(here)
 
 source(here::here("set-paths.R"))
 #source(here::here(bin_paths$y25, "compare-dev_p.R"))
+source(here(bin_paths$y25$root, "analysis-tdt_utils.R")) # helper functions
 ```
 
 ```{r}
 # data import
 source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
-source(here(bin_paths$y25$root, "analysis-tdt_utils.R")) # helper functions
 
 ogkm <- km #bc i am very indecisive w how im handling my data lol
 ```
@@ -47,14 +47,285 @@ notes
 - 2025-07-17 re: jdate vs dh
   - cohort B: after updates to cleaning script, `dh` is calculated in days (should be hours, ideally)... jdate is calculated in days (so just be careful w axes)
   - this will probably break some of the cohort A analyses lol
+  
+## df prep
+```{r some data prep}
+# stole this from cohort B fups to use for cohort B and onwards analyses bc it works well
+
+km <- list_assign(km, data =  ogkm$data %>%
+                    mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
+
+## TODO:BUG some cohort C individs are breaking with negative exit times
+km$data <- km$data %>%
+  mutate(exit.fromenter = case_when(exit.fromenter < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromenter)),
+         exit.fromrecover = case_when(exit.fromrecover < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromrecover)),
+         exit.fromreturn = case_when(exit.fromreturn < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromreturn)))
+
+km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
+                                     expts = filter(km$data, trt.enter != trt.recover),
+                                     only40 = filter(km$data, trt.enter == 40),
+                                     recs = filter(km$data, trt > 40),
+                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
+                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+```
+
+
+=====
+
+# ## R3 analyses ##
+
+includes cohort B + C
+
+```{r}
+for (l in c("survObjs", "fits")) {
+  assign(l, list())
+}
+```
+
+```{r}
+dfs <- list_assign(dfs, 
+                   all = km$data %>% filter(cohort != "A"),
+                   hot = km$data %>% filter(is.40C == "Y"),
+                   rec = km$data %>% filter(cohort != "A" & trt.duration > 0),
+                   group = km$data %>% filter(cohort != "A" & trt.duration > 0) %>%
+                     group_by(cohort, trt.recover, trt.duration) %>% 
+                     summarise(day.enter, day.recover, day.return) %>%
+                     drop_na() %>% unique()
+                   )
+```
+```{r}
+dfs <- list_assign(dfs, 
+                   onlyC = km$data %>% filter(cohort == "C"),
+                   recC = km$data %>% filter(cohort == "C" & trt.recover > 0))
+```
+
+## 2025-08-11 pre mtg
+
+### kms R3
+
+```{r}
+# expt + ctrls
+obj <- Surv(dfs$all$exit.fromenter, dfs$all$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$all)
+
+ggsurvplot(fit, data = dfs$all,
+           #facet.by = "trt.recover",
+           facet.by = c("cohort", "trt.duration")
+           #facet.by = "trt.duration"
+           #color = "strata"
+           ) +
+  geom_vline(data = dfs$group, aes(xintercept = day.enter), color = "red") +
+  geom_vline(data = dfs$group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = dfs$group, aes(xintercept = day.return), color = "orange") +
+  #scale_color_manual(values = c("#4B1D91", "#AB1488", "#ECC000", "#E7D39A")) + 
+  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) +  
+  labs(caption = "R2-3 tdts, time = hrs from enter")
+```
+
+
+### coxph trts (B+C)
+
+```{r}
+survObjs <- list_assign(survObjs, r1 = list())
+fits <- list_assign(fits, r1 = list())
+```
+
+```{r}
+# B + C
+survObjs$r1 <- list_assign(survObjs$r1,
+                            fromEnter = Surv(dfs$rec$exit.fromenter, dfs$rec$km.status),
+                            fromRecovery = Surv(dfs$rec$exit.fromrecover, dfs$rec$km.status),
+                            fromReturn = Surv(dfs$rec$exit.fromreturn, dfs$rec$km.status)
+                            )
+
+fits$r1 <- list_assign(fits$r1,
+                    cph.enter = coxph(survObjs$r1$fromEnter ~ trt.recover * as.factor(trt.duration), 
+                                      data = dfs$rec),
+                    cph.recovery = coxph(survObjs$r1$fromRecovery ~ trt.recover * as.factor(trt.duration), 
+                                         data = dfs$rec),
+                    cph.return = coxph(survObjs$r1$fromReturn ~ trt.recover * as.factor(trt.duration),
+                                       data = dfs$rec)
+                    )
+
+                                       
+summary(fits$r1$cph.enter)
+summary(fits$r1$cph.recovery)
+summary(fits$r1$cph.return)
+```
+### coxph trts (C only)
+```{r}
+survObjs$r1 <- list_assign(survObjs$r1,
+                            fromEnter = Surv(dfs$recC$exit.fromenter, dfs$recC$km.status),
+                            fromRecovery = Surv(dfs$recC$exit.fromrecover, dfs$recC$km.status),
+                            fromReturn = Surv(dfs$recC$exit.fromreturn, dfs$recC$km.status)
+                            )
+
+## duration as factor -- leads to NAs
+fits$r1 <- list_assign(fits$r1,
+                    cph.enter = coxph(survObjs$r1$fromEnter ~ trt.recover * as.factor(trt.duration), 
+                                      data = dfs$recC),
+                    cph.recovery = coxph(survObjs$r1$fromRecovery ~ trt.recover * as.factor(trt.duration), 
+                                         data = dfs$recC),
+                    cph.return = coxph(survObjs$r1$fromReturn ~ trt.recover * as.factor(trt.duration),
+                                       data = dfs$recC)
+                    )
+
+                                       
+summary(fits$r1$cph.enter)
+summary(fits$r1$cph.recovery)
+summary(fits$r1$cph.return)
+```
+
+```{r}
+## fits as numeric
+fits$r1 <- list_assign(fits$r1,
+                    cph.enter = coxph(survObjs$r1$fromEnter ~ trt.recover * trt.duration, 
+                                      data = dfs$recC),
+                    cph.recovery = coxph(survObjs$r1$fromRecovery ~ trt.recover * trt.duration, 
+                                         data = dfs$recC),
+                    cph.return = coxph(survObjs$r1$fromReturn ~ trt.recover * trt.duration,
+                                       data = dfs$recC)
+                    )
+
+                                       
+summary(fits$r1$cph.enter)
+summary(fits$r1$cph.recovery)
+summary(fits$r1$cph.return)
+```
+
+```{r}
+dfs <- list_assign(dfs, r1 = list())
+
+dfs$r1 <- list_assign(dfs$r1, 
+                      survprop1 = dfs$all %>%
+                        calc.surv_ssB2(),
+                      survprop1a = dfs$all %>%
+                        calc.surv_ssB2a(),
+                      survprop1b = dfs$all %>%
+                        calc.surv_ssB2b(), ## cohort splits
+                      )
+```
+
+```{r}
+# (just blindly copied over code from surv props B attempt 2)
+
+dfs$r1$survprop1 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion survived (cumulative)")
+
+dfs$r1$survprop1 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion survived (cumulative)") +
+  theme_bw()
+
+dfs$r1$survprop1a %>% # comment out cohort facet
+# dfs$r1$survprop1b %>% # to use with cohort facet
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(#cohort
+             ~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion died (cumulative)") +
+  theme_bw()
+
+
+dfs$r1$survprop1a %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.8, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion died (each timept)") +
+  theme_bw()
+
+## the above but with cohort facet (comment out the other cohort as needed for faceting)
+dfs$r1$survprop1b %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(cohort, 
+                                 trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.8, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(cohort
+             ~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion died (each timept)") +
+  theme_bw()
+
+```
+
+
+======
 
 # ## cohort B fups ##
 
 ```{r}
 dfs <- list()
-
 survObjs <- list()
-
 fits <- list()
 ```
 
@@ -79,16 +350,17 @@ fits <- list_assign(fits, r1 = list())
 ```
 
 ```{r}
-# actual conversion to decimal hours of km data
-km <- list_assign(km, data =  ogkm$data %>%
-                    mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
-
-km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
-                                     expts = filter(km$data, trt.enter != trt.recover),
-                                     only40 = filter(km$data, trt.enter == 40),
-                                     recs = filter(km$data, trt > 40),
-                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
-                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+# moved this up
+# # actual conversion to decimal hours of km data
+# km <- list_assign(km, data =  ogkm$data %>%
+#                     mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
+# 
+# km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
+#                                      expts = filter(km$data, trt.enter != trt.recover),
+#                                      only40 = filter(km$data, trt.enter == 40),
+#                                      recs = filter(km$data, trt > 40),
+#                                      rec24 = filter(km$data, trt == 40 | trt.duration == 24),
+#                                      rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
 
 dfs$r1 <- list_assign(dfs$r1, 
                       allB = km$data %>% filter(cohort == "B"),

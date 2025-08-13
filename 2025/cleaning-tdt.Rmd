@@ -75,7 +75,7 @@ data <- data %>%
                                    !is.na(date.return) ~ as.character(time.hatch),
                                  TRUE ~ as.character(time.return))) %>%
   mutate(time.enter = case_when(date.hatch == "2025/7/25" & trt == 26  ~ "12:00",
-                                TRUE ~ as.character(time.return)))
+                                TRUE ~ as.character(time.enter)))
 ```
 
 
