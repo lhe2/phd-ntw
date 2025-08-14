@@ -32,16 +32,16 @@ library(survival) # for fitting
 library(survminer) # for plotting
 
 # pathfinding
-here::i_am("2025/tdt-analysis/viz.Rmd")
+here::i_am("2025/tdt/analysis-viz.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
-source(here(bin_paths$y25$root, "analysis-tdt_utils.R")) # helper functions
+source(here(bin_paths$y25$tdt, "analysis-utils.R")) # helper functions
 ```
 
 ```{r}
 # data import
-source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
+source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 
 ogkm <- km #bc i am very indecisive w how im handling my data lol
 ```

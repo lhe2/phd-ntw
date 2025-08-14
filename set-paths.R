@@ -7,7 +7,9 @@ here::i_am("set-paths.R")
 library(here)
 
 bin_paths <- list(y25 = list(root = here("2025"),
-                             data = here("2025", "data")),
+                             tdt = here("2025", "tdt"),
+                             tdt-data = here("2025", "tdt", "data"),
+                             ),
                   
                   y24 = list(root = here("2024"),
                              data = here("2024", "data"),

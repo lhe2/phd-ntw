@@ -26,7 +26,7 @@ library(dplyr)
 library(lubridate) # for handling time stuff
 library(googlesheets4)
 
-here::i_am("2025/cleaning-tdt.Rmd")
+here::i_am("2025/tdt/cleaning.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
@@ -204,15 +204,15 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 ```{r}
 # export
 # TODO convert these to here() later
-write.csv(raw, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today, "_raw.csv"), row.names = FALSE)
-write.csv(data, file = paste0("~/Documents/repos/ntw/2025/data/archive/", today, "_clean-full.csv"), row.names = FALSE)
+write.csv(raw, file = paste0("~/Documents/repos/ntw/2025/tdt/data/archive/", today, "_raw.csv"), row.names = FALSE)
+write.csv(data, file = paste0("~/Documents/repos/ntw/2025/tdt/data/archive/", today, "_clean-full.csv"), row.names = FALSE)
 
 # extract the useful stuff
 data <- data %>%
   select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate", 
            "mass.return", "h.return"))
 
-write.csv(data, file = paste0(here(bin_paths$y25$data), "/clean-working.csv"), row.names = FALSE)
+write.csv(data, file = paste0(here(bin_paths$y25$tdt-data), "/clean-working.csv"), row.names = FALSE)
 ```
 
 remove troubleshooting objects

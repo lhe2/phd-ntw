@@ -15,21 +15,21 @@ final code is purled to a `.R` script, manually rerun `purl()` as needed to upda
 # run manually when new wrangle script is needed (will overwrite the existing .R)
 
 # purls the current .Rmd file
-knitr::purl("wrangle-tdt.Rmd", "wrangle-tdt_p.R")
+knitr::purl("wrangle.Rmd", "wrangle_p.R")
 
 # creates an archive of the current .Rmd file
-here::i_am("2025/wrangle-tdt.Rmd")
+here::i_am("2025/tdt/wrangle.Rmd")
 library(here)
 source(here::here("set-paths.R"))
-knitr::purl("wrangle-tdt.Rmd", paste0(here(bin_paths$y25$root), 
-                                      "/wrangle-archive/", format(Sys.time(), "%y%m%d"), "_wrangle-tdt_p.R"))
+knitr::purl("wrangle.Rmd", paste0(here(bin_paths$y25$tdt), 
+                                      "/wrangle-archive/", format(Sys.time(), "%y%m%d"), "_wrangle_p.R"))
 ```
 
 
 # 1. loading
 
 ```{r about, echo=TRUE, eval = TRUE}
-# wrangle-tdt.R
+# tdt/wrangle.R
 
 # knitted wrangling code for 2025 tdt data
 # source() this in corresponding analysis scripts.
@@ -47,7 +47,7 @@ library(tidyverse)
 ```
 
 ```{r load data}
-data <- read.csv(here(bin_paths$y25$data, "clean-working.csv"), header = TRUE)
+data <- read.csv(here(bin_paths$y25$tdt-data, "clean-working.csv"), header = TRUE)
 ```
 
 # 2. prep for km
