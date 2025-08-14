@@ -5,11 +5,6 @@ date: "2025-06-16"
 
 # # preamble & loading
 
-combined viz/stats for tdt stuff until i can be bothered to split them apart
-
-(as of 2025-07-16 this is really just a bunch of EDA)
-
-
 ```{r}
 # libraries
 library(tidyverse)
@@ -98,7 +93,7 @@ dfs <- list_assign(dfs,
                    recC = km$data %>% filter(cohort == "C" & trt.recover > 0))
 ```
 
-## 2025-08-11 pre mtg
+## = 2025-08-11 pre mtg
 
 ### coxph trts (B+C)
 
@@ -186,8 +181,8 @@ summary(fits$r1$cph.return)
 
 # # R2 
 
-= 2025-07-16 first pass (cohort B fups)
-  - going to rerun analyses from cohort A just focusing on cohort B data
+## = 2025-07-16 cohort B fups
+- going to rerun analyses from cohort A just focusing on cohort B data
 
 TODO
 
@@ -361,7 +356,7 @@ tldr shelf effect outweighs trt effect...
 
 
 
-## - 2025-06-22 coxph attempts
+## = 2025-06-22 coxph attempts
 
 - todo
   - [x] shelf effects: look at starting exit-fromenter...

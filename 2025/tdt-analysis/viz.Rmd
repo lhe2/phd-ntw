@@ -67,7 +67,7 @@ km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.re
 
 # # R3
 
-## 2025-08-11 pre mtg
+## = 2025-08-11 pre mtg
 
 ### kms 
 
@@ -221,7 +221,9 @@ dfs$r1$survprop1b %>%
 
 # # R2
 
-2025-07-16 cohort B only
+## = 2025-07-16 cohort B fups
+
+cohort B only
 
 ```{r}
 dfs <- list_assign(dfs, r1 = list())
@@ -232,7 +234,7 @@ dfs$r1 <- list_assign(dfs$r1,
                       recB = km$data %>% filter(cohort == "B" & trt.duration > 0))
 ```
 
-## km R2 only
+### km R2 only
 ```{r}
 # survfit doesnt like lists lol
 obj <- Surv(dfs$r1$allB$exit.fromenter, dfs$r1$allB$km.status)
@@ -257,7 +259,7 @@ ggsurvplot(fit, data = dfs$r1$allB,
   labs(caption = "R2 tdt, time = hrs from enter")
 ```
 
-## km both rounds 
+### km both rounds 
 
 ```{r}
 obj <- Surv(km$data$exit.fromenter, km$data$km.status)
@@ -303,9 +305,9 @@ ggsurvplot(fit, data = km$data,
 ```
 
 
-## survival props
+### survival props
 
-### attempt 2
+#### attempt 2
 
 ```{r}
 dfs$r1 <- list_assign(dfs$r1, survprop2 = dfs$r1$allB %>%
@@ -401,8 +403,7 @@ dfs$r1$survprop2a %>%
 
 ```
 
-
-### attempt 1
+#### attempt 1
 
 ```{r}
 dfs$r1 <- list_assign(dfs$r1, survprop = dfs$r1$allB %>%
@@ -459,7 +460,7 @@ dfs$r1$survprop %>%
 
 R1 is handled too differently so its analysis stuff gets moved here
 
-## df prep
+## = df prep
 
 ```{r}
 # set up surv objects
