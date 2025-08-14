@@ -1,47 +1,30 @@
 # analysis-tdt_utils.R
 # 2025-08-09
 
-# helper functions for tdt data analyses
+# info ---------------------------
 
-# psa i am rlly indecisive abt creating these things,
-# (and kept running into a lot of errors) -- 
-# so any "new" versions of fns should be placed on top of the previous one
+# helper/utility functions for tdt data analyses
+
+# usage
+## internal utils = for use within this script
+## external utils = for use in analysis/viz scripts
+## newer versions of fns should be written above of the previous one as they are developed
 
 # TODO
-  # is to go clean this up LOL... (maybe need to consolidate some of the more outdated stuff together,
-    # e.g. cohort A things...)
-  # also could make further functions of some of the calcs (bc the main thing that changes each time is the grouping)
   # rename things to what they are instead of just "B" and "B2" lol
 
 
-# calc status and dh at certain expt timepoints ---------------------------
 
-# _days = time in days
-# _hours = time in hours. generally use this one
+# internal utils ---------------------------
 
-calc.timepointbins_days <- function(widedata){
-  widedata %>% 
-    mutate(dh.enter48 = dh.enter + 2,
-           dh.return48 = case_when(trt > 100 ~ dh.return + 2,
-                                   trt < 100 ~ dh.enter48 + 2),
-           
-           status.enter = case_when(dh.exit > dh.enter ~ 1,
-                                    TRUE ~ 0),
-           status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
-                                      TRUE ~ 0),
-           status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
-                                     trt < 100 ~ NA_real_,
-                                     TRUE ~ 0),
-           status.return48 = case_when(dh.exit > dh.return48 ~ 1,
-                                       TRUE ~ 0)) %>%
-    return()
-}
-## for cohort B+ data (symmetrical around 24h) ---------------------------
+## survival status coding --------------------------------------------------
 
+# codes status and dh at specified expt timepoints 
+# for use with cohort B+ data (symmetrical around 24h)
 # (symmetry around 24h bc i culled B after 24h after the last 40 died)
 
-# (new timept names)
-calc.timepointbins_hoursB2 <- function(widedata){
+# timept names (in hrs) based off hs
+int.code.survbins_hoursB2 <- function(widedata){
   widedata %>% 
     mutate(#dh.enter = dh.enter,
       dh.enter24 = case_when(trt < 100 ~ dh.enter + 24,
@@ -69,7 +52,8 @@ calc.timepointbins_hoursB2 <- function(widedata){
     return()
 }
 
-calc.timepointbins_hoursB <- function(widedata){
+# timept names (in hrs) based off enter/returning from recovery
+int.code.survbins_hoursB <- function(widedata){
   widedata %>% 
     mutate(dh.enter24 = case_when(trt > 100 ~ dh.recovery,
                                   trt < 100 ~ dh.enter + 24),
@@ -94,38 +78,12 @@ calc.timepointbins_hoursB <- function(widedata){
     return()
 }
 
-## for cohort A data only (symmetrical around 48h) ---------------------------
-calc.timepointbins_hoursA <- function(widedata){
-  widedata %>% 
-    mutate(dh.enter48 = dh.enter + 48,
-           dh.return48 = case_when(trt > 100 ~ dh.return + 48,
-                                   trt < 100 ~ dh.enter48 + 48),
-           dh.return72 = case_when(trt > 100 ~ dh.return + 72,
-                                   trt < 100 ~ dh.enter48 + 72),
-           
-           status.enter = case_when(dh.exit > dh.enter ~ 1,
-                                    TRUE ~ 0),
-           status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
-                                      TRUE ~ 0),
-           status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
-                                     trt < 100 ~ NA_real_,
-                                     TRUE ~ 0),
-           status.return48 = case_when(dh.exit > dh.return48 ~ 1,
-                                       TRUE ~ 0),
-           status.return72 = case_when(dh.exit > dh.return72 ~ 1,
-                                       TRUE ~ 0)) %>%
-    return()
-}
 
+## summary stats counts ----------------------------------------------------
 
-
-# calc counts and surv props ---------------------------
-
-### the below all use hours
-
-# the generic survival stats counter/summariser + pivoter function
-  # sth is breaking in here tho based off my line plots... (bc things are going down)
-count_n_pivot <- function(data){
+# generic survival stats counter/summariser + pivoter function
+  # TODO sth is breaking in here tho based off my line plots... (bc things are going down)
+int.ss.count_n_pivot <- function(widedata){
   summarise(n.surv.enter = sum(status.enter == 1),
             n.surv.enter24 = sum(status.enter24 == 1),
             n.surv.return = sum(status.return == 1),
@@ -158,40 +116,95 @@ count_n_pivot <- function(data){
             prop.died.return24 = 1 - prop.surv.return24,
             prop.died.return48 = 1 - prop.surv.return48,
             prop.died.return72 = 1 - prop.surv.return72) %>%
+    
     pivot_longer(cols = starts_with(c("n.", "prop")),
                  names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
     unique()
 }
 
+## archive -----------------------------------------------------------------
+
+## timepoints (hrs) for cohort A data only (symmetrical around 48h) 
+  ## not actually used anywhere bc see the R1 viz code for development of this function
+  ## TODO so maybe clean up the R1 viz code so this one can be used?
+# code.survbins_hoursA <- function(widedata){
+#   widedata %>% 
+#     mutate(dh.enter48 = dh.enter + 48,
+#            dh.return48 = case_when(trt > 100 ~ dh.return + 48,
+#                                    trt < 100 ~ dh.enter48 + 48),
+#            dh.return72 = case_when(trt > 100 ~ dh.return + 72,
+#                                    trt < 100 ~ dh.enter48 + 72),
+#            
+#            status.enter = case_when(dh.exit > dh.enter ~ 1,
+#                                     TRUE ~ 0),
+#            status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
+#                                       TRUE ~ 0),
+#            status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
+#                                      trt < 100 ~ NA_real_,
+#                                      TRUE ~ 0),
+#            status.return48 = case_when(dh.exit > dh.return48 ~ 1,
+#                                        TRUE ~ 0),
+#            status.return72 = case_when(dh.exit > dh.return72 ~ 1,
+#                                        TRUE ~ 0)) %>%
+#     return()
+# }
+
+## calc timepoints in days
+  ## not actually used anywhere...
+# code.timepointbins_days <- function(widedata){
+#   widedata %>% 
+#     mutate(dh.enter48 = dh.enter + 2,
+#            dh.return48 = case_when(trt > 100 ~ dh.return + 2,
+#                                    trt < 100 ~ dh.enter48 + 2),
+#            
+#            status.enter = case_when(dh.exit > dh.enter ~ 1,
+#                                     TRUE ~ 0),
+#            status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
+#                                       TRUE ~ 0),
+#            status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
+#                                      trt < 100 ~ NA_real_,
+#                                      TRUE ~ 0),
+#            status.return48 = case_when(dh.exit > dh.return48 ~ 1,
+#                                        TRUE ~ 0)) %>%
+#     return()
+# }
+
+
+
+# external utils ---------------------------
+
+## surv summary stat df generation ---------------------------
+
+# generating summary stats by different groups
 # adds grouping by cohort
 calc.surv_ssB2b <- function(widedata){
   widedata %>%
     #dfs$r1$allB %>% # tester data
-    calc.timepointbins_hoursB2() %>% #View()
+    int.code.survbins_hoursB2() %>% #View()
     group_by(cohort, trt, trt.duration, trt.recover) %>%
-    count_n_pivot()
+    int.ss.count_n_pivot()
 }
 
 calc.surv_ssB2a <- function(widedata){
   widedata %>%
     #dfs$r1$allB %>% # tester data
-    calc.timepointbins_hoursB2() %>% #View()
+    int.code.survbins_hoursB2() %>% #View()
     group_by(trt, trt.duration, trt.recover) %>%
-    count_n_pivot()
+    int.ss.count_n_pivot()
 }
 
 calc.surv_ssB2 <- function(widedata){
   widedata %>%
     #dfs$r1$allB %>% # tester data
-    calc.timepointbins_hoursB2() %>% #View()
+    int.code.survbins_hoursB2() %>% #View()
     group_by(trt, trt.duration, trt.recover) %>%
-    count_n_pivot()
+    int.ss.count_n_pivot()
 }
 
 calc.surv_ssB <- function(widedata){
   widedata %>%
     #dfs$r1$allB %>% # tester data
-    calc.timepointbins_hoursB() %>% #View()
+    int.code.survbins_hoursB() %>% #View()
     group_by(trt, trt.duration, trt.recover) %>%
-    count_n_pivot()
+    int.ss.count_n_pivot()
 }
