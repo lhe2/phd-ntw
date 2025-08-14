@@ -44,5 +44,9 @@ notes/*
 */figs/*
 */data/*
 *_p.R
-*/archive/*
 */products/*
+*/archive/*
+
+# sigh
+2025/*/data/*
+2025/*/figs/*
