@@ -4,20 +4,8 @@
 .RData
 .Ruserdata
 =======
-# root folder
-archive/*
-notes/*
-
-# elsewhere
-*/figs/*
-*/data/*
-*_p.R
-*/archive/*
-*/products/*
-
 # html notebook outputs
 *.nb.html
-
 # History files
 .Rhistory
 .Rapp.history
@@ -47,3 +35,14 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 >>>>>>> b18d659151ab2a9fb345881f6d430cff20f3a211
+
+# root folder
+archive/*
+notes/*
+
+# elsewhere
+*/figs/*
+*/data/*
+*_p.R
+*/archive/*
+*/products/*
