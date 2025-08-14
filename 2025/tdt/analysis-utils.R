@@ -7,8 +7,11 @@
 # (and kept running into a lot of errors) -- 
 # so any "new" versions of fns should be placed on top of the previous one
 
-# todo is to go clean this up LOL... (maybe need to consolidate some of the more outdated stuff together,
-# e.g. cohort A things...)
+# TODO
+  # is to go clean this up LOL... (maybe need to consolidate some of the more outdated stuff together,
+    # e.g. cohort A things...)
+  # also could make further functions of some of the calcs (bc the main thing that changes each time is the grouping)
+  # rename things to what they are instead of just "B" and "B2" lol
 
 
 # calc status and dh at certain expt timepoints ---------------------------

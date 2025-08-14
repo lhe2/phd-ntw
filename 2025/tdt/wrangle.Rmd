@@ -109,7 +109,8 @@ km <- list_assign(km, data = km$data %>% mutate(
                                                 trt.recover = case_when(is.na(trt.recover) ~ trt.enter,
                                                                         TRUE ~ trt.recover),
                                                 trt.lab = formatC(trt, width = 3, flag = "0")
-                                                )
+                                                ) %>%
+                   # mutate(starts_with("exit") ~ case_when(. < 0, ~ NA_real_)) ## WIP
                   )
 
 

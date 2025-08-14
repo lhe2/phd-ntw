@@ -34,6 +34,8 @@ ogkm <- km #bc i am very indecisive w how im handling my data lol
   - [>] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
   - [ ] figure out when my bugs start to enter in the km viz lol 😵‍💫 
     - (idk if t0 = hatch or enter... also if the standardising is alrdy accounted for lol)
+- 2025-08-13
+  - ARCHIVE whatever is left of this sheet lol when done
     
     
 notes
@@ -90,7 +92,7 @@ dfs <- list_assign(dfs,
 ```{r}
 dfs <- list_assign(dfs, 
                    onlyC = km$data %>% filter(cohort == "C"),
-                   recC = km$data %>% filter(cohort == "C" & trt.recover > 0))
+                   recC = km$data %>% filter(cohort == "C" & trt.duration > 0))
 ```
 
 ## = 2025-08-11 pre mtg
@@ -167,9 +169,11 @@ summary(fits$r1$cph.return)
 
 
 
+### coxph shelves (tbd)
 
 
 
+### coxph masses at recovery (tbd)
 
 
 
