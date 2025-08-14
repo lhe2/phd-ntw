@@ -1,0 +1,1739 @@
+---
+title: "viz"
+date: "2025-08-14"
+---
+
+# # preamble
+
+- 2025-07-16
+  - [>] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
+- 2025-07-17 re: jdate vs dh
+  - cohort B: after updates to cleaning script, `dh` is calculated in days (should be hours, ideally)... jdate is calculated in days (so just be careful w axes)
+  - this will probably break some of the cohort A analyses lol
+  
+  
+- WIP TO MOVE
+  - R1 df prep (move to its own section in R1)
+  - R1: kms 06-22
+  - R1: km redos (06-27)
+  - R1: surv props
+  - R2/3 df prep
+  - R2 kms
+  - R2: surv props
+  - R3: kms
+  - R3: surv props
+
+## loading
+
+```{r}
+# libraries
+library(tidyverse)
+library(survival) # for fitting 
+library(survminer) # for plotting
+
+# pathfinding
+here::i_am("2025/tdt-analysis/viz.Rmd")
+library(here)
+
+source(here::here("set-paths.R"))
+source(here(bin_paths$y25$root, "analysis-tdt_utils.R")) # helper functions
+```
+
+```{r}
+# data import
+source(here(bin_paths$y25$root, "wrangle-tdt_p.R"))
+
+ogkm <- km #bc i am very indecisive w how im handling my data lol
+```
+
+## df prep
+```{r}
+km <- list_assign(km, data =  ogkm$data %>%
+                    mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
+
+## TODO:BUG some cohort C individs are breaking with negative exit times
+km$data <- km$data %>%
+  mutate(exit.fromenter = case_when(exit.fromenter < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromenter)),
+         exit.fromrecover = case_when(exit.fromrecover < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromrecover)),
+         exit.fromreturn = case_when(exit.fromreturn < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromreturn)))
+
+km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
+                                     expts = filter(km$data, trt.enter != trt.recover),
+                                     only40 = filter(km$data, trt.enter == 40),
+                                     recs = filter(km$data, trt > 40),
+                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
+                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+```
+
+# # R3
+
+## 2025-08-11 pre mtg
+
+### kms 
+
+```{r}
+# expt + ctrls
+obj <- Surv(dfs$all$exit.fromenter, dfs$all$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$all)
+
+ggsurvplot(fit, data = dfs$all,
+           #facet.by = "trt.recover",
+           facet.by = c("cohort", "trt.duration")
+           #facet.by = "trt.duration"
+           #color = "strata"
+           ) +
+  geom_vline(data = dfs$group, aes(xintercept = day.enter), color = "red") +
+  geom_vline(data = dfs$group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = dfs$group, aes(xintercept = day.return), color = "orange") +
+  #scale_color_manual(values = c("#4B1D91", "#AB1488", "#ECC000", "#E7D39A")) + 
+  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) +  
+  labs(caption = "R2-3 tdts, time = hrs from enter")
+```
+
+### survival props
+
+```{r}
+dfs <- list_assign(dfs, r1 = list())
+
+dfs$r1 <- list_assign(dfs$r1, 
+                      survprop1 = dfs$all %>%
+                        calc.surv_ssB2(),
+                      survprop1a = dfs$all %>%
+                        calc.surv_ssB2a(),
+                      survprop1b = dfs$all %>%
+                        calc.surv_ssB2b(), ## cohort splits
+                      )
+```
+
+```{r}
+# (just blindly copied over code from surv props B attempt 2)
+
+dfs$r1$survprop1 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion survived (cumulative)")
+
+dfs$r1$survprop1 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion survived (cumulative)") +
+  theme_bw()
+
+dfs$r1$survprop1a %>% # comment out cohort facet
+# dfs$r1$survprop1b %>% # to use with cohort facet
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(#cohort
+             ~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion died (cumulative)") +
+  theme_bw()
+
+
+dfs$r1$survprop1a %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.8, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion died (each timept)") +
+  theme_bw()
+
+## the above but with cohort facet (comment out the other cohort as needed for faceting)
+dfs$r1$survprop1b %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(cohort, 
+                                 trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.8, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(cohort
+             ~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "R2+3 proportion died (each timept)") +
+  theme_bw()
+
+```
+
+=====
+
+# # R2
+
+2025-07-16 cohort B only
+
+```{r}
+dfs <- list_assign(dfs, r1 = list())
+
+dfs$r1 <- list_assign(dfs$r1, 
+                      allB = km$data %>% filter(cohort == "B"),
+                      hotB = km$data %>% filter(is.40C == "Y"),
+                      recB = km$data %>% filter(cohort == "B" & trt.duration > 0))
+```
+
+## km R2 only
+```{r}
+# survfit doesnt like lists lol
+obj <- Surv(dfs$r1$allB$exit.fromenter, dfs$r1$allB$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$r1$allB)
+
+group <- km$subsets$recs %>% 
+  group_by(cohort, trt.recover, trt.duration) %>% 
+  summarise(day.enter, day.recover, day.return) %>%
+  filter(cohort == "B") %>%
+  drop_na() %>% unique()
+
+ggsurvplot(fit, data = dfs$r1$allB,
+           #facet.by = "trt.recover",
+           facet.by = "trt.duration",
+           #color = "strata"
+           ) +
+  geom_vline(data = group, aes(xintercept = group$day.enter), color = "red") +
+  geom_vline(data = group, aes(xintercept = group$day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = group$day.return), color = "orange") +
+  #scale_color_manual(values = c("#4B1D91", "#AB1488", "#ECC000", "#E7D39A")) + 
+  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) +  
+  labs(caption = "R2 tdt, time = hrs from enter")
+```
+
+## km both rounds 
+
+```{r}
+obj <- Surv(km$data$exit.fromenter, km$data$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = km$data)
+```
+
+```{r}
+group <- km$subsets$recs %>% 
+  group_by(cohort, trt.recover, trt.duration) %>% 
+  summarise(day.recover, day.return) %>%
+  drop_na() %>% unique()
+
+ggsurvplot(fit, data = km$data,
+           facet.by = c("cohort", "trt.duration")) +
+  geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
+  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) 
+
+  
+  ggsurvplot(fit, data = km$data,
+             facet.by = c("cohort", "trt.recover")) +
+  geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
+  scale_color_manual(values = c("orange", "skyblue", "#009E73"))
+
+
+ggsurvplot(fit, data = km$data,
+           facet.by = "cohort",
+           #palette = "jco",
+           #palette = c("red","blue", "red", "red", "red", "red", "red", "red", "red", "red"),
+           # palette = c("#4B1D91", "#4B1D91", "#4B1D91", "#00A3B6","#00A3B6","#00A3B6", "#F9C25C","#F9C25C","#F9C25C", "#A71B4B",
+           #             "#4B1D91", "#4B1D91", "#4B1D91", "#00A3B6","#00A3B6","#00A3B6", "#F9C25C","#F9C25C","#F9C25C", "#A71B4B"),
+           # linetype = c(1, 2, 3, 1, 2, 3, 1, 2, 3, 1,
+           #              1, 2, 3, 1, 2, 3, 1, 2, 3, 1)
+           linetype = "strata",
+           font.legend = c(5)
+           ) +
+  geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
+  scale_color_manual(values = c("#4B1D91", "#4B1D91", "#4B1D91", "#00A3B6","#00A3B6","#00A3B6", "#F9C25C","#F9C25C","#F9C25C", "#A71B4B")) +
+  scale_linetype_manual(values = c(2, 1, 3, 2, 1, 3, 2, 1, 3, 2,
+                                   2, 1, 3, 2, 1, 3, 2, 1, 3, 2)) # not quite lining up right due to the cohort strata..
+```
+
+
+## survival props
+
+### attempt 2
+
+```{r}
+dfs$r1 <- list_assign(dfs$r1, survprop2 = dfs$r1$allB %>%
+                        calc.surv_ssB2(),
+                      survprop2a = dfs$r1$allB %>%
+                        calc.surv_ssB2a(),
+                      )
+```
+
+```{r}
+dfs$r1$survprop2 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived (cumulative)")
+
+dfs$r1$survprop2 %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived (cumulative)") +
+  theme_bw()
+
+## not sure why 26 is jumping up at hs0 lol
+
+dfs$r1$survprop2 %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion died (cumulative)") +
+  theme_bw()
+
+
+dfs$r1$survprop2a %>%
+  filter(status == "died") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.8, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion died (each timept)") +
+  theme_bw()
+
+```
+
+
+### attempt 1
+
+```{r}
+dfs$r1 <- list_assign(dfs$r1, survprop = dfs$r1$allB %>%
+                        calc.surv_ssB()
+                      )
+```
+
+```{r}
+## TODO 2025-07-20 mull over these a little more... not sure if the math is right
+
+dfs$r1$survprop %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived")
+
+dfs$r1$survprop %>%
+  filter(status == "surv") %>%
+  filter(trt >= 40) %>% #View()
+  #filter(timept != "return72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)
+  drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = prop, 
+             color = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  geom_text(aes(label = n),
+            vjust = 1.5, show.legend = FALSE) +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived")
+# 48h at 19C is better than the other temps; 24h is worse for 19C than the other temps ?
+# 48h seems to slow things down.. 
+```
+
+=====
+
+# # R1 archive
+
+R1 is handled too differently so its analysis stuff gets moved here
+
+## df prep
+
+```{r}
+# set up surv objects
+survObj <- list()
+
+# model fits
+fits <- list()
+
+# for dfs
+testing <- list()
+
+km <- ogkm
+```
+
+## 2025-06-27 post mtg fups
+
+TODO
+
+- [ ] look at survival props for 48h intervals
+- [ ] reviz km relative to recovery times...
+
+### look at surv props
+
+#### attempt 3
+
+2025-06-29
+
+```{r}
+## code survival
+testing <- list_assign(testing, r3 = list())
+
+
+testing$r3 <- list_assign(testing$r3, df = km$data %>%
+                         filter(is.40C == "Y") %>%
+                         mutate(# ctrls should not have return/recover times
+                                # dh.recover = case_when(trt < 100 ~ NA_real_,
+                                #                        TRUE ~ dh.recover),
+                                # dh.return = case_when(trt < 100 ~ NA_real_,
+                                #                       TRUE ~ dh.return),
+                                
+                                dh.enter48 = dh.enter + 2,
+                                dh.return48 = case_when(trt > 100 ~ dh.return + 2,
+                                                        trt < 100 ~ dh.enter48 + 2),
+                                
+                                status.enter = case_when(dh.exit > dh.enter ~ 1,
+                                                         TRUE ~ 0),
+                                status.enter48 = case_when(dh.exit > dh.enter48 ~ 1,
+                                                           TRUE ~ 0),
+                                status.return = case_when(trt > 100 & dh.exit > dh.return ~ 1,
+                                                          trt < 100 ~ NA_real_,
+                                                          TRUE ~ 0),
+                                status.return48 = case_when(dh.exit > dh.return48 ~ 1,
+                                                            TRUE ~ 0)
+                         ))
+
+```
+
+##### attempt 3.6 (pt plot **)
+
+making point plots
+
+```{r}
+testing$r3 <- list_assign(testing$r3, 
+                          countsw = testing$r3$df %>% 
+                            group_by(trt.duration, trt.recover) %>%
+                            summarise(n.enter = sum(status.enter == 1),
+                                      n.enter48 = sum(status.enter48 == 1),
+                                      n.return = sum(status.return == 1),
+                                      n.return48 = sum(status.return48 == 1)))
+
+testing$r3 <- list_assign(testing$r3,
+                          countsl = testing$r3$countsw %>%
+                            pivot_longer(cols = starts_with("n."),
+                                         names_to = c(".value", "timept"), 
+                                         names_sep = "\\."))
+
+testing$r3 <- list_assign(testing$r3, ss6 = 
+                          testing$r3$countsl %>%
+  # mutate(grp.trtdur = paste0(trt.recover, "_", trt.duration),
+  #        grp.durtime = paste0(trt.duration, "_", timept)) %>%
+  group_by(trt.recover) %>% mutate(tot.trt = sum(n, na.rm = TRUE)) %>% 
+  group_by(trt.duration) %>% mutate(tot.dur = sum(n, na.rm = TRUE)) %>%
+  group_by(timept) %>% mutate(tot.timept = sum(n, na.rm = TRUE)) %>%
+  group_by(trt.recover, trt.duration) %>% mutate(tot.trtdur = sum(n, na.rm = TRUE)) %>%
+  group_by(trt.recover, timept) %>% mutate(tot.trttime = sum(n, na.rm = TRUE)) %>%
+  group_by(trt.duration, timept) %>% mutate(tot.durtime = sum(n, na.rm = TRUE)) %>%
+  mutate(across(starts_with("tot."), ~ na_if(., 0))) %>%
+  #select(-n) %>%
+  unique()
+  )
+
+
+testing$r3 <- list_assign(testing$r3, ss6b = 
+                            testing$r3$countsw %>%
+                            group_by(trt.duration, trt.recover) %>%
+                            mutate(prop.surv.enter48 = n.enter48/n.enter,
+                                   prop.surv.return = n.return/n.enter48,
+                                   prop.surv.return48 = case_when(trt.duration == 0 ~ n.return48/n.enter48,
+                                                                  TRUE ~ n.return48/n.return),
+                                   prop.died.enter48 = 1 - prop.surv.enter48,
+                                   prop.died.return = 1 - prop.surv.return,
+                                   prop.died.return48 = 1 - prop.surv.return48,
+                                   ) %>% 
+                            pivot_longer(cols = starts_with(c("prop")),
+                                         names_to = c(".value", "status", "timept"), names_sep = "\\.") %>% 
+                            mutate(n = case_when(timept == "enter48" ~ n.enter,
+                                                 timept == "return" ~ n.enter48,
+                                                 timept == "return48" ~ 
+                                                   case_when(trt.duration == 0 ~ n.enter48,
+                                                             TRUE ~ n.return)),
+                                   se = sqrt((prop * (1 - prop))/ n)
+                                   ## no se for proportions lol
+                                   ) %>%
+                            select(-starts_with("n.")) #%>% View()
+)
+
+```
+
+```{r}
+testing$r3$ss6b %>%
+  mutate(trt.recover = factor(trt.recover, levels = c(19, 26, 33, 40)),
+         trt.duration = factor(trt.duration)) %>%
+  filter(status == "died") %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             color = trt.duration,
+             group = trt.duration)) +
+  geom_point() +
+  geom_line() +
+  #geom_errorbar(aes(ymin = prop -  se, ymax = prop + se)) +
+  facet_grid(~timept, drop = TRUE)
+
+testing$r3$ss6b %>%
+  mutate(trt.recover = factor(trt.recover, levels = c(19, 26, 33, 40)),
+         trt.duration = factor(trt.duration)) %>%
+  filter(status == "died",
+         timept != "enter48"
+         #trt.recover != 40
+         ) %>%
+  drop_na() %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             color = trt.duration,
+             group = trt.duration)) +
+  geom_text(aes(label = n), vjust = -0.5, hjust = -0.2,
+            show.legend = FALSE) + 
+  geom_point() +
+  geom_line() +
+  #geom_errorbar(aes(ymin = prop -  se, ymax = prop + se)) +
+  facet_grid(~timept, drop = TRUE, scales = "free",
+             labeller = as_labeller(c(`return` = "0h after recovery",
+                                   `return48` = "48h after recovery"))) +
+  ylim(c(0, 1)) +
+  labs(y = "proportion died",
+       caption = "n = initial N")
+```
+
+
+```{r eval = FALSE}
+### not quite right but getting there...
+  ### would be way easier to just make a fig per timept then combine the timepts later??
+
+testing$r3$countsw %>%
+  mutate(prop = n.enter48/n.enter,
+         trt.recover = factor(trt.recover),
+         trt.duration = factor(trt.duration)) %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             lty = trt.duration,
+             group = trt.duration)) +
+  geom_point() +
+  geom_line()
+
+
+testing$r3$ss6 %>%
+  filter(timept != "enter") %>%
+  ### maybe just summarise on the fly...
+  mutate(trt.recover = factor(trt.recover),
+         trt.duration = factor(trt.duration),
+         prop = n/tot.trttime) %>%
+  ggplot(aes(y = prop, x = trt.recover,
+             lty = trt.duration,
+             group = interaction(trt.duration)
+             )) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~timept)
+
+```
+
+
+##### attempt 3.5
+
+```{r}
+# trying to just get the raw counts
+
+testing$r3 <- list_assign(testing$r3, counts = testing$test3 %>% 
+                            select(c(trt.duration, trt.recover, starts_with("status"))) %>%
+                            pivot_longer(cols = starts_with("status"),
+                                         names_to = c(".value", "timept"),
+                                         names_sep = "\\.") %>%
+                            drop_na() %>%
+                            mutate(status = case_when(status == 1 ~ "surv",
+                                                      status == 0 ~ "died"))
+                          )
+
+```
+
+```{r}
+testing$r3$counts %>%
+  ggplot(aes(x = timept, fill = interaction(status, trt.recover))) +
+  geom_bar(position = "fill") +
+  facet_grid(~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+testing$r3$counts %>%
+  ggplot(aes(x = timept, fill = interaction(status, trt.duration))) +
+  geom_bar(position = "fill") +
+  facet_grid(~trt.recover, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+testing$r3$counts %>%
+  ggplot(aes(x = as.factor(trt.recover), fill = interaction(status, trt.duration))) +
+  geom_bar(position = "fill") +
+  facet_grid(~timept, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45))
+
+## this is it (more or less. needs some sample size #s in there, also missing the 24/48 LOL...)
+  # tmp %>% # counts data
+  # select(-c(trt.recover, contains(c("surv", "died")))) %>% 
+  #   unique() %>% 
+  #   summarise(enter = sum(n.tot.enter), 
+  #             enter48 = sum(n.tot.enter48), 
+  #             return = sum(n.tot.return, na.rm = TRUE), 
+  #             return48 = sum(n.tot.return48))
+
+testing$r3$counts %>%
+  filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  mutate(status = factor(status, levels = c("surv", "died"))) %>%
+  ggplot(aes(x = status, 
+             fill = interaction(trt.recover))) +
+  geom_bar(position = "fill") +
+  facet_grid(~timept, scales = "free",
+             labeller = as_labeller(c(`enter` = "enter (N = 303)", `enter48` = "enter48 (N = 161)",
+                                      `return` = "return (N = 109)", `return48` = "return48 (N = 68)"))) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  scale_fill_manual(values = c("#8DA0CB", "#66C2A5", "#E78AC3", "#FC8D62")) + # RColorBrewer::brewer.pal(4, "Set2")
+  theme_bw()
+
+
+### kinda better...
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(#x = interaction(as.factor(trt.duration), status), 
+             #fill = as.factor(trt.recover)),
+             x = interaction(trt.duration, trt.recover),
+             fill = interaction(status, trt.recover)
+         ))+
+  geom_bar(position = "fill") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             ~timept,
+             scales = "free",
+             # labeller = as_labeller(c(`enter` = "enter (N = 303)", `enter48` = "enter48 (N = 161)",
+             #                          `return` = "return (N = 109)", `return48` = "return48 (N = 68)"))
+             ) +
+  scale_x_discrete(guide = guide_axis(angle = 45), # _manual if only changing the guides
+                   labels = c("24h", "48h", "24h", "48h", "24h", "48h", "0h")
+                   ) +
+  scale_fill_manual(values = c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", 
+                               "#FDBF6F", "#FF7F00", "#FB9A99", "#E31A1C")) + # RColorBrewer::brewer.pal(8, "Paired")
+  labs(y = "survival outcome", x = "recovery duration (h)", fill = "outcome x test temperature") +
+  theme_bw()
+
+
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(#x = interaction(as.factor(trt.duration), status), 
+             #fill = as.factor(trt.recover)),
+             x = trt.duration,
+             fill = trt.recover,
+             alpha = status,
+             group = interaction(status, trt.recover)
+         ))+
+  geom_bar(position = "fill") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             ~timept,
+             scales = "free",
+             # labeller = as_labeller(c(`enter` = "enter (N = 303)", `enter48` = "enter48 (N = 161)",
+             #                          `return` = "return (N = 109)", `return48` = "return48 (N = 68)"))
+             ) +
+  # scale_x_discrete(guide = guide_axis(angle = 45), # _manual if only changing the guides
+  #                  labels = c("24h", "48h", "24h", "48h", "24h", "48h", "0h")
+  #                  ) +
+  scale_fill_manual(values = c("#8DA0CB", "#66C2A5", "#E78AC3", "#FC8D62")) +
+  scale_alpha_manual(values = c(0.7, 1)) +
+  labs(y = "survival outcome", x = "recovery duration (h)", fill = "test temperature") +
+  theme_bw()
+
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(#x = interaction(as.factor(trt.duration), status), 
+             #fill = as.factor(trt.recover)),
+             x = trt.recover,
+             fill = trt.duration,
+             alpha = status,
+             #group = interaction(status, trt.recover)
+         ))+
+  geom_bar(position = "fill") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             ~timept,
+             scales = "free",
+             ) +
+  scale_fill_manual(values = c( "#FC8D62","#66C2A5", "#8DA0CB")) +
+  scale_alpha_manual(values = c(0.68, 1)) +
+  labs(y = "survival outcome", x = "test temperature",
+       fill = "recovery duration (h)", 
+       alpha = "survival outcome"
+       ) +
+  theme_bw()
+
+### meh not rlly it
+testing$r3$counts %>%
+  #filter(!(timept == "enter" & trt.recover == 40 & status == "died")) %>%
+  filter(timept != "enter") %>%
+  mutate(status = factor(status, levels = c("surv", "died")),
+         trt.duration = factor(trt.duration, levels = c("0", "24", "48")),
+         trt.recover = factor(trt.recover)) %>%
+  ggplot(aes(
+             #x = interaction(status, trt.duration),
+             x = trt.duration,
+             fill = trt.recover,
+             #group = interaction(status, trt.recover)
+         ))+
+  geom_bar(#position = "fill",
+           stat = "count", position = "dodge") +
+  facet_grid(#~interaction(trt.duration, timept), # interesting but also a Lot
+             status~timept,
+             scales = "free", space = "free" ## for this to work it needs to be with geom_col on the summed data rip
+             ) +
+  #scale_fill_manual(values = c( "#FC8D62","#66C2A5", "#8DA0CB")) +
+  labs(y = "survival outcome", x = "test temperature",
+       fill = "recovery duration (h)", 
+       alpha = "survival outcome"
+       ) +
+  scale_fill_manual(values = c("#8DA0CB", "#66C2A5", "#E78AC3", "#FC8D62")) +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  theme_bw()
+```
+
+
+##### attempt 3.4 (**)
+
+```{r}
+testfn.surv_ss4b <- function(longdata) {
+  
+  counts <- longdata %>%
+    #tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1)) %>%
+    group_by(trt.duration, trt.recover) %>%
+    mutate(n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1),
+           n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0 & status.enter == 1),
+           n.died.return = sum(status.return == 0 & status.enter48 == 1),
+           n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter48 == 1),
+                                       TRUE ~ sum(status.return48 == 0 & status.return == 1))) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    unique() %>% ungroup()
+  
+  ## calc props
+  survprops <- counts %>%
+    select(-contains("died")) %>%
+    unique() %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") 
+  
+  diedprops <- counts %>%
+    #tmp %>%
+    select(-contains("surv")) %>% 
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = n.died.return/n.tot.enter48,
+           p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+                                       TRUE ~ n.died.return48/n.tot.return)) %>%
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") #%>% View()
+  
+  ss <- merge(survprops, diedprops, all = TRUE)
+  
+  ss <- counts %>%
+    #tmp %>%
+        pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") %>%
+    unique() %>% #View()
+    merge(., ss, all = TRUE)
+}
+
+#testfn.surv_ss4b(testing$r3$df) %>% View()
+
+testing$r3 <- list_assign(testing$r3, ss4b = testfn.surv_ss4b(testing$r3$df))
+
+```
+
+
+```{r}
+testing$r3$ss4b %>%
+  drop_na() %>%
+  ggplot(aes(x = timept, y = p, 
+             #fill = interaction(trt.recover, status), # this works but its a lot
+             fill = as.factor(trt.recover), alpha = status
+             )) +
+  geom_col() +
+  scale_alpha_manual(values = c(1, 0.6)) +
+  facet_grid(~trt.duration) +
+  theme_minimal()
+
+
+testing$r3$ss4b %>%
+  drop_na() %>%
+  ggplot(aes(x = interaction(timept), y = p, 
+             #fill = interaction(trt.recover, status), # this works but its a lot
+             fill = status,
+             )) +
+  geom_col() +
+  scale_alpha_manual(values = c(1, 0.6)) +
+  facet_grid(~trt.recover) +
+  #facet_grid(~trt.duration) +
+  theme_minimal()
+```
+
+
+
+```{r}
+## colors deaths @ trt (i.e. lumps surivors)
+testfn.surv_ss4a <- function(longdata) {
+  
+  counts <- longdata %>%
+    #tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1),
+           n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1)) %>%
+    group_by(trt.duration, trt.recover) %>%
+    mutate(n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0 & status.enter == 1),
+           n.died.return = sum(status.return == 0 & status.enter48 == 1),
+           n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter48 == 1),
+                                       TRUE ~ sum(status.return48 == 0 & status.return == 1))) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    unique() %>% ungroup()
+  
+  ## calc props
+  survprops <- counts %>%
+    select(-c(trt.recover, contains("died"))) %>%
+    unique() %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    select(c(trt.duration, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") 
+  
+  diedprops <- counts %>%
+    #tmp %>%
+    select(-contains("surv")) %>% 
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = n.died.return/n.tot.enter48,
+           p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+                                       TRUE ~ n.died.return48/n.tot.return)) %>%
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") #%>% View()
+    
+  ## merges
+  counts <- counts %>%
+    #tmp <- tmp %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.")
+  
+  miscs <- counts %>%
+    filter(status != "surv") %>%
+    merge(., diedprops) %>%
+    filter(status != "surv") %>%
+    select(-status)
+    
+  survs <- counts %>%
+    filter(status == "surv") %>%
+    merge(., survprops, all = TRUE) %>%
+    select(-trt.recover) %>%
+    rename(trt.recover = "status") %>%
+    unique()
+  
+  ss <- merge(survs, miscs, all = TRUE)
+   
+   return(ss)
+} 
+
+testing$r3 <- list_assign(testing$r3, ss4a = testfn.surv_ss4a(testing$r3$df))
+
+```
+
+```{r}
+testing$r3$ss4a %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~trt.duration) +
+  labs(fill = "test temp (if died)", ## i.e. purple are survivors
+       ) 
+
+
+testing$r3$ss4a %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = as.factor(trt.duration), y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~timept) +
+  labs(fill = "test temp (if died)", ## i.e. purple are survivors
+       ) 
+```
+
+
+
+```{r}
+## colors survivors @ trt (i.e. lumps deaths)
+testfn.surv_ss4 <- function(longdata) {
+  
+  counts <- longdata %>%
+    #tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1),,
+           # n.tot2.enter = sum(!is.na(status.enter)),
+           # n.tot2.enter48 = sum(!is.na(status.enter48)),
+           # n.tot2.return = sum(!is.na(status.return)),
+           # n.tot2.return48 = sum(!is.na(status.return48)),
+           n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0 & status.enter == 1),
+           n.died.return = sum(status.return == 0 & status.enter48 == 1),
+           n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter48 == 1),
+                                       TRUE ~ sum(status.return48 == 0 & status.return == 1))) %>%
+    group_by(trt.duration, trt.recover) %>%
+    mutate(n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1)) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    unique() %>% ungroup()
+  
+  ## calc props
+  survprops <- counts %>%
+    select(-contains("died")) %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") 
+  
+  diedprops <- counts %>%
+    #tmp %>%
+    select(-c(trt.recover, contains("surv"))) %>% 
+    unique() %>% #View() %>%
+      ### troubleshooting counts
+    # pivot_longer(cols = starts_with(c("n.")),
+    #              names_prefix = "n\\.",
+    #              names_to = c(".value", "timept"), names_sep ="\\.") %>% View()
+    #group_by(trt.duration) %>%
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = n.died.return/n.tot.enter48,
+           p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+                                       TRUE ~ n.died.return48/n.tot.return)) %>%
+    select(c(trt.duration, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") #%>% View()
+    
+  ## merges
+  counts <- counts %>%
+    #tmp <- tmp %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.")
+  
+  survs <- counts %>%
+    filter(status == "surv") %>%
+    merge(., survprops) %>%
+    filter(status == "surv") %>%
+    select(-status)
+    
+  miscs <- counts %>%
+    filter(status != "surv") %>%
+    merge(., diedprops, all = TRUE) %>%
+    select(-trt.recover) %>%
+    rename(trt.recover = "status") %>%
+    unique()
+  
+  ss <- merge(survs, miscs, all = TRUE)
+   
+   return(ss)
+} 
+
+testing$r3 <- list_assign(testing$r3, ss4 = testfn.surv_ss4(testing$r3$df))
+
+```
+
+
+```{r}
+# filter(testing$r3$ss4,
+#        trt.duration == 24 & timept %in% c("enter48", "return")) #%>% View()
+
+testing$r3$ss4 %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~trt.duration)
+
+
+testing$r3$ss4 %>%
+  filter(trt.recover != "tot") %>%
+  drop_na() %>%
+  ggplot(aes(x = as.factor(trt.duration), y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~timept)
+  
+```
+
+
+##### attempt 3.3
+```{r eval=FALSE}
+testfn.surv_ss3 <- function(longdata) {
+  
+  counts <- longdata %>%
+    tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(n.tot.enter = sum(status.enter == 1),
+           n.tot.enter48 = sum(status.enter48 == 1),
+           n.tot.return = sum(status.return == 1),
+           n.tot.return48 = sum(status.return48 == 1),
+           n.died.enter = sum(status.enter == 0),
+           n.died.enter48 = sum(status.enter48 == 0),
+           n.died.return = sum(status.return == 0),
+           n.died.return48 = sum(status.return48 == 0)) %>%
+    ungroup() %>% group_by(trt.duration, trt.recover) %>%
+    mutate(n.surv.enter = sum(status.enter == 1),
+           n.surv.enter48 = sum(status.enter48 == 1),
+           n.surv.return = sum(status.return == 1),
+           n.surv.return48 = sum(status.return48 == 1)) %>%
+    select(c(trt.duration, trt.recover, starts_with("n."))) %>% 
+    ungroup() %>% unique() #%>% View()
+
+props <- counts %>%
+  tmp2 <- tmp %>%
+    mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+           p.surv.return = n.surv.return/n.tot.enter48,
+           p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.tot.enter48,
+                                     TRUE ~ n.surv.return48/n.tot.return)) %>%
+    group_by(trt.duration) %>%
+    mutate(p.died.enter48 = n.died.enter48/n.tot.enter,
+           p.died.return = 1 - p.surv.return,
+           p.died.return48 = 1 - p.surv.return48,
+           # p.died.return = n.died.return/n.tot.enter48,
+           # p.died.return48 = case_when(trt.duration == 0 ~ n.died.return48/n.tot.enter48,
+           #                           TRUE ~ n.died.return48/n.tot.return),
+           
+           # p.died.enter48 = 1 - n.tot.enter48/n.tot.enter,
+           # p.died.return = 1 - n.tot.return/n.tot.enter48,
+           # p.died.return48 = case_when(trt.duration == 0 ~ 1 - n.tot.return48/n.tot.enter48,
+           #                           TRUE ~ 1 - n.tot.return48/n.tot.return)
+           ) %>%
+    #group_by(trt.recover) %>%
+    # mutate(p.surv.enter48 = n.surv.enter48/n.tot.enter,
+    #        p.surv.return = n.surv.return/n.tot.enter48,
+    #        p.surv.return48 = case_when(trt.duration == 0 ~ n.tot.return48/n.tot.enter48,
+    #                                  TRUE ~ n.surv.return48/n.tot.return),
+           # p.surv.enter48 = n.surv.enter48/n.surv.enter,
+           # p.surv.return = n.surv.return/n.surv.enter48,
+           # p.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.surv.enter48,
+           #                           TRUE ~ n.surv.return48/n.surv.return)) %>%
+    ungroup() %>% unique() %>% 
+    select(c(trt.duration, trt.recover, starts_with("p."))) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.") %>% View()
+  
+  counts <- counts %>%
+  tmp <- tmp %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "status", "timept"),
+                 names_sep = "\\.")
+
+  ### separating survival and death #s   
+  survs <- merge(counts, props) %>%
+    filter(status == "surv") %>%
+    select(-status)
+    
+  miscs <- merge(counts, props, all = TRUE) %>%
+    
+    filter(status != "surv") %>%
+    select(-trt.recover) %>%
+    rename(trt.recover = "status") %>%
+    unique()
+  
+  ss <- merge(survs, miscs, all = TRUE)
+   
+   return(ss)
+} 
+
+testing$r3 <- list_assign(testing$r3, ss3 = testfn.surv_ss3(testing$r3$df))
+
+```
+
+
+```{r eval=FALSE}
+filter(testing$r3$ss3,
+       trt.duration == 24 & timept %in% c("enter48", "return")) %>% View()
+
+testing$r3$ss3 %>%
+  filter(trt.recover != "tot") %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~trt.duration)
+```
+
+
+
+##### attempt 3.2
+```{r eval=FALSE}
+## figure out survivors at each time pt
+testfn.surv_ss2 <- function(longdata){
+  
+  ## survivors
+  totalsurv <- longdata %>%
+    tmp <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    mutate(tot.enter = sum(status.enter == 1),
+           tot.enter48 = sum(status.enter48 == 1),
+           tot.return = sum(status.return == 1),
+           tot.return48 = sum(status.return48 == 1),
+           ) %>%
+    group_by(trt.recover) %>%
+    mutate(n.enter = sum(status.enter == 1),
+           n.enter48 = sum(status.enter48 == 1),
+           n.return = sum(status.return == 1),
+           n.return48 = sum(status.return48 == 1)) %>%
+    select(c(trt.duration, trt.recover, starts_with(c("tot.", "n.")))) %>%
+    unique() %>%
+    ungroup() %>% View()
+  
+  propsurv <- totalsurv %>% 
+    #### ok this is overcounting a bit cuz its counting w/in each trt.recover.... i think
+    #### but i think "totalsruv" was done corerectly...
+    
+    
+    #tmp %>%
+    group_by(trt.duration, trt.recover) %>%
+    summarise(p.enter48 = n.enter48/n.enter,
+              p.return = n.return/n.enter48,
+              p.return48 = case_when(trt.duration == 0 ~ n.return48/n.enter48,
+                                  TRUE ~ n.return48/n.return),
+    ) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "timept"), names_sep = "\\.",
+                 values_drop_na = TRUE)%>%
+    mutate(trt.recover = as.character(trt.recover)) #%>% View()
+  
+  ## died
+  totaldied <- longdata %>%
+    #tmp3 <- testing$test3 %>%
+    group_by(trt.duration) %>%
+    summarise(n.enter = sum(status.enter == 0),
+           n.enter48 = sum(status.enter48 == 0),
+           n.return = sum(status.return == 0),
+           n.return48 = sum(status.return48 == 0)) #%>% View()
+  
+  propdied <- totalsurv %>% 
+    #tmp2 <- tmp %>%
+    group_by(trt.duration) %>%
+    mutate(tot.enter = sum(n.enter),
+              tot.enter48 = sum(n.enter48),
+              tot.return = sum(n.return),
+              tot.return48 = sum(n.return48)) %>% #View()
+    mutate(ps.enter48 = tot.enter48/tot.enter,
+              ps.return = tot.return/tot.enter48,
+              ps.return48 = case_when(trt.duration == 0 ~ tot.return48/tot.enter48,
+                                  TRUE ~ tot.return48/tot.return)) %>% #View()
+    summarise(p.enter48 = 1 - ps.enter48,
+              p.return = 1 - ps.return,
+              p.return48 = 1- ps.return48) %>% #View()
+        pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "timept"), names_sep = "\\.",
+                 #values_drop_na = TRUE
+                 ) %>%
+    mutate(trt.recover = "died") #%>% View()
+   
+  ### pivot totals
+  totalsurv <- totalsurv %>%
+        pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "timept"), names_sep = "\\.") %>%
+    mutate(trt.recover = as.character(trt.recover))
+    
+  totaldied <- totaldied %>%
+    #tmp4 <- tmp3 %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "timept"), names_sep = "\\.",
+                 values_drop_na = TRUE) %>%
+    mutate(trt.recover = "died") #%>% View()
+  
+  ### merge
+  sssurv <- merge(totalsurv, propsurv,
+                  by = c("trt.duration", "trt.recover", "timept"),
+                  #all.x = TRUE,
+                  all = TRUE
+                  )
+  
+  ssdied <- merge(totaldied, propdied,
+                  #tmp2, tmp4,
+                   by = c("trt.recover", 
+                          "trt.duration", "timept"),
+                  #all.x = TRUE,
+                  all = TRUE
+                  ) #%>% View()
+  
+  ss <- rbind(sssurv, ssdied) %>% 
+    mutate(p = case_when(is.na(p) ~ 0,
+                         TRUE ~ p)) %>%
+    unique()
+  
+  return(ss)
+
+}
+
+testing$r3 <- list_assign(testing$r3, ss2 = testfn.surv_ss2(testing$r3$df))
+```
+
+```{r eval=FALSE}
+  # ggplot(aes(y = p, x = interaction(pop, trt), fill = stage)) +
+  # geom_bar(position = "stack", 
+  #          #position = position_fill(reverse = TRUE),
+  #          stat = "identity") + 
+  # facet_grid(~interaction(pop,year), scale = "free", 
+  #            #labeller = as_labeller(interaction(pop,year) = c("field 2023", "lab 2023", "field 2024", "lab 2024"))
+  #            ) +
+
+testing$r3$ss2 %>%
+  ggplot(aes(x = timept, y = p, fill = trt.recover)) +
+  geom_col(stat = "identity") +
+  facet_grid(~trt.duration, drop = TRUE)
+
+filter(testing$r3$ss2,
+       trt.duration == 24 & timept == "enter48") %>% View()
+
+```
+
+
+##### attempt 3.1
+```{r eval=FALSE}
+#### ok so pmd needs to be treated as its own "trt" lol (for the fill)
+testfn.surv_ss <- function(longdata){
+  
+  totals <- longdata %>%
+    group_by(trt, trt.duration, trt.recover) %>%
+    summarise(#n.initial = n(), # dont rly need bc we mostly just care abt "enter"
+              n.enter = sum(status.enter == 1),
+              n.enter48 = sum(status.enter48 == 1),
+              n.return = sum(status.return == 1),
+              n.return48 = sum(status.return48 == 1))
+            
+  props <- totals %>%
+    group_by(trt, trt.duration, trt.recover) %>%
+    summarise(p.surv.enter48 = n.enter48/n.enter,
+              p.surv.return = n.return/n.enter48,
+              p.surv.return48 = case_when(trt < 100 ~ n.return48/n.enter48,
+                                     trt > 100 ~ n.return48/n.return),
+              
+              p.died.enter48 = 1 - p.surv.enter48,
+              p.died.return = 1- p.surv.return,
+              p.died.return48 = 1 - p.surv.return48
+              ) %>%
+    pivot_longer(cols = starts_with("p."),
+                 names_to = c(".value", "type", "timept"), names_sep = "\\.",
+                 values_drop_na = TRUE)
+  
+  totals <- totals %>%
+    pivot_longer(cols = starts_with("n."),
+                 names_to = c(".value", "timept"), names_sep = "\\.")
+  
+  ss <- merge(totals, props,
+              by = c("trt", "trt.duration", "trt.recover", "timept"),
+              all.x = TRUE
+              ) # maybe drop 40 ctrl "return" bc they dont exist
+  
+  return(ss)
+  
+}
+
+testing$r3 <- list_assign(testing$r3, ss = testfn.surv_ss(testing$r3$df))
+
+```
+
+```{r eval=FALSE}
+testing$r3$ss %>%
+  #filter(type != "died") %>% 
+  select(-n) %>% 
+  ggplot(aes(y = p, x = timept, fill = interaction(as.factor(trt.recover), type))) +
+  geom_col(aes(position = "fill")) +
+  #ggplot(aes(y = p, x = timept, fill = as.factor(trt.recover))) +
+  #geom_col() +
+  facet_wrap(~trt.duration, scales = "free_x")
+```
+
+
+
+
+
+
+#### attempt 2
+2025-06-28
+
+```{r eval=FALSE}
+# TODO WIP calc survival props per 48h group
+  ## i think thisll be easier to just combine some dfs together... (i.e. calc some things separately)
+testing <- list_assign(testing, r2 = list())
+
+## attempt 2: split into trt groups after some binaries
+testing$r2 <- list_assign(testing$r2, df = km$data %>%
+                         filter(is.40C == "Y") %>%
+                         mutate(# alive at the start of the next time period?
+                           status.atenter = case_when(dh.exit > dh.enter ~ 1,
+                                                      TRUE ~ 0),
+                           status.atrecover = case_when(dh.exit > dh.recover ~ 1,
+                                                        TRUE ~ 0),
+                           status.atreturn = case_when(dh.exit > dh.return ~ 1,
+                                                       TRUE ~ 0),
+                           # 48h after the time period
+                           dh.enter2 = dh.enter + 2,
+                           dh.recover2 = dh.recover + 2,
+                           dh.return2 = dh.return + 2,
+                           
+                           # alive after 48h?
+                           status.atreturn2 = case_when(dh.exit > dh.return2 ~ 1,
+                                                        TRUE ~ 0)
+                         ))
+
+### summary stats
+testing$r2 <- list_assign(testing$r2, ss_bytrt = testing$r2$df %>%
+                                            group_by(trt, trt.recover, trt.duration) %>%
+                                            summarise(n.tot = n(),
+                                                      n.entered = sum(status.atenter == 1),
+                                                      n.enter48 = sum(status.atrecover == 1),
+                                                      n.recovered = sum(status.atreturn == 1),
+                                                      n.return48 = sum(status.atreturn2 == 1)
+                                            ) %>%
+                                            ungroup()
+                                          )
+testing$r2 <-
+  list_assign(testing$r2, ss_bydur = testing$r2$ss_bytrt %>%
+                pivot_wider(names_from = trt.recover, 
+                            values_from = starts_with("n."),
+                            values_fn = sum,
+                            #id_cols = values_fn(~ sum(.x, na.rm = TRUE))
+                ) %>%
+                group_by(trt.duration) %>%
+                summarise(tot.enter48 = sum(across(contains("enter48")), na.rm = TRUE),
+                          tot.entered = sum(across(contains("entered")), na.rm = TRUE),
+                          tot.recovered = sum(across(contains("recovered")), na.rm = TRUE),
+                          tot.return48 = sum(across(contains("return48")), na.rm = TRUE),
+                          p.surv.atrec = tot.enter48/tot.entered,
+                          p.died.atrec = 1 - p.surv.atrec,
+                          p.surv.atret = tot.recovered/tot.enter48,
+                          p.died.atret = 1 - p.surv.atret,
+                          p.surv.atret48 = tot.return48/tot.recovered,
+                          p.died.atret48 = 1 - p.surv.atret48
+                          )
+              )
+
+testing$r2 <-
+  list_assign(testing$r2, ss_bydur2 = testing$r2$ss_bydur %>%
+                rename(n.tot.atrec = tot.enter48,
+                       n.tot.atret = tot.recovered,
+                       n.tot.atret48 = tot.return48) %>%
+                pivot_longer(cols = starts_with(c("p.", "n.")),
+                             names_to = c(".value", "type", "time"), names_sep = "\\.")
+              )
+```
+
+```{r eval=FALSE}
+testing$r2$ss_bydur2 %>%
+  ggplot(aes(x = time, y = p,
+             fill = type)) +
+  geom_col() +
+  geom_text(aes(label = n)) + ## "tot" is fuckin it up. it should be surv/died
+  facet_wrap(~trt.duration) +
+  scale_x_discrete(labels = c("48h after\n1st HS", "after <facet> hrs\nrecovery", "48h after\n2nd HS"),
+                   guide = guide_axis(angle = 45)) +
+  #theme(axis.text.x = element_text(angle = 45, vjust = -1)) + 
+  labs(x = "timept",
+       y = "proportion")
+## time to add instars...
+```
+
+
+
+attempt 1 (read-only)
+
+```{r eval=FALSE}
+## attempt 1:
+### does not work to combine dfs lol
+km$data %>%
+  filter(is.40C == "Y") %>%
+  mutate(status.atenter = case_when(dh.exit > dh.enter ~ 1,
+                                    TRUE ~ 0),
+         status.atrecover = case_when(dh.exit > dh.recover ~ 1,
+                                      TRUE ~ 0),
+         status.atreturn = case_when(dh.exit > dh.return ~ 1,
+                                     TRUE ~ 0)) %>%
+  group_by(trt.enter) %>% ## 1st df
+  mutate(n.tot = n(),
+         n.entered = sum(status.atenter == 1),
+         # atenter.tot = n(),
+         # atenter.died = sum(status.atenter == 0)
+         ) %>%
+  ungroup() %>%
+  group_by(trt.duration, trt.recover) %>% ## 2nd df
+  mutate(n.torecover = sum(status.atrecover == 1), # idk if this should go up w/ the prev..
+         n.toreturn = sum(status.atreturn == 1),
+         # atrecover.tot = sum(status.atrecover = 1),
+         # atrecover.died = sum(status.)
+         ) %>%
+  summarise(prop.survtoenter = n.entered/n.tot, # group by initial 48h
+            prop.survtorec = n.torecover/n.entered,
+            prop.survtoret = n.toreturn/n.torecover) %>%
+            # i wish there were sample sizes!!!! (prob gota do this separately)
+  unique() %>%
+  View()
+  
+  
+  
+  group_by(trt.enter) %>%
+  mutate(n.tothatch = n(),
+         n.totenter = sum(!is.na(jdate.recover))) %>% # merp doesnt work for the ctrls lol
+  ungroup() %>%
+  group_by(trt.duration, trt.enter) %>%
+  mutate(n.totrecover = sum(!is.na(jdate.return)))
+
+```
+
+## 2025-06-27 kms
+
+```{r}
+# all exptal trts together
+obj <- Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = km$subsets$expts)
+
+ggsurvplot(fit, data = km$subsets$expts,
+           conf.int = TRUE,
+           #xlim = c(45823, 45841),
+           facet.by = "trt.recover",
+           #linetype = "strata",
+           palette = "strata"
+           ) +
+  geom_vline(xintercept = 2, color = "black") +
+  geom_vline(xintercept = 3, color = "#F8766D") +
+  geom_vline(xintercept = 4, color = "#00BFC4") +
+  labs(caption = "black = entered recovery; colored = returned to 40") +
+  theme(plot.caption = element_text(size = 10))
+
+```
+
+```{r}
+# everyone together
+obj <- Surv(km$data$exit.fromenter, km$data$km.status)
+fit <- survfit(obj ~ trt.lab + trt.duration + trt.recover, data = km$data)
+
+ggsurvplot(fit, data = km$data,
+           #conf.int = TRUE,
+           #xlim = c(45823, 45841),
+           facet.by = "trt.duration",
+           #linetype = "strata",
+           palette = "strata"
+           ) +
+  geom_vline(xintercept = 2, color = "black") +
+  geom_vline(xintercept = 3, color = "#F8766D") +
+  geom_vline(xintercept = 4, color = "#00BFC4")
+
+```
+
+
+
+## 2025-06-16 kms 
+
+(first pass)
+
+```{r eval=FALSE, include=FALSE}
+# fit all
+fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt, data = km$data)
+
+           # linetype = c("1", "1", "1", "1",
+           #              "2", "2", "2",
+           #              "3", "3", "3"),
+           palette = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")
+           )  
+
+
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_fill_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_linetype_manual(values = c("1", "1", "1", "1",
+                                   "2", "2", "2",
+                                   "3", "3", "3"))
+
+
+
+
+ggsurvplot(fit, data = km$data,
+           #conf.int = TRUE,
+           xlim = c(45823, 45841),
+           facet.by = "trt.duration",
+           #linetype = "strata",
+           #palette = "strata")
+           )
+
++ 
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_fill_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1",
+                                "deepskyblue", "skyblue1", "goldenrod1",
+                                "deepskyblue", "skyblue1", "goldenrod1")) +
+  scale_linetype_manual(values = c("1", "1", "1", "1",
+                                   "2", "2", "2",
+                                   "3", "3", "3"))
+
+
+
+fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
+#fit <- survfit(coxph(Surv(km.exit, km.status) ~ trt, data = km.data))
+
+
+ggsurvplot(fit, data = km$data, 
+           #conf.int = TRUE,
+           xlim = c(45823, 45839),
+           facet.by = "trt.duration",
+           #group.by = c("trt.recover", "trt.duration"),
+           #palette = "trt.recover",
+           palette = "strata"
+           #linetype = "trt.duration",
+           ) +
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", 
+                                "deepskyblue", "skyblue1", "goldenrod1", "darkorange1")) +
+  scale_fill_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", 
+                                "deepskyblue", "skyblue1", "goldenrod1", "darkorange1"))
+
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1"),
+                     labels = c(19, 26, 33, 40)) +
+  scale_linetype_manual(#values = c("0" = 1, "24" = 2, "48" = 3),
+                        values = c(1, 2, 3),
+                        labels = c("0", "24", "48"))
+  
+  
+  
+  
+  
+# colorRampPalette(c(startcol, endcol))(ngroups)
+  
+# autoplot(fit, data)+ scale_color_manual, full
+  
+  
+  
+  
+  
+ggsurvplot(fit, data = km$data,
+           #conf.int = TRUE,
+           xlim = c(45823, 45841),
+           facet.by = "trt.duration",
+           #palette = viridis_pal(option = "H", direction = -1)(10)
+           palette = hcl.colors(10, palette = "Roma")
+           #linetype = "strata",
+           #palette = "strata")
+           ) +
+  labs(caption = "2025-06-18 15:57 data; starting from hatch")
+```
+
+```{r eval=FALSE, include=FALSE}
+# try subsets
+subset <- km$data %>% filter(,
+                             #trt > 100 & trt < 200,
+                             is.40 == "Y",
+                             #is.ctrl == "Y"
+                             #trt %in% c(133, 233)
+                             )
+
+fit <- survfit(Surv(dh.exit, km.status) ~ trt + trt.duration + trt.recover, data = subset)
+#fit <- survfit(Surv(km.exit, km.status) ~ trt.recover + trt.duration, data = subset)
+
+
+#summary(fit)
+#autoplot(fit)
+
+ggsurvplot(fit, data = subset, 
+           conf.int = TRUE,
+           xlim = c(45823, 45839),
+           #facet.by = "trt.recover",
+           group.by = c("trt.recover", "trt.duration"),
+           #palette = "trt.recover",
+           #linetype = "trt.duration",
+           ) +
+  scale_color_manual(values = c("deepskyblue", "skyblue1", "goldenrod1", "darkorange1"),
+                     labels = c(19, 26, 33, 40)) +
+  scale_linetype_manual(#values = c("0" = 1, "24" = 2, "48" = 3),
+                        values = c(1, 2, 3),
+                        labels = c("0", "24", "48"))
+  
+  
+  # scale_color_manual(values = c(c("19", "119", "219") = "deepskyblue", 
+  #                               c("26", "126", "226") = "skyblue1",
+  #                               c("33", "133", "233") = "goldenrod1",
+  #                               "40" = "darkorange1")) +
+  # scale_linetype_manual(values = c(c("19", "26", "33", "40") = 1,
+  #                                  c("119", "126", "133") = 2,
+  #                                  c("219", "226", "233") = 3))
+
+  # scale_linetype_manual(values = c("19" = 1, "26" = 1, "33" = 1, "40" = 1,
+  #                                  "119" = 2, "126" = 2, "133" = 2,
+  #                                  "219" = 3, "226" = 3, "233" = 3))
+```
+
+```{r eval=FALSE, include=FALSE}
+fit <- survfit(coxph(Surv(dh.exit, km.status) ~ trt, data = subset))
+#library(ggplot2)
+autoplot(fit)
+
+```
