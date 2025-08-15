@@ -212,7 +212,7 @@ data <- data %>%
   select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate", 
            "mass.return", "h.return"))
 
-write.csv(data, file = paste0(here(bin_paths$y25$tdt-data), "/clean-working.csv"), row.names = FALSE)
+write.csv(data, file = paste0(here(bin_paths$y25$tdtdata), "/clean-working.csv"), row.names = FALSE)
 ```
 
 remove troubleshooting objects

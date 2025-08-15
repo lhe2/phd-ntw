@@ -47,7 +47,7 @@ library(tidyverse)
 ```
 
 ```{r load data}
-data <- read.csv(here(bin_paths$y25$tdt-data, "clean-working.csv"), header = TRUE)
+data <- read.csv(here(bin_paths$y25$tdtdata, "clean-working.csv"), header = TRUE)
 ```
 
 # 2. prep for km
