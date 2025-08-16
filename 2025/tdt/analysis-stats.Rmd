@@ -25,7 +25,7 @@ source(here(bin_paths$y25$tdt, "analysis-utils.R")) # helper functions
 # data import
 source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 
-ogkm <- km #bc i am very indecisive w how im handling my data lol
+dfs <- bin_wrangled$km # just data for cohort B+ and onward for R2+
 ```
 
 ## todos & notes
@@ -37,34 +37,18 @@ ogkm <- km #bc i am very indecisive w how im handling my data lol
 - 2025-08-13
   - ARCHIVE whatever is left of this sheet lol when done
     
-    
 notes
 
 - 2025-07-17 re: jdate vs dh
   - cohort B: after updates to cleaning script, `dh` is calculated in days (should be hours, ideally)... jdate is calculated in days (so just be careful w axes)
-  - this will probably break some of the cohort A analyses lol
+  - cohort A df prep is separated (uses the `ogkm` df from import)
   
 ## df prep
-```{r some data prep}
-# stole this from cohort B fups to use for cohort B and onwards analyses bc it works well
-
-km <- list_assign(km, data =  ogkm$data %>%
-                    mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
-
-## TODO:BUG some cohort C individs are breaking with negative exit times
-km$data <- km$data %>%
-  mutate(exit.fromenter = case_when(exit.fromenter < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromenter)),
-         exit.fromrecover = case_when(exit.fromrecover < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromrecover)),
-         exit.fromreturn = case_when(exit.fromreturn < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromreturn)))
-
-km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
-                                     expts = filter(km$data, trt.enter != trt.recover),
-                                     only40 = filter(km$data, trt.enter == 40),
-                                     recs = filter(km$data, trt > 40),
-                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
-                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+```{r}
+for (l in c("survObjs", "fits")) {
+  assign(l, list())
+}
 ```
-
 
 =====
 
@@ -73,26 +57,18 @@ km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.re
 includes cohort B + C
 
 ```{r}
-for (l in c("survObjs", "fits")) {
-  assign(l, list())
-}
+# cohort C subsetting
+dfs <- list_assign(dfs,
+                   onlyC = dfs$data %>% filter(cohort == "C"),
+                   recC = dfs$data %>% filter(cohort == "C" & trt.duration > 0))
 ```
 
 ```{r}
-dfs <- list_assign(dfs, 
-                   all = km$data %>% filter(cohort != "A"),
-                   hot = km$data %>% filter(is.40C == "Y"),
-                   rec = km$data %>% filter(cohort != "A" & trt.duration > 0),
-                   group = km$data %>% filter(cohort != "A" & trt.duration > 0) %>%
-                     group_by(cohort, trt.recover, trt.duration) %>% 
-                     summarise(day.enter, day.recover, day.return) %>%
-                     drop_na() %>% unique()
-                   )
+survObjs <- list_assign(survObjs, r2 = list())
+fits <- list_assign(fits, r2 = list())
 ```
 ```{r}
-dfs <- list_assign(dfs, 
-                   onlyC = km$data %>% filter(cohort == "C"),
-                   recC = km$data %>% filter(cohort == "C" & trt.duration > 0))
+
 ```
 
 ## = 2025-08-11 pre mtg
@@ -107,18 +83,18 @@ fits <- list_assign(fits, r1 = list())
 ```{r}
 # B + C
 survObjs$r1 <- list_assign(survObjs$r1,
-                            fromEnter = Surv(dfs$rec$exit.fromenter, dfs$rec$km.status),
-                            fromRecovery = Surv(dfs$rec$exit.fromrecover, dfs$rec$km.status),
-                            fromReturn = Surv(dfs$rec$exit.fromreturn, dfs$rec$km.status)
+                            fromEnter = Surv(dfs$subsets$recs$exit.fromenter, dfs$subsets$recs$km.status),
+                            fromRecovery = Surv(dfs$subsets$recs$exit.fromrecover, dfs$subsets$recs$km.status),
+                            fromReturn = Surv(dfs$subsets$recs$exit.fromreturn, dfs$subsets$recs$km.status)
                             )
 
 fits$r1 <- list_assign(fits$r1,
                     cph.enter = coxph(survObjs$r1$fromEnter ~ trt.recover * as.factor(trt.duration), 
-                                      data = dfs$rec),
+                                      data = dfs$subsets$recs),
                     cph.recovery = coxph(survObjs$r1$fromRecovery ~ trt.recover * as.factor(trt.duration), 
-                                         data = dfs$rec),
+                                         data = dfs$subsets$recs),
                     cph.return = coxph(survObjs$r1$fromReturn ~ trt.recover * as.factor(trt.duration),
-                                       data = dfs$rec)
+                                       data = dfs$subsets$recs)
                     )
 
                                        
@@ -126,6 +102,7 @@ summary(fits$r1$cph.enter)
 summary(fits$r1$cph.recovery)
 summary(fits$r1$cph.return)
 ```
+
 ### coxph trts (C only)
 ```{r}
 survObjs$r1 <- list_assign(survObjs$r1,
@@ -198,7 +175,7 @@ TODO
 
 
 ```{r}
-dfs <- list()
+dfs <- bin_wrangled$km
 survObjs <- list()
 fits <- list()
 ```
@@ -210,22 +187,10 @@ fits <- list_assign(fits, r1 = list())
 ```
 
 ```{r}
-# moved this up
-# # actual conversion to decimal hours of km data
-# km <- list_assign(km, data =  ogkm$data %>%
-#                     mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
-# 
-# km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
-#                                      expts = filter(km$data, trt.enter != trt.recover),
-#                                      only40 = filter(km$data, trt.enter == 40),
-#                                      recs = filter(km$data, trt > 40),
-#                                      rec24 = filter(km$data, trt == 40 | trt.duration == 24),
-#                                      rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
-
 dfs$r1 <- list_assign(dfs$r1, 
-                      allB = km$data %>% filter(cohort == "B"),
-                      hotB = km$data %>% filter(is.40C == "Y"),
-                      recB = km$data %>% filter(cohort == "B" & trt.duration > 0))
+                      allB = dfs$data %>% filter(cohort == "B"),
+                      hotB = dfs$data %>% filter(is.40C == "Y"),
+                      recB = dfs$data %>% filter(cohort == "B" & trt.duration > 0))
 ```
 
 ### coxph trt durations
@@ -294,7 +259,7 @@ summary(fits$r1$shelves$returnInt)
 
 # # R1 archive
 
-R1 is handled too differently so its analysis stuff gets moved here
+R1 is handled too differently so its df prep steps gets moved here
 
 ## - df prep
 
@@ -304,7 +269,7 @@ survObj <- list()
 fits <- list()
 testing <- list()
 
-km <- ogkm
+dfs <- bin_wrangled$kmA
 ```
 
 ## - 2025-06-27 redoing cox fits lmao (**)
@@ -320,9 +285,9 @@ cuz i love a fresh start!!!
 
 ```{r}
 survObj <- list_assign(survObj,
-                       fromEnter = Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status),
-                       fromRecovery = Surv(km$subsets$expts$exit.fromrecover, km$subsets$expts$km.status),
-                       fromReturn = Surv(km$subsets$expts$exit.fromreturn, km$subsets$expts$km.status)
+                       fromEnter = Surv(dfs$expts$exit.fromenter, dfs$expts$km.status),
+                       fromRecovery = Surv(dfs$expts$exit.fromrecover, dfs$expts$km.status),
+                       fromReturn = Surv(dfs$expts$exit.fromreturn, dfs$expts$km.status)
                        )
 ```
 
@@ -330,9 +295,9 @@ survObj <- list_assign(survObj,
 
 ```{r}
 fits <- list_assign(fits, 
-                    cph.enter = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration), data = km$subsets$expts),
-                    cph.recovery = coxph(survObj$fromRecovery ~ trt.recover * as.factor(trt.duration), data = km$subsets$expts),
-                    cph.return = coxph(survObj$fromReturn ~ trt.recover * as.factor(trt.duration), data = km$subsets$expts),
+                    cph.enter = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration), data = dfs$expts),
+                    cph.recovery = coxph(survObj$fromRecovery ~ trt.recover * as.factor(trt.duration), data = dfs$expts),
+                    cph.return = coxph(survObj$fromReturn ~ trt.recover * as.factor(trt.duration), data = dfs$expts),
                     )
 
 summary(fits$cph.enter)
@@ -343,13 +308,13 @@ summary(fits$cph.return)
 tldr trt doesnt matter except except for longest time frame
 
 ```{r}
-obj <- Surv(km$subsets$only40$exit.fromenter, km$subsets$only40$km.status)
-obj2 <- Surv(km$subsets$only40$exit.fromreturn, km$subsets$only40$km.status)
+obj <- Surv(dfs$only40$exit.fromenter, dfs$only40$km.status)
+obj2 <- Surv(dfs$only40$exit.fromreturn, dfs$only40$km.status)
 fits <- list_assign(fits, 
-                    cph.enter.addshelf = coxph(obj ~ trt.recover * as.factor(trt.duration) + shelf, data = km$subsets$only40),
-                    cph.enter.intshelf = coxph(obj ~ trt.recover * as.factor(trt.duration) * shelf, data = km$subsets$only40),
-                    cph.return.addshelf = coxph(obj2 ~ trt.recover * as.factor(trt.duration) + shelf, data = km$subsets$only40),
-                    cph.return.intshelf = coxph(obj2 ~ trt.recover * as.factor(trt.duration) * shelf, data = km$subsets$only40),)
+                    cph.enter.addshelf = coxph(obj ~ trt.recover * as.factor(trt.duration) + shelf, data = dfs$only40),
+                    cph.enter.intshelf = coxph(obj ~ trt.recover * as.factor(trt.duration) * shelf, data = dfs$only40),
+                    cph.return.addshelf = coxph(obj2 ~ trt.recover * as.factor(trt.duration) + shelf, data = dfs$only40),
+                    cph.return.intshelf = coxph(obj2 ~ trt.recover * as.factor(trt.duration) * shelf, data = dfs$only40),)
 
 summary(fits$cph.enter.addshelf)
 summary(fits$cph.enter.intshelf)
@@ -375,10 +340,11 @@ tldr shelf effect outweighs trt effect...
 
 ```{r}
 survObj <- list_assign(survObj, 
-                       fromHatch = Surv(km$subsets$expts$exit.fromhatch, km$subsets$expts$km.status),
-                       fromEnter = Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status),
-                       fromRecovery = Surv(km$subsets$expts$exit.fromrecover, km$subsets$expts$km.status),
-                       fromReturn = Surv(km$subsets$expts$exit.fromreturn, km$subsets$expts$km.status)
+                       #fromHatch = Surv(dfs$expts$exit.fromhatch, dfs$expts$km.status), 
+                          # got yeeted from the wrangle script so would need to put back to make this work
+                       fromEnter = Surv(dfs$expts$exit.fromenter, dfs$expts$km.status),
+                       fromRecovery = Surv(dfs$expts$exit.fromrecover, dfs$expts$km.status),
+                       fromReturn = Surv(dfs$expts$exit.fromreturn, dfs$expts$km.status)
                        )
 ```
 
@@ -394,18 +360,18 @@ survObj <- list_assign(survObj,
 ##### trying to figure out how to get the interaction to show up but idky something about it breaks the formula
   # renaming to nicer vars doesnt work...
 
-#survdiff(survObj$fromHatch ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover)
+#survdiff(survObj$fromHatch ~ dfs$expts$trt.duration + dfs$expts$trt.recover)
 # trying to pick out the columns names to get the interaction to work. see other attempts below
            # pluck(km$subsets, expts, trt.recover):pluck(km$subsets, expts, trt.duration))
            # 
            # hoist(as.data.frame(km$subsets), "trt.recover"):hoist(as.data.frame(km$subsets), "trt.duration"))
            # 
-           # km$subsets$[expts][km$subsets$expts$,]:km$subsets[expts][km$subsets$expts$trt.recover,])
+           # dfs$[expts][dfs$expts$,]:km$subsets[expts][dfs$expts$trt.recover,])
 
 
 #### other attempts 
 
-# kmdf <- km$subsets$expts %>%
+# kmdf <- dfs$expts %>%
 #   rename(duration = trt.duration,
 #          recover = trt.recover,
 #          fromrec = exit.fromrecover,
@@ -424,7 +390,7 @@ survObj <- list_assign(survObj,
 
 ### 3
 
-# survdiff(survObj$fromHatch ~ poly(c(km$subsets$expts$trt.duration, km$subsets$expts$trt.recover), n = 2)) 
+# survdiff(survObj$fromHatch ~ poly(c(dfs$expts$trt.duration, dfs$expts$trt.recover), n = 2)) 
   # im totally using poly() wrong here but idr how to use it. but also def not what im looking for
 
 ### 4 am i going nuts
@@ -437,32 +403,32 @@ survObj <- list_assign(survObj,
 ```{r eval=FALSE}
 # survdiff starting from hatch time
 ## recovery temp + duration
-survdiff(survObj$fromHatch ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover 
-         #+ `km$subsets$expts$trt.recover`:`km$subsets$expts$trt.duration`
-         )
+# survdiff(survObj$fromHatch ~ dfs$expts$trt.duration + dfs$expts$trt.recover 
+#          #+ `dfs$expts$trt.recover`:`dfs$expts$trt.duration`
+#          )
 
 #######
 
 # survdiff starting from enter time
-survdiff(survObj$fromEnter ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover) ## recovery temp + duration
+survdiff(survObj$fromEnter ~ dfs$expts$trt.duration + dfs$expts$trt.recover) ## recovery temp + duration
 
 
 #######
 
 # looking for diffs starting at recovery
-survdiff(survObj$fromRecovery ~ km$subsets$expts$trt.recover) ## based on recovery temp
+survdiff(survObj$fromRecovery ~ dfs$expts$trt.recover) ## based on recovery temp
 
 
-survdiff(survObj$fromRecovery ~ km$subsets$expts$trt.duration) ## based on recovery period
+survdiff(survObj$fromRecovery ~ dfs$expts$trt.duration) ## based on recovery period
 
 
-survdiff(survObj$fromRecovery ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover) ## temp + duration (cant do the interaction)
+survdiff(survObj$fromRecovery ~ dfs$expts$trt.duration + dfs$expts$trt.recover) ## temp + duration (cant do the interaction)
 
 
 ########
 
 # survdiff starting from returning time
-survdiff(survObj$fromReturn ~ km$subsets$expts$trt.duration + km$subsets$expts$trt.recover) ## recovery temp + duration
+survdiff(survObj$fromReturn ~ dfs$expts$trt.duration + dfs$expts$trt.recover) ## recovery temp + duration
 
 ```
 ### cphing
@@ -472,27 +438,27 @@ survdiff(survObj$fromReturn ~ km$subsets$expts$trt.duration + km$subsets$expts$t
 ##### effects of recovery temp and duration
 ```{r}
 fits <- list_assign(fits, cph.enter = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration), 
-                                               data = km$subsets$expts))
+                                               data = dfs$expts))
 summary(fits$cph.enter)
 
 
 fits <- list_assign(fits, cph.recovery = coxph(survObj$fromRecovery ~ trt.recover * as.factor(trt.duration), 
-                                               data = km$subsets$expts))
+                                               data = dfs$expts))
 summary(fits$cph.recovery)
 
 
 fits <- list_assign(fits, cph.return = coxph(survObj$fromReturn ~ trt.recover * as.factor(trt.duration), 
-                                             data = km$subsets$expts))
+                                             data = dfs$expts))
 summary(fits$cph.return)
 
 
 fits <- list_assign(fits, cph.return2 = coxph(survObj$fromReturn ~ trt.recover * trt.duration, 
-                                             data = km$subsets$expts))
+                                             data = dfs$expts))
 summary(fits$cph.return2)
 # same results as above
 
 fits <- list_assign(fits, cph.return3 = coxph(survObj$fromReturn ~ as.factor(trt.recover) * trt.duration, 
-                                             data = km$subsets$expts))
+                                             data = dfs$expts))
 summary(fits$cph.return3)
 
 ```
@@ -505,16 +471,16 @@ so the cph fits only really matter starting from the enter time?
 # looking at shelf effects
 
 fits <- list_assign(fits, cph.shelf = coxph(survObj$fromEnter ~ trt.recover * as.factor(trt.duration) * shelf, 
-                                               data = km$subsets$expts))
+                                               data = dfs$expts))
 summary(fits$cph.shelf)
 
 
 fits <- list_assign(fits, cph.shelf2 = coxph(survObj$fromEnter ~ shelf + trt.recover * as.factor(trt.duration), 
-                                               data = km$subsets$expts))
+                                               data = dfs$expts))
 summary(fits$cph.shelf2)
 
 fits <- list_assign(fits, cph.shelf3 = coxph(survObj$fromEnter ~ shelf + trt.recover * trt.duration, 
-                                               data = km$subsets$expts))
+                                               data = dfs$expts))
 summary(fits$cph.shelf3)
 ```
 
@@ -526,13 +492,13 @@ tldr in all cases, `trt.recover` becomes signif once u throw in the shelf LOL.. 
 # plot cphs...
 # plot(x = fits$cph.recovery$linear.predictors,
 #      y = fits$cph.recovery$residuals,
-#      data = km$subsets$expts, 
+#      data = dfs$expts, 
 #      #facet.by = trt.recovery
 #      )
   # this is not how to use survival::plot.coxph lolol (cph doesnt give u a survival curve per se. its a regression)
 
 autoplot(survfit(coxph(survObj$fromReturn ~ trt.recover * trt.duration, 
-                                             data = km$subsets$expts)),
+                                             data = dfs$expts)),
          facets = TRUE,
          )
 ```

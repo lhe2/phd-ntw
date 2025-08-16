@@ -43,26 +43,18 @@ source(here(bin_paths$y25$tdt, "analysis-utils.R")) # helper functions
 # data import
 source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 
-ogkm <- km #bc i am very indecisive w how im handling my data lol
+dfs <- bin_wrangled$km # for cohort B+ for R2+
 ```
 
 ## df prep
 ```{r}
-km <- list_assign(km, data =  ogkm$data %>%
-                    mutate(across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24)))
-
-## TODO:BUG some cohort C individs are breaking with negative exit times
-km$data <- km$data %>%
-  mutate(exit.fromenter = case_when(exit.fromenter < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromenter)),
-         exit.fromrecover = case_when(exit.fromrecover < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromrecover)),
-         exit.fromreturn = case_when(exit.fromreturn < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromreturn)))
-
-km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
-                                     expts = filter(km$data, trt.enter != trt.recover),
-                                     only40 = filter(km$data, trt.enter == 40),
-                                     recs = filter(km$data, trt > 40),
-                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
-                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+dfs <- list_assign(dfs, 
+                   group = dfs$data %>% 
+                     filter(trt.duration > 0) %>%
+                     group_by(cohort, trt.recover, trt.duration) %>% 
+                     summarise(day.enter, day.recover, day.return) %>%
+                     drop_na() %>% unique()
+                   )
 ```
 
 # # R3
@@ -73,10 +65,10 @@ km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.re
 
 ```{r}
 # expt + ctrls
-obj <- Surv(dfs$all$exit.fromenter, dfs$all$km.status)
-fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$all)
+obj <- Surv(dfs$data$exit.fromenter, dfs$data$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$data)
 
-ggsurvplot(fit, data = dfs$all,
+ggsurvplot(fit, data = dfs$data,
            #facet.by = "trt.recover",
            facet.by = c("cohort", "trt.duration")
            #facet.by = "trt.duration"
@@ -96,11 +88,11 @@ ggsurvplot(fit, data = dfs$all,
 dfs <- list_assign(dfs, r1 = list())
 
 dfs$r1 <- list_assign(dfs$r1, 
-                      survprop1 = dfs$all %>%
+                      survprop1 = dfs$data %>%
                         calc.surv_ssB2(),
-                      survprop1a = dfs$all %>%
+                      survprop1a = dfs$data %>%
                         calc.surv_ssB2a(),
-                      survprop1b = dfs$all %>%
+                      survprop1b = dfs$data %>%
                         calc.surv_ssB2b(), ## cohort splits
                       )
 ```
@@ -229,9 +221,9 @@ cohort B only
 dfs <- list_assign(dfs, r1 = list())
 
 dfs$r1 <- list_assign(dfs$r1, 
-                      allB = km$data %>% filter(cohort == "B"),
-                      hotB = km$data %>% filter(is.40C == "Y"),
-                      recB = km$data %>% filter(cohort == "B" & trt.duration > 0))
+                      allB = dfs$data %>% filter(cohort == "B"),
+                      hotB = dfs$data %>% filter(is.40C == "Y"),
+                      recB = dfs$data %>% filter(cohort == "B" & trt.duration > 0))
 ```
 
 ### km R2 only
@@ -240,7 +232,7 @@ dfs$r1 <- list_assign(dfs$r1,
 obj <- Surv(dfs$r1$allB$exit.fromenter, dfs$r1$allB$km.status)
 fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$r1$allB)
 
-group <- km$subsets$recs %>% 
+group <- dfs$subsets$recs %>% 
   group_by(cohort, trt.recover, trt.duration) %>% 
   summarise(day.enter, day.recover, day.return) %>%
   filter(cohort == "B") %>%
@@ -262,31 +254,31 @@ ggsurvplot(fit, data = dfs$r1$allB,
 ### km both rounds 
 
 ```{r}
-obj <- Surv(km$data$exit.fromenter, km$data$km.status)
-fit <- survfit(obj ~ trt.recover + trt.duration, data = km$data)
+obj <- Surv(dfs$data$exit.fromenter, dfs$data$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$data)
 ```
 
 ```{r}
-group <- km$subsets$recs %>% 
+group <- dfs$subsets$recs %>% 
   group_by(cohort, trt.recover, trt.duration) %>% 
   summarise(day.recover, day.return) %>%
   drop_na() %>% unique()
 
-ggsurvplot(fit, data = km$data,
+ggsurvplot(fit, data = dfs$data,
            facet.by = c("cohort", "trt.duration")) +
   geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
   geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
   scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) 
 
   
-  ggsurvplot(fit, data = km$data,
+  ggsurvplot(fit, data = dfs$data,
              facet.by = c("cohort", "trt.recover")) +
   geom_vline(data = group, aes(xintercept = day.recover), color = "skyblue") +
   geom_vline(data = group, aes(xintercept = day.return), color = "orange") +
   scale_color_manual(values = c("orange", "skyblue", "#009E73"))
 
 
-ggsurvplot(fit, data = km$data,
+ggsurvplot(fit, data = dfs$data,
            facet.by = "cohort",
            #palette = "jco",
            #palette = c("red","blue", "red", "red", "red", "red", "red", "red", "red", "red"),
@@ -472,7 +464,7 @@ fits <- list()
 # for dfs
 testing <- list()
 
-km <- ogkm
+dfs <- bin_wrangled$kmA
 ```
 
 ## 2025-06-27 post mtg fups
@@ -493,7 +485,7 @@ TODO
 testing <- list_assign(testing, r3 = list())
 
 
-testing$r3 <- list_assign(testing$r3, df = km$data %>%
+testing$r3 <- list_assign(testing$r3, df = dfs$data %>%
                          filter(is.40C == "Y") %>%
                          mutate(# ctrls should not have return/recover times
                                 # dh.recover = case_when(trt < 100 ~ NA_real_,
@@ -1424,7 +1416,7 @@ testing$r3$ss %>%
 testing <- list_assign(testing, r2 = list())
 
 ## attempt 2: split into trt groups after some binaries
-testing$r2 <- list_assign(testing$r2, df = km$data %>%
+testing$r2 <- list_assign(testing$r2, df = dfs$data %>%
                          filter(is.40C == "Y") %>%
                          mutate(# alive at the start of the next time period?
                            status.atenter = case_when(dh.exit > dh.enter ~ 1,
@@ -1507,7 +1499,7 @@ attempt 1 (read-only)
 ```{r eval=FALSE}
 ## attempt 1:
 ### does not work to combine dfs lol
-km$data %>%
+dfs$data %>%
   filter(is.40C == "Y") %>%
   mutate(status.atenter = case_when(dh.exit > dh.enter ~ 1,
                                     TRUE ~ 0),
@@ -1550,10 +1542,10 @@ km$data %>%
 
 ```{r}
 # all exptal trts together
-obj <- Surv(km$subsets$expts$exit.fromenter, km$subsets$expts$km.status)
-fit <- survfit(obj ~ trt.recover + trt.duration, data = km$subsets$expts)
+obj <- Surv(dfs$expts$exit.fromenter, dfs$expts$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$expts)
 
-ggsurvplot(fit, data = km$subsets$expts,
+ggsurvplot(fit, data = dfs$expts,
            conf.int = TRUE,
            #xlim = c(45823, 45841),
            facet.by = "trt.recover",
@@ -1570,10 +1562,10 @@ ggsurvplot(fit, data = km$subsets$expts,
 
 ```{r}
 # everyone together
-obj <- Surv(km$data$exit.fromenter, km$data$km.status)
-fit <- survfit(obj ~ trt.lab + trt.duration + trt.recover, data = km$data)
+obj <- Surv(dfs$data$exit.fromenter, dfs$data$km.status)
+fit <- survfit(obj ~ trt.lab + trt.duration + trt.recover, data = dfs$data)
 
-ggsurvplot(fit, data = km$data,
+ggsurvplot(fit, data = dfs$data,
            #conf.int = TRUE,
            #xlim = c(45823, 45841),
            facet.by = "trt.duration",
@@ -1594,8 +1586,8 @@ ggsurvplot(fit, data = km$data,
 
 ```{r eval=FALSE, include=FALSE}
 # fit all
-fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
-fit <- survfit(Surv(dh.exit, km.status) ~ trt, data = km$data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = dfs$data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt, data = dfs$data)
 
            # linetype = c("1", "1", "1", "1",
            #              "2", "2", "2",
@@ -1619,7 +1611,7 @@ fit <- survfit(Surv(dh.exit, km.status) ~ trt, data = km$data)
 
 
 
-ggsurvplot(fit, data = km$data,
+ggsurvplot(fit, data = dfs$data,
            #conf.int = TRUE,
            xlim = c(45823, 45841),
            facet.by = "trt.duration",
@@ -1640,11 +1632,11 @@ ggsurvplot(fit, data = km$data,
 
 
 
-fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = km$data)
+fit <- survfit(Surv(dh.exit, km.status) ~ trt.enter + trt.recover + trt.duration, data = dfs$data)
 #fit <- survfit(coxph(Surv(km.exit, km.status) ~ trt, data = km.data))
 
 
-ggsurvplot(fit, data = km$data, 
+ggsurvplot(fit, data = dfs$data, 
            #conf.int = TRUE,
            xlim = c(45823, 45839),
            facet.by = "trt.duration",
@@ -1676,7 +1668,7 @@ ggsurvplot(fit, data = km$data,
   
   
   
-ggsurvplot(fit, data = km$data,
+ggsurvplot(fit, data = dfs$data,
            #conf.int = TRUE,
            xlim = c(45823, 45841),
            facet.by = "trt.duration",
@@ -1690,7 +1682,7 @@ ggsurvplot(fit, data = km$data,
 
 ```{r eval=FALSE, include=FALSE}
 # try subsets
-subset <- km$data %>% filter(,
+subset <- dfs$data %>% filter(,
                              #trt > 100 & trt < 200,
                              is.40 == "Y",
                              #is.ctrl == "Y"
@@ -1736,5 +1728,4 @@ ggsurvplot(fit, data = subset,
 fit <- survfit(coxph(Surv(dh.exit, km.status) ~ trt, data = subset))
 #library(ggplot2)
 autoplot(fit)
-
 ```
