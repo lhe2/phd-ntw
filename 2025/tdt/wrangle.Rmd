@@ -50,90 +50,133 @@ library(tidyverse)
 data <- read.csv(here(bin_paths$y25$tdtdata, "clean-working.csv"), header = TRUE)
 ```
 
-# 2. prep for km
+# 2. df prep
 
-## - calc exit times; recode events
+## calc exit times; recode events
 
-```{r}
+```{r calc exit times}
 # find max dh.exit for expt bugs, use this # as the basis for the others (add +1 to it?)
 max <- data %>%
   filter(trt.enter ==  40) %>%
   group_by(cohort) %>%
   summarise(max = max(dh.exit, na.rm = TRUE))
 
-# create new list
-km <- list()
-
 # recode times for ctrls... (tho they will be dropped later lol)
   # things that die before recovery/returning should be NA!!!!!
-km <- list_assign(km, data = data %>%
-                    merge(., max) %>%
-                    mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 1, 
-                                               # only do max+1 bc round B ctrls were culled after +1 day
-                                               TRUE ~ dh.exit), 
-                           
-                           ## standardise event times by trt enter date 
-                           ## (bc doesnt super make sense to start at hatch date..)
-                           day.enter = dh.enter - dh.enter,
-                           day.recover = dh.recover - dh.enter,
-                           day.return = dh.return - dh.enter,
-                           day.exit = dh.exit - dh.enter) %>%
-                    
-                    ## remove hot bugs that do not have fates (i.e. got lost or sth/in progress)
-                    filter(!(trt >= 40 & is.na(fate)))
-                  )
+data <- data %>%
+  merge(., max) %>%
+  mutate(dh.exit = case_when(is.na(dh.exit) ~ max + 1, 
+                             # only do max+1 bc round B ctrls were culled after +1 day
+                             TRUE ~ dh.exit), 
+         
+         ## standardise event times by trt enter date 
+         ## (bc doesnt super make sense to start at hatch date..)
+         day.enter = dh.enter - dh.enter,
+         day.recover = dh.recover - dh.enter,
+         day.return = dh.return - dh.enter,
+         day.exit = dh.exit - dh.enter) %>%
+  
+  ## remove hot bugs that do not have fates (i.e. got lost or sth/in progress)
+  filter(!(trt >= 40 & is.na(fate)))
 
 ```
 
-```{r}
+```{r generate filtering binaries}
 # add some binaries; recalc other times
-
-km <- list_assign(km, data = km$data %>% mutate(
-                                                # exit times, except this doesnt make sense lol... recalc w tt.times?
-                                                # exit.fromhatch = dh.exit - dh.hatch,
-                                                # exit.fromenter = dh.exit - dh.enter,
-                                                # exit.fromrecover = dh.exit - dh.recover,
-                                                # exit.fromreturn = dh.exit - dh.return,
-                                                
-                                                # calc exit times using days standardised by expt enter date
-                                                # (i.e. d0 = expt enter date)
-                                                exit.fromenter = day.exit - day.enter,
-                                                exit.fromrecover = day.exit - day.recover,
-                                                exit.fromreturn = day.exit - day.return,
-                                                
-                                                # some filtering binaries and labels
-                                                is.40C = case_when(trt.enter == 40 ~ "Y",
-                                                                   TRUE ~ "N"),
-                                                is.ctrl = case_when(trt < 100 ~ "Y",
-                                                                    TRUE ~ "N"),
-                                                trt.recover = case_when(is.na(trt.recover) ~ trt.enter,
-                                                                        TRUE ~ trt.recover),
-                                                trt.lab = formatC(trt, width = 3, flag = "0")
-                                                ) %>%
-                   # mutate(starts_with("exit") ~ case_when(. < 0, ~ NA_real_)) ## WIP
-                  )
+data <- data %>% mutate(
+  # exit times, except this doesnt make sense lol... recalc w tt.times?
+  # exit.fromhatch = dh.exit - dh.hatch, # needed for some cohort A stats if u want to bother fixing this
+  # exit.fromenter = dh.exit - dh.enter,
+  # exit.fromrecover = dh.exit - dh.recover,
+  # exit.fromreturn = dh.exit - dh.return,
+  
+  # calc exit times using days standardised by expt enter date
+  # (i.e. d0 = expt enter date)
+  exit.fromenter = day.exit - day.enter,
+  exit.fromrecover = day.exit - day.recover,
+  exit.fromreturn = day.exit - day.return,
+  
+  # some filtering binaries and labels
+  is.40C = case_when(trt.enter == 40 ~ "Y",
+                     TRUE ~ "N"),
+  is.ctrl = case_when(trt < 100 ~ "Y",
+                      TRUE ~ "N"),
+  trt.recover = case_when(is.na(trt.recover) ~ trt.enter,
+                          TRUE ~ trt.recover),
+  trt.lab = formatC(trt, width = 3, flag = "0")
+)
+# mutate(starts_with("exit") ~ case_when(. < 0, ~ NA_real_)) ## WIP
+                  
 
 
 # redo km statuses to be consistent with how the package expects it to be coded
   # 1 = death, 0 = censored
-km <- list_assign(km, data = km$data %>% mutate(km.status = case_when(dh.exit > max ~ 0,
-                                                                      TRUE ~ 1)) %>%
-                    select(-max))
+data <- data %>% mutate(km.status = case_when(dh.exit > max ~ 0,
+                                              TRUE ~ 1)) %>%
+  select(-max)
+```
 
-# extract subsets
-  # TODO 2025-07-16 want to delete this eventually.. but this is used in cohort A analyses
-km <- list_assign(km, subsets = list(ctrls = filter(km$data, trt.enter == trt.recover),
-                                     expts = filter(km$data, trt.enter != trt.recover),
-                                     only40 = filter(km$data, trt.enter == 40),
-                                     recs = filter(km$data, trt > 40),
-                                     rec24 = filter(km$data, trt == 40 | trt.duration == 24),
-                                     rec48 = filter(km$data, trt == 40 | trt.duration == 48)))
+## create subsets
 
+```{r}
+# create new list
+dfs <- list()
+```
+
+```{r cohort A}
+dfs <- list_assign(dfs, dataA = filter(data, cohort == "A"))
+
+kmA <- list(data = dfs$dataA,
+            ctrls = filter(dfs$dataA, trt.enter == trt.recover),
+            expts = filter(dfs$dataA, trt.enter != trt.recover),
+            only40 = filter(dfs$dataA, trt.enter == 40),
+            recs = filter(dfs$dataA, trt > 40),
+            rec24 = filter(dfs$dataA, trt == 40 | trt.duration == 24),
+            rec48 = filter(dfs$dataA, trt == 40 | trt.duration == 48))
 
 ```
 
+```{r cohort B onwards}
+# prep: filter out exptals from cohort A and convert times to hours
+dfs <- list_assign(dfs, data = filter(data, !(cohort == "A" & trt > 100))) # keep the ctrls
+
+dfs$data <- mutate(dfs$data, across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24))
+
+## TODO:BUG some cohort C individs are breaking with negative exit times (keep this until fixed)
+dfs$data <- dfs$data %>%
+  mutate(exit.fromenter = case_when(exit.fromenter < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromenter)),
+         exit.fromrecover = case_when(exit.fromrecover < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromrecover)),
+         exit.fromreturn = case_when(exit.fromreturn < 0 ~ NA_real_, TRUE ~ as.numeric(exit.fromreturn)))
+
+# extract subsets
+  # (hopefully should allow for retaining most of the original names bc im too lazy to change them...)
+dfs <- list_assign(dfs, subsets = list(ctrls = filter(dfs$data, trt.enter == trt.recover),
+                                       expts = filter(dfs$data, trt.enter != trt.recover),
+                                       at40 = filter(dfs$data, trt.enter == 40),
+                                       recs = filter(dfs$data, trt > 40),
+                                       rec24 = filter(dfs$data, trt == 40 | trt.duration == 24),
+                                       rec48 = filter(dfs$data, trt == 40 | trt.duration == 48)))
+
+# extract 40C recovery time subsets
+dfs <- list_assign(dfs, subsets40 = list(rec24 = filter(dfs$subsets$at40, trt %in% c(40, 119, 126, 133)),
+                                       rec48 = filter(dfs$subsets$at40, trt %in% c(40, 219, 226, 233))))
+
+dfs$subsets40$rec24[,"trt.duration"] <- 24
+dfs$subsets40$rec48[,"trt.duration"] <- 48
+```
+
+
+# 3. cleanup
+
 ```{r cleanup}
-rm(max)
+dfs <- list_modify(dfs, dataA = zap())
+
+bin_wrangled <- list(data = data,
+                     km = dfs,
+                     kmA = kmA)
+
+rm(max,
+   data, dfs, kmA)
 ```
 
 # archived code 
@@ -193,7 +236,6 @@ km <- list_assign(km, data = data %>%
                            tt.recover = dh.recover - dh.enter,
                            tt.return = dh.return - dh.enter,
                            tt.exit = dh.exit - dh.enter,
-                           
                     )
                   )
   
