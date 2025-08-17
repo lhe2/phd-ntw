@@ -88,8 +88,8 @@ ggsurvplot(fit, data = dfs$data,
 dfs <- list_assign(dfs, r1 = list())
 
 dfs$r1 <- list_assign(dfs$r1, 
-                      survprop1 = dfs$data %>%
-                        calc.surv_ssB2(),
+                      # survprop1 = dfs$data %>%
+                      #   calc.surv_ssB2(),
                       survprop1a = dfs$data %>%
                         calc.surv_ssB2a(),
                       survprop1b = dfs$data %>%
@@ -100,7 +100,7 @@ dfs$r1 <- list_assign(dfs$r1,
 ```{r}
 # (just blindly copied over code from surv props B attempt 2)
 
-dfs$r1$survprop1 %>%
+dfs$r1$survprop1a %>%
   filter(status == "surv") %>%
   filter(trt >= 40) %>% #View()
   drop_na() %>%
@@ -117,7 +117,7 @@ dfs$r1$survprop1 %>%
   scale_x_discrete(guide = guide_axis(angle = 45)) +
   labs(y = "R2+3 proportion survived (cumulative)")
 
-dfs$r1$survprop1 %>%
+dfs$r1$survprop1a %>%
   filter(status == "surv") %>%
   filter(trt >= 40) %>% #View()
   #filter(timept != "hs72") %>% # kinda interesting... ideally this should be more symmetrical tho (i.e. +48 hr instead of +24)

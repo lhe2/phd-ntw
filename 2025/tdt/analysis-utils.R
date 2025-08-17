@@ -236,14 +236,6 @@ calc.surv_ssB2a <- function(widedata){
     int.ss.count_n_pivotB2()
 }
 
-calc.surv_ssB2 <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB2() %>% #View()
-    group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB2()
-}
-
 calc.surv_ssB <- function(widedata){
   widedata %>%
     #dfs$r1$allB %>% # tester data
