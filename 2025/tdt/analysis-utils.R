@@ -4,26 +4,34 @@
 # info ---------------------------
 
 # helper/utility functions for tdt data analyses
+# (currently these are all just for the survival proportions viz)
+
+# surv props utils ==============================
 
 # usage
-## internal utils = for use within this script
-## external utils = for use in analysis/viz scripts
+## internal utils = for use within this script (starts with "int")
+  ## code.survbins:
+    # codes status and dh at specified expt timepoints 
+    # for use with cohort B+ data (symmetrical around 24h)
+    # (symmetry around 24h bc i culled B after 24h after the last 40 died)
+  ## count_n_pivot:
+    # generic survival stats counter/summariser + pivoter function
+
+## external utils = compiled internal fns for use in analysis/viz scripts (starts with whatever)
+  ## calc.surv:
+    # combines the internal fns + group_by to generate summary stats for surv props viz
+    # code.survbins > group_by (varies) > count_n_pivot
+
+
+# organisation/versions
+## fns have organised by overall "versions" (rather than by function) bc easier to scroll lol
 ## newer versions of fns should be written above of the previous one as they are developed
-
-# TODO
-  # rename things to what they are instead of just "B" and "B2" lol
-    # B = 2nd hs timepts named as "return"
-    # B2 = 2nd hs timepts named as "hs"
+  # B = 2nd hs timepts named as "return"
+  # B2 = 2nd hs timepts named as "hs"
 
 
 
-# internal utils ---------------------------
-
-## survival status coding --------------------------------------------------
-
-# codes status and dh at specified expt timepoints 
-# for use with cohort B+ data (symmetrical around 24h)
-# (symmetry around 24h bc i culled B after 24h after the last 40 died)
+## ver B2 -------------------------
 
 # timept names (in hrs) based off hs
 int.code.survbins_hoursB2 <- function(widedata){
@@ -53,6 +61,65 @@ int.code.survbins_hoursB2 <- function(widedata){
                               TRUE ~ 0)) 
 }
 
+int.ss.count_n_pivotB2 <- function(groupeddata){ # timepts: "hs"
+  groupeddata %>%
+    summarise(n.surv.enter = sum(status.enter == 1),
+              n.surv.enter24 = sum(status.enter24 == 1),
+              n.surv.hs0 = sum(status.hs0 == 1),
+              n.surv.hs24 = sum(status.hs24 == 1),
+              n.surv.hs48 = sum(status.hs48 == 1),
+              n.surv.hs72 = sum(status.hs72 == 1),
+              
+              # count death if dead at current timept but alive at previous major timept
+              n.died.enter24 = sum(status.enter24 == 0),
+              n.died.hs0 = sum(status.hs0 == 0 & status.enter24 == 1),
+              n.died.hs24 = case_when(trt.duration == 0 ~ sum(status.hs24 == 0 & status.enter24 == 1),
+                                      TRUE ~ sum(status.hs24 == 0 & status.hs0 == 1)),
+              n.died.hs48 = case_when(trt.duration == 0 ~ sum(status.hs48 == 0 & status.enter24 == 1),
+                                      TRUE ~ sum(status.hs48 == 0 & status.hs24 == 1)),
+              n.died.hs72 = case_when(trt.duration == 0 ~ sum(status.hs72 == 0 & status.enter24 == 1),
+                                      TRUE ~ sum(status.hs72 == 0 & status.hs48 == 1)),
+              
+              # prop surv = alive at current timept/total entering initial timept
+              prop.surv.enter24 = n.surv.enter24/n.surv.enter,
+              prop.surv.hs0 = n.surv.hs0/n.surv.enter24,
+              prop.surv.hs24 = case_when(trt.duration == 0 ~ n.surv.hs24/n.surv.enter24,
+                                         TRUE ~ n.surv.hs24/n.surv.hs0),
+              prop.surv.hs48 = case_when(trt.duration == 0 ~ n.surv.hs48/n.surv.enter24,
+                                         TRUE ~ n.surv.hs48/n.surv.hs0),
+              prop.surv.hs72 = case_when(trt.duration == 0 ~ n.surv.hs72/n.surv.enter24,
+                                         TRUE ~ n.surv.hs72/n.surv.hs0),
+              
+              prop.died.enter24 = 1 - prop.surv.enter24,
+              prop.died.hs0 = 1 - prop.surv.hs0,
+              prop.died.hs24 = 1 - prop.surv.hs24,
+              prop.died.hs48 = 1 - prop.surv.hs48,
+              prop.died.hs72 = 1 - prop.surv.hs72) %>%
+    
+    pivot_longer(cols = starts_with(c("n.", "prop")),
+                 names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
+    unique()
+}
+
+# adds grouping by cohort (to grouping from B2a)
+calc.surv_ssB2b <- function(widedata){
+  widedata %>%
+    #dfs$r1$allB %>% # tester data
+    int.code.survbins_hoursB2() %>% #View()
+    group_by(cohort, trt, trt.duration, trt.recover) %>%
+    int.ss.count_n_pivotB2()
+}
+
+calc.surv_ssB2a <- function(widedata){
+  widedata %>%
+    #dfs$r1$allB %>% # tester data
+    int.code.survbins_hoursB2() %>% #View()
+    group_by(trt, trt.duration, trt.recover) %>%
+    int.ss.count_n_pivotB2()
+}
+
+## ver B -------------------------
+
 # timept names (in hrs) based off enter/returning from recovery
 int.code.survbins_hoursB <- function(widedata){
   widedata %>% 
@@ -78,94 +145,59 @@ int.code.survbins_hoursB <- function(widedata){
                                        TRUE ~ 0))
 }
 
-
-## summary stats counts ----------------------------------------------------
-
-# generic survival stats counter/summariser + pivoter function
-  # TODO:bug sth is breaking in here tho based off my line plots... (bc things are going down)
-
-int.ss.count_n_pivotB2 <- function(groupeddata){ # timepts: "hs"
-  groupeddata %>%
-  summarise(n.surv.enter = sum(status.enter == 1),
-            n.surv.enter24 = sum(status.enter24 == 1),
-            n.surv.hs0 = sum(status.hs0 == 1),
-            n.surv.hs24 = sum(status.hs24 == 1),
-            n.surv.hs48 = sum(status.hs48 == 1),
-            n.surv.hs72 = sum(status.hs72 == 1),
-            
-            # count death if dead at current timept but alive at previous major timept
-            n.died.enter24 = sum(status.enter24 == 0),
-            n.died.hs0 = sum(status.hs0 == 0 & status.enter24 == 1),
-            n.died.hs24 = case_when(trt.duration == 0 ~ sum(status.hs24 == 0 & status.enter24 == 1),
-                                    TRUE ~ sum(status.hs24 == 0 & status.hs0 == 1)),
-            n.died.hs48 = case_when(trt.duration == 0 ~ sum(status.hs48 == 0 & status.enter24 == 1),
-                                    TRUE ~ sum(status.hs48 == 0 & status.hs24 == 1)),
-            n.died.hs72 = case_when(trt.duration == 0 ~ sum(status.hs72 == 0 & status.enter24 == 1),
-                                    TRUE ~ sum(status.hs72 == 0 & status.hs48 == 1)),
-            
-            # prop surv = alive at current timept/total entering initial timept
-            prop.surv.enter24 = n.surv.enter24/n.surv.enter,
-            prop.surv.hs0 = n.surv.hs0/n.surv.enter24,
-            prop.surv.hs24 = case_when(trt.duration == 0 ~ n.surv.hs24/n.surv.enter24,
-                                       TRUE ~ n.surv.hs24/n.surv.hs0),
-            prop.surv.hs48 = case_when(trt.duration == 0 ~ n.surv.hs48/n.surv.enter24,
-                                       TRUE ~ n.surv.hs48/n.surv.hs0),
-            prop.surv.hs72 = case_when(trt.duration == 0 ~ n.surv.hs72/n.surv.enter24,
-                                       TRUE ~ n.surv.hs72/n.surv.hs0),
-            
-            prop.died.enter24 = 1 - prop.surv.enter24,
-            prop.died.hs0 = 1 - prop.surv.hs0,
-            prop.died.hs24 = 1 - prop.surv.hs24,
-            prop.died.hs48 = 1 - prop.surv.hs48,
-            prop.died.hs72 = 1 - prop.surv.hs72) %>%
-    
-    pivot_longer(cols = starts_with(c("n.", "prop")),
-                 names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
-    unique()
-}
-
-
 int.ss.count_n_pivotB <- function(groupeddata){ # timepts: "return"
   groupeddata %>%
-  summarise(n.surv.enter = sum(status.enter == 1),
-            n.surv.enter24 = sum(status.enter24 == 1),
-            n.surv.return = sum(status.return == 1),
-            n.surv.return24 = sum(status.return24 == 1),
-            n.surv.return48 = sum(status.return48 == 1),
-            n.surv.return72 = sum(status.return72 == 1),
-            
-            # count death if dead at current timept but alive at previous major timept
-            n.died.enter24 = sum(status.enter24 == 0),
-            n.died.return = sum(status.return == 0 & status.enter24 == 1),
-            n.died.return24 = case_when(trt.duration == 0 ~ sum(status.return24 == 0 & status.enter24 == 1),
-                                        TRUE ~ sum(status.return24 == 0 & status.return == 1)),
-            n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter24 == 1),
-                                        TRUE ~ sum(status.return48 == 0 & status.return == 1)),
-            n.died.return72 = case_when(trt.duration == 0 ~ sum(status.return72 == 0 & status.enter24 == 1),
-                                        TRUE ~ sum(status.return72 == 0 & status.return == 1)),
-            
-            # prop surv = alive at current timept/total entering previous timept
-            prop.surv.enter24 = n.surv.enter24/n.surv.enter,
-            prop.surv.return = n.surv.return/n.surv.enter24,
-            prop.surv.return24 = case_when(trt.duration == 0 ~ n.surv.return24/n.surv.enter24,
-                                           TRUE ~ n.surv.return24/n.surv.return),
-            prop.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.surv.enter24,
-                                           TRUE ~ n.surv.return48/n.surv.return),
-            prop.surv.return72 = case_when(trt.duration == 0 ~ n.surv.return72/n.surv.enter24,
-                                           TRUE ~ n.surv.return72/n.surv.return),
-            
-            prop.died.enter24 = 1 - prop.surv.enter24,
-            prop.died.return = 1 - prop.surv.return,
-            prop.died.return24 = 1 - prop.surv.return24,
-            prop.died.return48 = 1 - prop.surv.return48,
-            prop.died.return72 = 1 - prop.surv.return72) %>%
+    summarise(n.surv.enter = sum(status.enter == 1),
+              n.surv.enter24 = sum(status.enter24 == 1),
+              n.surv.return = sum(status.return == 1),
+              n.surv.return24 = sum(status.return24 == 1),
+              n.surv.return48 = sum(status.return48 == 1),
+              n.surv.return72 = sum(status.return72 == 1),
+              
+              # count death if dead at current timept but alive at previous major timept
+              n.died.enter24 = sum(status.enter24 == 0),
+              n.died.return = sum(status.return == 0 & status.enter24 == 1),
+              n.died.return24 = case_when(trt.duration == 0 ~ sum(status.return24 == 0 & status.enter24 == 1),
+                                          TRUE ~ sum(status.return24 == 0 & status.return == 1)),
+              n.died.return48 = case_when(trt.duration == 0 ~ sum(status.return48 == 0 & status.enter24 == 1),
+                                          TRUE ~ sum(status.return48 == 0 & status.return == 1)),
+              n.died.return72 = case_when(trt.duration == 0 ~ sum(status.return72 == 0 & status.enter24 == 1),
+                                          TRUE ~ sum(status.return72 == 0 & status.return == 1)),
+              
+              # prop surv = alive at current timept/total entering previous timept
+              prop.surv.enter24 = n.surv.enter24/n.surv.enter,
+              prop.surv.return = n.surv.return/n.surv.enter24,
+              prop.surv.return24 = case_when(trt.duration == 0 ~ n.surv.return24/n.surv.enter24,
+                                             TRUE ~ n.surv.return24/n.surv.return),
+              prop.surv.return48 = case_when(trt.duration == 0 ~ n.surv.return48/n.surv.enter24,
+                                             TRUE ~ n.surv.return48/n.surv.return),
+              prop.surv.return72 = case_when(trt.duration == 0 ~ n.surv.return72/n.surv.enter24,
+                                             TRUE ~ n.surv.return72/n.surv.return),
+              
+              prop.died.enter24 = 1 - prop.surv.enter24,
+              prop.died.return = 1 - prop.surv.return,
+              prop.died.return24 = 1 - prop.surv.return24,
+              prop.died.return48 = 1 - prop.surv.return48,
+              prop.died.return72 = 1 - prop.surv.return72) %>%
     
     pivot_longer(cols = starts_with(c("n.", "prop")),
                  names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
     unique()
 }
 
-## archive -----------------------------------------------------------------
+calc.surv_ssB <- function(widedata){
+  widedata %>%
+    #dfs$r1$allB %>% # tester data
+    int.code.survbins_hoursB() %>% #View()
+    group_by(trt, trt.duration, trt.recover) %>%
+    int.ss.count_n_pivotB()
+}
+
+
+## ver A (archived) -----------------------------------------------------------------
+
+# TODO:refactor 2025-08-17: names are not up-to-date with the analysis script lol
+# works with cohort A data only
 
 ## timepoints (hrs) for cohort A data only (symmetrical around 48h) 
   ## not actually used anywhere bc see the R1 viz code for development of this function
@@ -212,34 +244,3 @@ int.ss.count_n_pivotB <- function(groupeddata){ # timepts: "return"
 #     return()
 # }
 
-
-
-# external utils ---------------------------
-
-## surv summary stat df generation ---------------------------
-
-# generating summary stats by different groups
-# adds grouping by cohort
-calc.surv_ssB2b <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB2() %>% #View()
-    group_by(cohort, trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB2()
-}
-
-calc.surv_ssB2a <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB2() %>% #View()
-    group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB2()
-}
-
-calc.surv_ssB <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB() %>% #View()
-    group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB()
-}

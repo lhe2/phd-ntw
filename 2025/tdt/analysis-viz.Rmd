@@ -43,11 +43,8 @@ source(here(bin_paths$y25$tdt, "analysis-utils.R")) # helper functions
 # data import
 source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 
-dfs <- bin_wrangled$km # for cohort B+ for R2+
-```
+dfs <- bin_wrangled$km # cohorts B+ for R2+
 
-## df prep
-```{r}
 dfs <- list_assign(dfs, 
                    group = dfs$data %>% 
                      filter(trt.duration > 0) %>%
@@ -88,8 +85,6 @@ ggsurvplot(fit, data = dfs$data,
 dfs <- list_assign(dfs, r1 = list())
 
 dfs$r1 <- list_assign(dfs$r1, 
-                      # survprop1 = dfs$data %>%
-                      #   calc.surv_ssB2(),
                       survprop1a = dfs$data %>%
                         calc.surv_ssB2a(),
                       survprop1b = dfs$data %>%

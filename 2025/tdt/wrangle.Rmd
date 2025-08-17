@@ -36,7 +36,6 @@ knitr::purl("wrangle.Rmd", paste0(here(bin_paths$y25$tdt),
 ```
 
 ```{r load utils}
-#here::i_am("2025/analysis-tdt.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
@@ -138,7 +137,7 @@ kmA <- list(data = dfs$dataA,
 
 ```{r cohort B onwards}
 # prep: filter out exptals from cohort A and convert times to hours
-dfs <- list_assign(dfs, data = filter(data, !(cohort == "A" & trt > 100))) # keep the ctrls
+dfs <- list_assign(dfs, data = filter(data, !(cohort == "A" & trt > 100))) # keep the ctrls from A only
 
 dfs$data <- mutate(dfs$data, across(starts_with(c("exit.", "dh.", "max", "day.")), ~ . * 24))
 
