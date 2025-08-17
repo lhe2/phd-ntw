@@ -12,6 +12,8 @@
 
 # TODO
   # rename things to what they are instead of just "B" and "B2" lol
+    # B = 2nd hs timepts named as "return"
+    # B2 = 2nd hs timepts named as "hs"
 
 
 
@@ -48,8 +50,7 @@ int.code.survbins_hoursB2 <- function(widedata){
       status.hs48 = case_when(dh.exit > dh.hs48 ~ 1,
                               TRUE ~ 0),
       status.hs72 = case_when(dh.exit > dh.hs72 ~ 1,
-                              TRUE ~ 0)) %>%
-    return()
+                              TRUE ~ 0)) 
 }
 
 # timept names (in hrs) based off enter/returning from recovery
@@ -74,16 +75,58 @@ int.code.survbins_hoursB <- function(widedata){
            status.return48 = case_when(dh.exit > dh.return48 ~ 1,
                                        TRUE ~ 0),
            status.return72 = case_when(dh.exit > dh.return72 ~ 1,
-                                       TRUE ~ 0)) %>%
-    return()
+                                       TRUE ~ 0))
 }
 
 
 ## summary stats counts ----------------------------------------------------
 
 # generic survival stats counter/summariser + pivoter function
-  # TODO sth is breaking in here tho based off my line plots... (bc things are going down)
-int.ss.count_n_pivot <- function(widedata){
+  # TODO:bug sth is breaking in here tho based off my line plots... (bc things are going down)
+
+int.ss.count_n_pivotB2 <- function(groupeddata){ # timepts: "hs"
+  groupeddata %>%
+  summarise(n.surv.enter = sum(status.enter == 1),
+            n.surv.enter24 = sum(status.enter24 == 1),
+            n.surv.hs0 = sum(status.hs0 == 1),
+            n.surv.hs24 = sum(status.hs24 == 1),
+            n.surv.hs48 = sum(status.hs48 == 1),
+            n.surv.hs72 = sum(status.hs72 == 1),
+            
+            # count death if dead at current timept but alive at previous major timept
+            n.died.enter24 = sum(status.enter24 == 0),
+            n.died.hs0 = sum(status.hs0 == 0 & status.enter24 == 1),
+            n.died.hs24 = case_when(trt.duration == 0 ~ sum(status.hs24 == 0 & status.enter24 == 1),
+                                    TRUE ~ sum(status.hs24 == 0 & status.hs0 == 1)),
+            n.died.hs48 = case_when(trt.duration == 0 ~ sum(status.hs48 == 0 & status.enter24 == 1),
+                                    TRUE ~ sum(status.hs48 == 0 & status.hs24 == 1)),
+            n.died.hs72 = case_when(trt.duration == 0 ~ sum(status.hs72 == 0 & status.enter24 == 1),
+                                    TRUE ~ sum(status.hs72 == 0 & status.hs48 == 1)),
+            
+            # prop surv = alive at current timept/total entering initial timept
+            prop.surv.enter24 = n.surv.enter24/n.surv.enter,
+            prop.surv.hs0 = n.surv.hs0/n.surv.enter24,
+            prop.surv.hs24 = case_when(trt.duration == 0 ~ n.surv.hs24/n.surv.enter24,
+                                       TRUE ~ n.surv.hs24/n.surv.hs0),
+            prop.surv.hs48 = case_when(trt.duration == 0 ~ n.surv.hs48/n.surv.enter24,
+                                       TRUE ~ n.surv.hs48/n.surv.hs0),
+            prop.surv.hs72 = case_when(trt.duration == 0 ~ n.surv.hs72/n.surv.enter24,
+                                       TRUE ~ n.surv.hs72/n.surv.hs0),
+            
+            prop.died.enter24 = 1 - prop.surv.enter24,
+            prop.died.hs0 = 1 - prop.surv.hs0,
+            prop.died.hs24 = 1 - prop.surv.hs24,
+            prop.died.hs48 = 1 - prop.surv.hs48,
+            prop.died.hs72 = 1 - prop.surv.hs72) %>%
+    
+    pivot_longer(cols = starts_with(c("n.", "prop")),
+                 names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
+    unique()
+}
+
+
+int.ss.count_n_pivotB <- function(groupeddata){ # timepts: "return"
+  groupeddata %>%
   summarise(n.surv.enter = sum(status.enter == 1),
             n.surv.enter24 = sum(status.enter24 == 1),
             n.surv.return = sum(status.return == 1),
@@ -182,7 +225,7 @@ calc.surv_ssB2b <- function(widedata){
     #dfs$r1$allB %>% # tester data
     int.code.survbins_hoursB2() %>% #View()
     group_by(cohort, trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivot()
+    int.ss.count_n_pivotB2()
 }
 
 calc.surv_ssB2a <- function(widedata){
@@ -190,7 +233,7 @@ calc.surv_ssB2a <- function(widedata){
     #dfs$r1$allB %>% # tester data
     int.code.survbins_hoursB2() %>% #View()
     group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivot()
+    int.ss.count_n_pivotB2()
 }
 
 calc.surv_ssB2 <- function(widedata){
@@ -198,7 +241,7 @@ calc.surv_ssB2 <- function(widedata){
     #dfs$r1$allB %>% # tester data
     int.code.survbins_hoursB2() %>% #View()
     group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivot()
+    int.ss.count_n_pivotB2()
 }
 
 calc.surv_ssB <- function(widedata){
@@ -206,5 +249,5 @@ calc.surv_ssB <- function(widedata){
     #dfs$r1$allB %>% # tester data
     int.code.survbins_hoursB() %>% #View()
     group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivot()
+    int.ss.count_n_pivotB()
 }
