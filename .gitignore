@@ -39,6 +39,7 @@ vignettes/*.pdf
 # root folder
 archive/*
 notes/*
+outputs/*
 
 # elsewhere
 */figs/*
