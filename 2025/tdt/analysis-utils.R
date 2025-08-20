@@ -6,7 +6,35 @@
 # helper/utility functions for tdt data analyses
 # (currently these are all just for the survival proportions viz)
 
-# surv props utils ==============================
+# km utils =========================
+
+# takes pre-subsetted/filtered data and
+# summarises the enter/recover/return date for km plots
+calc.kmtimes <- function(filtereddf, ...){
+  # ... = vars to group_by
+  
+  # TODO wanted to make this automatically update dfs$group here but maybe another time
+  filtereddf %>%
+    group_by(!!!rlang::ensyms(...)) %>%
+    summarise(day.enter, day.recover, day.return) %>%
+    drop_na() %>% unique()
+}
+
+# add the enter/recover/return time vertical lines to km plots
+# add these geoms last and include the %++% operator after the initial ggsurvplot() call
+  # see ??add_ggsurvplot: this is bc ggplot2 and ggsurvplot dont play nice, 
+  # and bc im calling "color" both as a variable in different ways...
+viz.kmtimes <- function(kmgroup) {
+  #kmgroup = basically, should be whatever dfs$group is from calc.kmtimes()
+  list(geom_vline(data = kmgroup, aes(xintercept = day.enter), color = "red"),
+       geom_vline(data = kmgroup, aes(xintercept = day.recover), color = "skyblue2"),
+       geom_vline(data = kmgroup, aes(xintercept = day.return), color = "orange")
+  )
+}
+
+
+# surv props util fns ==============================
+
 
 # usage
 ## internal utils = for use within this script (starts with "int")

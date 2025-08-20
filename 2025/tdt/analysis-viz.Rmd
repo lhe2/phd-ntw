@@ -45,16 +45,45 @@ source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 
 dfs <- bin_wrangled$km # cohorts B+ for R2+
 
-dfs <- list_assign(dfs, 
-                   group = dfs$data %>% 
-                     filter(trt.duration > 0) %>%
-                     group_by(cohort, trt.recover, trt.duration) %>% 
-                     summarise(day.enter, day.recover, day.return) %>%
-                     drop_na() %>% unique()
-                   )
+dfs <- list_assign(dfs, group = calc.kmtimes(dfs$data, 
+                                             cohort, trt.recover, trt.duration))
 ```
 
 # # R3
+
+## = 2025-08-18 post mtg
+
+### kms
+
+```{r}
+obj <- Surv(dfs$subsets40$rec24$exit.fromenter, dfs$subsets40$rec24$km.status)
+fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec24)
+dfs$group <- calc.kmtimes(dfs$subsets40$rec24)
+
+# dfs$group breaks cuz of filtering...
+ggsurvplot(fit, data = dfs$subsets40$rec24,
+           #facet.by = "cohort",
+           color = "strata"
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +
+  labs(caption = "24h recovery; time = hrs from enter") +
+  viz.kmtimes(dfs$group)
+
+
+obj <- Surv(dfs$subsets40$rec48$exit.fromenter, dfs$subsets40$rec48$km.status)
+fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec48)
+dfs$group <- calc.kmtimes(dfs$subsets40$rec48)
+
+ggsurvplot(fit, data = dfs$subsets40$rec48,
+           #facet.by = "cohort",
+           color = "strata"
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "48h recovery; time = hrs from enter") +
+  viz.kmtimes(dfs$group)
+
+```
+
 
 ## = 2025-08-11 pre mtg
 
@@ -72,10 +101,9 @@ ggsurvplot(fit, data = dfs$data,
            #color = "strata"
            ) +
   geom_vline(data = dfs$group, aes(xintercept = day.enter), color = "red") +
-  geom_vline(data = dfs$group, aes(xintercept = day.recover), color = "skyblue") +
+  geom_vline(data = dfs$group, aes(xintercept = day.recover), color = "skyblue2") +
   geom_vline(data = dfs$group, aes(xintercept = day.return), color = "orange") +
-  #scale_color_manual(values = c("#4B1D91", "#AB1488", "#ECC000", "#E7D39A")) + 
-  scale_color_manual(values = c("#4B1D91", "#00A3B6","#F9C25C", "#A71B4B")) +  
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) + 
   labs(caption = "R2-3 tdts, time = hrs from enter")
 ```
 
