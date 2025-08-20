@@ -37,7 +37,7 @@ viz.kmtimes <- function(kmgroup) {
 
 
 # usage
-## internal utils = for use within this script (starts with "int")
+## internal fns (.fn) = for use within the external helper fns
   ## code.survbins:
     # codes status and dh at specified expt timepoints 
     # for use with cohort B+ data (symmetrical around 24h)
@@ -45,7 +45,7 @@ viz.kmtimes <- function(kmgroup) {
   ## count_n_pivot:
     # generic survival stats counter/summariser + pivoter function
 
-## external utils = compiled internal fns for use in analysis/viz scripts (starts with whatever)
+## external fns = compiled internal fns for use in analysis/viz scripts (starts with whatever)
   ## calc.surv:
     # combines the internal fns + group_by to generate summary stats for surv props viz
     # code.survbins > group_by (varies) > count_n_pivot
@@ -62,7 +62,7 @@ viz.kmtimes <- function(kmgroup) {
 ## ver B2 -------------------------
 
 # timept names (in hrs) based off hs
-int.code.survbins_hoursB2 <- function(widedata){
+.code_survbins_hoursB2 <- function(widedata){
   widedata %>% 
     mutate(#dh.enter = dh.enter,
       dh.enter24 = case_when(trt < 100 ~ dh.enter + 24,
@@ -89,8 +89,12 @@ int.code.survbins_hoursB2 <- function(widedata){
                               TRUE ~ 0)) 
 }
 
-int.ss.count_n_pivotB2 <- function(groupeddata){ # timepts: "hs"
-  groupeddata %>%
+calc.surv_ssB2 <- function(widedata, ...){
+  widedata %>%
+    #dfs$r1$allB %>% # tester data
+    .code_survbins_hoursB2() %>% #View()
+    #group_by(cohort, trt, trt.duration, trt.recover) %>%
+    group_by(!!!rlang::ensyms(...)) %>%
     summarise(n.surv.enter = sum(status.enter == 1),
               n.surv.enter24 = sum(status.enter24 == 1),
               n.surv.hs0 = sum(status.hs0 == 1),
@@ -129,27 +133,19 @@ int.ss.count_n_pivotB2 <- function(groupeddata){ # timepts: "hs"
     unique()
 }
 
-# adds grouping by cohort (to grouping from B2a)
-calc.surv_ssB2b <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB2() %>% #View()
-    group_by(cohort, trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB2()
-}
-
-calc.surv_ssB2a <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB2() %>% #View()
-    group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB2()
-}
+# calc.surv_ssB2a <- function(widedata){
+#   widedata %>%
+#     #dfs$r1$allB %>% # tester data
+#     .code_survbins_hoursB2() %>% #View()
+#     #group_by(trt, trt.duration, trt.recover) %>%
+#     .count_n_pivotB2()
+# }
 
 ## ver B -------------------------
 
 # timept names (in hrs) based off enter/returning from recovery
-int.code.survbins_hoursB <- function(widedata){
+
+.code_survbinsB <- function(widedata){
   widedata %>% 
     mutate(dh.enter24 = case_when(trt > 100 ~ dh.recovery,
                                   trt < 100 ~ dh.enter + 24),
@@ -173,8 +169,13 @@ int.code.survbins_hoursB <- function(widedata){
                                        TRUE ~ 0))
 }
 
-int.ss.count_n_pivotB <- function(groupeddata){ # timepts: "return"
-  groupeddata %>%
+calc.surv_ssB <- function(widedata, ...){
+  widedata %>%
+    #dfs$r1$allB %>% # tester data
+    .code_survbinsB() %>%
+    #group_by(trt, trt.duration, trt.recover) %>%
+    group_by(!!!rlang::ensyms(...)) %>%
+    
     summarise(n.surv.enter = sum(status.enter == 1),
               n.surv.enter24 = sum(status.enter24 == 1),
               n.surv.return = sum(status.return == 1),
@@ -211,14 +212,6 @@ int.ss.count_n_pivotB <- function(groupeddata){ # timepts: "return"
     pivot_longer(cols = starts_with(c("n.", "prop")),
                  names_to = c(".value", "status", "timept"), names_sep = "\\.") %>%
     unique()
-}
-
-calc.surv_ssB <- function(widedata){
-  widedata %>%
-    #dfs$r1$allB %>% # tester data
-    int.code.survbins_hoursB() %>% #View()
-    group_by(trt, trt.duration, trt.recover) %>%
-    int.ss.count_n_pivotB()
 }
 
 

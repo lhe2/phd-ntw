@@ -113,10 +113,8 @@ ggsurvplot(fit, data = dfs$data,
 dfs <- list_assign(dfs, r1 = list())
 
 dfs$r1 <- list_assign(dfs$r1, 
-                      survprop1a = dfs$data %>%
-                        calc.surv_ssB2a(),
-                      survprop1b = dfs$data %>%
-                        calc.surv_ssB2b(), ## cohort splits
+                      survprop1a = calc.surv_ssB2(dfs$data, trt, trt.duration, trt.recover),
+                      survprop1b = calc.surv_ssB2(dfs$data, cohort, trt, trt.duration, trt.recover)
                       )
 ```
 
@@ -325,10 +323,9 @@ ggsurvplot(fit, data = dfs$data,
 #### attempt 2
 
 ```{r}
-dfs$r1 <- list_assign(dfs$r1, survprop2 = dfs$r1$allB %>%
-                        calc.surv_ssB2(),
-                      survprop2a = dfs$r1$allB %>%
-                        calc.surv_ssB2a(),
+dfs$r1 <- list_assign(dfs$r1, 
+                      survprop2 = calc.surv_ssB2(dfs$r1$allB, trt, trt.duration, trt.recover),
+                      survprop2a =  calc.surv_ssB2(dfs$r1$allB, trt, trt.duration, trt.recover),
                       )
 ```
 
@@ -421,9 +418,7 @@ dfs$r1$survprop2a %>%
 #### attempt 1
 
 ```{r}
-dfs$r1 <- list_assign(dfs$r1, survprop = dfs$r1$allB %>%
-                        calc.surv_ssB()
-                      )
+dfs$r1 <- list_assign(dfs$r1, survprop = calc.surv_ssB(dfs$r1$allB, trt, trt.duration, trt.recover))
 ```
 
 ```{r}
