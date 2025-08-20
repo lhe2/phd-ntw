@@ -47,6 +47,7 @@ outputs/*
 *_p.R
 */products/*
 */archive/*
+*_wip.*
 
 # sigh
 2025/*/data/*
