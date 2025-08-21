@@ -37,21 +37,12 @@ vignettes/*.pdf
 >>>>>>> b18d659151ab2a9fb345881f6d430cff20f3a211
 
 # root
-archive/*
 etc/*
-notes/*
-outputs/*
 
 # elsewhere
-*/archive/*
-*/data/*
-*/etc/*
-*/figs/*
-*/products/*
+**/data/*
+**/figs/*
+**/etc/*
 
 *_p.R
 *_wip.*
-
-# sigh
-2025/*/data/*
-2025/*/figs/*
