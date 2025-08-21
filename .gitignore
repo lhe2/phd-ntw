@@ -36,17 +36,20 @@ vignettes/*.pdf
 .Renviron
 >>>>>>> b18d659151ab2a9fb345881f6d430cff20f3a211
 
-# root folder
+# root
 archive/*
+etc/*
 notes/*
 outputs/*
 
 # elsewhere
-*/figs/*
-*/data/*
-*_p.R
-*/products/*
 */archive/*
+*/data/*
+*/etc/*
+*/figs/*
+*/products/*
+
+*_p.R
 *_wip.*
 
 # sigh
