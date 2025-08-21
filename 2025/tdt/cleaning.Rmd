@@ -69,11 +69,15 @@ value fixing
 ```{r}
 # match time data to hatch.time for some bugs bc otherwise things dont align nice:
   # R2 d2 pm expt bugs recover time (returned late)
+  # R3 d2 expt bugs recover time (data entry typo?)
   # R3 d2 26C bugs enter time (entered late)
 data <- data %>%
   mutate(time.return = case_when(date.hatch == "2025/7/7" & trt > 200 & 
                                    !is.na(date.return) ~ as.character(time.hatch),
                                  TRUE ~ as.character(time.return))) %>%
+  mutate(time.recover = case_when(date.hatch == "2025/7/24" & trt > 100 &
+                                    !is.na(date.return) ~ as.character(time.hatch),
+                                  TRUE ~ as.character(time.recover))) %>%
   mutate(time.enter = case_when(date.hatch == "2025/7/25" & trt == 26 ~ "12:00",
                                 TRUE ~ as.character(time.enter)))
 ```
