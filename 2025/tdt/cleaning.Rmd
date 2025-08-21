@@ -48,7 +48,7 @@ data <- raw %>%
   mutate(trt.recover = case_when(trt.type == "ctrl" ~ NA_character_,
                                  TRUE ~ trt.recover)) %>%
   select(-c(trt.type, starts_with("dv"))) %>%
-  mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .)))
+  mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) # didnt add "2025" to dates so add here
 ```
 
 # 2. content fixing and standardising
@@ -67,14 +67,14 @@ data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = "&")
 value fixing
 
 ```{r}
-# editing time data for some bugs bc otherwise things are messed up:
-  # recovery time for the day 2 pm R2 bugs
-  # hatch time for day 3 R3 bugs
+# match time data to hatch.time for some bugs bc otherwise things dont align nice:
+  # R2 d2 pm expt bugs recover time (returned late)
+  # R3 d2 26C bugs enter time (entered late)
 data <- data %>%
-  mutate(time.return = case_when(trt > 200 & date.hatch == "2025/7/7" & 
+  mutate(time.return = case_when(date.hatch == "2025/7/7" & trt > 200 & 
                                    !is.na(date.return) ~ as.character(time.hatch),
                                  TRUE ~ as.character(time.return))) %>%
-  mutate(time.enter = case_when(date.hatch == "2025/7/25" & trt == 26  ~ "12:00",
+  mutate(time.enter = case_when(date.hatch == "2025/7/25" & trt == 26 ~ "12:00",
                                 TRUE ~ as.character(time.enter)))
 ```
 
@@ -82,100 +82,32 @@ data <- data %>%
 column formatting & date-time fixing
 
 ```{r}
+# basic column type conversions/standardising
 data <- data %>%
     mutate(across(c(trt, trt.enter, trt.recover, trt.duration, id, instar.exit, fate,
-                    #starts_with("mass.", "dv."))
                     starts_with("mass")), as.numeric))
-    #mutate(across(starts_with("date."), as.Date, format = "%m/%d")) #%>%
+    #mutate(across(starts_with("date."), as.Date, format = "%m/%d")) # breaks cuz no %Y
     #mutate(across(starts_with("time."), hm)) # breaks parsing bc converts to "HH MM SS"
 
-# add '2025' to yrs bc i didnt do it in gsheets, convert to D-T objects, calculate the actual decimal hrs
-# bc gsheets does it differently from R
+# recalculate the actual decimal hrs bc gsheets does it differently from R
+# (see dump script for testing)
 data <- data %>%
-  #mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) %>%
+  # date-time formatting
   mutate(dh.hatch = as_datetime(paste(date.hatch, time.hatch), format = "%Y/%m/%d %H:%M"),
          dh.enter = as_datetime(paste(date.enter, time.enter), format = "%Y/%m/%d %H:%M"),
          dh.recover = as_datetime(paste(date.recover, time.recover), format = "%Y/%m/%d %H:%M"),
          dh.return = as_datetime(paste(date.return, time.return), format = "%Y/%m/%d %H:%M"),
-         dh.exit = case_when(!is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
-                             !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M")),
-         
-         ## testing
-         # jdied = as.numeric(as.Date(date.died, format = "%Y/%m/%d")),
-         # hdied = lubridate::hour(as_datetime(dh.exit)),
-         # mdied = lubridate::minute(as_datetime(dh.exit)),
-         # mdied2 = mdied/60,
-         # dhdied = jdied + hdied + mdied2,
-         # dhdied2 = jdied + hdied/24 + mdied2/86400,
-         # ddied = as.Date(date.died, format = "%Y/%m/%d"),
-         # test = as.numeric(dh.exit)/(3600*24),
-         # test2 = format(as.Date(date.died, format = "%Y/%m/%d"), "%j")
-         ) %>% #View()
+         dh.exit = case_when(
+           !is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
+           !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M")),
+         ) %>% 
+  # conversion of date-times (sec) to decimal days
   mutate(across(starts_with("dh."), ~ 
-                  #as.numeric(.) # i dont think i need any additional conversion... (cuz of the julian??)
-                  as.numeric(.)/(60*60*24) # convert to hours (nvm convert to days again cuz julian is in days)
-                  #as.numeric(as.Date(., format = "%Y/%m/%d")) + lubridate::hour(.) + lubridate::minute(.)/60)
-         )) #%>% View()
+                  as.numeric(.)/(60*60*24)))
 
 # TODO might need to keep "expt type" to separate out 40 ctrl from other "ctrls" ?
-  
 ```
 
-```{r eval=FALSE, include=FALSE}
-## TODO archive later, but refer back to for date-time futzing lol
-
-# fix dv.<stage> bc gsheets doesnt do it the same as R lol --> convert to numeric
-  # as.Date = date only
-data %>%
-  mutate(dv.test = as_datetime(paste(date.hatch, time.hatch), 
-                               format = "%Y-%m-%d %H:%M"),
-         time.test2 = hour(dv.test),
-         time.test = hour(as_datetime(time.hatch, format = "%H:%M")),
-         j.test = as.numeric(as.Date(dv.test, format = "%j") + 
-                               as.numeric(as.Date(time.hatch, format = "%H:%M"))/60),
-         # j.test2 = as.numeric(as.Date(dv.test, format = "%j") + 
-         #                       as.numeric(hour(time.hatch)) +
-         #                        as.numeric(minute(time.hatch)/60)),
-         .before = 1)
-
-
-data %>% # combine the <stages> and then convert
-  mutate(across(starts_with("date"), as.Date, format = "%m/%d"),
-         across(starts_with("time"), as_datetime, format = "%H:%M"),
-         .before = 1)
-
-
-data %>%
-  mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) %>%
-  mutate(dt.hatch = as_datetime(paste(date.hatch, time.hatch), format = "%Y/%m/%d %H:%M"),
-         dt.enter = as_datetime(paste(date.enter, time.enter), format = "%Y/%m/%d %H:%M"),
-         dt.recover = as_datetime(paste(date.return, time.recover), format = "%Y/%m/%d %H:%M"),
-         dt.return = as_datetime(paste(date.return, time.return), format = "%Y/%m/%d %H:%M"),
-         dt.died = case_when(!is.na(date.culled) ~ as_datetime(paste(date.culled, time.died), format = "%Y/%m/%d %H:%M"),
-                             !is.na(date.died) ~ as_datetime(paste(date.died, time.died), format = "%Y/%m/%d %H:%M"),),
-         )
-
-
-```
-
-
-```{r}
-# other filters
-
-# data <- data %>%
-#   dplyr::filter(!(notes.ignore %in% c("early pmd", "lost"))) # dropping things that died in 1 day or got lost
-# 
-# data <- select(data, -c("date.LPI", "date.15")) # not rly needed for analyses/LPI is empty lol
-
-
-# value fixing
-# data[, -ncol(data)] <- lapply(data[, -ncol(data)], gsub, pattern="\\?", replacement = "") 
-#   # removes `?`s from all columns excepts notes column (assuming its the last col in the df)
-
-
-# data[, 'id'] <- lapply(data[, 'id'], gsub, pattern="\\.\\d", replacement = "") 
-#   # turns the repeat entries into whole numbers so theres no decimals going on after as.numeric(id)
-```
 
 julian date conversions
 
@@ -184,7 +116,8 @@ data <- data %>%
   mutate(across(starts_with("date."), as.Date, "%Y/%m/%d")) %>%
   mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric)) %>%
-  # consolidate died/culled into "exit"
+  
+  # consolidate died/culled cols into an "exit" col
   mutate(jdate.exit = case_when(!is.na(jdate.culled) ~ jdate.culled,
                                 !is.na(jdate.died) ~ jdate.died)) %>%
   select(-c(jdate.died, jdate.culled))
@@ -203,13 +136,13 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 
 ```{r}
 # export
-# TODO convert these to here() later
-write.csv(raw, file = paste0("~/Documents/repos/ntw/2025/tdt/data/archive/", today, "_raw.csv"), row.names = FALSE)
-write.csv(data, file = paste0("~/Documents/repos/ntw/2025/tdt/data/archive/", today, "_clean-full.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here(bin_paths$y25$tdtdata), "/archive/", today, "_raw.csv"), row.names = FALSE)
+write.csv(data, file = paste0(here(bin_paths$y25$tdtdata), "/archive/", today, "_clean-full.csv"), row.names = FALSE)
 
 # extract the useful stuff
 data <- data %>%
-  select(c("cohort", "shelf", starts_with("trt"), "id", starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate", 
+  select(c("cohort", "shelf", starts_with("trt"), "id", 
+           starts_with(c("jdate", "mass", "dh")), "instar.exit", "fate", 
            "mass.return", "h.return"))
 
 write.csv(data, file = paste0(here(bin_paths$y25$tdtdata), "/clean-working.csv"), row.names = FALSE)
@@ -220,6 +153,3 @@ remove troubleshooting objects
 ```{r}
 rm(today, data, raw)
 ```
-
-
-

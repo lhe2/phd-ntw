@@ -11,17 +11,6 @@ date: "2025-08-14"
   - cohort B: after updates to cleaning script, `dh` is calculated in days (should be hours, ideally)... jdate is calculated in days (so just be careful w axes)
   - this will probably break some of the cohort A analyses lol
   
-  
-- WIP TO MOVE
-  - R1 df prep (move to its own section in R1)
-  - R1: kms 06-22
-  - R1: km redos (06-27)
-  - R1: surv props
-  - R2/3 df prep
-  - R2 kms
-  - R2: surv props
-  - R3: kms
-  - R3: surv props
 
 ## loading
 
@@ -37,6 +26,7 @@ library(here)
 
 source(here::here("set-paths.R"))
 source(here(bin_paths$y25$tdt, "analysis-utils.R")) # helper functions
+#source(here(bin_paths$y25$tdt, "analysis-utils_wip.R"))
 ```
 
 ```{r}

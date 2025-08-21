@@ -111,7 +111,7 @@ survObjs$r1 <- list_assign(survObjs$r1,
                             fromReturn = Surv(dfs$recC$exit.fromreturn, dfs$recC$km.status)
                             )
 
-## duration as factor -- leads to NAs
+## duration as factor
 fits$r1 <- list_assign(fits$r1,
                     cph.enter = coxph(survObjs$r1$fromEnter ~ trt.recover * as.factor(trt.duration), 
                                       data = dfs$recC),
