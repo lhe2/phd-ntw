@@ -21,6 +21,7 @@ source(here::here("set-paths.R"))
 source(here(bin_paths$y25$tdt, "analysis-utils.R")) # helper functions
 ```
 
+## data import + df prep
 ```{r}
 # data import
 source(here(bin_paths$y25$tdt, "wrangle_p.R"))
@@ -30,13 +31,6 @@ dfs <- bin_wrangled$km # just data for cohort B+ and onward for R2+
 
 ## todos & notes
 
-- 2025-07-16
-  - [>] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
-  - [ ] figure out when my bugs start to enter in the km viz lol 😵‍💫 
-    - (idk if t0 = hatch or enter... also if the standardising is alrdy accounted for lol)
-- 2025-08-13
-  - ARCHIVE whatever is left of this sheet lol when done
-    
 notes
 
 - 2025-07-17 re: jdate vs dh
@@ -173,6 +167,7 @@ TODO
   - [ ] shelf effects?
 - [ ] 33 const cohort B are all getting filtered out for some reason...
 
+### df prep
 
 ```{r}
 dfs <- bin_wrangled$km
@@ -261,10 +256,21 @@ summary(fits$r1$shelves$returnInt)
 
 R1 is handled too differently so its df prep steps gets moved here
 
+todos:
+
+- 2025-07-16
+  - [>] prob need to rerun A now that ive fixed the decimal hours calcs finally LO L L...
+  - [ ] figure out when my bugs start to enter in the km viz lol 😵‍💫 
+    - (idk if t0 = hatch or enter... also if the standardising is alrdy accounted for lol)
+    
+notes:
+
+- cohort A df prep is separated (uses the `ogkm` df from import)
+
 ## - df prep
 
 ```{r}
-# set up empty lists and dfs
+# set up empty lists and dfs (different from B+ handling)
 survObj <- list()
 fits <- list()
 testing <- list()
