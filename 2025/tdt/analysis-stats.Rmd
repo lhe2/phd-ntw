@@ -11,7 +11,7 @@ library(tidyverse)
 #library(MuMIn) # for survival nested model comparisons
 library(survival) # for fitting 
 library(survminer) # for plotting
-
+library(coxme) # mixed effects coxphs
 
 # pathfinding
 here::i_am("2025/tdt/analysis-stats.Rmd")
@@ -29,20 +29,20 @@ source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 dfs <- bin_wrangled$km # just data for cohort B+ and onward for R2+
 ```
 
+```{r}
+# initialising lists
+for (l in c("survObjs", "fits")) {
+  assign(l, list())
+}
+```
+
 ## todos & notes
 
 notes
 
 - 2025-07-17 re: jdate vs dh
   - cohort B: after updates to cleaning script, `dh` is calculated in days (should be hours, ideally)... jdate is calculated in days (so just be careful w axes)
-  - cohort A df prep is separated (uses the `ogkm` df from import)
   
-## df prep
-```{r}
-for (l in c("survObjs", "fits")) {
-  assign(l, list())
-}
-```
 
 =====
 
@@ -50,6 +50,7 @@ for (l in c("survObjs", "fits")) {
 
 includes cohort B + C
 
+### df prep
 ```{r}
 # cohort C subsetting
 dfs <- list_assign(dfs,
@@ -57,13 +58,203 @@ dfs <- list_assign(dfs,
                    recC = dfs$data %>% filter(cohort == "C" & trt.duration > 0))
 ```
 
+## = post 250811 mtg fups
+
+- include cohort as fixed and shelf as random
+
 ```{r}
 survObjs <- list_assign(survObjs, r2 = list())
 fits <- list_assign(fits, r2 = list())
 ```
+
+test out stuff w/ the whole group before moving into the 24h and 48 subsets... (see what things need to be included in the models)
+
+### - coxph rec bugs w/ 40C
 ```{r}
+survObjs$r2 <- list_assign(survObjs$r2,
+                            fromEnter = Surv(dfs$subsets40$all$exit.fromenter, dfs$subsets40$all$km.status),
+                            fromRecovery = Surv(dfs$subsets40$all$exit.fromrecover, dfs$subsets40$all$km.status),
+                            fromReturn = Surv(dfs$subsets40$all$exit.fromreturn, dfs$subsets40$all$km.status)
+                            )
+#sdf <- dfs$subsets40$all #summary() gets too ambiguous when this is omitted lol
+```
+
+```{r}
+# + cohort
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover*as.factor(trt.duration) + cohort, 
+                                         data = dfs$subsets40$all),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover*as.factor(trt.duration) + cohort,
+                                            data = dfs$subsets40$all),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover*as.factor(trt.duration) + cohort,
+                                          data = dfs$subsets40$all)
+                       )
+# fits$r2 creation tests lol
+#lapply(survObjs$r2, coxph(~ trt.recover*as.factor(trt.duration) + cohort,  data = dfs$subsets40$all))
+# lapply(survObjs$r2, 
+#        \(s) coxph(eval(paste0(s, " ~ trt.recover * as.factor(trt.duration) + cohort")), data = dfs$subsets40$all))
+
+lapply(fits$r2, summary)
 
 ```
+breaks with `+ (1 | shelf)`....
+
+
+### - coxph rec bugs w/o 40C
+use `subsets$recs` (hot bugs w/o 40 ctrl) instead of `subsets40$all` bc stats get weird when trt.duration == 0 is included...
+
+```{r}
+survObjs$r2 <- list_assign(survObjs$r2,
+                            fromEnter = Surv(dfs$subsets$recs$exit.fromenter, dfs$subsets$recs$km.status),
+                            fromRecovery = Surv(dfs$subsets$recs$exit.fromrecover, dfs$subsets$recs$km.status),
+                            fromReturn = Surv(dfs$subsets$recs$exit.fromreturn, dfs$subsets$recs$km.status)
+                            )
+```
+```{r}
+# + cohort
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover*as.factor(trt.duration)+ cohort, 
+                                         data = dfs$subsets$recs),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover*as.factor(trt.duration) + cohort,
+                                            data = dfs$subsets$recs),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover*as.factor(trt.duration) + cohort,
+                                          data = dfs$subsets$recs)
+                       )
+
+lapply(fits$r2, summary)
+```
+
+```{r}
+# + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover*as.factor(trt.duration) + (1|shelf), 
+                                         data = dfs$subsets$recs),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover*as.factor(trt.duration) + (1|shelf),
+                                            data = dfs$subsets$recs),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover*as.factor(trt.duration) + (1|shelf),
+                                          data = dfs$subsets$recs)
+                       )
+
+lapply(fits$r2, summary)
+```
+```{r}
+# + cohort + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ 
+                                           trt.recover*as.factor(trt.duration) + cohort + (1|shelf), 
+                                         data = dfs$subsets$recs),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ 
+                                              trt.recover*as.factor(trt.duration) + cohort + (1|shelf),
+                                            data = dfs$subsets$recs),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ 
+                                            trt.recover*as.factor(trt.duration) + cohort + (1|shelf),
+                                          data = dfs$subsets$recs)
+                       )
+
+lapply(fits$r2, summary)
+```
+
+
+
+### - coxph 24h
+
+```{r}
+survObjs$r2 <- list_assign(survObjs$r2,
+                            fromEnter = Surv(dfs$subsets40$rec24$exit.fromenter, dfs$subsets40$rec24$km.status),
+                            fromRecovery = Surv(dfs$subsets40$rec24$exit.fromrecover, dfs$subsets40$rec24$km.status),
+                            fromReturn = Surv(dfs$subsets40$rec24$exit.fromreturn, dfs$subsets40$rec24$km.status)
+                            )
+```
+```{r}
+# + cohort
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover + cohort, 
+                                         data = dfs$subsets40$rec24),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover + cohort,
+                                            data = dfs$subsets40$rec24),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover + cohort,
+                                          data = dfs$subsets40$rec24)
+                       )
+lapply(fits$r2, summary)
+```
+```{r}
+# + recT + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover + (1|shelf), 
+                                         data = dfs$subsets40$rec24),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf),
+                                            data = dfs$subsets40$rec24),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf),
+                                          data = dfs$subsets40$rec24)
+                       )
+
+lapply(fits$r2, summary)
+```
+
+```{r}
+# + recT + cohort + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover + (1|shelf) + cohort, 
+                                         data = dfs$subsets40$rec24),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf) + cohort,
+                                            data = dfs$subsets40$rec24),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf) + cohort,
+                                          data = dfs$subsets40$rec24)
+                       )
+
+lapply(fits$r2, summary)
+```
+### - coxph 48h
+```{r}
+survObjs$r2 <- list_assign(survObjs$r2,
+                            fromEnter = Surv(dfs$subsets40$rec48$exit.fromenter, dfs$subsets40$rec48$km.status),
+                            fromRecovery = Surv(dfs$subsets40$rec48$exit.fromrecover, dfs$subsets40$rec48$km.status),
+                            fromReturn = Surv(dfs$subsets40$rec48$exit.fromreturn, dfs$subsets40$rec48$km.status)
+                            )
+```
+```{r}
+# + cohort
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover + cohort, 
+                                         data = dfs$subsets40$rec48),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover + cohort,
+                                            data = dfs$subsets40$rec48),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover + cohort,
+                                          data = dfs$subsets40$rec48)
+                       )
+lapply(fits$r2, summary)
+```
+```{r}
+# + recT + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover + (1|shelf), 
+                                         data = dfs$subsets40$rec48),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf),
+                                            data = dfs$subsets40$rec48),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf),
+                                          data = dfs$subsets40$rec48)
+                       )
+
+lapply(fits$r2, summary)
+```
+
+```{r}
+# + recT + cohort + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover + (1|shelf) + cohort, 
+                                         data = dfs$subsets40$rec48),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf) + cohort,
+                                            data = dfs$subsets40$rec48),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf) + cohort,
+                                          data = dfs$subsets40$rec48)
+                       )
+
+lapply(fits$r2, summary)
+```
+
+
+### [ ] coxph masses at recovery (C, recovered bugs only)
+
 
 ## = 2025-08-11 pre mtg
 
@@ -137,18 +328,6 @@ summary(fits$r1$cph.enter)
 summary(fits$r1$cph.recovery)
 summary(fits$r1$cph.return)
 ```
-
-
-
-### coxph shelves (tbd)
-
-
-
-### coxph masses at recovery (tbd)
-
-
-
-
 
 
 ======
