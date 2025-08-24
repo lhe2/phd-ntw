@@ -156,15 +156,14 @@ dfs <- list_assign(dfs, subsets = list(ctrls = filter(dfs$data, trt.enter == trt
 
 ```{r 40 bugs subsets}
 # create 40C recovery time subsets
-  
-  # then make versions of just 24/48h recovery (and modify the 40C group accordingly,
-  # i.e. add 24/48h to the times)
+
 dfs <- list_assign(dfs, subsets40 = list(all = dfs$subsets$at40))
 
 ## assign return/recovery stuff to 40C ctrls; treat differences in time as "0"
 dfs$subsets40$all[dfs$subsets40$all$trt == 40,] <- 
   dfs$subsets40$all[dfs$subsets40$all$trt == 40,] %>% 
-  mutate(dh.recover = dh.enter + 24,
+  mutate(dh.recover = case_when(dh.exit > dh.enter + 24 ~ dh.enter + 24,
+                                TRUE ~ NA_real_), # NA if died w/in 24h of entering
          dh.return = dh.recover,
          exit.fromrecover = dh.exit - dh.recover,
          exit.fromreturn = dh.exit - dh.return)
