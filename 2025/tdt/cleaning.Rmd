@@ -12,13 +12,9 @@ date: "2025-06-14"
 re-run script whenever the gsheets gets updated
 
 
-TODO
+# 1. loading
 
-- [ ] check if `dh.<timept>` and `jdate` stuff are consistent/same as each other LOL...
-
-
-# 1. load data & packages
-
+## - data and packages
 ```{r message = FALSE}
 library(tidyr)
 library(purrr)
@@ -32,12 +28,12 @@ library(here)
 source(here::here("set-paths.R"))
 ```
 
-googlesheets import
+## - googlesheets import
 
 ```{r}
 # need to correct dates (add 2025)
 raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                  sheet = "jun 2025 pilot",
+                  sheet = "jun 2025 tdt",
                   col_types = "c",
                   na = c("#VALUE!")) %>%
   drop_na() %>%
@@ -51,9 +47,9 @@ data <- raw %>%
   mutate(across(starts_with("date."), ~ stringr::str_c("2025/", .))) # didnt add "2025" to dates so add here
 ```
 
-# 2. content fixing and standardising
+# 2. format standardising + fixing
 
-filtering
+## - filtering bad bugs
 
 ```{r}
 # pull out accidentally culled before 3rd (fate = 2, instar.exit < 3)
@@ -64,13 +60,14 @@ data[, 'notes'] <- lapply(data[, 'notes'], gsub, pattern=",", replacement = "&")
   # replaces commas w/ &'s to avoid csv breakage after export
 ```
 
-value fixing
+## - fixing timepts
+
+match time data to hatch.time for some bugs bc otherwise things dont align nice:
+- R2 d2 pm expt bugs recover time (returned late)
+- R3 d2 expt bugs recover time (data entry typo?)
+- R3 d2 26C bugs enter time (entered late)
 
 ```{r}
-# match time data to hatch.time for some bugs bc otherwise things dont align nice:
-  # R2 d2 pm expt bugs recover time (returned late)
-  # R3 d2 expt bugs recover time (data entry typo?)
-  # R3 d2 26C bugs enter time (entered late)
 data <- data %>%
   mutate(time.return = case_when(date.hatch == "2025/7/7" & trt > 200 & 
                                    !is.na(date.return) ~ as.character(time.hatch),
@@ -82,8 +79,22 @@ data <- data %>%
                                 TRUE ~ as.character(time.enter)))
 ```
 
+## - fixing weights
 
-column formatting & date-time fixing
+bugs were massed at molt/return to 40C, but ignore if they died the same morning (weight will not be accurate)
+
+```{r}
+data <- data %>%
+  pivot_longer(c(ends_with(c("3rd", "4th", "return")), -starts_with(c("h", "time"))),
+               names_to = c(".value", "event"), names_sep = "\\.") %>%
+  mutate(mass = case_when(date == date.died & when.died == "am" ~ NA_real_,
+                          TRUE ~ as.numeric(mass))) %>% 
+  pivot_wider(names_from = event, values_from = c("date", "mass"),
+              names_glue = "{.value}.{event}")
+```
+
+
+## - column formatting & date-time fixing
 
 ```{r}
 # basic column type conversions/standardising
@@ -113,7 +124,7 @@ data <- data %>%
 ```
 
 
-julian date conversions
+## - julian date conversions
 
 ```{r}
 data <- data %>%
@@ -152,8 +163,7 @@ data <- data %>%
 write.csv(data, file = paste0(here(bin_paths$y25$tdtdata), "/clean-working.csv"), row.names = FALSE)
 ```
 
-remove troubleshooting objects
-
 ```{r}
+# remove troubleshooting objects
 rm(today, data, raw)
 ```
