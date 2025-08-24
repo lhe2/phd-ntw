@@ -35,8 +35,9 @@ source(here(bin_paths$y25$tdt, "wrangle_p.R"))
 
 dfs <- bin_wrangled$km # cohorts B+ for R2+
 
-dfs <- list_assign(dfs, group = calc.kmtimes(dfs$data, 
-                                             cohort, trt.recover, trt.duration))
+# default dfs$group that can be overwritten
+dfs <- list_assign(dfs, 
+                   group = calc.kmtimes(dfs$data, cohort, trt.recover, trt.duration))
 ```
 
 # # R3
@@ -50,12 +51,13 @@ obj <- Surv(dfs$subsets40$rec24$exit.fromenter, dfs$subsets40$rec24$km.status)
 fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec24)
 dfs$group <- calc.kmtimes(dfs$subsets40$rec24)
 
-# dfs$group breaks cuz of filtering...
 ggsurvplot(fit, data = dfs$subsets40$rec24,
-           #facet.by = "cohort",
-           color = "strata"
+           facet.by = "cohort",
+           #color = "strata",  # this doesnt play nice w scale_color_manual
+           conf.int = TRUE
            ) %++%
-  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%  
+  scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
   labs(caption = "24h recovery; time = hrs from enter") +
   viz.kmtimes(dfs$group)
 
@@ -65,12 +67,32 @@ fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec48)
 dfs$group <- calc.kmtimes(dfs$subsets40$rec48)
 
 ggsurvplot(fit, data = dfs$subsets40$rec48,
-           #facet.by = "cohort",
-           color = "strata"
+           facet.by = "cohort",
+           conf.int= TRUE
            ) %++%
-  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%   
+  scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
   labs(caption = "48h recovery; time = hrs from enter") +
   viz.kmtimes(dfs$group)
+```
+```{r}
+obj <- Surv(dfs$subsets$at40$exit.fromenter, dfs$subsets$at40$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$subsets$at40)
+dfs$group <- calc.kmtimes(dfs$subsets$at40)
+
+ggsurvplot(fit, data = dfs$subsets$at40,
+           #conf.int= TRUE,
+           linetype = c(2, 3, 2, 3, 2, 3, 1),
+           ## show strata names/order
+           # risk.table = TRUE,
+           # risk.table.col = "strata",
+           # risk.table.height = 0.5,
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#4B99E9","#6FCF59", "#6FCF59", "#E7BF27", "#E7BF27","#E97005"))  %++%   
+  #scale_fill_manual(values = c("#4B99E9", "#4B99E9","#6FCF59", "#6FCF59", "#E7BF27", "#E7BF27","#E97005")) %++%
+  labs(caption = "24 vs 48h recovery; time = hrs from enter") +
+  viz.kmtimes(dfs$group)
+```
 
 ```
 
