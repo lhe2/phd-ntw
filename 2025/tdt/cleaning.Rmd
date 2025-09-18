@@ -33,7 +33,7 @@ source(here::here("set-paths.R"))
 ```{r}
 # need to correct dates (add 2025)
 raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                  sheet = "jun 2025 tdt",
+                  sheet = "tdt jun 2025",
                   col_types = "c",
                   na = c("#VALUE!")) %>%
   drop_na() %>%

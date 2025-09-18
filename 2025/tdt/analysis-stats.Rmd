@@ -11,7 +11,7 @@ library(tidyverse)
 #library(MuMIn) # for survival nested model comparisons
 library(survival) # for fitting 
 library(survminer) # for plotting
-library(coxme) # mixed effects coxphs
+library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
 
 # pathfinding
 here::i_am("2025/tdt/analysis-stats.Rmd")
@@ -60,7 +60,7 @@ dfs <- list_assign(dfs,
 
 ## = post 250811 mtg fups
 
-- include cohort as fixed and shelf as random
+- trying cohort as fixed and shelf as random
 
 ```{r}
 survObjs <- list_assign(survObjs, r2 = list())
@@ -68,6 +68,50 @@ fits <- list_assign(fits, r2 = list())
 ```
 
 test out stuff w/ the whole group before moving into the 24h and 48 subsets... (see what things need to be included in the models)
+
+### - coxph all 40 bugs
+
+- use as originally coded
+
+```{r, eval=FALSE}
+survObjs$r2 <- list_assign(survObjs$r2,
+                            fromEnter = Surv(dfs$subsets$at40$exit.fromenter, dfs$subsets$at40$km.status),
+                            fromRecovery = Surv(dfs$subsets$at40$exit.fromrecover, dfs$subsets$at40$km.status),
+                            fromReturn = Surv(dfs$subsets$at40$exit.fromreturn, dfs$subsets$at40$km.status)
+                            )
+```
+
+```{r, eval=FALSE}
+# returns NAs bc of the ref level
+
+# + cohort
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover*as.factor(trt.duration)+ cohort, 
+                                         data = dfs$subsets$at40),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover*as.factor(trt.duration) + cohort,
+                                            data = dfs$subsets$at40),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover*as.factor(trt.duration) + cohort,
+                                          data = dfs$subsets$at40)
+                       )
+
+lapply(fits$r2, summary)
+```
+
+```{r, eval=FALSE}
+# breaks (prob bc of the NAs...)
+
+# + (1|shelf)
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover*as.factor(trt.duration) + (1|shelf), 
+                                         data = dfs$subsets$at40),
+                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover*as.factor(trt.duration) + (1|shelf),
+                                            data = dfs$subsets$at40),
+                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover*as.factor(trt.duration) + (1|shelf),
+                                          data = dfs$subsets$at40)
+                       )
+
+lapply(fits$r2, summary)
+```
 
 ### - coxph rec bugs w/ 40C
 ```{r}
@@ -179,12 +223,23 @@ lapply(fits$r2, summary)
 ```
 ```{r}
 # + recT + (1|shelf)
+# fits$r2 <- list_assign(fits$r2,
+#                        cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover + (1|shelf), 
+#                                          data = dfs$subsets40$rec24),
+#                        cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf),
+#                                             data = dfs$subsets40$rec24),
+#                        cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf),
+#                                           data = dfs$subsets40$rec24)
+#                        )
+# 
+# lapply(fits$r2, summary)
+
 fits$r2 <- list_assign(fits$r2,
-                       cph.enter = coxme(survObjs$r2$fromEnter ~ trt.recover + (1|shelf), 
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover + frailty(shelf), 
                                          data = dfs$subsets40$rec24),
-                       cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover + frailty(shelf),
                                             data = dfs$subsets40$rec24),
-                       cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover + frailty(shelf),
                                           data = dfs$subsets40$rec24)
                        )
 
@@ -203,6 +258,24 @@ fits$r2 <- list_assign(fits$r2,
                        )
 
 lapply(fits$r2, summary)
+
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover + cohort + frailty(shelf), 
+                                         data = dfs$subsets40$rec24),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover + cohort + frailty(shelf),
+                                            data = dfs$subsets40$rec24),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover + cohort + frailty(shelf),
+                                          data = dfs$subsets40$rec24),
+                       cph.return2 = coxph(survObjs$r2$fromReturn ~ as.factor(trt.recover) + frailty(shelf),
+                                          data = dfs$subsets40$rec24) # drop cohort; try recover temp as factor
+                       )
+
+lapply(fits$r2, summary)
+
+# futzing w joel trying to plot the coxph model
+x <- fits$r2$cph.return2
+plot(fits$r2$cph.return2)
+names(fits$r2$cph.return2)
 ```
 ### - coxph 48h
 ```{r}
@@ -212,6 +285,7 @@ survObjs$r2 <- list_assign(survObjs$r2,
                             fromReturn = Surv(dfs$subsets40$rec48$exit.fromreturn, dfs$subsets40$rec48$km.status)
                             )
 ```
+
 ```{r}
 # + cohort
 fits$r2 <- list_assign(fits$r2,
@@ -236,6 +310,18 @@ fits$r2 <- list_assign(fits$r2,
                        )
 
 lapply(fits$r2, summary)
+
+
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover + frailty(shelf), 
+                                         data = dfs$subsets40$rec48),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover + frailty(shelf),
+                                            data = dfs$subsets40$rec48),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover + frailty(shelf),
+                                          data = dfs$subsets40$rec48)
+                       )
+
+lapply(fits$r2, summary)
 ```
 
 ```{r}
@@ -246,6 +332,18 @@ fits$r2 <- list_assign(fits$r2,
                        cph.recovery = coxme(survObjs$r2$fromRecovery ~ trt.recover + (1|shelf) + cohort,
                                             data = dfs$subsets40$rec48),
                        cph.return = coxme(survObjs$r2$fromReturn ~ trt.recover + (1|shelf) + cohort,
+                                          data = dfs$subsets40$rec48)
+                       )
+
+lapply(fits$r2, summary)
+
+
+fits$r2 <- list_assign(fits$r2,
+                       cph.enter = coxph(survObjs$r2$fromEnter ~ trt.recover + cohort + frailty(shelf), 
+                                         data = dfs$subsets40$rec48),
+                       cph.recovery = coxph(survObjs$r2$fromRecovery ~ trt.recover + cohort + frailty(shelf),
+                                            data = dfs$subsets40$rec48),
+                       cph.return = coxph(survObjs$r2$fromReturn ~ trt.recover + cohort + frailty(shelf),
                                           data = dfs$subsets40$rec48)
                        )
 

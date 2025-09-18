@@ -56,8 +56,78 @@ viz.kmtimes <- function(kmgroup) {
 ## newer versions of fns should be written above of the previous one as they are developed
   # B = 2nd hs timepts named as "return"
   # B2 = 2nd hs timepts named as "hs"
+  # C = standardised timept names; better handling of 40C bugs w the exptal ones
 
+## ver C -------------------------
 
+# better handling of all "hot" bugs
+.code_survbinsC <- function(widedata){
+  widedata %>%
+    ## create additional timepts ##
+    # dfs$data %>%  # testing
+    mutate(
+      # dh.enter24 exists for correct comparison of 40C ctrl to exptals...
+      dh.enter24 = case_when(trt < 100 ~ dh.enter + 24,
+                             TRUE ~ dh.recover),
+      dh.hs0 = case_when(trt < 100 ~ dh.enter24,
+                         TRUE ~ dh.return),
+      dh.hs24 = dh.hs0 + 24,
+      dh.hs48 = dh.hs24 + 24,
+      dh.hs72 = dh.hs48 + 24) %>%
+    
+    ## code status ##
+    mutate(
+      across(c("dh.enter", "dh.enter24", "dh.hs0", "dh.hs24", "dh.hs48", "dh.hs72"), 
+             ~ case_when(dh.exit > . ~ 1, TRUE ~ 0),
+             .names = "{sub('dh', 'status', col)}"
+             #.names = paste0("status.", str_split(., "dh."))
+      )
+    )
+}
+
+#.count_n_pivotC
+calc.surv_ssC <- function(widedata, ...){
+  widedata %>%
+    .code_survbinsC() %>%
+    
+    # group_by(cohort, trt, trt.duration, trt.recover) %>%
+    group_by(!!!rlang::ensyms(...)) %>%
+    
+    summarise( 
+      ## surv per timept: alive at prev ##
+      N_surv.enter24 = sum(status.enter == 1),
+      N_surv.hs0 = sum(status.enter24 == 1), 
+      N_surv.hs24 = sum(status.hs0 == 1), 
+      N_surv.hs48 = sum(status.hs24 == 1), 
+      N_surv.hs72 = sum(status.hs48 == 1), 
+      
+      ## death per timept: alive at prev + dead at current ##
+      n_died.enter24 = sum(status.enter24 == 0),
+      n_died.hs0 = sum(status.enter24 == 1 & status.hs0 == 0),
+      n_died.hs24 = sum(status.hs0 == 1 & status.hs24 == 0),
+      n_died.hs48 = sum(status.hs24 == 1 & status.hs48 == 0),
+      n_died.hs72 = sum(status.hs48 == 1 & status.hs72 == 0),
+      
+      ## totals & proportions ##
+      across(starts_with("status"), ~ sum(. == 0), .names = "{sub('status', 'N_died', col)}"),
+      across(starts_with("status"), ~ sum(. == 1), .names = "{sub('status', 'n_surv', col)}"),
+      across(starts_with("status"), ~ sum(status.enter == 1), .names = "{sub('status', 'N0', col)}"),
+    ) %>%
+    
+    # A = initial/entered, a = final/remaining
+    pivot_longer(cols = starts_with(c("N0", "n_")), names_to = c(".value", "timept"), names_sep = "\\.") %>%
+    unique() %>%
+    
+    # A = cumulative, a = per timept
+    mutate(P_died = N_died/N0,
+           p_died = n_died/N_surv,
+           P_surv = 1 - P_died,
+           p_surv = 1 - p_died
+    ) %>%
+    pivot_longer(cols = starts_with(c("N_", "n_", "P_", "p_")),
+                 names_to = c(".value", "status"), names_sep = "_")
+  
+}
 
 ## ver B2 -------------------------
 
@@ -89,6 +159,7 @@ viz.kmtimes <- function(kmgroup) {
                               TRUE ~ 0)) 
 }
 
+# adds grouping by cohort (to grouping from B2a)
 calc.surv_ssB2 <- function(widedata, ...){
   widedata %>%
     #dfs$r1$allB %>% # tester data

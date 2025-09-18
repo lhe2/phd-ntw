@@ -93,8 +93,54 @@ ggsurvplot(fit, data = dfs$subsets$at40,
   labs(caption = "24 vs 48h recovery; time = hrs from enter") +
   viz.kmtimes(dfs$group)
 ```
+### surv props
 
+```{r}
+dfs <- list_assign(dfs, r1 = list())
+
+dfs$r1 <- list_assign(dfs$r1, survprop1 = calc.surv_ssC(dfs$subsets$at40, cohort, trt.duration, trt.recover))
 ```
+
+```{r}
+## maybe do mean+/-se deaths if doing across cohorts or sth... (instead of each cohort individually)
+
+dfs$r1$survprop1 %>%
+  filter(status == "died") %>%
+  #drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = P, 
+             color = trt.recover,
+             lty = cohort,
+             group = interaction(cohort, trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(#trt.recover
+             ~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived (cumulative)", # check filter
+       caption = "R2+3")
+
+dfs$r1$survprop1 %>%
+  filter(status == "died") %>%
+  #drop_na() %>%
+  mutate(trt.duration = as.factor(trt.duration), trt.recover = as.factor(trt.recover)) %>%
+  ggplot(aes(x = timept, y = p, 
+             color = trt.recover,
+             lty = cohort,
+             group = interaction(cohort, trt.recover, trt.duration)
+         ))+
+  geom_point() +
+  geom_line() +
+  #geom_point(aes(interaction = c("prop", "timept"))) +
+  facet_grid(#trt.recover
+             ~trt.duration, scales = "free") +
+  scale_x_discrete(guide = guide_axis(angle = 45)) +
+  labs(y = "proportion survived (per timept)", # check filter
+       caption = "R2+3")
+```
+
 
 
 ## = 2025-08-11 pre mtg
