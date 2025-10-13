@@ -8,6 +8,7 @@
 
 # km utils =========================
 
+# create kms
 # takes pre-subsetted/filtered data and
 # summarises the enter/recover/return date for km plots
 calc.kmtimes <- function(filtereddf, ...){
@@ -18,6 +19,12 @@ calc.kmtimes <- function(filtereddf, ...){
     group_by(!!!rlang::ensyms(...)) %>%
     summarise(day.enter, day.recover, day.return) %>%
     drop_na() %>% unique()
+# recalcs the start of km curves (T=0) given a day (i.e. day.recover or day.return)
+# turns negative values NA so that viz.kmtimes() will be happy
+calc.kmtimes0 <- function(df, day0){
+  df %>%
+  mutate_all(~ . - {{day0}}) %>%
+    mutate(across(everything(), function(x) replace(x, which(x<0), NA))) %>% unique()
 }
 
 # add the enter/recover/return time vertical lines to km plots

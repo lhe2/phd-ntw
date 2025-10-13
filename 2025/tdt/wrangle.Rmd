@@ -148,6 +148,7 @@ dfs$data <- mutate(dfs$data, across(starts_with(c("exit.", "dh.", "day.")), ~ . 
   # (hopefully should allow for retaining most of the original names bc im too lazy to change them...)
 dfs <- list_assign(dfs, subsets = list(ctrls = filter(dfs$data, trt.enter == trt.recover),
                                        expts = filter(dfs$data, trt.enter != trt.recover),
+                                       ctrl40 = filter(dfs$data, trt.recover == 40), 
                                        at40 = filter(dfs$data, trt.enter == 40),
                                        recs = filter(dfs$data, trt > 40),
                                        rec24 = filter(dfs$data, trt == 40 | trt.duration == 24),
@@ -159,6 +160,30 @@ dfs <- list_assign(dfs, subsets = list(ctrls = filter(dfs$data, trt.enter == trt
 
 dfs <- list_assign(dfs, subsets40 = list(all = dfs$subsets$at40))
 
+## assign return/recovery stuff to 40C ctrls; treat differences in time as "0"
+dfs$subsets40$all[dfs$subsets40$all$trt == 40,] <- 
+  dfs$subsets40$all[dfs$subsets40$all$trt == 40,] %>% 
+  mutate(dh.recover = case_when(dh.exit > dh.enter + 24 ~ dh.enter + 24,
+                                TRUE ~ NA_real_), # NA if died w/in 24h of entering
+         dh.return = dh.recover,
+         exit.fromrecover = dh.exit - dh.recover,
+         exit.fromreturn = dh.exit - dh.return)
+
+## make 24/48h-only versions and modify "return" times accordingly
+dfs$subsets40 <- list_assign(dfs$subsets40, 
+                             rec24 = filter(dfs$subsets40$all, trt %in% c(40, 119, 126, 133)),
+                             rec48 = filter(dfs$subsets40$all, trt %in% c(40, 219, 226, 233)))
+
+dfs$subsets40$rec24[dfs$subsets40$rec24$trt == 40,] <- 
+  dfs$subsets40$rec24[dfs$subsets40$rec24$trt == 40,] %>%
+  mutate(trt.duration = 24,
+         across(c(dh.return, exit.fromreturn), ~ . + 24))
+
+dfs$subsets40$rec48[dfs$subsets40$rec48$trt == 40,] <- 
+  dfs$subsets40$rec48[dfs$subsets40$rec48$trt == 40,] %>%
+  mutate(trt.duration = 48,
+         across(c(dh.return, exit.fromreturn), ~ . + 48))
+```
 ## assign return/recovery stuff to 40C ctrls; treat differences in time as "0"
 dfs$subsets40$all[dfs$subsets40$all$trt == 40,] <- 
   dfs$subsets40$all[dfs$subsets40$all$trt == 40,] %>% 

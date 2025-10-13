@@ -42,6 +42,137 @@ dfs <- list_assign(dfs,
 
 # # R3
 
+## = post 2025-09-23 mtg
+
+### ctrl kms
+```{r}
+# plot ctrls by cohort, strata by shelf
+  # lmaoooo
+
+obj <- Surv(dfs$subsets$ctrl40$exit.fromenter, dfs$subsets$ctrl40$km.status)
+fit <- survfit(obj ~ shelf, data = dfs$subsets$ctrl40)
+dfs$group <- calc.kmtimes(dfs$subsets$ctrl40)
+
+
+ggsurvplot(fit, data = dfs$subsets$ctrl40,
+           #color = "strata",  # this doesnt play nice w scale_color_manual
+           conf.int = TRUE,
+           facet.by = "cohort",
+           ) %++%
+  #scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%  
+  #scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "40C controls; time = hrs from enter") + 
+  viz.kmtimes(dfs$group)
+
+```
+
+### recovery kms
+
+```{r}
+# 24h
+obj <- Surv(dfs$subsets40$rec24$exit.fromreturn, dfs$subsets40$rec24$km.status)
+fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec24)
+dfs$group <- calc.kmtimes(dfs$subsets40$rec24) %>% calc.kmtimes0(day.return)
+
+
+ggsurvplot(fit, data = dfs$subsets40$rec24,
+           #conf.int = TRUE
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%  
+  scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "24h recovery; time = hrs from return") +
+  viz.kmtimes(dfs$group)
+
+
+
+
+# 48h
+obj <- Surv(dfs$subsets40$rec48$exit.fromreturn, dfs$subsets40$rec48$km.status)
+fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec48)
+dfs$group <- calc.kmtimes(dfs$subsets40$rec48) %>% calc.kmtimes0(day.return)
+
+ggsurvplot(fit, data = dfs$subsets40$rec48,
+           #conf.int= TRUE
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%   
+  scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "48h recovery; time = hrs from return") +
+  viz.kmtimes(dfs$group)
+```
+
+
+
+## = 2025-09-09 post mtg
+
+### kms
+
+```{r}
+obj <- Surv(dfs$subsets$ctrl40$exit.fromenter, dfs$subsets$ctrl40$km.status)
+fit <- survfit(obj ~ cohort, data = dfs$subsets$ctrl40)
+dfs$group <- calc.kmtimes(dfs$subsets$ctrl40)
+
+
+ggsurvplot(fit, data = dfs$subsets$ctrl40,
+           #color = "strata",  # this doesnt play nice w scale_color_manual
+           #conf.int = TRUE
+           ) %++%
+  #scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%  
+  #scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "40C controls; time = hrs from enter") + 
+  viz.kmtimes(dfs$group)
+```
+
+
+```{r}
+obj <- Surv(dfs$subsets40$rec24$exit.fromreturn, dfs$subsets40$rec24$km.status)
+fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec24)
+dfs$group <- calc.kmtimes(dfs$subsets40$rec24) %>% calc.kmtimes0(day.return)
+
+
+ggsurvplot(fit, data = dfs$subsets40$rec24,
+           facet.by = "cohort",
+           #color = "strata",  # this doesnt play nice w scale_color_manual
+           conf.int = TRUE
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%  
+  scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "24h recovery; time = hrs from return") +
+  viz.kmtimes(dfs$group)
+
+
+obj <- Surv(dfs$subsets40$rec48$exit.fromreturn, dfs$subsets40$rec48$km.status)
+fit <- survfit(obj ~ trt.recover, data = dfs$subsets40$rec48)
+dfs$group <- calc.kmtimes(dfs$subsets40$rec48) %>% calc.kmtimes0(day.return)
+
+ggsurvplot(fit, data = dfs$subsets40$rec48,
+           facet.by = "cohort",
+           conf.int= TRUE
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005"))  %++%   
+  scale_fill_manual(values = c("#4B99E9", "#6FCF59", "#E7BF27", "#E97005")) +  
+  labs(caption = "48h recovery; time = hrs from return") +
+  viz.kmtimes(dfs$group)
+
+
+obj <- Surv(dfs$subsets40$all$exit.fromreturn, dfs$subsets40$all$km.status)
+fit <- survfit(obj ~ trt.recover + trt.duration, data = dfs$subsets40$all)
+dfs$group <- calc.kmtimes(dfs$subsets40$all) %>% calc.kmtimes0(day.return)
+
+ggsurvplot(fit, data = dfs$subsets40$all,
+           #conf.int= TRUE,
+           linetype = c(2, 3, 2, 3, 2, 3, 1),
+           ## show strata names/order
+           # risk.table = TRUE,
+           # risk.table.col = "strata",
+           # risk.table.height = 0.5,
+           ) %++%
+  scale_color_manual(values = c("#4B99E9", "#4B99E9","#6FCF59", "#6FCF59", "#E7BF27", "#E7BF27","#E97005"))  %++%   
+  #scale_fill_manual(values = c("#4B99E9", "#4B99E9","#6FCF59", "#6FCF59", "#E7BF27", "#E7BF27","#E97005")) %++%
+  labs(caption = "24 and 48h recovery; time = hrs from return") +
+  viz.kmtimes(dfs$group)
+```
+
+
 ## = 2025-08-18 post mtg
 
 ### kms

@@ -58,6 +58,149 @@ dfs <- list_assign(dfs,
                    recC = dfs$data %>% filter(cohort == "C" & trt.duration > 0))
 ```
 
+## = post 250923 mtg fups
+
+- [ ] ctrl anovas
+  - [ ] effect of cohort
+  - [ ] effect of shelf
+
+```{r}
+survObjs <- list_assign(survObjs, r4 = list())
+fits <- list_assign(fits, r4 = list())
+```
+
+
+### - ctrl anovas
+
+```{r}
+# ctrl anovas
+survObjs$r4 <- list_assign(survObjs$r4,
+                            fromEnter = Surv(dfs$subsets$ctrl40$exit.fromenter, dfs$subsets$ctrl40$km.status))
+
+fits$r4 <- list_assign(fits$r4,
+                       null = coxph(survObjs$r4$fromEnter ~ 1, data = dfs$subsets$ctrl40),
+                       cohort = coxph(survObjs$r4$fromEnter ~ cohort, data = dfs$subsets$ctrl40),
+                       #shelf = coxme(survObjs$r4$fromEnter ~ (cohort|shelf), data = dfs$subsets$ctrl40), # breaks
+                       #both = coxme(survObjs$r4$fromEnter ~ cohort + (cohort|shelf), data = dfs$subsets$ctrl40)
+                       )
+
+lapply(fits$r4, summary)
+
+anova(fits$r4$null, fits$r4$cohort, test="Chisq") # so probably ok to split apart? need to confirm shelf tho
+```
+
+
+### - recovery anovas
+
+```{r}
+# anovas, summaries of rec temp
+  # temp is impt!
+survObjs$r4 <- list_assign(survObjs$r4,
+                           return24 = Surv(dfs$subsets40$rec24$exit.fromreturn, dfs$subsets40$rec24$km.status),
+                           return48 = Surv(dfs$subsets40$rec48$exit.fromreturn, dfs$subsets40$rec48$km.status))
+
+fits$r4 <- list_assign(fits$r4,
+                       null24 = coxph(survObjs$r4$return24 ~ 1, data = dfs$subsets40$rec24),
+                       null48 = coxph(survObjs$r4$return48 ~ 1, data = dfs$subsets40$rec48),
+                       temp24 = coxph(survObjs$r4$return24 ~ as.factor(trt.recover), data = dfs$subsets40$rec24),
+                       ctemp24 = coxph(survObjs$r4$return24 ~ trt.recover, data = dfs$subsets40$rec24),
+                       temp48 = coxph(survObjs$r4$return48 ~ as.factor(trt.recover), data = dfs$subsets40$rec48),
+                       ctemp48 = coxph(survObjs$r4$return48 ~ trt.recover, data = dfs$subsets40$rec48))
+
+anova(fits$r4$null24, fits$r4$temp24, test = "Chisq")
+anova(fits$r4$temp24, fits$r4$ctemp24, test = "Chisq")
+
+anova(fits$r4$null48, fits$r4$temp48, test = "Chisq")
+anova(fits$r4$temp48, fits$r4$ctemp48, test = "Chisq")
+
+
+lapply(fits$r4, summary)
+
+```
+## = post 250909 mtg fups
+
+- does shelf/cohort affect the 40C controls?
+  - if no, disperse 40C thruout the 24h/48h recovery (so can have just 1 big dataset instead of separate ones...)
+- plot cphs for 24h and 48h recovery -- do they match the kms?
+
+```{r}
+survObjs <- list_assign(survObjs, r3 = list())
+fits <- list_assign(fits, r3 = list())
+```
+
+### - are all the 40s the same?
+
+prob not?! (so can mix them in?!) can prob drop cohort, shelf...?
+
+```{r}
+survObjs$r3 <- list_assign(survObjs$r3,
+                            fromEnter = Surv(dfs$subsets$ctrl40$exit.fromenter, dfs$subsets$ctrl40$km.status))
+
+fits$r3 <- list_assign(fits$r3,
+                       cohort = coxph(survObjs$r3$fromEnter ~ cohort, data = dfs$subsets$ctrl40),
+                       shelf = coxph(survObjs$r3$fromEnter ~ frailty(shelf), data = dfs$subsets$ctrl40),
+                       both = coxph(survObjs$r3$fromEnter ~ cohort + frailty(shelf), data = dfs$subsets$ctrl40)
+                       )
+
+lapply(fits$r3, summary)
+
+
+# trying diagnostics
+#lapply(fits$r3$cohort, plot) # meh (this worked and now it doesnt)
+plot(survfit(fits$r3$cohort)) # plots survival curve
+ggcoxdiagnostics(fits$r3$cohort) # got this from the internet...
+
+# trying to plot residuals?
+cphsurv <- Surv(dfs$subsets$ctrl40$exit.fromenter, dfs$subsets$ctrl40$km.status)
+mod <- coxph(cphsurv ~ cohort, data = dfs$subsets$ctrl40)
+plot(dfs$subsets$ctrl40$exit.fromenter, mod$residuals)
+```
+
+### [/] trt.temp as factor vs cts
+
+```{r}
+survObjs$r3 <- list_assign(survObjs$r3,
+                            rec24 = Surv(dfs$subsets40$rec24$exit.fromreturn, dfs$subsets40$rec24$km.status),
+                            rec48 = Surv(dfs$subsets40$rec48$exit.fromreturn, dfs$subsets40$rec48$km.status)
+                           )
+
+
+fits$r3 <- list_assign(fits$r3,
+                       cph.rec24 = coxph(survObjs$r3$rec24 ~ as.factor(trt.recover) + frailty(shelf),
+                                          data = dfs$subsets40$rec24),
+                       cph.rec48 = coxph(survObjs$r3$rec48 ~ as.factor(trt.recover) + frailty(shelf),
+                                          data = dfs$subsets40$rec48),
+                       # cph2.rec24 = coxph(survObjs$r3$rec24 ~ trt.recover + frailty(shelf),
+                       #                   data = dfs$subsets40$rec24),
+                       # cph2.rec48 = coxph(survObjs$r3$rec48 ~ trt.recover + frailty(shelf),
+                       #                   data = dfs$subsets40$rec48),
+                       # cph3.rec24 = coxph(survObjs$r3$rec24 ~ trt.recover,
+                       #                    data = dfs$subsets40$rec24),
+                       # cph3.rec48 = coxph(survObjs$r3$rec48 ~ trt.recover,
+                       #                    data = dfs$subsets40$rec48) 
+                       )
+
+lapply(fits$r3, summary)
+names(fits$r3$cph.rec24)
+plot(dfs$subsets40$rec24$trt.recover, fits$r3$cph.rec24$residuals) # something like this.. plot recovery temps on the x
+
+```
+
+### [/] anova and diagnose coxphs
+
+```{r}
+anova(fits$r3$cph.rec24, fits$r3$cph2.rec24, test="Chisq")
+
+anova(fits$r3$cph.rec48, fits$r3$cph2.rec48, test="Chisq")
+
+lapply(fits$r3, AIC)
+
+```
+
+
+
+
+
 ## = post 250811 mtg fups
 
 - trying cohort as fixed and shelf as random
