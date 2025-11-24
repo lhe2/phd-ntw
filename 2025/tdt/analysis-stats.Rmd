@@ -106,6 +106,8 @@ fits$r4 <- list_assign(fits$r4,
                        ctemp24 = coxph(survObjs$r4$return24 ~ trt.recover, data = dfs$subsets40$rec24),
                        temp48 = coxph(survObjs$r4$return48 ~ as.factor(trt.recover), data = dfs$subsets40$rec48),
                        ctemp48 = coxph(survObjs$r4$return48 ~ trt.recover, data = dfs$subsets40$rec48))
+  # i think ctemp = treating temp as constant ? (ie = 1)
+
 
 anova(fits$r4$null24, fits$r4$temp24, test = "Chisq")
 anova(fits$r4$temp24, fits$r4$ctemp24, test = "Chisq")
@@ -117,6 +119,38 @@ anova(fits$r4$temp48, fits$r4$ctemp48, test = "Chisq")
 lapply(fits$r4, summary)
 
 ```
+
+### - from enter anovas
+
+```{r}
+# anovas for looking at diffs in km curve starting at "from.enter"
+  # TODO: how to rescale the base case... (so relative to 40C...)
+
+survObjs$r4 <- list_assign(survObjs$r4,
+                           enter24 = Surv(dfs$subsets40$rec24$exit.fromenter, dfs$subsets40$rec24$km.status),
+                           enter48 = Surv(dfs$subsets40$rec48$exit.fromenter, dfs$subsets40$rec48$km.status))
+
+fits$r4 <- list_assign(fits$r4,
+                       null24 = coxph(survObjs$r4$enter24 ~ 1, data = dfs$subsets40$rec24),
+                       null48 = coxph(survObjs$r4$enter48 ~ 1, data = dfs$subsets40$rec48),
+                       temp24 = coxph(survObjs$r4$enter24 ~ as.factor(trt.recover), data = dfs$subsets40$rec24),
+                       #ctemp24 = coxph(survObjs$r4$enter24 ~ trt.recover, data = dfs$subsets40$rec24),
+                       temp48 = coxph(survObjs$r4$enter48 ~ as.factor(trt.recover), data = dfs$subsets40$rec48),
+                       #ctemp48 = coxph(survObjs$r4$enter48 ~ trt.recover, data = dfs$subsets40$rec48)
+                       )
+
+anova(fits$r4$null24, fits$r4$temp24, test = "Chisq")
+#anova(fits$r4$temp24, fits$r4$ctemp24, test = "Chisq")
+
+anova(fits$r4$null48, fits$r4$temp48, test = "Chisq")
+#anova(fits$r4$temp48, fits$r4$ctemp48, test = "Chisq")
+
+
+lapply(fits$r4, summary)
+```
+
+
+
 ## = post 250909 mtg fups
 
 - does shelf/cohort affect the 40C controls?
