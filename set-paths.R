@@ -9,7 +9,9 @@ library(here)
 
 bin_paths <- list(y25 = list(root = here("2025"),
                              tdt = here("2025", "tdt"),
-                             tdtdata = here("2025", "tdt", "data")),
+                             tdtdata = here("2025", "tdt", "data"),
+                             ntw = here("2025", "ntw"),
+                             ntwdata = here("2025", "ntw", "data")),
                   
                   y24 = list(root = here("2024"),
                              data = here("2024", "data"),
