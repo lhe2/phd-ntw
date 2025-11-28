@@ -1,0 +1,138 @@
+---
+title: "2025 ntw wrangling"
+date: "2025-11-26"
+---
+
+# 0. preamble
+
+wrangling data for 2025 ntw data
+
+final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
+
+```{r eval=FALSE, include=FALSE, purl=FALSE}
+#knitr::purl("wrangle.Rmd", "wrangle_p.R")
+```
+
+# 1. loading
+
+```{r about}
+# wrangle/ntw-2025.R
+
+# knitted wrangling code for 2025 ntw dev figs/analyses.
+# source() this in corresponding analysis scripts.
+
+# note that this script has mostly been superseded for the 23v24 analyses and
+# is meant to be more of a reference!
+```
+
+```{r load utils}
+library(tidyverse)
+
+here::i_am("2025/ntw/wrangle.Rmd")
+library(here)
+
+source(here::here("set-paths.R"))
+
+source(here::here(bin_paths$y25$ntw, "utils.R"))
+
+# custom functions
+  # StandardiseColTypes
+  # RecodeDevOutcomes
+```
+
+```{r load data}
+import25 <- read.csv(here::here(bin_paths$y25$ntwdata, "clean-working.csv"), header = TRUE) %>% 
+  mutate(year = 2025) 
+
+import24 <- read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>%
+  mutate(year = 2024)
+
+import23 <- read.csv(here::here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>% 
+  mutate(year = 2023)
+```
+
+# standarising
+
+```{r filtering and column cleanup}
+wide25 <- import25 %>%
+  filter(is.na(species),
+         !(notes.ignore == "empty") | is.na(notes.ignore)) %>%
+  rename(pop = population,
+         trt = treatment) %>%
+  select(-c("species", "jdate.enter", "instar.enter", ends_with(c("2nd", "8th"))))
+
+wide24 <- import24 %>%
+  filter(instar.enter == "hatch") %>%
+  select(-c("trt.type", "jdate.enter", "instar.enter", ends_with("2nd")))
+
+wide23 <- import23 %>%
+  filter(instar.enter == "hatch",
+         pop %in% c("field", "lab"),
+         treatment != is.character(treatment),
+         reason.ignore != "lost") %>%
+  rename(id = ID,
+         jdate.LPI = jdate.LP,
+         trt = treatment,
+         cohort = expt.group) %>%
+  select(-c(starts_with(c("date", "h.", "if.")), ends_with("2nd"), 
+            "instar.enter",  "jdate.collected", "jdate.enter", 
+            "jdate.stuck", "jdate.15", "jdate.died",
+            "parent.tent", "src", "trt.stage", "grp.trt"))
+```
+
+
+```{r standardising values}
+# 2025: redo survival coding/notes
+wide25 <- wide25 %>% 
+  .StandardiseColTypes() %>%
+  mutate(fate.dev = case_when(!is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
+                              !is.na(jdate.surv) ~ "ec",
+                              !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
+                              !is.na(jdate.pmd) ~ "pmd")) %>%
+  select(-starts_with("notes")) %>%
+  filter(!is.na(status))
+
+# 2024: redo survival coding, trt group
+wide24 <- wide24 %>%
+  .StandardiseColTypes() %>%
+  mutate(trt.group = case_when(id < 1000 ~ 100,
+                               id > 2000 ~ 2000,
+                               TRUE ~ 1000),
+         fate.dev = case_when(!is.na(jdate.culled) | surv.outcome == 2  ~ "other",
+                              !is.na(jdate.eclose) ~ "ec",
+                              !is.na(jdate.pupa) ~ "pup",
+                              !is.na(jdate.pmd) ~ "pmd"),
+         sup = case_when(!is.na(jdate.8th) ~ 8)
+         ) %>%
+  select(-"surv.outcome")
+
+
+# 2023: redo trt values, survival coding/notes, sup coding; add trt group
+wide23 <- wide23 %>%
+  .StandardiseColTypes() %>% View()
+  mutate(trt = case_when(trt == 337 ~ 426,
+                         FALSE ~ trt),
+         trt.group = case_when(pop == "lab" & diet == "TB" ~ 1000,
+                               pop == "lab" & diet == "LD" ~ 2000,
+                               TRUE ~ 100),
+         fate.dev = case_when(reason.ignore %in% c("wet diet", "accidental", "hot larva", "cut") | final.fate %in% c("accidental", "culled") ~ "other",
+                              !is.na(jdate.eclose) ~ "ec",
+                              !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
+                              !is.na(jdate.pmd) ~ "pmd"),
+         jdate.culled = case_when(final.fate %in% c("accidental", "culled") ~ jdate.exit)
+         ) %>%
+  select(-c("final.fate", "reason.ignore"))
+
+
+# redo survival, sup coding
+
+# list everything then run the following
+#dfs <- list(wide23, wide24, wide25)
+  
+
+dfs <- list(wide23, wide24, wide25) %>% lapply(., .RecodeDevOutcomes) 
+
+%>% list2env(names(.), envir = .GlobalEnv) 
+  # breaks bc not everything has jdate.8th column LOL
+
+```
