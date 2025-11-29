@@ -34,84 +34,60 @@ library(here)
 source(here::here("set-paths.R"))
 
 source(here::here(bin_paths$y25$ntw, "utils.R"))
-
-# custom functions
-  # StandardiseColTypes
-  # RecodeDevOutcomes
 ```
 
 ```{r load data}
-import25 <- read.csv(here::here(bin_paths$y25$ntwdata, "clean-working.csv"), header = TRUE) %>% 
-  mutate(year = 2025) 
-
-import24 <- read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>%
-  mutate(year = 2024)
-
-import23 <- read.csv(here::here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>% 
-  mutate(year = 2023)
+dfs_imported <- list(
+  y23 = read.csv(here::here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023),
+  y24 = read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>% mutate(year = 2024),
+  y25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-working.csv"), header = TRUE) %>% mutate(year = 2025)
+  )
 ```
 
-# standarising
+# 2. standardising
+
+custom fns: `StandardiseColTypes`, `CodeDevOutcomes`
 
 ```{r filtering and column cleanup}
-wide25 <- import25 %>%
-  filter(is.na(species),
-         !(notes.ignore == "empty") | is.na(notes.ignore)) %>%
-  rename(pop = population,
-         trt = treatment) %>%
-  select(-c("species", "jdate.enter", "instar.enter", ends_with(c("2nd", "8th"))))
+dfs_filtered <- list(
+  
+  y23 = dfs_imported[[1]] %>%
+    filter(instar.enter == "hatch",
+           pop %in% c("field", "lab"),
+           treatment != is.character(treatment),
+           reason.ignore != "lost") %>%
+    rename(id = ID,
+           jdate.LPI = jdate.LP,
+           trt = treatment,
+           cohort = expt.group) %>%
+    select(-c(starts_with(c("date", "h.", "if.")), ends_with("2nd"), 
+              "instar.enter",  "jdate.collected", "jdate.enter", 
+              "jdate.stuck", "jdate.15", "jdate.died",
+              "parent.tent", "src", "trt.stage", "grp.trt")),
 
-wide24 <- import24 %>%
-  filter(instar.enter == "hatch") %>%
-  select(-c("trt.type", "jdate.enter", "instar.enter", ends_with("2nd")))
+  y24 = dfs_imported[[2]] %>%
+    filter(instar.enter == "hatch") %>%
+    select(-c("trt.type", "jdate.enter", "instar.enter", ends_with("2nd"))),
+  
+  y25 = dfs_imported[[3]] %>%
+    filter(is.na(species),
+           !(notes.ignore == "empty") | is.na(notes.ignore)) %>%
+    rename(pop = population,
+           trt = treatment) %>%
+    select(-c("species", "jdate.enter", "instar.enter", ends_with("2nd")))
+)
 
-wide23 <- import23 %>%
-  filter(instar.enter == "hatch",
-         pop %in% c("field", "lab"),
-         treatment != is.character(treatment),
-         reason.ignore != "lost") %>%
-  rename(id = ID,
-         jdate.LPI = jdate.LP,
-         trt = treatment,
-         cohort = expt.group) %>%
-  select(-c(starts_with(c("date", "h.", "if.")), ends_with("2nd"), 
-            "instar.enter",  "jdate.collected", "jdate.enter", 
-            "jdate.stuck", "jdate.15", "jdate.died",
-            "parent.tent", "src", "trt.stage", "grp.trt"))
 ```
 
 
 ```{r standardising values}
-# 2025: redo survival coding/notes
-wide25 <- wide25 %>% 
-  .StandardiseColTypes() %>%
-  mutate(fate.dev = case_when(!is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
-                              !is.na(jdate.surv) ~ "ec",
-                              !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
-                              !is.na(jdate.pmd) ~ "pmd")) %>%
-  select(-starts_with("notes")) %>%
-  filter(!is.na(status))
-
-# 2024: redo survival coding, trt group
-wide24 <- wide24 %>%
-  .StandardiseColTypes() %>%
-  mutate(trt.group = case_when(id < 1000 ~ 100,
-                               id > 2000 ~ 2000,
-                               TRUE ~ 1000),
-         fate.dev = case_when(!is.na(jdate.culled) | surv.outcome == 2  ~ "other",
-                              !is.na(jdate.eclose) ~ "ec",
-                              !is.na(jdate.pupa) ~ "pup",
-                              !is.na(jdate.pmd) ~ "pmd"),
-         sup = case_when(!is.na(jdate.8th) ~ 8)
-         ) %>%
-  select(-"surv.outcome")
-
+dfs_stdised <- lapply(dfs_filtered, StdiseColTypes)
 
 # 2023: redo trt values, survival coding/notes, sup coding; add trt group
-wide23 <- wide23 %>%
-  .StandardiseColTypes() %>% View()
+# add 8th instar stuff to keep things from breaking later
+dfs_stdised[[1]] <- dfs_stdised[[1]] %>% 
   mutate(trt = case_when(trt == 337 ~ 426,
-                         FALSE ~ trt),
+                         TRUE ~ trt),
          trt.group = case_when(pop == "lab" & diet == "TB" ~ 1000,
                                pop == "lab" & diet == "LD" ~ 2000,
                                TRUE ~ 100),
@@ -119,20 +95,52 @@ wide23 <- wide23 %>%
                               !is.na(jdate.eclose) ~ "ec",
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
                               !is.na(jdate.pmd) ~ "pmd"),
-         jdate.culled = case_when(final.fate %in% c("accidental", "culled") ~ jdate.exit)
+         jdate.culled = case_when(final.fate %in% c("accidental", "culled") ~ jdate.exit),
+         mass.8th = NA,
+         jdate.8th = NA
          ) %>%
   select(-c("final.fate", "reason.ignore"))
 
+# 2024: redo survival coding, trt group
+dfs_stdised[[2]] <- dfs_stdised[[2]] %>% 
+  mutate(trt.group = case_when(id < 1000 ~ 100,
+                               id > 2000 ~ 2000,
+                               TRUE ~ 1000),
+         fate.dev = case_when(!is.na(jdate.culled) | surv.outcome == 2  ~ "other",
+                              !is.na(jdate.eclose) ~ "ec",
+                              !is.na(jdate.pupa) ~ "pup",
+                              !is.na(jdate.pmd) ~ "pmd"),
+         ) %>%
+  select(-"surv.outcome")
+
+# 2025: redo survival coding/notes; add tempts
+dfs_stdised[[3]] <- dfs_stdised[[3]] %>% 
+  mutate(fate.dev = case_when(!is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
+                              !is.na(jdate.surv) ~ "ec",
+                              !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
+                              !is.na(jdate.pmd) ~ "pmd"),
+         meanT = case_when(trt == 260 ~ 26,
+                           trt == 419 ~ 29.5,
+                           trt == 426 ~ 33,
+                           trt == 433 ~ 36.5),
+         flucT = case_when(trt == 260 ~ 0,
+                           trt == 419 ~ 10.5,
+                           trt == 426 ~ 7,
+                           trt == 433 ~ 3.5),
+         maxT = case_when(trt == 260 ~ 26,
+                          TRUE ~ 40),
+         minT = case_when(trt == 260 | trt == 426 ~ 26,
+                          trt == 419 ~ 19,
+                          trt == 433 ~ 33)) %>%
+  filter(!is.na(status)) %>%
+  select(-c(starts_with("notes"), "status"))
+
 
 # redo survival, sup coding
+dfs_stdised <- lapply(dfs_stdised, CodeDevOutcomes) 
+```
 
-# list everything then run the following
-#dfs <- list(wide23, wide24, wide25)
-  
 
-dfs <- list(wide23, wide24, wide25) %>% lapply(., .RecodeDevOutcomes) 
 
-%>% list2env(names(.), envir = .GlobalEnv) 
-  # breaks bc not everything has jdate.8th column LOL
 
 ```
