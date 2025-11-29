@@ -80,14 +80,20 @@ dfs_filtered <- list(
 
 ```
 
-
 ```{r standardising values}
-dfs_stdised <- lapply(dfs_filtered, StdiseColTypes)
+# stdise column types
+dfs_stdised <- lapply(dfs_filtered, \(x){
+  x %>%
+  mutate(trt = as.numeric(trt),
+         id = as.numeric(id),
+         across(starts_with("jdate"), as.numeric))
+})
 
+# recoding + adding missing columns
 # 2023: redo trt values, survival coding/notes, sup coding; add trt group
-# add 8th instar stuff to keep things from breaking later
 dfs_stdised[[1]] <- dfs_stdised[[1]] %>% 
-  mutate(trt = case_when(trt == 337 ~ 426,
+  mutate(mass.8th = NA, jdate.8th = NA,
+         trt = case_when(trt == 337 ~ 426,
                          TRUE ~ trt),
          trt.group = case_when(pop == "lab" & diet == "TB" ~ 1000,
                                pop == "lab" & diet == "LD" ~ 2000,
@@ -97,14 +103,13 @@ dfs_stdised[[1]] <- dfs_stdised[[1]] %>%
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
                               !is.na(jdate.pmd) ~ "pmd"),
          jdate.culled = case_when(final.fate %in% c("accidental", "culled") ~ jdate.exit),
-         mass.8th = NA,
-         jdate.8th = NA
-         ) %>%
+  ) %>%
   select(-c("final.fate", "reason.ignore"))
 
 # 2024: redo survival coding, trt group
 dfs_stdised[[2]] <- dfs_stdised[[2]] %>% 
-  mutate(trt.group = case_when(id < 1000 ~ 100,
+  mutate(jdate.LPI = NA, jdate.exit = NA, 
+         trt.group = case_when(id < 1000 ~ 100,
                                id > 2000 ~ 2000,
                                TRUE ~ 1000),
          fate.dev = case_when(!is.na(jdate.culled) | surv.outcome == 2  ~ "other",
@@ -137,8 +142,28 @@ dfs_stdised[[3]] <- dfs_stdised[[3]] %>%
   select(-c(starts_with("notes"), "status"))
 
 
-# redo survival, sup coding
-dfs_stdised <- lapply(dfs_stdised, CodeDevOutcomes) 
+# redo survival, sup coding (counts after reaching 5th);
+# fix exit dates
+dfs_stdised <- lapply(dfs_stdised, \(x){
+  x %>%
+    mutate(fate.code = case_when(fate.dev %in% c("ec", "pup") ~ 1,
+                                 fate.dev == "pmd" ~ 0,
+                                 fate.dev == "other" ~ 2),
+           sup = case_when(!is.na(jdate.8th) ~ 8,
+                           !is.na(jdate.7th) ~ 7,
+                           !is.na(jdate.6th) ~ 6,
+                           #!is.na(jdate.5th) ~ 5,
+                           #FALSE ~ as.numeric(sup)
+                            ),
+           jdate.exit = case_when(!is.na(jdate.culled) ~ as.numeric(jdate.culled),
+                                  !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),
+                                  !is.na(jdate.pupa) ~ as.numeric(jdate.pupa),
+                                  !is.na(jdate.pmd) ~ as.numeric(jdate.pmd),
+                                   FALSE ~ as.numeric(jdate.exit)
+                                   )
+    )
+}) 
+
 ```
 
 
