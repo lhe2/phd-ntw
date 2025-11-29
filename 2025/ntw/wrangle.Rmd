@@ -54,8 +54,9 @@ dfs_filtered <- list(
   y23 = dfs_imported[[1]] %>%
     filter(instar.enter == "hatch",
            pop %in% c("field", "lab"),
-           treatment != is.character(treatment),
-           reason.ignore != "lost") %>%
+           treatment != "ctrl",
+           reason.ignore != "lost" | is.na(reason.ignore)
+           ) %>%
     rename(id = ID,
            jdate.LPI = jdate.LP,
            trt = treatment,
