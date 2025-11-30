@@ -1,22 +1,22 @@
 ---
-title: "2025 ntw wrangling"
+title: "2025 ntw cleaning"
 date: "2025-11-26"
 ---
 
 # 0. preamble
 
-wrangling data for 2025 ntw data
+cleaning ntw 2025 data for wrangling
 
 final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
-#knitr::purl("wrangle.Rmd", "wrangle_p.R")
+knitr::purl("cleaning.Rmd", "cleaning_p.R")
 ```
 
 # 1. loading
 
 ```{r about}
-# wrangle/ntw-2025.R
+# cleaning/ntw-2025.R
 
 # knitted wrangling code for 2025 ntw dev figs/analyses.
 # source() this in corresponding analysis scripts.
@@ -28,7 +28,7 @@ final code is purled to a `.R` script, rerun `purl` step as needed to update the
 ```{r load utils}
 library(tidyverse)
 
-here::i_am("2025/ntw/wrangle.Rmd")
+here::i_am("2025/ntw/cleaning.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
@@ -45,8 +45,6 @@ dfs_imported <- list(
 ```
 
 # 2. standardising
-
-custom fns: `StandardiseColTypes`, `CodeDevOutcomes`
 
 ```{r filtering and column cleanup}
 dfs_filtered <- list(
@@ -166,7 +164,49 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
 
 ```
 
+# 3. export
+
+## combine dfs
+
+```{r}
+# 2025-11-28 TODO: jdate.surv and id.cage are not applied consistently so just drop for now.. but will need later for adult stuff LOL
+
+# combine dfs and remove short-lived things
+dfs <- list(wide = data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
+              filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.exit - jdate.hatch)) %>%
+              select(-c("id.cage", "jdate.surv"))
+            )
 
 
-
+  # TODO could drop jdate column maybe?
+dfs <- list_modify(dfs,
+                   long = dfs$wide %>% 
+                     mutate(tt.3rd = jdate.3rd - jdate.hatch,
+                            tt.4th = jdate.4th - jdate.hatch,
+                            tt.5th = jdate.5th - jdate.hatch,
+                            tt.6th = jdate.6th - jdate.hatch,
+                            tt.7th = jdate.7th - jdate.hatch,
+                            tt.8th = jdate.8th - jdate.hatch,
+                            tt.wander = jdate.wander - jdate.hatch,
+                            tt.pupa = jdate.pupa - jdate.hatch,
+                            tt.eclose = jdate.eclose - jdate.hatch) %>%
+                     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+                                  names_to = c(".value", "instar"),
+                                  values_drop_na = TRUE,
+                                  names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
+                     
+                     # drop empty dev times but keep masses
+                     mutate(tt = case_when(is.na(tt) & !is.na(mass) ~ 999,
+                                           TRUE ~ as.numeric(tt))) %>%
+                     drop_na(tt) %>%
+                     mutate(tt = na_if(tt, 999)) %>% 
+                     filter(tt > 0 | is.na(tt)) # temporary LOL until reimport 2025 data
+) 
 ```
+
+
+## cleanup
+```{r remove intermediate objects}
+rm(dfs_imported, dfs_filtered, dfs_stdised)
+```
+
