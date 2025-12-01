@@ -1,0 +1,114 @@
+---
+title: "ntw 2025 wrangling"
+date: "2025-11-29"
+---
+
+# # preamble & loading
+
+do data wrangling for ntw 2025 data here
+
+```{r}
+# libraries
+library(tidyverse)
+# #library(MuMIn) # for survival nested model comparisons
+# library(survival) # for fitting 
+# library(survminer) # for plotting
+# library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
+
+# pathfinding
+here::i_am("2025/ntw/wrangle.Rmd")
+library(here)
+
+source(here::here("set-paths.R"))
+source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
+```
+
+```{r}
+# data import
+source(here(bin_paths$y25$ntw, "cleaning_p.R"))
+```
+
+## init lists
+```{r}
+dfs_ss <- list()
+```
+
+
+# # summary stats
+
+## [ ] calculate development metrics
+
+```{r supernumerary development}
+# TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
+
+dfs_ss <- list_modify(dfs_ss, 
+  sup_outcomes = 
+    dfs$wide %>% 
+    filter(fate.code != 2) %>%
+    group_by(year, pop, diet, trt) %>%
+    summarise(N = n(),
+              surv_tot = sum(fate.code == 1),
+              surv_0th = sum(fate.code == 1 & is.na(sup)),
+              surv_6th = sum(fate.code == 1 & sup == 6, na.rm = TRUE),
+              surv_7th = sum(fate.code == 1 & sup == 7, na.rm = TRUE),
+              surv_8th = sum(fate.code == 1 & sup == 8, na.rm = TRUE),
+              died_tot = sum(fate.code == 0),
+              died_0th = sum(fate.code == 0 & is.na(sup)),
+              died_6th = sum(fate.code == 0 & sup == 6, na.rm = TRUE),
+              died_7th = sum(fate.code == 0 & sup == 7, na.rm = TRUE),
+              died_8th = sum(fate.code == 0 & sup == 8, na.rm = TRUE),
+              ) %>%
+      pivot_longer(cols = starts_with(c("surv", "died")),
+                 names_to = c("status", ".value"),
+                 names_sep = "_") %>%
+    mutate(not = N - tot,
+           across(c("not", "0th", "6th", "7th", "8th"), ~ ./N, .names = "p_{.col}")) %>%
+      rename_with(~ paste0("n_", .x), matches("^(not)|^(\\dth)")) %>%
+        pivot_longer(cols = starts_with(c("n_", "p_")),
+                 names_to = c(".value", "sup"), names_sep = "_") %>%
+    mutate(sup = gsub(sup, pattern = "th", replacement = ""))
+)
+    
+    
+    # summarise(n_tot_all = n(),
+    #           n_tot_0th = sum(is.na(sup)),
+    #           #n_tot_sup = sum(is.na(sup)), # check: should sum the bottom 3
+    #           n_tot_6th = sum(sup == 6, na.rm = TRUE),
+    #           n_tot_7th = sum(sup == 7, na.rm = TRUE),
+    #           n_tot_8th = sum(sup == 8, na.rm = TRUE),
+    #           n_died_all = sum(fate.code == 0),
+    #           #n_died_sup = sum(fate.code == 0 & !is.na(sup)),
+    #           n_died_0th = sum(fate.code == 0 & is.na(sup)),
+    #           n_died_6th = sum(fate.code == 0 & sup == 6, na.rm = TRUE),
+    #           n_died_7th = sum(fate.code == 0 & sup == 7, na.rm = TRUE),
+    #           n_died_8th = sum(fate.code == 0 & sup == 8, na.rm = TRUE),
+    #           n_died_not = n_tot_all - sum(fate.code == 0 & is.na(sup)),
+    #           n_surv_all = sum(fate.code == 1),
+    #           #n_surv_not = n_tot_all - n_surv_all,
+    #           #n_surv_sup = sum(fate.code == 1 & !is.na(sup)),
+    #           n_surv_0th = sum(fate.code == 1 & is.na(sup)),
+    #           n_surv_6th = sum(fate.code == 1 & sup == 6, na.rm = TRUE),
+    #           n_surv_7th = sum(fate.code == 1 & sup == 7, na.rm = TRUE),
+    #           n_surv_8th = sum(fate.code == 1 & sup == 8, na.rm = TRUE),
+    #           n_surv_not = n_tot_all - sum(fate.code == 1 & !is.na(sup)),
+#     ) %>%
+#     pivot_longer(cols = starts_with("n_"),
+#                  names_to = c("status", ".value"),
+#                  names_pattern = "(n_[a-z]*)_(\\d*[a-z]*)") %>%
+#     mutate(across(c("not", "0th", "6th", "7th", "8th"), ~ ./all, .names = "p_{.col}")) %>%
+#     rename_with(~ paste0("n_", .x), matches("(all)|^(not)|^(\\dth)")) %>%
+#     pivot_longer(cols = starts_with(c("n_", "p_")),
+#                  names_to = c(".value", "sup"), names_sep = "_") %>%
+#     mutate(status = gsub(status, pattern = "n_", replacement = ""),
+#            sup = gsub(sup, pattern = "th", replacement = ""))
+# )
+```
+
+
+# RData export
+
+```{r}
+save(dfs_ss, 
+     file = here(bin_paths$y25$ntwdata, "wrangle.RData"))
+```
+
