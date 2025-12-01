@@ -1,0 +1,45 @@
+---
+title: "ntw 2025 data viz"
+date: "2025-12-01"
+---
+
+# # preamble & loading
+
+data viz for ntw 2025
+
+```{r}
+# libraries
+library(tidyverse)
+
+# pathfinding
+here::i_am("2025/ntw/data-viz.Rmd")
+library(here)
+
+source(here::here("set-paths.R"))
+source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
+```
+
+```{r}
+# data import
+load(here(bin_paths$y25$ntwdata, "wrangle.RData"))
+```
+
+# # supernumerary
+
+```{r}
+dfs_ss$sup_outcomes %>%
+  FilterLabTB() %>%
+  filter(status == "surv") %>%
+  ggplot(aes(y = p,
+             x = interaction(pop, trt),
+             fill = sup)) +
+  geom_col() +
+  facet_wrap(~year) +
+  labs(y = "proportion", x = "population x trt",
+       fill = "fate",
+       caption = "sup if survived") +
+  guides(x = guide_axis(angle = 45)) +
+  scale_fill_brewer(palette = "Blues", direction = -1) +
+  theme_bw()
+```
+
