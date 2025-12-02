@@ -16,7 +16,7 @@ library(tidyverse)
 # library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
 
 # pathfinding
-here::i_am("2025/ntw/wrangle.Rmd")
+here::i_am("2025/ntw/data-wrangle.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))

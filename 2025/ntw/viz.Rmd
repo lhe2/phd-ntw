@@ -10,6 +10,8 @@ data viz for ntw 2025
 ```{r}
 # libraries
 library(tidyverse)
+# library(survival) # for fitting 
+# library(survminer) # for plotting
 
 # pathfinding
 here::i_am("2025/ntw/data-viz.Rmd")
@@ -47,6 +49,7 @@ dfs_ss$surv_outcomes %>%
 
 ## development
 ```{r}
+# by year
 dfs_ss$dev_outcomes_nopmd %>%
   FilterLabTB() %>% 
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
@@ -81,12 +84,12 @@ dfs_ss$dev_outcomes_pmd %>%
   geom_point() +
   geom_line() +
   # hard to see with these lol bc theyre pretty close
-  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
-  #                   ymin = avg.logmass - se.logmass,
-  #                   width = autoerr(avg.tt))) +
-  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
-  #                    xmin = avg.tt - se.tt,
-  #                    height = autoerrh(avg.logmass))) +
+  geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+                    ymin = avg.logmass - se.logmass,
+                    width = autoerr(avg.tt))) +
+  geom_errorbarh(aes(xmax = avg.tt + se.tt,
+                     xmin = avg.tt - se.tt,
+                     height = autoerrh(avg.logmass))) +
   facet_grid(pop ~ trt) +
   labs(title = "development trajectories (all)",
        caption = "mean ± se",
@@ -96,6 +99,59 @@ dfs_ss$dev_outcomes_pmd %>%
   #scale_color_brewer(palette = "Greens") +
   theme_bw()
 ```
+
+```{r}
+# by trt
+dfs_ss$dev_outcomes_nopmd %>%
+  FilterLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = as.factor(trt))) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = autoerr(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = autoerrh(avg.logmass))) +
+  facet_grid(pop ~ year) +
+  labs(title = "development trajectories (pup only)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "treatment",
+       ) +
+  #scale_color_brewer(palette = "Greens") +
+  theme_bw()
+
+
+dfs_ss$dev_outcomes_pmd %>%
+  FilterLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = as.factor(trt))) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = autoerr(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = autoerrh(avg.logmass))) +
+  facet_grid(pop ~ year) +
+  labs(title = "development trajectories (all)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "treatment",
+       ) +
+  #scale_color_brewer(palette = "Greens") +
+  theme_bw()
+```
+
 
 
 ## supernumerary

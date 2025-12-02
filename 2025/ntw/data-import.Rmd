@@ -11,7 +11,7 @@ date: "2025-11-24"
 
 re-run script whenever the gsheets gets updated
 
-LAST RUN: 2025-11-24
+LAST RUN: 2025-12-02
 
 
 # 1. loading
@@ -24,7 +24,7 @@ library(dplyr)
 library(lubridate) # for handling time stuff
 library(googlesheets4)
 
-here::i_am("2025/ntw/cleaning.Rmd")
+here::i_am("2025/ntw/data-import.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
