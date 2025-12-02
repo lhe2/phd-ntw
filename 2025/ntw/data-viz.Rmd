@@ -28,16 +28,21 @@ load(here(bin_paths$y25$ntwdata, "wrangle.RData"))
 
 ```{r}
 dfs_ss$sup_outcomes %>%
+## supernumerary
+```{r}
+dfs_ss$sup_outcomes %>% 
   FilterLabTB() %>%
   filter(status == "surv") %>%
   ggplot(aes(y = p,
-             x = interaction(pop, trt),
+             x = interaction(trt),
              fill = sup)) +
   geom_col() +
-  facet_wrap(~year) +
-  labs(y = "proportion", x = "population x trt",
+  geom_text(data = . %>% distinct(interaction(year, trt, pop), .keep_all = TRUE), 
+            aes(label = N), y = 0.1) +
+  facet_grid(pop~year) +
+  labs(y = "proportion survived", x = "trt",
        fill = "fate",
-       caption = "sup if survived") +
+       caption = "N = total entered") +
   guides(x = guide_axis(angle = 45)) +
   scale_fill_brewer(palette = "Blues", direction = -1) +
   theme_bw()

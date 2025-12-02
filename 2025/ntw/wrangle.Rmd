@@ -66,42 +66,17 @@ dfs_ss <- list_modify(dfs_ss,
       rename_with(~ paste0("n_", .x), matches("^(not)|^(\\dth)")) %>%
         pivot_longer(cols = starts_with(c("n_", "p_")),
                  names_to = c(".value", "sup"), names_sep = "_") %>%
-    mutate(sup = gsub(sup, pattern = "th", replacement = ""))
+    mutate(sup = gsub(sup, pattern = "th", replacement = ""),
+           sup = case_when(sup == "not" & status == "surv" ~ "died",
+                           sup == "not" & status == "died" ~ "survived",
+                           TRUE ~ as.character(sup),
+                           ))
 )
+
+# nts: for when the names were n_status_stage: 
+# names_pattern = "(n_[a-z]*)_(\\d*[a-z]*)")
     
-    
-    # summarise(n_tot_all = n(),
-    #           n_tot_0th = sum(is.na(sup)),
-    #           #n_tot_sup = sum(is.na(sup)), # check: should sum the bottom 3
-    #           n_tot_6th = sum(sup == 6, na.rm = TRUE),
-    #           n_tot_7th = sum(sup == 7, na.rm = TRUE),
-    #           n_tot_8th = sum(sup == 8, na.rm = TRUE),
-    #           n_died_all = sum(fate.code == 0),
-    #           #n_died_sup = sum(fate.code == 0 & !is.na(sup)),
-    #           n_died_0th = sum(fate.code == 0 & is.na(sup)),
-    #           n_died_6th = sum(fate.code == 0 & sup == 6, na.rm = TRUE),
-    #           n_died_7th = sum(fate.code == 0 & sup == 7, na.rm = TRUE),
-    #           n_died_8th = sum(fate.code == 0 & sup == 8, na.rm = TRUE),
-    #           n_died_not = n_tot_all - sum(fate.code == 0 & is.na(sup)),
-    #           n_surv_all = sum(fate.code == 1),
-    #           #n_surv_not = n_tot_all - n_surv_all,
-    #           #n_surv_sup = sum(fate.code == 1 & !is.na(sup)),
-    #           n_surv_0th = sum(fate.code == 1 & is.na(sup)),
-    #           n_surv_6th = sum(fate.code == 1 & sup == 6, na.rm = TRUE),
-    #           n_surv_7th = sum(fate.code == 1 & sup == 7, na.rm = TRUE),
-    #           n_surv_8th = sum(fate.code == 1 & sup == 8, na.rm = TRUE),
-    #           n_surv_not = n_tot_all - sum(fate.code == 1 & !is.na(sup)),
-#     ) %>%
-#     pivot_longer(cols = starts_with("n_"),
-#                  names_to = c("status", ".value"),
-#                  names_pattern = "(n_[a-z]*)_(\\d*[a-z]*)") %>%
-#     mutate(across(c("not", "0th", "6th", "7th", "8th"), ~ ./all, .names = "p_{.col}")) %>%
-#     rename_with(~ paste0("n_", .x), matches("(all)|^(not)|^(\\dth)")) %>%
-#     pivot_longer(cols = starts_with(c("n_", "p_")),
-#                  names_to = c(".value", "sup"), names_sep = "_") %>%
-#     mutate(status = gsub(status, pattern = "n_", replacement = ""),
-#            sup = gsub(sup, pattern = "th", replacement = ""))
-# )
+```
 ```
 
 
