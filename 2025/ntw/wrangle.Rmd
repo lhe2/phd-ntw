@@ -77,6 +77,43 @@ dfs_ss <- list_modify(dfs_ss,
 # names_pattern = "(n_[a-z]*)_(\\d*[a-z]*)")
     
 ```
+
+
+
+```{r overall development}
+dfs_ss <- list_modify(dfs_ss,
+  dev_outcomes_pmd =
+    dfs$long %>% 
+    group_by(year, pop, diet, trt, instar) %>%
+    mutate(log.mass = log(mass)) %>%
+    summarise(n = n(),
+              avg.logmass = mean(log.mass, na.rm = TRUE),
+              se.logmass = se(log.mass),
+              avg.mass = mean(mass, na.rm = TRUE),
+              se.mass = se(mass),
+              avg.tt = mean(tt, na.rm = TRUE),
+              se.tt = se(tt)),
+  
+  dev_outcomes_nopmd =
+    dfs$long %>% 
+    filter(fate.code != 0 | is.na(fate.code)) %>%
+    group_by(year, pop, diet, trt, instar) %>%
+    mutate(log.mass = log(mass)) %>%
+    summarise(n = n(),
+              avg.logmass = mean(log.mass, na.rm = TRUE),
+              se.logmass = se(log.mass),
+              avg.mass = mean(mass, na.rm = TRUE),
+              se.mass = se(mass),
+              avg.tt = mean(tt, na.rm = TRUE),
+              se.tt = se(tt)) %>% View(),
+  
+  surv_outcomes =
+    dfs$wide %>%
+    filter(fate.code != 2) %>%
+    group_by(year, pop, diet, trt) %>%
+    summarise(n = n(),
+              prop.pup = sum(fate.code == 1)/n)
+)
 ```
 
 

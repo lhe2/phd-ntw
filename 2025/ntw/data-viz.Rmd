@@ -24,10 +24,80 @@ source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
 load(here(bin_paths$y25$ntwdata, "wrangle.RData"))
 ```
 
-# # supernumerary
+# # overall dev
 
+## survival
 ```{r}
-dfs_ss$sup_outcomes %>%
+dfs_ss$surv_outcomes %>%
+  FilterLabTB() %>%
+  ggplot(aes(y = prop.pup,
+             x = as.factor(trt),
+             col = as.factor(year),
+             lty = as.factor(year),
+             group = year)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~pop) +
+  labs(y = "survived to pupation",
+       x = "treatment",
+       col = "year", lty = "year") +
+  #scale_color_brewer(palette = "Greens") +
+  theme_bw()
+```
+
+## development
+```{r}
+dfs_ss$dev_outcomes_nopmd %>%
+  FilterLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = as.factor(year))) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = autoerr(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = autoerrh(avg.logmass))) +
+  facet_grid(pop ~ trt) +
+  labs(title = "development trajectories (pup only)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "year",
+       ) +
+  #scale_color_brewer(palette = "Greens") +
+  theme_bw()
+
+
+dfs_ss$dev_outcomes_pmd %>%
+  FilterLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = as.factor(year))) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = autoerr(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = autoerrh(avg.logmass))) +
+  facet_grid(pop ~ trt) +
+  labs(title = "development trajectories (all)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "year",
+       ) +
+  #scale_color_brewer(palette = "Greens") +
+  theme_bw()
+```
+
+
 ## supernumerary
 ```{r}
 dfs_ss$sup_outcomes %>% 
