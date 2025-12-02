@@ -11,6 +11,8 @@ final code is purled to a `.R` script, rerun `purl` step as needed to update the
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
 knitr::purl("cleaning.Rmd", "cleaning_p.R")
+
+knitr::purl("cleaning.Rmd", paste0(here(bin_paths$y25$ntw),                                   "/archive/cleaning/", format(Sys.time(), "%y%m%d"), "_cleaning_p.R"))
 ```
 
 # 1. loading
@@ -52,8 +54,8 @@ dfs_filtered <- list(
   y23 = dfs_imported[[1]] %>%
     filter(instar.enter == "hatch",
            pop %in% c("field", "lab"),
-           treatment != "ctrl",
-           reason.ignore != "lost" | is.na(reason.ignore)
+           !(treatment %in% c("ctrl", "267", "330")),
+           reason.ignore != "lost" | is.na(reason.ignore),
            ) %>%
     rename(id = ID,
            jdate.LPI = jdate.LP,

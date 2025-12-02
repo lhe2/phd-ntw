@@ -7,13 +7,30 @@
 # utility and user-defined functions for ntw wrangling/analyses/etc 
 # cuz i always lose them in the sauce
 
-
-
-
-RmLabTB <- function(data){
-  data %>%
-    filter(pop == "lab" & diet == "TB")
+# functions -----------------------------------------------------------------
+se <- function(x){ 
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
 }
+
+# sets error bar width/height to some % of the other axis
+autoerr <- function(x){
+  max(x) * 0.12 
+}
+autoerrh <- function(x){
+  max(x) * 0.07
+}
+## ggplot error bar width issues again... see also https://gist.github.com/tomhopper/9076152
+
+FilterLabTB <- function(data){
+  data %>%
+    filter(!(pop == "lab" & diet == "TB"))
+}
+
+
+# GroupNTW <- function(data){
+#   data %>%
+#     group_by(year, pop, diet, trt)
+# }
 
 
 
