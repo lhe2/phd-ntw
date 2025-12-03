@@ -3,32 +3,32 @@ title: "ntw 2025 cleaning"
 date: "2025-11-24"
 ---
 
-# 0. roadmap
+re-run sections whenever the gsheets gets updated
 
-1. load data & packages; pre-filtering
-2. column formatting + rearrangement
-3. save output into `2025/data/`
+# loading & init (all)
 
-re-run script whenever the gsheets gets updated
-
-LAST RUN: 2025-12-02
-
-
-# 1. loading
-
-## - data and packages
 ```{r message = FALSE}
 #library(tidyr)
 #library(purrr)
 library(dplyr)
 library(lubridate) # for handling time stuff
 library(googlesheets4)
+#library(data.table)
 
 here::i_am("2025/ntw/data-import.Rmd")
 library(here)
 
 source(here::here("set-paths.R"))
 ```
+
+```{r}
+# setup for export
+today <- format(Sys.time(), "%y%m%d-%H%M")
+```
+
+# larval dev data
+
+LAST RUN: 2025-12-02
 
 ## - googlesheets import
 
@@ -41,13 +41,11 @@ raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi
   drop_na(id)
 
 data <- raw
-
 ```
 
-# 2. column futzing
+## - column futzing
 
 todo: filter out bad bugs? sub 1 day dead bugs? (in the wrangle?)
-
 
 ```{r}
 # standardise format
@@ -55,7 +53,6 @@ data <- data %>%
   mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
          across(c("id", starts_with("mass")), as.numeric))
 ```
-
 
 ```{r}
 # consolidate exits; remove extra dates
@@ -75,8 +72,7 @@ data <- data %>%
 
 ```
 
-
-# 3. saving output & tidying up
+## - export
 
 ```{r}
 # remove extra columns
@@ -87,17 +83,147 @@ export <- data %>%
             "if.fridge"))
 ```
 
+```{r}
+# export
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-larva.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-larva.csv"), row.names = FALSE)
+```
+
+
+# adult info
+
+LAST RUN: 2025-12-02
+
+## - import
 
 ```{r}
-# setup
-today <- format(Sys.time(), "%y%m%d-%H%M")
+raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+                  sheet = "adults", col_types = "c",
+                  ) %>%
+  drop_na(id)
+
+data <- raw %>%
+  select(-c(ends_with("type"), "date.outby", "with.ctrl", "id.tent", "id.cage2")) %>%
+  rename(sex = id.sex,
+         notes = "notes (deformities)",
+         if.fridge = to.fridge,
+         cage = id.cage)
+```
+
+
+## - column cleaning
+
+```{r}
+# formatting, renaming, column cleanup
+data <- data %>%
+  mutate(across(starts_with("trt"), as.numeric),
+         across(starts_with("date"), as.character)) %>%
+  filter(!(is.na(cage)) & !is.na(date.removed))
+
+# individual fixes
+data[data$id == "1023", "cage"]$cage <- "A3" # typo
+data[data$cage == "B6", "cage"]$cage <- NA # temp males
+data[data$id == "1046", "date.added"]$date.added <- "10/21/2025" # this is date added to tent
+```
+
+```{r}
+# column creation, value editing
+data <- data %>%
+  # fixing stuff
+  mutate(id = case_when(grepl("f|m", id) ~ gsub(pattern = "f|m", replacement = "", x = id),
+                        TRUE ~ as.character(id)),
+         id = as.numeric(id),
+         id = case_when(pop == "col" & sex == "m" ~ as.numeric(id + 3000),
+                        pop == "col" & sex == "f" ~ as.numeric(id + 4000),
+                        TRUE ~ as.numeric(id)),
+         cage = case_when(grepl("temp", cage) ~ NA_character_,
+                          TRUE ~ as.character(cage)),
+         date.added = case_when(is.na(cage) ~ NA_character_,
+                                TRUE ~ as.character(date.added)),
+  ) %>% 
+  
+  # adding stuff
+  mutate(if.culled = case_when(!is.na(date.culled) ~ "x"),
+         if.def = case_when(grepl("def|wings|PIW", notes) ~ "x"),
+         id.tent = str_sub(cage, 1, 1),
+         id.cage = str_sub(cage, 2) #%>% sprintf("%02s", .)
+         ,
+         #cage = paste0(id.tent, id.cage)
+         ) %>%
+  mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
+         across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
+         across(starts_with("jdate"), as.numeric), .before = 1,
+         #across(everything(), gsub, pattern = "NA", replacement = NA)
+         )
+  
+```
+## - export
+
+```{r}
+# trim
+export <- data %>%
+  select(-c(starts_with("date"), "jdate.culled", "notes"))
+```
+
+
+```{r}
+# export
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-adults.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-adults.csv"), row.names = FALSE)
+```
+
+# eggs
+
+LAST RUN: 2025-12-02
+
+## - import
+```{r}
+raw <- list(
+  coll = read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+                    sheet = "collected", col_types = "c") %>%
+    select(1:5),
+  
+  hatch = read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+                     sheet = "hatched",  col_types = "c") %>%
+    select(1:4)
+)
+
+data <- raw
+```
+
+## - futzing
+
+```{r}
+# combine sublists and reformat
+data <- 
+  data.table::rbindlist(data, use.names = TRUE, fill = TRUE) %>%
+  rename(cage = id.cage,
+         eggs.collected = egg.collected,
+         eggs.hatched = hatched) %>%
+  mutate(across(starts_with("eggs."), as.numeric),
+         across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
+         across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
+         across(starts_with("jdate."), as.numeric))
+```
+
+## export
+
+```{r}
+# trim & edit
+export <- data %>%
+  select(-c(starts_with("date"), "notes"))
+
+raw <- data.table::rbindlist(raw, use.names = TRUE, fill = TRUE)
 ```
 
 ```{r}
 # export
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-working.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-eggs.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-eggs.csv"), row.names = FALSE)
 ```
+
+
+# cleanup
 
 ```{r}
 # remove troubleshooting objects
