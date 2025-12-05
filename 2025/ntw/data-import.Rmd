@@ -1,5 +1,5 @@
 ---
-title: "ntw 2025 cleaning"
+title: "ntw 2025 import"
 date: "2025-11-24"
 ---
 
@@ -174,18 +174,20 @@ write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-adults.csv"
 
 # eggs
 
-LAST RUN: 2025-12-02
+LAST RUN: 2025-12-05
 
 ## - import
 ```{r}
 raw <- list(
   coll = read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
                     sheet = "collected", col_types = "c") %>%
-    select(1:5),
+    select(1:5) %>%
+    rename(eggs.collected = egg.collected),
   
   hatch = read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
                      sheet = "hatched",  col_types = "c") %>%
-    select(1:4)
+    select(1:4) %>%
+    rename(eggs.hatched = hatched)
 )
 
 data <- raw
@@ -194,32 +196,43 @@ data <- raw
 ## - futzing
 
 ```{r}
-# combine sublists and reformat
-data <- 
-  data.table::rbindlist(data, use.names = TRUE, fill = TRUE) %>%
-  rename(cage = id.cage,
-         eggs.collected = egg.collected,
-         eggs.hatched = hatched) %>%
+# reformat columns
+data <- data %>% lapply(., \(x){
+  x %>%
+  rename(cage = id.cage) %>%
   mutate(across(starts_with("eggs."), as.numeric),
          across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
          across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
          across(starts_with("jdate."), as.numeric))
+})
+
 ```
 
-## export
+## - export
 
 ```{r}
-# trim & edit
-export <- data %>%
+# raw data
+raw <- raw %>% reduce(left_join, by = c("date.collected", "id.cage"))
+
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-eggs.csv"), row.names = FALSE)
+```
+
+
+```{r}
+# collected
+export <- data$coll %>%
   select(-c(starts_with("date"), "notes"))
 
-raw <- data.table::rbindlist(raw, use.names = TRUE, fill = TRUE)
+write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-coll.csv"), row.names = FALSE)
+
 ```
 
 ```{r}
-# export
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-eggs.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-eggs.csv"), row.names = FALSE)
+# hatched
+export <- merge(data$coll, data$hatch, all = TRUE) %>%
+  select(-c(starts_with("date"), "notes"))
+
+write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-hatch.csv"), row.names = FALSE)
 ```
 
 
