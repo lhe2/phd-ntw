@@ -206,8 +206,142 @@ dfs <- list_modify(dfs,
 ) 
 ```
 
+# adult data
 
-## cleanup
+## loading
+
+```{r}
+# add yr later? breaks later on bc of the pivoting
+
+dfs_imported <- list(
+  ad25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE) %>% mutate(year = 2025),
+  coll25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-coll.csv"), header = TRUE) %>% mutate(year = 2025),
+  hatch25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-hatch.csv"), header = TRUE) %>% mutate(year = 2025)
+)
+```
+
+## setup cage info
+```{r}
+# dfs modified..?
+dfs_tents <- list(
+  
+  # cage info
+  info = dfs_imported[["ad25"]] %>%
+    pivot_wider(names_from = "sex", values_from = "pop") %>%
+    select(trt, cage, f) %>% rename(trt.f = trt) %>%
+    drop_na(f) %>% distinct() %>%
+    merge(
+      dfs_imported[["ad25"]] %>% pivot_wider(names_from = "sex", values_from = "pop") %>% select(trt, cage, m) %>% rename(trt.m = trt) %>% 
+        drop_na(m) %>% distinct(), 
+      all = TRUE
+    ) %>% 
+    drop_na(cage) %>%
+    rename(pop.f = f, pop.m = m) %>%
+    mutate(mate.type = case_when(trt.f == trt.m ~ "within",
+                                 trt.f != trt.m ~ "between"),
+           mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
+                                mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
+           mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
+                                mate.type == "between" & trt.f > trt.m ~ trt.f,
+                                mate.type == "between" & trt.m > trt.f ~ trt.m),
+           mate.col = case_when(pop.f == "col" | pop.m == "col" ~ "x"),
+           mate.hs = case_when(trt.f > trt.m ~ "f",
+                               trt.m > trt.f ~ "m")
+    ) %>%
+    filter(!(cage == "A8" & pop.m == "lab"),
+           !(cage == "B5" & (pop.f == "col" | pop.m == "col"))),
+  
+  # cage timelines (mating pair info)
+  events = dfs_imported[["ad25"]] %>%
+    pivot_longer(starts_with("jdate"),
+                 names_to = c(".value", "event"),
+                 names_sep = "\\.") %>% 
+    drop_na("jdate") %>% 
+    group_by(cage, jdate) %>%
+    summarise(f.added = sum(sex == "f" & event == "added"),
+              m.added = sum(sex == "m" & event == "added"),
+              f.removed = sum(sex == "f" & event == "removed"),
+              m.removed = sum(sex == "m" & event == "removed")) %>%
+    drop_na(cage)
+)
+
+# cage timelines (egg collection info)
+dfs_tents$events <-
+  dfs_imported[["coll25"]] %>%
+  rename(jdate = jdate.collected) %>%
+  merge(., dfs_tents$events, all = TRUE) %>%
+  merge(., dfs_tents$info %>% select(c("cage", starts_with("mate"))), all = TRUE, by = c("cage")) %>%
+  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0))
+```
+
+## setup egg collection info
+```{r}
+# ## DRAFT
+# # do math
+# tents <- dfs_tents$events[order(dfs_tents$events$cage, dfs_tents$events$jdate),] %>% split(f = dfs_tents$events$cage)
+# 
+# #testing: C14, C4
+# test <- dfs_tents$events[dfs_tents$events$cage == "C14", ]
+# 
+# test %>%
+#   select(-c(cage, starts_with(c("mate")))) %>% # readability
+#   
+#   ### BELOW INTO LAPPLY
+#   arrange(jdate) %>%
+#   mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
+#          f.curr = 0,
+#          f.curr = cumsum(f.diff + f.curr),
+#          m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
+#          m.curr = 0,
+#          m.curr = cumsum(m.diff + m.curr),
+#          eggs.exclude = case_when(f.curr <= 0 & m.curr > 0 ~ as.numeric(eggs.collected + eggs.exclude),
+#                                   TRUE ~ as.numeric(eggs.exclude)),
+#          eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
+#                                     TRUE ~ as.numeric(eggs.collected))) %>%
+#   View()
+
+
+
+### FINAL
+dfs <- list_modify(
+  dfs,
+  tents = 
+    dfs_tents$events[order(dfs_tents$events$cage, dfs_tents$events$jdate),] %>%
+  split(f = dfs_tents$events$cage) %>% 
+  lapply(., \(x){
+  x %>%
+    arrange(jdate) %>%
+    mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
+           f.curr = 0,
+           f.curr = cumsum(f.diff + f.curr),
+           m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
+           m.curr = 0,
+           m.curr = cumsum(m.diff + m.curr),
+           # wrong logic..
+           # eggs.exclude = case_when(f.curr <= 0 & m.curr >= 0 ~ as.numeric(eggs.collected + eggs.exclude),
+           # TRUE ~ as.numeric(eggs.exclude)),
+           # eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
+           #                            TRUE ~ as.numeric(eggs.collected)),
+           eggs.exclude = case_when(f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
+                                   TRUE ~ as.numeric(eggs.exclude)),
+           eggs.collected = case_when(f.curr > 0 & m.curr == 0 ~ 0,
+                                      TRUE ~ as.numeric(eggs.collected))
+           ) %>%
+    select(-ends_with(c(".added", ".removed", ".diff"))) %>%
+      rename(eggs.fert = eggs.collected,
+             eggs.unfert = eggs.exclude)
+}) %>%
+  rbindlist()
+)
+         
+```
+
+
+
+
+
+
+# cleanup
 ```{r remove intermediate objects}
 rm(dfs_imported, dfs_filtered, dfs_stdised)
 ```
