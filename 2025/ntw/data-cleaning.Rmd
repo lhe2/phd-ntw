@@ -3,19 +3,20 @@ title: "2025 ntw cleaning"
 date: "2025-11-26"
 ---
 
-# 0. preamble
+# preamble
 
-cleaning ntw 2025 data for wrangling
+prepping ntw 2025 data for wrangling
 
 final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
 
 ```{r eval=FALSE, include=FALSE, purl=FALSE}
+# rerun this chunk if purled script needs to be updated
 knitr::purl("data-cleaning.Rmd", "cleaning_p.R")
 
 knitr::purl("data-cleaning.Rmd", paste0(here(bin_paths$y25$ntw),                                   "/archive/cleaning/", format(Sys.time(), "%y%m%d"), "_cleaning_p.R"))
 ```
 
-# 1. loading
+# load libs & pkgs
 
 ```{r about}
 # cleaning/ntw-2025.R
@@ -27,7 +28,7 @@ knitr::purl("data-cleaning.Rmd", paste0(here(bin_paths$y25$ntw),                
 # is meant to be more of a reference!
 ```
 
-```{r load utils}
+```{r load libs}
 library(tidyverse)
 
 here::i_am("2025/ntw/data-cleaning.Rmd")
@@ -38,15 +39,19 @@ source(here::here("set-paths.R"))
 source(here::here(bin_paths$y25$ntw, "utils.R"))
 ```
 
-```{r load data}
+
+# larval data
+
+## loading
+```{r load larval data}
 dfs_imported <- list(
   y23 = read.csv(here::here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023),
   y24 = read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>% mutate(year = 2024),
-  y25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-working.csv"), header = TRUE) %>% mutate(year = 2025)
+  y25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-larva.csv"), header = TRUE) %>% mutate(year = 2025)
   )
 ```
 
-# 2. standardising
+## standardising
 
 ```{r filtering and column cleanup}
 dfs_filtered <- list(
@@ -166,9 +171,7 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
 
 ```
 
-# 3. export
-
-## combine dfs
+## export
 
 ```{r}
 # 2025-11-28 TODO: jdate.surv and id.cage are not applied consistently so just drop for now.. but will need later for adult stuff LOL
@@ -177,7 +180,7 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
 dfs <- list(wide = data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
               filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.exit - jdate.hatch)) %>%
               select(-c("id.cage", "jdate.surv"))
-            )
+)
 
 
   # TODO could drop jdate column maybe?
@@ -201,8 +204,8 @@ dfs <- list_modify(dfs,
                      mutate(tt = case_when(is.na(tt) & !is.na(mass) ~ 999,
                                            TRUE ~ as.numeric(tt))) %>%
                      drop_na(tt) %>%
-                     mutate(tt = na_if(tt, 999)) %>% 
-                     filter(tt > 0 | is.na(tt)) # temporary LOL until reimport 2025 data
+                     mutate(tt = na_if(tt, 999)) #%>% 
+                     #filter(tt > 0 | is.na(tt)) # temporary LOL until reimport 2025 data
 ) 
 ```
 
