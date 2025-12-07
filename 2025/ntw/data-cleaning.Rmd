@@ -30,6 +30,7 @@ knitr::purl("data-cleaning.Rmd", paste0(here(bin_paths$y25$ntw),                
 
 ```{r load libs}
 library(tidyverse)
+library(data.table) # for rbindlist
 
 here::i_am("2025/ntw/data-cleaning.Rmd")
 library(here)
@@ -226,6 +227,7 @@ dfs_imported <- list(
 ## setup cage info
 ```{r}
 # dfs modified..?
+### need to rerun the WHOLE chunk at once if updating $info to avoid dups
 dfs_tents <- list(
   
   # cage info
@@ -270,13 +272,26 @@ dfs_tents <- list(
     drop_na(cage)
 )
 
-# cage timelines (egg collection info)
-dfs_tents$events <-
+
+# cage timelines (adding egg info)
+dfs_tents$events <- 
   dfs_imported[["coll25"]] %>%
   rename(jdate = jdate.collected) %>%
-  merge(., dfs_tents$events, all = TRUE) %>%
-  merge(., dfs_tents$info %>% select(c("cage", starts_with("mate"))), all = TRUE, by = c("cage")) %>%
-  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0))
+  merge(., dfs_imported[["hatch25"]] %>% 
+          select(c("cage", ends_with(".hatched"))) %>%
+          rename(jdate = jdate.hatched) %>%
+          group_by(jdate, cage) %>%
+          summarise(eggs.hatched = sum(eggs.hatched)) %>%
+          drop_na(),
+        all = TRUE) %>% #View()
+  merge(., dfs_tents$events, all = TRUE) %>% #View()
+  merge(., dfs_tents$info %>% 
+          select(c("cage", starts_with("mate"))), 
+        all = TRUE, by = c("cage")
+  ) %>% #View()
+  mutate(year = 2025,
+         across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
+
 ```
 
 ## setup egg collection info
@@ -306,8 +321,11 @@ dfs_tents$events <-
 #   View()
 
 
+```{r}
+## run the whole chunk to update dfs$tents properly
 
-### FINAL
+## collection info
+# TODO account for bad m/f's somehow?
 dfs <- list_modify(
   dfs,
   tents = 
@@ -347,9 +365,9 @@ dfs <- list_modify(
 
 
 
-
 # cleanup
 ```{r remove intermediate objects}
 rm(dfs_imported, dfs_filtered, dfs_stdised)
+# dfs_tents?
 ```
 
