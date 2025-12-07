@@ -92,7 +92,7 @@ write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-larva.csv")
 
 # adult info
 
-LAST RUN: 2025-12-02
+LAST RUN: 2025-12-07
 
 ## - import
 
@@ -124,6 +124,7 @@ data <- data %>%
 data[data$id == "1023", "cage"]$cage <- "A3" # typo
 data[data$cage == "B6", "cage"]$cage <- NA # temp males
 data[data$id == "1046", "date.added"]$date.added <- "10/21/2025" # this is date added to tent
+data[data$id %in% c("f08", "f09", "1044", "2001"), "cage"]$cage <- "A6" # typo
 ```
 
 ```{r}

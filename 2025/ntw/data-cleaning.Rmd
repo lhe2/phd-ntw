@@ -250,13 +250,13 @@ dfs_tents <- list(
            mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
                                 mate.type == "between" & trt.f > trt.m ~ trt.f,
                                 mate.type == "between" & trt.m > trt.f ~ trt.m),
-           mate.col = case_when(pop.f == "col" | pop.m == "col" ~ "x"),
+           mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
+                                pop.f == "col" & pop.m == "lab" ~ "f",
+                                pop.m == "col" & pop.f == "lab" ~ "m" ),
            mate.hs = case_when(trt.f > trt.m ~ "f",
                                trt.m > trt.f ~ "m"),
-           #mate.nom = case_when(is.na(trt.m) ~ "x")
-           ) %>%
-    filter(!(cage == "A8" & pop.m == "lab"),
-           !(cage == "B5" & (pop.f == "col" | pop.m == "col"))),
+           ) %>% #View()
+    filter(!(cage == "A8" & pop.m == "lab")),
   
   # cage timelines (mating pair info)
   events = dfs_imported[["ad25"]] %>%
