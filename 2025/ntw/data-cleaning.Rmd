@@ -241,7 +241,8 @@ dfs_tents <- list(
     drop_na(cage) %>%
     rename(pop.f = f, pop.m = m) %>%
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
-                                 trt.f != trt.m ~ "between"),
+                                 trt.f != trt.m ~ "between",
+                                 is.na(trt.m) ~ "virgin f"),
            mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
                                 mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
            mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
@@ -249,8 +250,9 @@ dfs_tents <- list(
                                 mate.type == "between" & trt.m > trt.f ~ trt.m),
            mate.col = case_when(pop.f == "col" | pop.m == "col" ~ "x"),
            mate.hs = case_when(trt.f > trt.m ~ "f",
-                               trt.m > trt.f ~ "m")
-    ) %>%
+                               trt.m > trt.f ~ "m"),
+           #mate.nom = case_when(is.na(trt.m) ~ "x")
+           ) %>%
     filter(!(cage == "A8" & pop.m == "lab"),
            !(cage == "B5" & (pop.f == "col" | pop.m == "col"))),
   
@@ -325,12 +327,14 @@ dfs <- list_modify(
            # TRUE ~ as.numeric(eggs.exclude)),
            # eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
            #                            TRUE ~ as.numeric(eggs.collected)),
-           eggs.exclude = case_when(f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
+           eggs.exclude = case_when(mate.type == "virgin f" | 
+                                      f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
                                    TRUE ~ as.numeric(eggs.exclude)),
-           eggs.collected = case_when(f.curr > 0 & m.curr == 0 ~ 0,
-                                      TRUE ~ as.numeric(eggs.collected))
-           ) %>%
-    select(-ends_with(c(".added", ".removed", ".diff"))) %>%
+           eggs.collected = case_when(mate.type == "virgin f" | 
+                                        f.curr > 0 & m.curr == 0 ~ 0,
+                                      TRUE ~ as.numeric(eggs.collected)),
+           eggs.coll = eggs.collected + eggs.exclude) %>%
+    select(-ends_with(c(".removed", ".diff"))) %>%
       rename(eggs.fert = eggs.collected,
              eggs.unfert = eggs.exclude)
 }) %>%
