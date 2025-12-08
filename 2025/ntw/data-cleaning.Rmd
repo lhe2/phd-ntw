@@ -253,8 +253,9 @@ dfs_tents <- list(
            mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
                                 pop.f == "col" & pop.m == "lab" ~ "f",
                                 pop.m == "col" & pop.f == "lab" ~ "m" ),
-           mate.hs = case_when(trt.f > trt.m ~ "f",
-                               trt.m > trt.f ~ "m"),
+           mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
+                               trt.m > trt.f | is.na(trt.f) ~ "m",
+                               TRUE ~ "both"),
            ) %>% #View()
     # some fixes
     filter(!(cage == "A8" & pop.m == "lab")) %>%

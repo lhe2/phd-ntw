@@ -5,7 +5,9 @@ date: "2025-11-29"
 
 # # preamble & loading
 
-do data wrangling for ntw 2025 data here
+- do data wrangling for ntw 2025 data here
+- run in entirety to update the RData objects
+
 
 ```{r}
 # libraries
@@ -35,7 +37,8 @@ dfs_ss <- list()
 
 
 # # summary stats
-## [/] calculate development metrics
+## calculate development metrics
+
 
 ```{r supernumerary development}
 # TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
@@ -77,6 +80,19 @@ dfs_ss <- list_modify(dfs_ss,
     
 ```
 
+```{r dev ss custom fn}
+.CalcDevSS <- function(x){
+  x %>%
+    mutate(log.mass = log(mass)) %>%
+    summarise(n = n(),
+              avg.logmass = mean(log.mass, na.rm = TRUE),
+              se.logmass = se(log.mass),
+              avg.mass = mean(mass, na.rm = TRUE),
+              se.mass = se(mass),
+              avg.tt = mean(tt, na.rm = TRUE),
+              se.tt = se(tt))
+}
+```
 
 
 ```{r overall development}
@@ -84,27 +100,13 @@ dfs_ss <- list_modify(dfs_ss,
   dev_outcomes_pmd =
     dfs$long %>% 
     group_by(year, pop, diet, trt, instar) %>%
-    mutate(log.mass = log(mass)) %>%
-    summarise(n = n(),
-              avg.logmass = mean(log.mass, na.rm = TRUE),
-              se.logmass = se(log.mass),
-              avg.mass = mean(mass, na.rm = TRUE),
-              se.mass = se(mass),
-              avg.tt = mean(tt, na.rm = TRUE),
-              se.tt = se(tt)),
+    .CalcDevSS(),
   
   dev_outcomes_nopmd =
     dfs$long %>% 
     filter(fate.code != 0 | is.na(fate.code)) %>%
     group_by(year, pop, diet, trt, instar) %>%
-    mutate(log.mass = log(mass)) %>%
-    summarise(n = n(),
-              avg.logmass = mean(log.mass, na.rm = TRUE),
-              se.logmass = se(log.mass),
-              avg.mass = mean(mass, na.rm = TRUE),
-              se.mass = se(mass),
-              avg.tt = mean(tt, na.rm = TRUE),
-              se.tt = se(tt)),
+    .CalcDevSS(),
   
   surv_outcomes =
     dfs$wide %>%
@@ -115,16 +117,15 @@ dfs_ss <- list_modify(dfs_ss,
 )
 ```
 
-## [/] egg stuff
+## egg stuff
 
-```{r}
-dfs_ss <- list_modify(
-  dfs_ss, 
-  tents = 
-    dfs$tents %>%
-    mutate(eggs.perf = eggs.coll/f.curr,
-           eggs.perf = replace_na(eggs.perf, 0)) %>% ## ????
+```{r eggs ss custom fn}
+.CalcTentsSS <- function(x){
+  x %>%
+  mutate(eggs.perf = eggs.coll/f.curr,
+         eggs.perf = replace_na(eggs.perf, 0)) %>% ## ????
     group_by(across(starts_with("mate"))) %>%
+    # maybe mut and then just distinct by new columns instead of summary?
     summarise(n.cages.total = 
                 n_distinct(across(c("cage", starts_with("mate")))),
               n.f.total = sum(f.added), 
@@ -151,6 +152,27 @@ dfs_ss <- list_modify(
     ) %>%
     mutate(across(starts_with(c("n.", "p.", "se.", "avg.")), 
                   replace_na, 0))
+}
+```
+
+
+```{r eggs ss calcs}
+dfs_ss <- list_modify(
+  dfs_ss, 
+  tents = dfs$tents %>%
+    select(-mate.col) %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop))) %>% 
+    .CalcTentsSS(),
+  
+  tents_matecol = dfs$tents %>%
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop)),
+           mate.col = na_if(mate.col, "both")) %>%
+    .CalcTentsSS(),
+  
+  tents_wcol = dfs$tents %>%
+    .CalcTentsSS()
 )
 ```
 
