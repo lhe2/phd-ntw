@@ -35,8 +35,7 @@ dfs_ss <- list()
 
 
 # # summary stats
-
-## [ ] calculate development metrics
+## [/] calculate development metrics
 
 ```{r supernumerary development}
 # TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
@@ -105,7 +104,7 @@ dfs_ss <- list_modify(dfs_ss,
               avg.mass = mean(mass, na.rm = TRUE),
               se.mass = se(mass),
               avg.tt = mean(tt, na.rm = TRUE),
-              se.tt = se(tt)) %>% View(),
+              se.tt = se(tt)),
   
   surv_outcomes =
     dfs$wide %>%
@@ -115,6 +114,46 @@ dfs_ss <- list_modify(dfs_ss,
               prop.pup = sum(fate.code == 1)/n)
 )
 ```
+
+## [/] egg stuff
+
+```{r}
+dfs_ss <- list_modify(
+  dfs_ss, 
+  tents = 
+    dfs$tents %>%
+    mutate(eggs.perf = eggs.coll/f.curr,
+           eggs.perf = replace_na(eggs.perf, 0)) %>% ## ????
+    group_by(across(starts_with("mate"))) %>%
+    summarise(n.cages.total = 
+                n_distinct(across(c("cage", starts_with("mate")))),
+              n.f.total = sum(f.added), 
+              
+              # viable + non-viable eggs
+              n.eggs.viable = sum(eggs.fert),
+              se.eggs.viable = se(eggs.fert),
+              n.eggs.coll = sum(eggs.coll),
+              se.eggs.coll = se(eggs.coll),
+              #   # check how i did this in 2023?
+              # n.eggs.perf = n.eggs.coll/n.f.total, # do outside?
+              # avg.eggs.perf = mean(n.eggs.perf),
+              # se.eggs.perf = se(n.eggs.perf),
+              avg.eggs.perf = mean(eggs.perf),
+              se.eggs.perf = se(eggs.perf),
+              
+              # hatching (viable eggs only)
+              n.eggs.hatched = sum(eggs.hatched),
+              p.eggs.hatched = n.eggs.hatched/n.eggs.viable,
+              se.eggs.hatched = se.prop(p.eggs.hatched, n.eggs.viable),
+              #   # check how i did this in 2023?
+              # p.eggs.hatchedperf = p.eggs.hatched/n.f.total,
+              # se.eggs.hatchedperf = se.prop(p.eggs.hatchedperf, n.eggs.viable)
+    ) %>%
+    mutate(across(starts_with(c("n.", "p.", "se.", "avg.")), 
+                  replace_na, 0))
+)
+```
+
 
 
 # RData export
