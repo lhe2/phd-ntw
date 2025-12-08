@@ -256,7 +256,11 @@ dfs_tents <- list(
            mate.hs = case_when(trt.f > trt.m ~ "f",
                                trt.m > trt.f ~ "m"),
            ) %>% #View()
-    filter(!(cage == "A8" & pop.m == "lab")),
+    # some fixes
+    filter(!(cage == "A8" & pop.m == "lab")) %>%
+    mutate(mate.pop = case_when(cage %in% c("A6", "B16", "C7") ~ "lab",
+                                TRUE ~ as.character(mate.pop))
+           ),
   
   # cage timelines (mating pair info)
   events = dfs_imported[["ad25"]] %>%
@@ -294,38 +298,12 @@ dfs_tents$events <-
 
 ```
 
-## setup egg collection info
+## setup egg info
 ```{r}
-# ## DRAFT
-# # do math
-# tents <- dfs_tents$events[order(dfs_tents$events$cage, dfs_tents$events$jdate),] %>% split(f = dfs_tents$events$cage)
-# 
-# #testing: C14, C4
-# test <- dfs_tents$events[dfs_tents$events$cage == "C14", ]
-# 
-# test %>%
-#   select(-c(cage, starts_with(c("mate")))) %>% # readability
-#   
-#   ### BELOW INTO LAPPLY
-#   arrange(jdate) %>%
-#   mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
-#          f.curr = 0,
-#          f.curr = cumsum(f.diff + f.curr),
-#          m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
-#          m.curr = 0,
-#          m.curr = cumsum(m.diff + m.curr),
-#          eggs.exclude = case_when(f.curr <= 0 & m.curr > 0 ~ as.numeric(eggs.collected + eggs.exclude),
-#                                   TRUE ~ as.numeric(eggs.exclude)),
-#          eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
-#                                     TRUE ~ as.numeric(eggs.collected))) %>%
-#   View()
-
-
-```{r}
-## run the whole chunk to update dfs$tents properly
-
 ## collection info
-# TODO account for bad m/f's somehow?
+
+# troubleshooting tents: A2, B2, C14, C4
+
 dfs <- list_modify(
   dfs,
   tents = 
