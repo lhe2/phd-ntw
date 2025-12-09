@@ -338,8 +338,145 @@ dfs <- list_modify(
   rbindlist()
 )
          
+# adult data (2023)
+
+## loading
+```{r}
+dfs_imported <- list(
+  ad23 = read.csv(here::here(bin_paths$y23$data, "clean-tentpairs.csv"), header = TRUE) %>%
+    mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")) %>%
+    filter(!(id.f %in% c(282, 284))),
+  coll23 = read.csv(here::here(bin_paths$y23$data, "clean-tentstats.csv"), header = TRUE) %>%
+    mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")),
+  hatch23 = read.csv(here::here(bin_paths$y23$data, "clean-hatchstats.csv"), header = TRUE) %>% 
+    mutate(across(starts_with("date"), as.Date, "%m/%d/%y"))
+) %>%
+  lapply(., \(x){
+    x %>%
+      rename(cage = id.tent) %>%
+      mutate(across(starts_with("date"), as.Date, "%j", .names = "j{.col}"),
+             across(starts_with("jdate"), as.numeric)) %>%
+      select(-starts_with("date"))
+  })
+
+dfs_filtered <- list(
+  ad23 = dfs_imported[["ad23"]] %>%
+    select(c("cage", starts_with("jdate"), ends_with(c(".m", ".f"))),
+           -starts_with("track")),
+  coll23 = dfs_imported[["coll23"]] %>%
+    select(c("cage", "n.coll", "jdate")),
+  hatch23 = dfs_imported[["hatch23"]] %>%
+    select(c("cage", "n.hatch", "jdate.hatch"))
+)
+
+# add uids to ctrls/cols
+dfs_filtered$ad23 <- dfs_filtered$ad23 %>%
+    mutate(id.m = case_when(id.m %in% c("col", "ctrl") ~ paste0(id.m, "-m", sprintf("%03s", rownames(.))),
+                            #id.f == "146" & id.m == "253" ~ NA_character_,
+                            TRUE ~ as.character(id.m)),
+           id.f = case_when(id.f %in% c("col", "ctrl") ~ paste0(id.f, "-f", sprintf("%03s", rownames(.))),
+                            #id.f == "244" & id.m == "224" ~ NA_character_,
+                            TRUE ~ as.character(id.f)))
+
 ```
 
+## standardising
+
+### filtering/renaming
+
+```{r}
+# DRAFT
+# this is "info"
+# NOT solos (301P, 301U, 107H, )
+tmp <- dfs_filtered[["ad23"]] %>%
+  select(c("cage", starts_with(c("id", "jdate", "trt")))) %>%
+  mutate(ctrl.m = case_when(grepl("col", id.m) ~ "col",
+                            grepl("ctrl", id.m) ~ "diurnal"),
+         ctrl.f = case_when(grepl("col", id.f) ~ "col",
+                            grepl("ctrl", id.f) ~ "diurnal"),
+         pop.m = case_when(grepl("col", id.m) ~ "col",
+                           !is.na(ctrl.m) | as.numeric(id.m) > 1000 ~ "lab",
+                           as.numeric(id.m) < 1000 ~ "field"),
+         pop.f = case_when(grepl("col", id.f) ~ "col",
+                           !is.na(ctrl.f) | as.numeric(id.f) > 1000 ~ "lab",
+                           as.numeric(id.f) < 1000 ~ "field"),
+         cage = case_when(is.na(id.f) ~ NA_character_,
+                          TRUE ~ as.character(cage))
+         ) %>% 
+  .GenerateCageInfo() %>% 
+  mutate(mate.type = case_when(mate.type == "virgin f" & 
+                                 !cage %in% c("107-cage", "301-T") ~ NA_character_,
+                               TRUE ~ as.character(mate.type)))
+# events 23
+# idk abt "jdate.ec" for rn LOL... need for fridge/longev but not for events
+tmp
+tmp2 <- tmp %>%
+  rename_with(., ~paste("jdate", str_extract(.,"[a-z]*$"), str_sub(., 7, 7), sep = "."), 
+              starts_with(c("jdate.m", "jdate.f"))) %>%
+  select(-starts_with(c("jdate.m", "jdate.f", "jdate.ec"))) %>%
+  pivot_longer(ends_with(c(".f", ".m")),
+               names_to = c(".value", "sex"),
+               names_pattern = "([a-z]*.[a-z]*).(m|f)") %>%
+  drop_na(id) %>%
+  pivot_longer(starts_with("jdate"),
+                 names_to = c(".value", "event"),
+                 names_sep = "\\.") %>%
+  drop_na(jdate) %>%
+  mutate(event = case_when(event == "paired" ~ "added",
+                           event == "died" ~ "removed")
+         ) %>%
+  .GenerateCageCounts()
+dfs_filtered[["coll23"]] %>%
+  rename(eggs.coll = n.coll) %>%
+  merge(., dfs_filtered[["hatch23"]] %>% 
+          rename(jdate = "jdate.hatch") %>%
+          group_by(cage, jdate) %>%
+          summarise(eggs.hatched = sum(n.hatch)) %>%
+          drop_na(),
+        all = TRUE) %>% 
+  merge(., tmp2, all = TRUE) %>% 
+  merge(., tmp %>% 
+          select(c("cage", starts_with("mate"))) %>%
+          drop_na(cage, mate.type) %>% distinct() #%>% View()
+        ,
+        all = TRUE, by = "cage") %>% View()
+```
+
+```{r}
+# to assign cage info for 23/25:
+
+.GenerateCageInfo <- function(x){
+  x %>%
+    mutate(mate.type = case_when(trt.f == trt.m ~ "within",
+                                 trt.f != trt.m ~ "between",
+                                 is.na(trt.m) ~ "virgin f"),
+           mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
+                                mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
+           mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
+                                mate.type == "between" & trt.f > trt.m ~ trt.f,
+                                mate.type == "between" & trt.m > trt.f ~ trt.m),
+           mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
+                                pop.f == "col" & pop.m == "lab" ~ "f",
+                                pop.m == "col" & pop.f == "lab" ~ "m" ),
+           mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
+                               trt.m > trt.f | is.na(trt.f) ~ "m",
+                               TRUE ~ "both"))
+} 
+
+
+# to count cage counts for cage events
+
+.GenerateCageCounts <- function(x){
+  x %>%
+    group_by(cage, jdate) %>%
+    summarise(f.added = sum(sex == "f" & event == "added"),
+              m.added = sum(sex == "m" & event == "added"),
+              f.removed = sum(sex == "f" & event == "removed"),
+              m.removed = sum(sex == "m" & event == "removed")) %>%
+    drop_na(cage)
+}
+
+```
 
 
 
