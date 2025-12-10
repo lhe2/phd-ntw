@@ -512,6 +512,34 @@ dfs_tents <- dfs_tents %>%
 ```
 
 ```{r}
+dfs <- list_modify(
+  dfs,
+  tents = 
+    dfs_tents$events[order(dfs_tents$events$cage, dfs_tents$events$jdate),] %>%
+  split(f = dfs_tents$events$cage) %>% 
+  lapply(., \(x){
+  x %>%
+    arrange(jdate) %>%
+    mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
+           f.curr = 0,
+           f.curr = cumsum(f.diff + f.curr),
+           m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
+           m.curr = 0,
+           m.curr = cumsum(m.diff + m.curr),
+           eggs.exclude = case_when(mate.type == "virgin f" | 
+                                      f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
+                                   TRUE ~ as.numeric(eggs.exclude)),
+           eggs.collected = case_when(mate.type == "virgin f" | 
+                                        f.curr > 0 & m.curr == 0 ~ 0,
+                                      TRUE ~ as.numeric(eggs.collected)),
+           eggs.coll = eggs.collected + eggs.exclude) %>%
+    select(-ends_with(c(".removed", ".diff"))) %>%
+      rename(eggs.fert = eggs.collected,
+             eggs.unfert = eggs.exclude)
+}) %>%
+  rbindlist()
+)
+```
 
 
 ```{r}
