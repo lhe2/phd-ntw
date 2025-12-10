@@ -222,6 +222,7 @@ dfs <- list_modify(dfs,
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
                                  trt.f != trt.m ~ "between",
                                  is.na(trt.m) ~ "virgin f"),
+           # if both m+f are from col, then mate.pop = "col", otherwise "lab"
            mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
                                 mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
            mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
@@ -268,11 +269,21 @@ dfs_imported <- list(
 dfs_tents <- list(
   
   # cage info
-  info = dfs_imported[["ad25"]] %>%
-    pivot_wider(id_cols = c("id", "cage"), 
-                names_from = "sex", values_from = "pop") %>%
-    drop_na(cage) %>% #View()
-    rename(pop.f = f, pop.m = m) %>% #View() #for dfs23
+  # TODO maybe could tidyr::complete this but i dont get the nesting lol
+  info = 
+  merge(
+    dfs_imported[["ad25"]] %>% filter(sex == "f") %>%
+      select(cage, id, pop, trt, sex) %>%
+      pivot_wider(names_from = "sex", values_from = c("pop", "trt"), 
+                  names_sep = ".") %>% 
+       select(-id) %>% distinct(),
+    dfs_imported[["ad25"]] %>% filter(sex == "m") %>%
+      select(cage, id, pop, trt, sex) %>%
+      pivot_wider(names_from = "sex", values_from = c("pop", "trt"), 
+                  names_sep = ".") %>% 
+       select(-id) %>% distinct(),
+    all = TRUE) %>% 
+    drop_na(cage) %>% #View() #for dfs23
     .GenerateCageInfo() %>% #View()
     # some fixes
     filter(!(cage == "A8" & pop.m == "lab")) %>%
@@ -480,7 +491,7 @@ dfs_tents <- list(
 # overwrite events (append egg info)
 dfs_tents$events <- 
   dfs_filtered[["coll23"]] %>%
-  rename(eggs.coll = n.coll) %>%
+  rename(eggs.collected = n.coll) %>%
   merge(., dfs_filtered[["hatch23"]] %>% 
           rename(jdate = "jdate.hatch") %>%
           group_by(cage, jdate) %>%
@@ -492,7 +503,8 @@ dfs_tents$events <-
           select(c("cage", starts_with("mate"))) #%>% View()
         ,
         all = TRUE, by = "cage") %>%
-  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
+  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) %>%
+  mutate(eggs.exclude = 0) # a column in 2025 but not 2023
 
 
 dfs_tents <- dfs_tents %>%
