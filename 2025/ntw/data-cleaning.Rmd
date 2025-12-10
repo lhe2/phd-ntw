@@ -5,7 +5,7 @@ date: "2025-11-26"
 
 # preamble
 
-prepping ntw 2025 data for wrangling
+prepping ntw data for 2025 wrangling
 
 final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
 
@@ -41,7 +41,7 @@ source(here::here(bin_paths$y25$ntw, "utils.R"))
 ```
 
 
-# larval data
+# larval data (all yrs)
 
 ## loading
 ```{r load larval data}
@@ -210,40 +210,15 @@ dfs <- list_modify(dfs,
 ) 
 ```
 
-# adult data
+# adult data (2025)
 
-## loading
 
+## fns for info generation
 ```{r}
-# add yr later? breaks later on bc of the pivoting
-
-dfs_imported <- list(
-  ad25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE) %>% mutate(year = 2025),
-  coll25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-coll.csv"), header = TRUE) %>% mutate(year = 2025),
-  hatch25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-hatch.csv"), header = TRUE) %>% mutate(year = 2025)
-)
-```
-
-## setup cage info
-```{r}
-# dfs modified..?
-### need to rerun the WHOLE chunk at once if updating $info to avoid dups
-dfs_tents <- list(
-  
-  # cage info
-  info = dfs_imported[["ad25"]] %>%
-    drop_na(cage) %>%
-    rename(pop.f = f, pop.m = m) %>%
-    pivot_wider(id_cols = c("id", "cage"), names_from = "sex", values_from = "pop") %>%
-    # pivot_wider(names_from = "sex", values_from = "pop") %>%
-    # select(trt, cage, f) %>% rename(trt.f = trt) %>%
-    # drop_na(f) %>% distinct() %>% #View()
-    # merge(
-    #   #dfs_imported[["ad25"]] 
-    #   imported25[["ad25"]] %>% pivot_wider(names_from = "sex", values_from = "pop") %>% 
-    #     select(trt, cage, m) %>% rename(trt.m = trt) %>% 
-    #     drop_na(m) %>% distinct(), 
-    #   all = TRUE) %>% 
+# to assign cage mating info
+# needs to be "wide" (...f, ...m) to determine mate types
+.GenerateCageInfo <- function(x){
+  x %>%
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
                                  trt.f != trt.m ~ "between",
                                  is.na(trt.m) ~ "virgin f"),
@@ -257,26 +232,61 @@ dfs_tents <- list(
                                 pop.m == "col" & pop.f == "lab" ~ "m" ),
            mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
                                trt.m > trt.f | is.na(trt.f) ~ "m",
-                               TRUE ~ "both"),
-           ) %>% #View()
-    # some fixes
-    filter(!(cage == "A8" & pop.m == "lab")) %>%
-    mutate(mate.pop = case_when(cage %in% c("A6", "B16", "C7") ~ "lab",
-                                TRUE ~ as.character(mate.pop))
-           ),
-  
-  # cage timelines (mating pair info)
-  events = dfs_imported[["ad25"]] %>%
-    pivot_longer(starts_with("jdate"),
-                 names_to = c(".value", "event"),
-                 names_sep = "\\.") %>% 
-    drop_na("jdate") %>% 
+                               TRUE ~ "both"))
+} 
+
+
+# to determine m/f counts for cage events
+.GenerateCageCounts <- function(x){
+  x %>%
     group_by(cage, jdate) %>%
     summarise(f.added = sum(sex == "f" & event == "added"),
               m.added = sum(sex == "m" & event == "added"),
               f.removed = sum(sex == "f" & event == "removed"),
               m.removed = sum(sex == "m" & event == "removed")) %>%
     drop_na(cage)
+}
+```
+
+## loading
+
+```{r}
+dfs_imported <- list(
+  ad25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE) %>%
+    filter(!(id == 2052 & jdate.removed == 20394) # TODO fix
+           ),
+  coll25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-coll.csv"), header = TRUE),
+  hatch25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-hatch.csv"), header = TRUE)
+)
+```
+
+## setup cage info
+```{r}
+### need to rerun the WHOLE chunk at once if updating $info to avoid dups
+
+# dfs_modified..?
+dfs_tents <- list(
+  
+  # cage info
+  info = dfs_imported[["ad25"]] %>%
+    pivot_wider(id_cols = c("id", "cage"), 
+                names_from = "sex", values_from = "pop") %>%
+    drop_na(cage) %>% #View()
+    rename(pop.f = f, pop.m = m) %>% #View() #for dfs23
+    .GenerateCageInfo() %>% #View()
+    # some fixes
+    filter(!(cage == "A8" & pop.m == "lab")) %>%
+    mutate(mate.pop = case_when(cage %in% c("A6", "B16", "C7") ~ "lab",
+                                TRUE ~ as.character(mate.pop))),
+  
+  # cage timelines (mating pair info)
+  events = dfs_imported[["ad25"]] %>%
+    pivot_longer(starts_with("jdate"),
+                 names_to = c(".value", "event"),
+                 names_sep = "\\.") %>% 
+    drop_na("jdate") %>% #View()
+    group_by(cage, jdate) %>%
+    .GenerateCageCounts() #%>% View()
 )
 
 
@@ -296,17 +306,20 @@ dfs_tents$events <-
           select(c("cage", starts_with("mate"))), 
         all = TRUE, by = c("cage")
   ) %>% #View()
-  mutate(year = 2025,
-         across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
+  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
 
+dfs_tents <- dfs_tents %>%
+  lapply(., \(x) mutate(x, year = 2025))
 ```
 
 ## setup egg info
+
+TODO
+- somehow account for def m/f's that prob = unviable eggs?
+
 ```{r}
-## collection info
-
+## egg collection info
 # troubleshooting tents: A2, B2, C14, C4
-
 dfs <- list_modify(
   dfs,
   tents = 
@@ -339,7 +352,10 @@ dfs <- list_modify(
 }) %>%
   rbindlist()
 )
-         
+
+```
+
+
 # adult data (2023)
 
 ## loading
@@ -378,10 +394,10 @@ dfs_filtered <- list(
   )
 ```
 
-## standardising
+## setup tents info
 
-### filtering/renaming
 
+### fixing 2023 tents data
 ```{r 2023 adult info fixes}
 ## need to run entire chunk
 
@@ -427,20 +443,23 @@ dfs_stdised$ad23 <- dfs_stdised$ad23 %>%
          if.fridge = case_when(jdate.paired != jdate.ec ~ "x"))
 
 ```
+
+### generate tents info
 ```{r}
-# working on the "mate" stuff (needs to be wide)
+# NOT solo f tents: 301P, 301U, 107H...
 dfs_tents <- list(
   info = 
     dfs_stdised[["ad23"]] %>%
-    pivot_wider(id_cols = c("cage", "id.pair"), 
+    pivot_wider(id_cols = c("cage", "id.pair", #"ctrl", "if.fridge"
+                            ), 
                 names_from = "sex", values_from = c("trt", "pop"),
-                names_sep = ".") %>% 
+                names_sep = ".") %>% #View()
     select(c("cage", starts_with(c("trt", "pop")))) %>%
     distinct() %>%
     .GenerateCageInfo() %>% #View() %>%
     # fixes
     filter(!(mate.type == "virgin f" & !(cage %in% c("107-cage", "301-T"))),
-           !(cage == "301-M" & pop.f == "lab")),
+           !(cage == "301-M" & pop.f == "lab")) ,
   
   events = 
     dfs_filtered[["ad23"]] %>%
@@ -457,7 +476,6 @@ dfs_tents <- list(
     drop_na(jdate, event) %>% 
     .GenerateCageCounts()
 )
-
 
 # overwrite events (append egg info)
 dfs_tents$events <- 
@@ -477,28 +495,19 @@ dfs_tents$events <-
   mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
 
 
+dfs_tents <- dfs_tents %>%
+  lapply(., \(x) mutate(x, year = 2023))
 ```
 
-### WORKING ON
 ```{r}
-# DRAFT
-# gets you a "long" version
 
-# maybe need to start here LOL and then apply the same logic as 2025 data...
 
-# dfs_filtered[["ad23"]] %>%
-#   rename_with(., ~paste("jdate", str_extract(.,"[a-z]*$"), str_sub(., 7, 7), sep = "."),
-#               starts_with(c("jdate.m", "jdate.f"))) %>%
-#   #select(-starts_with(c("jdate.m", "jdate.f", "jdate.ec"))) %>%
-#   pivot_longer(ends_with(c(".f", ".m")),
-#                names_to = c(".value", "sex"),
-#                names_pattern = "([a-z]*.[a-z]*).(m|f)") %>%
-#   drop_na(id)
-
+```{r}
+# DRAFT FOR INITIAL TENT STUFF
 
 # this is "info"
 # kinda breaks w solo-added fs... should just use the "mate" info that comes from existing tent
-# NOT solos (301P, 301U, 107H, )
+# 
 ##### INCORPORATED #######
 # tmp <- dfs_filtered[["ad23"]] %>%
 #     rename_with(., 
@@ -562,62 +571,6 @@ dfs_tents$events <-
 #           drop_na(cage, mate.type) %>% distinct() #%>% View()
 #         ,
 #         all = TRUE, by = "cage") %>% View()
-
-```
-```{r}
-# 2025 ref
-# add these onto events 
-#events25 <- 
-imported25[["coll25"]] %>%
-  rename(jdate = jdate.collected) %>%
-  merge(., imported25[["hatch25"]] %>% 
-          select(c("cage", ends_with(".hatched"))) %>%
-          rename(jdate = jdate.hatched) %>%
-          group_by(jdate, cage) %>%
-          summarise(eggs.hatched = sum(eggs.hatched)) %>%
-          drop_na(),
-        all = TRUE) %>% #View()
-  merge(., dfs_tents$events, all = TRUE) %>% #View()
-  merge(., dfs_tents$info %>% 
-          select(c("cage", starts_with("mate"))), 
-        all = TRUE, by = c("cage")
-  ) %>% #View()
-  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
-```
-
-```{r}
-# to assign cage info for 23/25:
-
-.GenerateCageInfo <- function(x){
-  x %>%
-    mutate(mate.type = case_when(trt.f == trt.m ~ "within",
-                                 trt.f != trt.m ~ "between",
-                                 is.na(trt.m) ~ "virgin f"),
-           mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
-                                mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
-           mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
-                                mate.type == "between" & trt.f > trt.m ~ trt.f,
-                                mate.type == "between" & trt.m > trt.f ~ trt.m),
-           mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
-                                pop.f == "col" & pop.m == "lab" ~ "f",
-                                pop.m == "col" & pop.f == "lab" ~ "m" ),
-           mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
-                               trt.m > trt.f | is.na(trt.f) ~ "m",
-                               TRUE ~ "both"))
-} 
-
-
-# to count cage counts for cage events
-
-.GenerateCageCounts <- function(x){
-  x %>%
-    group_by(cage, jdate) %>%
-    summarise(f.added = sum(sex == "f" & event == "added"),
-              m.added = sum(sex == "m" & event == "added"),
-              f.removed = sum(sex == "f" & event == "removed"),
-              m.removed = sum(sex == "m" & event == "removed")) %>%
-    drop_na(cage)
-}
 
 ```
 
