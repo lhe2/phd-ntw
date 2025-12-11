@@ -3,7 +3,7 @@ title: "2025 ntw cleaning"
 date: "2025-11-26"
 ---
 
-# preamble
+# # preamble
 
 prepping ntw data for 2025 wrangling
 
@@ -13,7 +13,8 @@ final code is purled to a `.R` script, rerun `purl` step as needed to update the
 # rerun this chunk if purled script needs to be updated
 knitr::purl("data-cleaning.Rmd", "cleaning_p.R")
 
-knitr::purl("data-cleaning.Rmd", paste0(here(bin_paths$y25$ntw),                                   "/archive/cleaning/", format(Sys.time(), "%y%m%d"), "_cleaning_p.R"))
+knitr::purl("data-cleaning.Rmd", 
+            paste0(here(bin_paths$y25$ntw), "/archive/cleaning/", format(Sys.time(), "%y%m%d"), "_cleaning_p.R"))
 ```
 
 # load libs & pkgs
@@ -41,7 +42,8 @@ source(here::here(bin_paths$y25$ntw, "utils.R"))
 ```
 
 
-# larval data (all yrs)
+# # larval data (all yrs)
+
 
 ## loading
 ```{r load larval data}
@@ -172,13 +174,14 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
 
 ```
 
-## export
+## prep for final export
 
-```{r}
+```{r prep dev data for export}
 # 2025-11-28 TODO: jdate.surv and id.cage are not applied consistently so just drop for now.. but will need later for adult stuff LOL
 
 # combine dfs and remove short-lived things
-dfs <- list(wide = data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
+dfs <- list(
+  wide = data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
               filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.exit - jdate.hatch)) %>%
               select(-c("id.cage", "jdate.surv"))
 )
@@ -210,11 +213,28 @@ dfs <- list_modify(dfs,
 ) 
 ```
 
-# adult data (2025)
+# # adult data
+
+preamble:
+- for each yr, have adult counts (when added/removed), egg collection counts, egg hatch counts.
+- bc my method of tracking the daily egg/moth #s is very convoluted, need to split + wrangle the dfs in a certain order before finally collating into the final df that can be used in `summarise()` for data analysis
+  - note that 2023 data is also formatted a little differently than 2025 data (i.e. pairing was more deliberate), so it needs some additional pre-wrangling
+- see also some random TODOs left thruout this section,,,
+
+roadmap:
+1. create stdised `info` (about mating pairs) and `events` dfs
+2. `events` gets created in the following manner to avoid incorrect duplication of jdates:
+  a. `events` is first generated from `info` (to get counts of moths removed/added)
+  b. later, `events` is overwritten by merged collection + hatching data, with
+     moth counts extracted from `events` appended on
+3. `events` then gets used to generate the daily running count of eggs/moths/etc
+  a. counts are determined separately per cage and then recollated again
+     (avoids wonkiness with `cumsum()` at the first/last values of the df)
+4. 2023/2025 are handled separately, then combined for final export.
 
 
-## fns for info generation
-```{r}
+## # fns for info generation
+```{r tent data common functions}
 # to assign cage mating info
 # note: data needs to be "wide" (...f, ...m) to determine mate types
 .GenerateCageMateInfo <- function(x){
@@ -297,9 +317,10 @@ dfs <- list_modify(dfs,
 }
 ```
 
-## loading
+## # 2025 data
+### loading
 
-```{r}
+```{r load 2025 tents data}
 dfs_imported <- list(
   ad25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE) %>%
     filter(!(id == 2052 & jdate.removed == 20394) # TODO fix
@@ -309,11 +330,10 @@ dfs_imported <- list(
 )
 ```
 
-## setup cage info
-```{r}
-### need to rerun the WHOLE chunk at once if updating $info to avoid dups
+### stdise cage/egg events
+```{r prep 2025 tent data for wrangling}
+### need to rerun the WHOLE chunk at once if updating $info to avoid dups later on in $events
 
-# dfs_modified..?
 dfs_stdised <- list(
   
   # cage info (mating pairs)
@@ -363,13 +383,12 @@ dfs_stdised$events <-
   .AppendCageMothEvents()
 ```
 
-## setup egg info
+### collate
 
 TODO
 - somehow account for def m/f's that prob = unviable eggs?
 
 ```{r}
-## egg collection info
 # troubleshooting tents: A2, B2, C14, C4
 dfs_stdised <- list_modify(
   dfs_stdised, 
@@ -387,22 +406,27 @@ dfs_export <- list(
 ```
 
 
-# adult data (2023)
+## # 2023 data
 
-## loading
-```{r}
+### loading
+```{r load 2023 tent data}
 dfs_imported <- list(
-  ad23 = read.csv(here::here(bin_paths$y23$data, "clean-tentpairs.csv"), header = TRUE) %>%
+  ad23 = 
+    read.csv(here::here(bin_paths$y23$data, "clean-tentpairs.csv"), header = TRUE) %>%
     mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")) %>%
     # minor fixes
     mutate(id.tent = case_when(id.tent == "107-cage" & is.na(trt.f) ~ NA_character_,
                                TRUE ~ as.character(id.tent))) %>%
     filter(!(id.f %in% c(282, 284))),
-  coll23 = read.csv(here::here(bin_paths$y23$data, "clean-tentstats.csv"), header = TRUE) %>%
+  
+  coll23 = 
+    read.csv(here::here(bin_paths$y23$data, "clean-tentstats.csv"), header = TRUE) %>%
     mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")),
-  hatch23 = read.csv(here::here(bin_paths$y23$data, "clean-hatchstats.csv"), header = TRUE) %>% 
-    mutate(across(starts_with("date"), as.Date, "%m/%d/%y"))
-) %>%
+  
+  hatch23 = 
+    read.csv(here::here(bin_paths$y23$data, "clean-hatchstats.csv"), header = TRUE) %>% 
+    mutate(across(starts_with("date"), as.Date, "%m/%d/%y"))) %>%
+  
   lapply(., \(x){
     x %>%
       rename(cage = id.tent) %>%
@@ -421,16 +445,17 @@ dfs_filtered <- list(
   coll23 = dfs_imported[["coll23"]] %>%
     select(c("cage", "n.coll", "jdate")),
   hatch23 = dfs_imported[["hatch23"]] %>%
-    select(c("cage", "n.hatch", "jdate.hatch"))
-  )
+    select(c("cage", "n.hatch", "jdate.hatch")))
 ```
 
-## setup tents info
+### stdise cage/egg events
 
+#### reformat 2023 data
 
-### fixing 2023 tents data
+(match 2023 data to 2025 formatting)
+
 ```{r 2023 adult info fixes}
-## need to run entire chunk
+## run entire chunk to properly update dfs_stdised$ad23 (to build final tent events dfs)
 
 # rename jdate cols, add uids to ctrls/cols
 dfs_filtered$ad23 <- dfs_filtered$ad23 %>%
@@ -461,8 +486,7 @@ dfs_stdised <- list(
                    names_to = c(".value", "sex"), names_sep = "\\.") %>% 
       rename_with(., ~ gsub(".f", "", .)),
     all = TRUE) %>% 
-    drop_na(id)
-)
+    drop_na(id))
 
 # adding in other trt info
 dfs_stdised$ad23 <- dfs_stdised$ad23 %>%
@@ -475,8 +499,8 @@ dfs_stdised$ad23 <- dfs_stdised$ad23 %>%
 
 ```
 
-### generate tents info
-```{r}
+#### generate dfs
+```{r prep 2023 tent data for wrangling}
 ## rerun the whole chunk to regenerate dfs_tents$events, $info
 dfs_stdised <- list_modify(
   dfs_stdised,
@@ -524,6 +548,7 @@ dfs_stdised$events <-
   mutate(eggs.exclude = 0) # a column in 2025 but not 2023
 ```
 
+### collate
 ```{r}
 dfs_stdised <- list_modify(
   dfs_stdised,
@@ -533,83 +558,17 @@ dfs_stdised <- list_modify(
 )
 ```
 
-
+### export
 ```{r}
-# DRAFT FOR INITIAL TENT STUFF
-
-# this is "info"
-# kinda breaks w solo-added fs... should just use the "mate" info that comes from existing tent
-# 
-##### INCORPORATED #######
-# tmp <- dfs_filtered[["ad23"]] %>%
-#     rename_with(., 
-#                 ~paste("jdate", str_extract(.,"[a-z]*$"), 
-#                        str_sub(., 7, 7), sep = "."), 
-#               starts_with(c("jdate.m", "jdate.f"))) %>%
-#   select(c("cage", starts_with(c("id", "jdate", "trt")))) %>%
-#   mutate(ctrl.m = case_when(grepl("col", id.m) ~ "col",
-#                             grepl("ctrl", id.m) ~ "diurnal"),
-#          ctrl.f = case_when(grepl("col", id.f) ~ "col",
-#                             grepl("ctrl", id.f) ~ "diurnal"),
-#          pop.m = case_when(grepl("col", id.m) ~ "col",
-#                            !is.na(ctrl.m) | as.numeric(id.m) > 1000 ~ "lab",
-#                            as.numeric(id.m) < 1000 ~ "field"),
-#          pop.f = case_when(grepl("col", id.f) ~ "col",
-#                            !is.na(ctrl.f) | as.numeric(id.f) > 1000 ~ "lab",
-#                            as.numeric(id.f) < 1000 ~ "field"),
-#          cage = case_when(is.na(id.f) ~ NA_character_,
-#                           TRUE ~ as.character(cage))
-#          ) %>% View()
-#   .GenerateCageInfo() %>% 
-#   mutate(mate.type = case_when(mate.type == "virgin f" & 
-#                                  !cage %in% c("107-cage", "301-T") ~ NA_character_,
-#                                TRUE ~ as.character(mate.type))) %>% View()
-
-
-# # events 23
-# # idk abt "jdate.ec" for rn LOL... need for fridge/longev but not for events
-# tmp
-# tmp2 <- tmp %>%
-#   rename_with(., ~paste("jdate", str_extract(.,"[a-z]*$"), str_sub(., 7, 7), sep = "."), 
-#               starts_with(c("jdate.m", "jdate.f"))) %>%
-#   select(-starts_with(c("jdate.m", "jdate.f", "jdate.ec"))) %>%
-#   pivot_longer(ends_with(c(".f", ".m")),
-#                names_to = c(".value", "sex"),
-#                names_pattern = "([a-z]*.[a-z]*).(m|f)") %>%
-#   drop_na(id) %>%
-#   pivot_longer(starts_with("jdate"),
-#                  names_to = c(".value", "event"),
-#                  names_sep = "\\.") %>%
-#   drop_na(jdate) %>%
-#   mutate(event = case_when(event == "paired" ~ "added",
-#                            event == "died" ~ "removed")
-#          ) %>%
-#   .GenerateCageCounts()
-# # can shove into .GenerateCageCounts 
-# # (but need to do sth about the "ctrl" column..
-
-# ## appending eggs to events
-# dfs_filtered[["coll23"]] %>%
-#   rename(eggs.coll = n.coll) %>%
-#   merge(., dfs_filtered[["hatch23"]] %>% 
-#           rename(jdate = "jdate.hatch") %>%
-#           group_by(cage, jdate) %>%
-#           summarise(eggs.hatched = sum(n.hatch)) %>%
-#           drop_na(),
-#         all = TRUE) %>% 
-#   merge(., tmp2, all = TRUE) %>% 
-#   merge(., tmp %>% 
-#           select(c("cage", starts_with("mate"))) %>%
-#           drop_na(cage, mate.type) %>% distinct() #%>% View()
-#         ,
-#         all = TRUE, by = "cage") %>% View()
 dfs_export <- list_modify(
   dfs_export,
   tents23 = dfs_stdised$tents %>% mutate(year = 2023)
 )
 ```
 
-```{r}
+## prep for final export
+
+```{r export tent data}
 dfs <- list_modify(
   dfs,
   tents = rbindlist(dfs_export, fill = TRUE)
@@ -619,7 +578,7 @@ dfs <- list_modify(
 
 
 
-# cleanup
+# # cleanup
 ```{r remove intermediate objects}
 rm(dfs_imported, dfs_filtered, dfs_stdised,
    dfs_exports)
