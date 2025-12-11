@@ -39,10 +39,16 @@ vignettes/*.pdf
 # root
 etc/*
 
-# elsewhere
+# internal dirs
+# (**/dir/* for nested dirs)
 **/data/*
 **/figs/*
 **/etc/*
 
+# other files
+## purled cleaning/pre-wrangling scripts
 *_p.R
+*tidy-data.R
+
+## wips
 *_wip.*
