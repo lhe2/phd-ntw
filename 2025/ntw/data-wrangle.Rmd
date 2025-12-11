@@ -114,7 +114,8 @@ dfs_dev_ss <- list_modify(
     filter(fate.code != 2) %>%
     group_by(year, pop, diet, trt) %>%
     summarise(n = n(),
-              prop.pup = sum(fate.code == 1)/n)
+              prop.pup = sum(fate.code == 1)/n,
+              se.pup = se.prop(prop.pup, n))
 )
 ```
 
