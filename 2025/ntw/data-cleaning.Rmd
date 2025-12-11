@@ -216,8 +216,8 @@ dfs <- list_modify(dfs,
 ## fns for info generation
 ```{r}
 # to assign cage mating info
-# needs to be "wide" (...f, ...m) to determine mate types
-.GenerateCageInfo <- function(x){
+# note: data needs to be "wide" (...f, ...m) to determine mate types
+.GenerateCageMateInfo <- function(x){
   x %>%
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
                                  trt.f != trt.m ~ "between",
@@ -237,8 +237,8 @@ dfs <- list_modify(dfs,
 } 
 
 
-# to determine m/f counts for cage events
-.GenerateCageCounts <- function(x){
+# to determine daily m/f counts for cage events
+.GenerateCageMothCounts <- function(x){
   x %>%
     group_by(cage, jdate) %>%
     summarise(f.added = sum(sex == "f" & event == "added"),
@@ -246,6 +246,54 @@ dfs <- list_modify(dfs,
               f.removed = sum(sex == "f" & event == "removed"),
               m.removed = sum(sex == "m" & event == "removed")) %>%
     drop_na(cage)
+}
+
+# appends cage mate info + daily moth events to daily egg events
+# needs dfs_stdised$info and $events to exist alrdy
+.AppendCageMothEvents <- function(x){
+  x %>%
+  merge(., dfs_stdised$events, all = TRUE) %>%
+  merge(., dfs_stdised$info %>%
+          select(c("cage", starts_with("mate"))) #%>% View()
+        ,
+        all = TRUE, by = "cage") %>%
+  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0))
+}
+
+
+# gets daily running counts of new/dead moths + eggs collected
+# splits $events by cage to avoid cumsum wonkiness, then recombines
+.GenerateCageDailyEvents <- function(x){
+  x %>%
+    split(f = dfs_stdised$events$cage) %>% 
+    lapply(., \(x){
+      x %>%
+        arrange(jdate) %>%
+        mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
+               f.curr = 0,
+               f.curr = cumsum(f.diff + f.curr),
+               m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
+               m.curr = 0,
+               m.curr = cumsum(m.diff + m.curr),
+               
+               # fix egg counts: excludes eggs from hatch proportion if no males present
+               # (wrong logic..)
+               # eggs.exclude = case_when(f.curr <= 0 & m.curr >= 0 ~ as.numeric(eggs.collected + eggs.exclude),
+               # TRUE ~ as.numeric(eggs.exclude)),
+               # eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
+               #                            TRUE ~ as.numeric(eggs.collected)),
+               eggs.exclude = case_when(mate.type == "virgin f" | 
+                                          f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
+                                        TRUE ~ as.numeric(eggs.exclude)),
+               eggs.collected = case_when(mate.type == "virgin f" | 
+                                            f.curr > 0 & m.curr == 0 ~ 0,
+                                          TRUE ~ as.numeric(eggs.collected)),
+               eggs.coll = eggs.collected + eggs.exclude) %>%
+        select(-ends_with(c(".removed", ".diff"))) %>%
+        rename(eggs.fert = eggs.collected,
+               eggs.unfert = eggs.exclude)
+    }) %>%
+    rbindlist()
 }
 ```
 
@@ -266,11 +314,11 @@ dfs_imported <- list(
 ### need to rerun the WHOLE chunk at once if updating $info to avoid dups
 
 # dfs_modified..?
-dfs_tents <- list(
+dfs_stdised <- list(
   
-  # cage info
+  # cage info (mating pairs)
   # TODO maybe could tidyr::complete this but i dont get the nesting lol
-  info = 
+  info =
   merge(
     dfs_imported[["ad25"]] %>% filter(sex == "f") %>%
       select(cage, id, pop, trt, sex) %>%
@@ -283,26 +331,26 @@ dfs_tents <- list(
                   names_sep = ".") %>% 
        select(-id) %>% distinct(),
     all = TRUE) %>% 
-    drop_na(cage) %>% #View() #for dfs23
-    .GenerateCageInfo() %>% #View()
+    drop_na(cage) %>% #View() #for events23 futzing
+    .GenerateCageMateInfo() %>% #View()
     # some fixes
     filter(!(cage == "A8" & pop.m == "lab")) %>%
     mutate(mate.pop = case_when(cage %in% c("A6", "B16", "C7") ~ "lab",
                                 TRUE ~ as.character(mate.pop))),
   
-  # cage timelines (mating pair info)
+  # cage timelines (moth additions/removals)
   events = dfs_imported[["ad25"]] %>%
     pivot_longer(starts_with("jdate"),
                  names_to = c(".value", "event"),
                  names_sep = "\\.") %>% 
     drop_na("jdate") %>% #View()
     group_by(cage, jdate) %>%
-    .GenerateCageCounts() #%>% View()
+    .GenerateCageMothCounts() #%>% View()
 )
 
 
-# cage timelines (adding egg info)
-dfs_tents$events <- 
+# cage timelines (append egg hatching + collection info)
+dfs_stdised$events <- 
   dfs_imported[["coll25"]] %>%
   rename(jdate = jdate.collected) %>%
   merge(., dfs_imported[["hatch25"]] %>% 
@@ -312,15 +360,7 @@ dfs_tents$events <-
           summarise(eggs.hatched = sum(eggs.hatched)) %>%
           drop_na(),
         all = TRUE) %>% #View()
-  merge(., dfs_tents$events, all = TRUE) %>% #View()
-  merge(., dfs_tents$info %>% 
-          select(c("cage", starts_with("mate"))), 
-        all = TRUE, by = c("cage")
-  ) %>% #View()
-  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) 
-
-dfs_tents <- dfs_tents %>%
-  lapply(., \(x) mutate(x, year = 2025))
+  .AppendCageMothEvents()
 ```
 
 ## setup egg info
@@ -331,39 +371,19 @@ TODO
 ```{r}
 ## egg collection info
 # troubleshooting tents: A2, B2, C14, C4
-dfs <- list_modify(
-  dfs,
+dfs_stdised <- list_modify(
+  dfs_stdised, 
   tents = 
-    dfs_tents$events[order(dfs_tents$events$cage, dfs_tents$events$jdate),] %>%
-  split(f = dfs_tents$events$cage) %>% 
-  lapply(., \(x){
-  x %>%
-    arrange(jdate) %>%
-    mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
-           f.curr = 0,
-           f.curr = cumsum(f.diff + f.curr),
-           m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
-           m.curr = 0,
-           m.curr = cumsum(m.diff + m.curr),
-           # wrong logic..
-           # eggs.exclude = case_when(f.curr <= 0 & m.curr >= 0 ~ as.numeric(eggs.collected + eggs.exclude),
-           # TRUE ~ as.numeric(eggs.exclude)),
-           # eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
-           #                            TRUE ~ as.numeric(eggs.collected)),
-           eggs.exclude = case_when(mate.type == "virgin f" | 
-                                      f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
-                                   TRUE ~ as.numeric(eggs.exclude)),
-           eggs.collected = case_when(mate.type == "virgin f" | 
-                                        f.curr > 0 & m.curr == 0 ~ 0,
-                                      TRUE ~ as.numeric(eggs.collected)),
-           eggs.coll = eggs.collected + eggs.exclude) %>%
-    select(-ends_with(c(".removed", ".diff"))) %>%
-      rename(eggs.fert = eggs.collected,
-             eggs.unfert = eggs.exclude)
-}) %>%
-  rbindlist()
+    dfs_stdised$events[order(dfs_stdised$events$cage, dfs_stdised$events$jdate),] %>%
+    .GenerateCageDailyEvents()
 )
+```
 
+### export
+```{r}
+dfs_export <- list(
+  tents25 = dfs_stdised$tents %>% mutate(year = 2025)
+  )
 ```
 
 
@@ -457,8 +477,10 @@ dfs_stdised$ad23 <- dfs_stdised$ad23 %>%
 
 ### generate tents info
 ```{r}
-# NOT solo f tents: 301P, 301U, 107H...
-dfs_tents <- list(
+## rerun the whole chunk to regenerate dfs_tents$events, $info
+dfs_stdised <- list_modify(
+  dfs_stdised,
+  
   info = 
     dfs_stdised[["ad23"]] %>%
     pivot_wider(id_cols = c("cage", "id.pair", #"ctrl", "if.fridge"
@@ -467,8 +489,8 @@ dfs_tents <- list(
                 names_sep = ".") %>% #View()
     select(c("cage", starts_with(c("trt", "pop")))) %>%
     distinct() %>%
-    .GenerateCageInfo() %>% #View() %>%
-    # fixes
+    .GenerateCageMateInfo() %>% #View() %>%
+    # fixes (NOT solo f tents: 301P, 301U, 107H...)
     filter(!(mate.type == "virgin f" & !(cage %in% c("107-cage", "301-T"))),
            !(cage == "301-M" & pop.f == "lab")) ,
   
@@ -485,11 +507,11 @@ dfs_tents <- list(
                              event == "died" ~ "removed")
     ) %>% 
     drop_na(jdate, event) %>% 
-    .GenerateCageCounts()
+    .GenerateCageMothCounts()
 )
 
-# overwrite events (append egg info)
-dfs_tents$events <- 
+# overwrite moth events (append egg info)
+dfs_stdised$events <- 
   dfs_filtered[["coll23"]] %>%
   rename(eggs.collected = n.coll) %>%
   merge(., dfs_filtered[["hatch23"]] %>% 
@@ -498,46 +520,16 @@ dfs_tents$events <-
           summarise(eggs.hatched = sum(n.hatch)) %>%
           drop_na(),
         all = TRUE) %>% 
-  merge(., dfs_tents[["events"]], all = TRUE) %>% 
-  merge(., dfs_tents[["info"]] %>% 
-          select(c("cage", starts_with("mate"))) #%>% View()
-        ,
-        all = TRUE, by = "cage") %>%
-  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0)) %>%
+  .AppendCageMothEvents() %>%
   mutate(eggs.exclude = 0) # a column in 2025 but not 2023
-
-
-dfs_tents <- dfs_tents %>%
-  lapply(., \(x) mutate(x, year = 2023))
 ```
 
 ```{r}
-dfs <- list_modify(
-  dfs,
+dfs_stdised <- list_modify(
+  dfs_stdised,
   tents = 
-    dfs_tents$events[order(dfs_tents$events$cage, dfs_tents$events$jdate),] %>%
-  split(f = dfs_tents$events$cage) %>% 
-  lapply(., \(x){
-  x %>%
-    arrange(jdate) %>%
-    mutate(f.diff = lag(f.added, default = 0) - lag(f.removed, default = 0),
-           f.curr = 0,
-           f.curr = cumsum(f.diff + f.curr),
-           m.diff = lag(m.added, default = 0) - lag(m.removed, default = 0),
-           m.curr = 0,
-           m.curr = cumsum(m.diff + m.curr),
-           eggs.exclude = case_when(mate.type == "virgin f" | 
-                                      f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
-                                   TRUE ~ as.numeric(eggs.exclude)),
-           eggs.collected = case_when(mate.type == "virgin f" | 
-                                        f.curr > 0 & m.curr == 0 ~ 0,
-                                      TRUE ~ as.numeric(eggs.collected)),
-           eggs.coll = eggs.collected + eggs.exclude) %>%
-    select(-ends_with(c(".removed", ".diff"))) %>%
-      rename(eggs.fert = eggs.collected,
-             eggs.unfert = eggs.exclude)
-}) %>%
-  rbindlist()
+    dfs_stdised$events[order(dfs_stdised$events$cage, dfs_stdised$events$jdate),] %>%
+    .GenerateCageDailyEvents()
 )
 ```
 
@@ -611,7 +603,17 @@ dfs <- list_modify(
 #           drop_na(cage, mate.type) %>% distinct() #%>% View()
 #         ,
 #         all = TRUE, by = "cage") %>% View()
+dfs_export <- list_modify(
+  dfs_export,
+  tents23 = dfs_stdised$tents %>% mutate(year = 2023)
+)
+```
 
+```{r}
+dfs <- list_modify(
+  dfs,
+  tents = rbindlist(dfs_export, fill = TRUE)
+)
 ```
 
 
@@ -619,7 +621,7 @@ dfs <- list_modify(
 
 # cleanup
 ```{r remove intermediate objects}
-rm(dfs_imported, dfs_filtered, dfs_stdised)
-# dfs_tents?
+rm(dfs_imported, dfs_filtered, dfs_stdised,
+   dfs_exports)
 ```
 
