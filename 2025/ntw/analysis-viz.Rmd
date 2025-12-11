@@ -7,31 +7,30 @@ date: "2025-12-01"
 
 data viz for ntw 2025
 
-```{r}
-# libraries
+```{r set pathfinding}
+here::i_am("2025/ntw/analysis-viz.Rmd")
+library(here)
+```
+
+```{r load libraries}
 library(tidyverse)
 # library(survival) # for fitting 
 # library(survminer) # for plotting
-
-# pathfinding
-here::i_am("2025/ntw/data-viz.Rmd")
-library(here)
-
-source(here::here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
 ```
 
-```{r}
-# data import
-load(here(bin_paths$y25$ntwdata, "wrangle.RData"))
+```{r load data and helpers}
+source(here::here("set-paths.R"))
+source(here(bin_paths$y25$ntw, "utils.R"))
+
+load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
 ```
 
 # # overall dev
 
 ## survival
 ```{r}
-dfs_ss$surv_outcomes %>%
-  FilterLabTB() %>%
+dfs_dev_ss$surv_outcomes %>%
+  FilterOutLabTB() %>%
   ggplot(aes(y = prop.pup,
              x = as.factor(trt),
              col = as.factor(year),
@@ -50,8 +49,8 @@ dfs_ss$surv_outcomes %>%
 ## development
 ```{r}
 # by year
-dfs_ss$dev_outcomes_nopmd %>%
-  FilterLabTB() %>% 
+dfs_dev_ss$dev_outcomes_nopmd %>%
+  FilterOutLabTB() %>% 
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
@@ -61,10 +60,10 @@ dfs_ss$dev_outcomes_nopmd %>%
   # hard to see with these lol bc theyre pretty close
   # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
   #                   ymin = avg.logmass - se.logmass,
-  #                   width = autoerr(avg.tt))) +
+  #                   width = CalcErrWd(avg.tt))) +
   # geom_errorbarh(aes(xmax = avg.tt + se.tt,
   #                    xmin = avg.tt - se.tt,
-  #                    height = autoerrh(avg.logmass))) +
+  #                    height = CalcErrHt(avg.logmass))) +
   facet_grid(pop ~ trt) +
   labs(title = "development trajectories (pup only)",
        caption = "mean ± se",
@@ -75,21 +74,20 @@ dfs_ss$dev_outcomes_nopmd %>%
   theme_bw()
 
 
-dfs_ss$dev_outcomes_pmd %>%
-  FilterLabTB() %>% 
+dfs_dev_ss$dev_outcomes_pmd %>%
+  FilterOutLabTB() %>% 
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
              col = as.factor(year))) +
   geom_point() +
   geom_line() +
-  # hard to see with these lol bc theyre pretty close
-  geom_errorbar(aes(ymax = avg.logmass + se.logmass,
-                    ymin = avg.logmass - se.logmass,
-                    width = autoerr(avg.tt))) +
-  geom_errorbarh(aes(xmax = avg.tt + se.tt,
-                     xmin = avg.tt - se.tt,
-                     height = autoerrh(avg.logmass))) +
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = CalcErrWd(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = CalcErrHt(avg.logmass))) +
   facet_grid(pop ~ trt) +
   labs(title = "development trajectories (all)",
        caption = "mean ± se",
@@ -102,8 +100,8 @@ dfs_ss$dev_outcomes_pmd %>%
 
 ```{r}
 # by trt
-dfs_ss$dev_outcomes_nopmd %>%
-  FilterLabTB() %>% 
+dfs_dev_ss$dev_outcomes_nopmd %>%
+  FilterOutLabTB() %>% 
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
@@ -113,10 +111,10 @@ dfs_ss$dev_outcomes_nopmd %>%
   # hard to see with these lol bc theyre pretty close
   # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
   #                   ymin = avg.logmass - se.logmass,
-  #                   width = autoerr(avg.tt))) +
+  #                   width = CalcErrWd(avg.tt))) +
   # geom_errorbarh(aes(xmax = avg.tt + se.tt,
   #                    xmin = avg.tt - se.tt,
-  #                    height = autoerrh(avg.logmass))) +
+  #                    height = CalcErrHt(avg.logmass))) +
   facet_grid(pop ~ year) +
   labs(title = "development trajectories (pup only)",
        caption = "mean ± se",
@@ -127,8 +125,8 @@ dfs_ss$dev_outcomes_nopmd %>%
   theme_bw()
 
 
-dfs_ss$dev_outcomes_pmd %>%
-  FilterLabTB() %>% 
+dfs_dev_ss$dev_outcomes_pmd %>%
+  FilterOutLabTB() %>% 
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
@@ -138,10 +136,10 @@ dfs_ss$dev_outcomes_pmd %>%
   # hard to see with these lol bc theyre pretty close
   # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
   #                   ymin = avg.logmass - se.logmass,
-  #                   width = autoerr(avg.tt))) +
+  #                   width = CalcErrWd(avg.tt))) +
   # geom_errorbarh(aes(xmax = avg.tt + se.tt,
   #                    xmin = avg.tt - se.tt,
-  #                    height = autoerrh(avg.logmass))) +
+  #                    height = CalcErrHt(avg.logmass))) +
   facet_grid(pop ~ year) +
   labs(title = "development trajectories (all)",
        caption = "mean ± se",
@@ -156,8 +154,8 @@ dfs_ss$dev_outcomes_pmd %>%
 
 ## supernumerary
 ```{r}
-dfs_ss$sup_outcomes %>% 
-  FilterLabTB() %>%
+dfs_dev_ss$sup_outcomes %>% 
+  FilterOutLabTB() %>%
   filter(status == "surv") %>%
   ggplot(aes(y = p,
              x = interaction(trt),

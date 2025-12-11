@@ -6,7 +6,7 @@ date: "2025-11-29"
 # # preamble & loading
 
 - do data wrangling for ntw 2025 data here
-- run in entirety to update the RData objects
+- run in entirety just to update the RData objects
 
 
 ```{r}
@@ -27,23 +27,23 @@ source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
 
 ```{r}
 # data import
-source(here(bin_paths$y25$ntw, "cleaning_p.R"))
+source(here(bin_paths$y25$ntw, "tidy-data.R"))
 ```
 
 ## init lists
 ```{r}
-dfs_ss <- list()
+#dfs_ss <- list()
 ```
 
 
 # # summary stats
-## calculate development metrics
+## development metrics
 
 
 ```{r supernumerary development}
 # TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
 
-dfs_ss <- list_modify(dfs_ss, 
+dfs_dev_ss <- list(
   sup_outcomes = 
     dfs$wide %>% 
     filter(fate.code != 2) %>%
@@ -96,7 +96,8 @@ dfs_ss <- list_modify(dfs_ss,
 
 
 ```{r overall development}
-dfs_ss <- list_modify(dfs_ss,
+dfs_dev_ss <- list_modify(
+  dfs_dev_ss,
   dev_outcomes_pmd =
     dfs$long %>% 
     group_by(year, pop, diet, trt, instar) %>%
@@ -124,7 +125,8 @@ dfs_ss <- list_modify(dfs_ss,
   x %>%
   mutate(eggs.perf = eggs.coll/f.curr,
          eggs.perf = replace_na(eggs.perf, 0)) %>% ## ????
-    group_by(across(starts_with("mate"))) %>%
+    group_by(year, # omit if theres only 1 yr in the df
+             across(starts_with("mate"))) %>%
     # maybe mut and then just distinct by new columns instead of summary?
     summarise(n.cages.total = 
                 n_distinct(across(c("cage", starts_with("mate")))),
@@ -157,21 +159,25 @@ dfs_ss <- list_modify(dfs_ss,
 
 
 ```{r eggs ss calcs}
-dfs_ss <- list_modify(
-  dfs_ss, 
-  tents = dfs$tents %>%
+# 2025-12-10: have variations on handling colony bugs for now...
+
+dfs_tents_ss <- list(
+  # treat all col like lab expt bugs
+  eggs_nocol = dfs$tents %>%
     select(-mate.col) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>% 
     .CalcTentsSS(),
   
-  tents_matecol = dfs$tents %>%
+  # treats col like lab expt bugs, but notes which sex was the col
+  eggs_matecol = dfs$tents %>%
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop)),
            mate.col = na_if(mate.col, "both")) %>%
     .CalcTentsSS(),
   
-  tents_wcol = dfs$tents %>%
+  # retains all indicators of col status (population + affected sex)
+  eggs_allcol = dfs$tents %>%
     .CalcTentsSS()
 )
 ```
@@ -181,7 +187,7 @@ dfs_ss <- list_modify(
 # RData export
 
 ```{r}
-save(dfs_ss, 
-     file = here(bin_paths$y25$ntwdata, "wrangle.RData"))
+save(dfs_dev_ss, dfs_tents_ss, 
+     file = here(bin_paths$y25$ntwdata, "wrangled.RData"))
 ```
 

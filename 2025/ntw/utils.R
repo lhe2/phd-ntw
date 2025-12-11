@@ -13,15 +13,19 @@ se <- function(x){
 }
 
 # sets error bar width/height to some % of the other axis
-autoerr <- function(x){
-  max(x) * 0.12 
-}
-autoerrh <- function(x){
-  max(x) * 0.07
-}
-## ggplot error bar width issues again... see also https://gist.github.com/tomhopper/9076152
+## struggling w ggplot error bar width issues again... 
+## see also https://gist.github.com/tomhopper/9076152 for suggested defaults
 
-FilterLabTB <- function(data){
+CalcErrWd <- function(x, pct = 0.12){
+  max(x) * pct 
+}
+
+CalcErrHt <- function(y, pct = 0.07){
+  max(y) * pct
+}
+
+### CONVENIENCE ###
+FilterOutLabTB <- function(data){
   data %>%
     filter(!(pop == "lab" & diet == "TB"))
 }
