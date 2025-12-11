@@ -8,10 +8,16 @@
 # cuz i always lose them in the sauce
 
 # functions -----------------------------------------------------------------
+### MATH ###
 se <- function(x){ 
   sd(na.omit(x))/sqrt(length(na.omit(x)))
 }
 
+se.prop <- function(p, n){
+  sqrt((p*(1-p))/n)
+}
+
+### PLOTTING ###
 # sets error bar width/height to some % of the other axis
 ## struggling w ggplot error bar width issues again... 
 ## see also https://gist.github.com/tomhopper/9076152 for suggested defaults
@@ -28,6 +34,12 @@ CalcErrHt <- function(y, pct = 0.07){
 FilterOutLabTB <- function(data){
   data %>%
     filter(!(pop == "lab" & diet == "TB"))
+}
+
+FilterForLabEggs <- function(data){
+  data %>%
+    filter(mate.pop != "field",
+           mate.type != "virgin f") 
 }
 
 
