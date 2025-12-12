@@ -28,6 +28,7 @@ load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
 
 # # overall dev
 
+## survival to pup
 ```{r}
 dfs_dev_ss$surv_outcomes %>%
   FilterOutLabTB() %>%
@@ -52,6 +53,51 @@ dfs_dev_ss$surv_outcomes %>%
   scale_color_brewer(palette = "Dark2") +
   theme_bw()
 ```
+## pup development
+
+```{r}
+dfs_dev_ss$pup_dev_bysex %>%
+  FilterOutLabTB() %>%
+  filter(trt != 260) %>%
+  mutate(trt = as.factor(trt),
+         year = as.factor(year)) %>%
+  ggplot(aes(y = avg.mass, x = trt,
+             col = year,
+             group = interaction(year)
+             )) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.3) + # remove if including ctrl
+  geom_text(aes(label = n),
+            vjust = -0.5, hjust = -0.5, size = 3.5,
+            position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+            show.legend = FALSE) +
+  facet_grid(pop~sex) +
+  labs(y = "pupal mass (g)", 
+       caption = "mean±se")
+
+
+dfs_dev_ss$pup_dev%>%
+  FilterOutLabTB() %>%
+  #filter(trt != 260) %>%
+  mutate(trt = as.factor(trt)) %>%
+  ggplot(aes(y = avg.mass, x = trt,
+             lty = pop, col = pop,
+             group = pop,
+             ))+
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.3, lty = "solid") +
+  geom_text(aes(label = n),
+            vjust = -0.2, hjust = -0.3,
+            show.legend = FALSE) +
+  facet_grid(~year) # LMAO.. rip the lab response
+
+```
+
+
 ## dev trajectories 
 
 ```{r}
@@ -162,6 +208,8 @@ dfs_dev_ss$sup_outcomes %>%
 ```
 
 # # tents
+
+## btwn yrs 
 
 ```{r}
 # both yrs

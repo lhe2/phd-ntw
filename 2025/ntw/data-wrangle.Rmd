@@ -113,6 +113,20 @@ dfs_dev_ss <- list_modify(
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
+  pup_dev = 
+    dfs$long %>%
+    filter(instar == "pupa") %>%
+    group_by(year, pop, diet, trt) %>%
+    mutate(mass = mass/1000) %>%
+    .CalcDevSS(),
+  
+  pup_dev_bysex = 
+    dfs$long %>%
+    filter(instar == "pupa", !is.na(sex)) %>%
+    group_by(year, pop, diet, trt, sex) %>%
+    mutate(mass = mass/1000) %>%
+    .CalcDevSS()
+)
 ```
 
 ## survival props
