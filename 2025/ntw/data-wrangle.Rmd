@@ -30,15 +30,17 @@ source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
 source(here(bin_paths$y25$ntw, "tidy-data.R"))
 ```
 
-## init lists
+
+
+# # development stuff
+
 ```{r}
-#dfs_ss <- list()
+dfs_dev_ss <- list()
 ```
 
 
-# # summary stats
-## development metrics
 
+## sup proportions
 
 ```{r supernumerary development}
 # TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
@@ -80,6 +82,8 @@ dfs_dev_ss <- list(
     
 ```
 
+## development outcomes
+
 ```{r dev ss custom fn}
 .CalcDevSS <- function(x){
   x %>%
@@ -98,7 +102,7 @@ dfs_dev_ss <- list(
 ```{r overall development}
 dfs_dev_ss <- list_modify(
   dfs_dev_ss,
-  dev_outcomes_pmd =
+  dev_outcomes_wpmd =
     dfs$long %>% 
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
@@ -109,7 +113,14 @@ dfs_dev_ss <- list_modify(
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
-  surv_outcomes =
+```
+
+## survival props
+
+```{r}
+dfs_dev_ss <- list_modify(
+  dfs_dev_ss,
+    surv_outcomes =
     dfs$wide %>%
     filter(fate.code != 2) %>%
     group_by(year, pop, diet, trt) %>%
@@ -119,7 +130,13 @@ dfs_dev_ss <- list_modify(
 )
 ```
 
-## egg stuff
+
+# # tents + egg stuff
+
+  
+```{r}
+dfs_tents_ss <- list()
+```
 
 ```{r eggs ss custom fn}
 .CalcTentsSS <- function(x){
@@ -158,6 +175,7 @@ dfs_dev_ss <- list_modify(
 }
 ```
 
+## ss calcs
 
 ```{r eggs ss calcs}
 # 2025-12-10: have variations on handling colony bugs for now...

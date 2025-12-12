@@ -14,8 +14,9 @@ library(here)
 
 ```{r load libraries}
 library(tidyverse)
-# library(survival) # for fitting 
-# library(survminer) # for plotting
+library(patchwork) # for plot_layout
+# library(survival) # for fitting surv
+# library(survminer) # for plotting surv
 ```
 
 ```{r load data and helpers}
@@ -27,7 +28,6 @@ load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
 
 # # overall dev
 
-## survival
 ```{r}
 dfs_dev_ss$surv_outcomes %>%
   FilterOutLabTB() %>%
@@ -52,8 +52,8 @@ dfs_dev_ss$surv_outcomes %>%
   scale_color_brewer(palette = "Dark2") +
   theme_bw()
 ```
+## dev trajectories 
 
-## development
 ```{r}
 # dev by year
 .plotfun <- function(x){
@@ -87,7 +87,7 @@ dfs_dev_ss$dev_outcomes_nopmd %>%
        )
 
 
-dfs_dev_ss$dev_outcomes_pmd %>%
+dfs_dev_ss$dev_outcomes_wpmd %>%
   .plotfun() +
   labs(title = "development trajectories (with pmd)",
        caption = "mean ± se",
@@ -127,7 +127,7 @@ dfs_dev_ss$dev_outcomes_nopmd %>%
        col = "treatment",
   )
 
-dfs_dev_ss$dev_outcomes_pmd %>%
+dfs_dev_ss$dev_outcomes_wpmd %>%
   .plotfn() +
   labs(title = "development trajectories (all)",
        caption = "mean ± se",
@@ -175,9 +175,12 @@ dfs_tents_ss$eggs_nocol %>%
              col = mate.trt, shape = mate.hs)) +
   geom_point() +
   geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,
-                    ymin = p.eggs.hatched - se.eggs.hatched)) +
+                    ymin = p.eggs.hatched - se.eggs.hatched),
+                width = 100) +
   # x err bar is too small to notice for 2025
-  facet_wrap(mate.type ~ year)
+  facet_wrap(mate.type ~ year) +
+  #labs(x = "total eggs collected") +
+  scale_color_brewer(palette = "Dark2")
 ```
 
 ```{r}
@@ -193,7 +196,9 @@ dfs_tents_ss$eggs_nocol %>%
                col = mate.trt, shape = mate.hs)) +
     geom_point(size = 2) +
     geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,
-                      ymin = p.eggs.hatched - se.eggs.hatched)) +
+                      ymin = p.eggs.hatched - se.eggs.hatched),
+                  width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.eggs.coll, 
+                                    pct = 0.05)) +
     # x err bar is too small to notice so omit
     geom_text(aes(label = n.f.total),
               hjust = 1.25, vjust = -1.3,
@@ -213,6 +218,7 @@ dfs_tents_ss$eggs_nocol %>%
   labs(caption = "2025")
 ```
 
+## effect of col bugs in 2025
 ```{r}
 ## testing effect of including the col or not for 2025
 .plotfn <- function(x){
@@ -236,33 +242,59 @@ dfs_tents_ss$eggs_nocol %>%
             hjust = 1.25, vjust = -1.3, show.legend = FALSE) + 
   geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,
                     ymin = p.eggs.hatched - se.eggs.hatched),
-                #width = 0.5
-                #width = CalcErrWd(x = n.eggs.coll)
+                width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.eggs.coll,
+                                  pct = 0.025)
                 ) +
   facet_wrap(~mate.type) +
     scale_color_brewer(palette = "Dark2") +
-    labs(shape = "sex of col bug") +
-    ylim(c(0, 0.58)) #### to keep axes same for these plots
+    #ylim(c(0, 0.58)) + #### to keep axes same for these plots
+    labs(shape = "sex of col bug")
 }
 
-dfs_tents_ss$eggs_nocol %>%
+p1 <- 
+  dfs_tents_ss$eggs_nocol %>%
   mutate(mate.col = "na") %>%
   filter(year == "2025") %>%
   .plotfn() +
-  labs(caption = "mate.type and mate.pop = lab for col")
+  labs(caption = "mate.type and mate.pop = lab for col") +
+  scale_shape_manual(values = 16) +
+  guides(shape = FALSE)
 
+p2 <- 
 dfs_tents_ss$eggs_matecol %>%
   mutate(mate.col = replace_na(mate.col, "na")) %>%
   filter(year == "2025") %>%
   .plotfn() +
-  labs(caption = "mate.type = col")
+  labs(caption = "mate.type = col") +
+  scale_shape_manual(values = c(17, 15, 16)) +
+  guides(shape = FALSE)
 
+p3 <- 
 dfs_tents_ss$eggs_allcol %>%
   mutate(mate.col = replace_na(mate.col, "na")) %>%
   filter(year == "2025") %>%
   .plotfn() +
-  labs(caption = "mate.type and mate.pop for lab/col are distinct")
+  labs(caption = "mate.type and mate.pop for\nlab/col are distinct") +
+  scale_shape_manual(values = c(3, 17, 15, 16))
+
+p1
+p2
+p3
+```
+```{r}
+# patchworking...
+(p1 + p2 + p3) +
+  plot_layout(guides = "collect", axes = "collect",
+              #ncol = 1, nrow = 3, widths = c(1:2)
+              ) &
+  #guides(col = guide_legend(nrow = 2, byrow = TRUE)) &
+  ylim(c(0, 0.58)) &
+  theme(legend.position = "top", #legend.box = "vertical",
+        legend.margin = margin()) &
+  
+  plot_annotation(title = "effect of parsing col ctrls") 
 
 ```
+
 
 
