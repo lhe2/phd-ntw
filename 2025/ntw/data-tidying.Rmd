@@ -51,14 +51,18 @@ source(here::here(bin_paths$y25$ntw, "utils.R"))
 
 # # larval data (all yrs)
 
-
 ## loading
 ```{r load larval data}
 dfs_imported <- list(
-  y23 = read.csv(here::here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>% mutate(year = 2023),
-  y24 = read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>% mutate(year = 2024),
-  y25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-larva.csv"), header = TRUE) %>% mutate(year = 2025)
-  )
+  y23 = read.csv(here::here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>%
+    mutate(year = 2023) %>%
+    mutate(ID = case_when(ID == 1379 & !is.na(jdate.pmd) ~ 1379.1,
+                          TRUE ~ as.numeric(ID))),
+  y24 = read.csv(here::here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>%
+    mutate(year = 2024),
+  y25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-larva.csv"), header = TRUE) %>%
+    mutate(year = 2025)
+)
 ```
 
 ## standardising
@@ -66,7 +70,7 @@ dfs_imported <- list(
 ```{r filtering and column cleanup}
 dfs_filtered <- list(
   
-  y23 = dfs_imported[[1]] %>%
+  y23 = dfs_imported[["y23"]] %>%
     filter(instar.enter == "hatch",
            pop %in% c("field", "lab"),
            !(treatment %in% c("ctrl", "267", "330")),
@@ -81,11 +85,11 @@ dfs_filtered <- list(
               "jdate.stuck", "jdate.15", "jdate.died",
               "parent.tent", "src", "trt.stage", "grp.trt")),
 
-  y24 = dfs_imported[[2]] %>%
+  y24 = dfs_imported[["y24"]] %>%
     filter(instar.enter == "hatch") %>%
     select(-c("trt.type", "jdate.enter", "instar.enter", ends_with("2nd"))),
   
-  y25 = dfs_imported[[3]] %>%
+  y25 = dfs_imported[["y25"]] %>%
     filter(is.na(species),
            !(notes.ignore == "empty") | is.na(notes.ignore)) %>%
     rename(pop = population,
@@ -93,9 +97,6 @@ dfs_filtered <- list(
     select(-c("species", "jdate.enter", "instar.enter", ends_with("2nd")))
 )
 
-```
-
-```{r standardising values}
 # stdise column types
 dfs_stdised <- lapply(dfs_filtered, \(x){
   x %>%
@@ -103,43 +104,55 @@ dfs_stdised <- lapply(dfs_filtered, \(x){
          id = as.numeric(id),
          across(starts_with("jdate"), as.numeric))
 })
+```
 
-# recoding + adding missing columns
+```{r standardising values by yr}
+# individual fixes: recoding + adding missing columns
+# stdising date meanings:
+  # cull = non-pmd larval death
+  # surv = death after eclosion
+
 # 2023: redo trt values, survival coding/notes, sup coding; add trt group
-dfs_stdised[[1]] <- dfs_stdised[[1]] %>% 
+dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>% 
   mutate(mass.8th = NA, jdate.8th = NA,
          trt = case_when(trt == 337 ~ 426,
                          TRUE ~ trt),
          trt.group = case_when(pop == "lab" & diet == "TB" ~ 1000,
                                pop == "lab" & diet == "LD" ~ 2000,
                                TRUE ~ 100),
-         fate.dev = case_when(reason.ignore %in% c("wet diet", "accidental", "hot larva", "cut") | final.fate %in% c("accidental", "culled") ~ "other",
-                              !is.na(jdate.eclose) ~ "ec",
+         fate.dev = case_when(!is.na(jdate.eclose) ~ "ec",
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
+                              reason.ignore %in% c("wet diet", "accidental", "hot larva", "cut") | 
+                                final.fate %in% c("accidental", "culled") ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
-         jdate.culled = case_when(final.fate %in% c("accidental", "culled") ~ jdate.exit),
-  ) %>%
+         jdate.culled = case_when(final.fate %in% c("accidental", "culled") & fate.dev != "pup" ~ as.numeric(jdate.exit))
+         ) %>%
   select(-c("final.fate", "reason.ignore"))
 
 # 2024: redo survival coding, trt group
-dfs_stdised[[2]] <- dfs_stdised[[2]] %>% 
+dfs_stdised[["y24"]] <- dfs_stdised[["y24"]] %>% 
   mutate(jdate.LPI = NA, jdate.exit = NA, 
          trt.group = case_when(id < 1000 ~ 100,
                                id > 2000 ~ 2000,
                                TRUE ~ 1000),
-         fate.dev = case_when(!is.na(jdate.culled) | surv.outcome == 2  ~ "other",
-                              !is.na(jdate.eclose) ~ "ec",
+         fate.dev = case_when(!is.na(jdate.eclose) ~ "ec",
                               !is.na(jdate.pupa) ~ "pup",
+                              !is.na(jdate.culled) | surv.outcome == 2  ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
+         jdate.culled = NA,
+         jdate.surv = case_when(is.na(jdate.eclose) ~ NA_real_,
+                                TRUE ~ as.numeric(jdate.surv))
          ) %>%
   select(-"surv.outcome")
 
 # 2025: redo survival coding/notes; add tempts
-dfs_stdised[[3]] <- dfs_stdised[[3]] %>% 
-  mutate(fate.dev = case_when(!is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
-                              !is.na(jdate.surv) ~ "ec",
+dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>% 
+  mutate(fate.dev = case_when(!is.na(jdate.eclose) & !is.na(jdate.surv) ~ "ec",
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
+                              !is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
+         jdate.culled = case_when(fate.dev == "other" ~ as.numeric(jdate.culled),
+                                  FALSE ~ NA_real_),
          meanT = case_when(trt == 260 ~ 26,
                            trt == 419 ~ 29.5,
                            trt == 426 ~ 33,
@@ -155,8 +168,9 @@ dfs_stdised[[3]] <- dfs_stdised[[3]] %>%
                           trt == 433 ~ 33)) %>%
   filter(!is.na(status)) %>%
   select(-c(starts_with("notes"), "status"))
+```
 
-
+```{r standardisng values for all}
 # redo survival, sup coding (counts after reaching 5th);
 # fix exit dates
 dfs_stdised <- lapply(dfs_stdised, \(x){
@@ -170,31 +184,30 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
                            #!is.na(jdate.5th) ~ 5,
                            #FALSE ~ as.numeric(sup)
                             ),
-           jdate.exit = case_when(!is.na(jdate.culled) ~ as.numeric(jdate.culled),
+           jdate.exit = case_when(!is.na(jdate.surv) ~ as.numeric(jdate.surv),
+                                  !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
                                   !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),
-                                  !is.na(jdate.pupa) ~ as.numeric(jdate.pupa),
-                                  !is.na(jdate.pmd) ~ as.numeric(jdate.pmd),
-                                   FALSE ~ as.numeric(jdate.exit)
-                                   )
+                                  !is.na(jdate.pupa) & is.na(jdate.eclose) ~
+                                    as.numeric(jdate.pupa + 36),
+                                  !is.na(jdate.culled) ~ as.numeric(jdate.culled),
+                                  !is.na(jdate.pmd) ~ as.numeric(jdate.pmd))
     )
-}) 
+}) #%>% data.table::rbindlist(., fill = TRUE) %>% View()
 
 ```
 
 ## prep for final export
 
 ```{r prep dev data for export}
-# 2025-11-28 TODO: jdate.surv and id.cage are not applied consistently so just drop for now.. but will need later for adult stuff LOL
-
-# combine dfs and remove short-lived things
+# combine dfs and remove short-lived larvae
 dfs <- list(
   wide = data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
-              filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.exit - jdate.hatch)) %>%
-              select(-c("id.cage", "jdate.surv"))
+              filter(jdate.exit - jdate.hatch > 1 #| is.na(jdate.exit)
+                     ) %>%
+              select(-c("id.cage")) # cage not relevant for larval stuff
 )
 
 
-  # TODO could drop jdate column maybe?
 dfs <- list_modify(dfs,
                    long = dfs$wide %>% 
                      mutate(tt.3rd = jdate.3rd - jdate.hatch,
@@ -205,7 +218,10 @@ dfs <- list_modify(dfs,
                             tt.8th = jdate.8th - jdate.hatch,
                             tt.wander = jdate.wander - jdate.hatch,
                             tt.pupa = jdate.pupa - jdate.hatch,
-                            tt.eclose = jdate.eclose - jdate.hatch) %>%
+                            tt.eclose = jdate.eclose - jdate.pupa,
+                            tt.surv = jdate.surv - jdate.eclose,
+                            #tt.exit = jdate.exit - jdate.hatch
+                            ) %>%
                      pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                                   names_to = c(".value", "instar"),
                                   values_drop_na = TRUE,
@@ -215,8 +231,9 @@ dfs <- list_modify(dfs,
                      mutate(tt = case_when(is.na(tt) & !is.na(mass) ~ 999,
                                            TRUE ~ as.numeric(tt))) %>%
                      drop_na(tt) %>%
-                     mutate(tt = na_if(tt, 999)) #%>% 
-                     #filter(tt > 0 | is.na(tt)) # temporary LOL until reimport 2025 data
+                     mutate(tt = na_if(tt, 999)) %>%
+                     # remove short-lived eclosed bugs
+                     filter(!(instar == "surv" & tt == 0))
 ) 
 ```
 
@@ -329,9 +346,7 @@ roadmap:
 
 ```{r load 2025 tents data}
 dfs_imported <- list(
-  ad25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE) %>%
-    filter(!(id == 2052 & jdate.removed == 20394) # TODO fix
-           ),
+  ad25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE),
   coll25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-coll.csv"), header = TRUE),
   hatch25 = read.csv(here::here(bin_paths$y25$ntwdata, "clean-hatch.csv"), header = TRUE)
 )
