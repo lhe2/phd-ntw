@@ -307,6 +307,7 @@ roadmap:
 
 # gets daily running counts of new/dead moths + eggs collected
 # splits $events by cage to avoid cumsum wonkiness, then recombines
+
 .GenerateCageDailyEvents <- function(x){
   x %>%
     split(f = dfs_stdised$events$cage) %>% 
@@ -321,16 +322,13 @@ roadmap:
                m.curr = cumsum(m.diff + m.curr),
                
                # fix egg counts: excludes eggs from hatch proportion if no males present
-               # (wrong logic..)
-               # eggs.exclude = case_when(f.curr <= 0 & m.curr >= 0 ~ as.numeric(eggs.collected + eggs.exclude),
-               # TRUE ~ as.numeric(eggs.exclude)),
-               # eggs.collected = case_when(f.curr <= 0 & m.curr > 0 ~ 0,
-               #                            TRUE ~ as.numeric(eggs.collected)),
-               eggs.exclude = case_when(mate.type == "virgin f" | 
-                                          f.curr > 0 & m.curr == 0 ~ as.numeric(eggs.collected + eggs.exclude),
+               ## TODO: just kidding not doing this anymore bc females can sequester sperm!
+               eggs.exclude = case_when(#f.curr > 0 & m.curr == 0 | 
+                                          mate.type == "virgin f" ~ 
+                                          as.numeric(eggs.collected + eggs.exclude),
                                         TRUE ~ as.numeric(eggs.exclude)),
-               eggs.collected = case_when(mate.type == "virgin f" | 
-                                            f.curr > 0 & m.curr == 0 ~ 0,
+               eggs.collected = case_when(#f.curr > 0 & m.curr == 0 |
+                                            mate.type == "virgin f" ~ 0,
                                           TRUE ~ as.numeric(eggs.collected)),
                eggs.coll = eggs.collected + eggs.exclude) %>%
         select(-ends_with(c(".removed", ".diff"))) %>%
@@ -423,7 +421,6 @@ dfs_stdised <- list_modify(
 ### export
 ```{r}
 dfs_export <- list(
-  tents25 = dfs_stdised$tents %>% mutate(year = 2025)
   )
 ```
 
@@ -443,7 +440,8 @@ dfs_imported <- list(
   
   coll23 = 
     read.csv(here::here(bin_paths$y23$data, "clean-tentstats.csv"), header = TRUE) %>%
-    mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")),
+    mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")) %>% 
+    filter(id.tent != "107-I"),
   
   hatch23 = 
     read.csv(here::here(bin_paths$y23$data, "clean-hatchstats.csv"), header = TRUE) %>% 
@@ -584,7 +582,11 @@ dfs_stdised <- list_modify(
 ```{r}
 dfs_export <- list_modify(
   dfs_export,
-  tents23 = dfs_stdised$tents %>% mutate(year = 2023)
+  tents23 = dfs_stdised$tents %>% 
+    merge(.,
+          dfs_stdised$info %>% select(c("cage", starts_with("trt"))),
+          all = TRUE) %>%
+    mutate(year = 2023)
 )
 ```
 

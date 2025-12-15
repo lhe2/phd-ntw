@@ -156,39 +156,84 @@ dfs_tents_ss <- list()
 ```{r eggs ss custom fn}
 .CalcTentsSS <- function(x){
   x %>%
-  mutate(eggs.perf = eggs.coll/f.curr,
-         eggs.perf = replace_na(eggs.perf, 0)) %>% ## ????
-    group_by(year, # omit if theres only 1 yr in the df
-             across(starts_with("mate"))) %>%
-    # maybe mut and then just distinct by new columns instead of summary?
-    summarise(n.cages.total = 
-                n_distinct(across(c("cage", starts_with("mate")))),
-              n.f.total = sum(f.added), 
-              
-              # viable + non-viable eggs
-              n.eggs.viable = sum(eggs.fert),
-              se.eggs.viable = se(eggs.fert),
-              n.eggs.coll = sum(eggs.coll),
-              se.eggs.coll = se(eggs.coll),
-              #   # check how i did this in 2023?
-              # n.eggs.perf = n.eggs.coll/n.f.total, # do outside?
-              # avg.eggs.perf = mean(n.eggs.perf),
-              # se.eggs.perf = se(n.eggs.perf),
-              avg.eggs.perf = mean(eggs.perf),
-              se.eggs.perf = se(eggs.perf),
-              
-              # hatching (viable eggs only)
-              n.eggs.hatched = sum(eggs.hatched),
-              p.eggs.hatched = n.eggs.hatched/n.eggs.viable,
-              se.eggs.hatched = se.prop(p.eggs.hatched, n.eggs.viable),
-              #   # check how i did this in 2023?
-              # p.eggs.hatchedperf = p.eggs.hatched/n.f.total,
-              # se.eggs.hatchedperf = se.prop(p.eggs.hatchedperf, n.eggs.viable)
-    ) %>%
-    mutate(across(starts_with(c("n.", "p.", "se.", "avg.")), 
-                  replace_na, 0))
+  #dfs$tents %>% # for testing
+    # first get counts at cage level
+  group_by(across(c("year", "cage", starts_with(c("mate", "trt"))))) %>%
+  summarise(
+    #n = n(), # number of days a tent existed for
+    n.f.total = sum(f.added),
+    n.viable.total = sum(eggs.fert),
+    n.coll.total = sum(eggs.coll),
+    n.hatch.total = sum(eggs.hatched),
+    n.coll.perf = n.coll.total/n.f.total,
+    sqrt.coll.perf = sqrt(n.coll.perf)
+  ) %>% 
+  #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>% 
+  #View()
+  ungroup() %>%
+      # then get counts at mate type level
+  group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
+  summarise(
+    n.cages.total = n(),
+    
+    # these look rly bad compared to the daily level LOL
+    avg.coll.total = mean(n.coll.total),
+    se.coll.total = se(n.coll.total),
+    avg.coll.perf = mean(n.coll.perf),
+    se.coll.perf = se(n.coll.perf),
+    
+    avg.sqrt.coll.perf = mean(sqrt.coll.perf),
+    se.sqrt.coll.perf = se(sqrt.coll.perf),
+    #p.hatch = n.hatch.total/n.viable.total, 
+      # will get prop.hatch per tent if not sum()'d beforehand
+    p.hatch = sum(n.hatch.total)/sum(n.viable.total), 
+    se.hatch = se.prop(p.hatch, sum(n.viable.total))
+            ) %>%
+  #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>%
+  mutate(across(.cols = everything(), 
+                ~ replace(.x, is.nan(.x), NA))) #%>% View()
 }
 ```
+```{r}
+# not correct,,,
+# .CalcTentsSS <- function(x){
+#   x %>%
+#     # TODO:FIX i feel liek this is in the wrong place LOL... (based off the piddly #s..)
+#   mutate(eggs.perf = eggs.coll/f.curr,
+#          eggs.perf = case_when(!is.finite(eggs.perf) ~ 0,
+#                                TRUE ~ as.numeric(eggs.perf))) %>% #View() ## ????
+#     group_by(year, # omit if theres only 1 yr in the df
+#              across(starts_with("mate"))) %>%
+#     # maybe mut and then just distinct by new columns instead of summary?
+#     summarise(n.cages.total = 
+#                 n_distinct(across(c("cage", starts_with("mate")))),
+#               n.f.total = sum(f.added), 
+#               
+#               # viable + non-viable eggs
+#               n.eggs.viable = sum(eggs.fert),
+#               se.eggs.viable = se(eggs.fert),
+#               n.eggs.coll = sum(eggs.coll),
+#               se.eggs.coll = se(eggs.coll),
+#               #   # check how i did this in 2023?
+#               # n.eggs.perf = n.eggs.coll/n.f.total, # do outside?
+#               # avg.eggs.perf = mean(n.eggs.perf),
+#               # se.eggs.perf = se(n.eggs.perf),
+#               avg.eggs.perf = mean(eggs.perf),
+#               se.eggs.perf = se(eggs.perf),
+#               
+#               # hatching (viable eggs only)
+#               n.eggs.hatched = sum(eggs.hatched),
+#               p.eggs.hatched = n.eggs.hatched/n.eggs.viable,
+#               se.eggs.hatched = se.prop(p.eggs.hatched, n.eggs.viable),
+#               #   # check how i did this in 2023?
+#               # p.eggs.hatchedperf = p.eggs.hatched/n.f.total,
+#               # se.eggs.hatchedperf = se.prop(p.eggs.hatchedperf, n.eggs.viable)
+#     ) %>%
+#     mutate(across(starts_with(c("n.", "p.", "se.", "avg.")), 
+#                   replace_na, 0))
+# }
+```
+
 
 ## ss calcs
 
