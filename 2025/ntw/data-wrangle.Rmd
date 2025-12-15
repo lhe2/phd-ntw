@@ -8,7 +8,7 @@ date: "2025-11-29"
 - do data wrangling for ntw 2025 data here
 - run in entirety just to update the RData objects
 
-LAST RUN: 2025-12-10
+LAST RUN: 2025-12-15
 
 ```{r}
 # libraries
@@ -161,11 +161,11 @@ dfs_tents_ss <- list()
   group_by(across(c("year", "cage", starts_with(c("mate", "trt"))))) %>%
   summarise(
     #n = n(), # number of days a tent existed for
-    n.f.total = sum(f.added),
-    n.viable.total = sum(eggs.fert),
-    n.coll.total = sum(eggs.coll),
-    n.hatch.total = sum(eggs.hatched),
-    n.coll.perf = n.coll.total/n.f.total,
+    n.f = sum(f.added),
+    n.viable = sum(eggs.fert),
+    n.coll = sum(eggs.coll),
+    n.hatch = sum(eggs.hatched),
+    n.coll.perf = n.coll/n.f,
     sqrt.coll.perf = sqrt(n.coll.perf)
   ) %>% 
   #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>% 
@@ -175,10 +175,11 @@ dfs_tents_ss <- list()
   group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
   summarise(
     n.cages.total = n(),
+    n.f.total = sum(n.f),
     
     # these look rly bad compared to the daily level LOL
-    avg.coll.total = mean(n.coll.total),
-    se.coll.total = se(n.coll.total),
+    avg.coll.total = mean(n.coll),
+    se.coll.total = se(n.coll),
     avg.coll.perf = mean(n.coll.perf),
     se.coll.perf = se(n.coll.perf),
     
@@ -186,8 +187,8 @@ dfs_tents_ss <- list()
     se.sqrt.coll.perf = se(sqrt.coll.perf),
     #p.hatch = n.hatch.total/n.viable.total, 
       # will get prop.hatch per tent if not sum()'d beforehand
-    p.hatch = sum(n.hatch.total)/sum(n.viable.total), 
-    se.hatch = se.prop(p.hatch, sum(n.viable.total))
+    p.hatch = sum(n.hatch)/sum(n.viable), 
+    se.hatch = se.prop(p.hatch, sum(n.viable))
             ) %>%
   #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>%
   mutate(across(.cols = everything(), 
@@ -266,6 +267,7 @@ dfs_tents_ss <- list(
 # RData export
 
 ```{r}
+# update objects before saving
 save(dfs_dev_ss, dfs_tents_ss, 
      file = here(bin_paths$y25$ntwdata, "wrangled.RData"))
 ```

@@ -272,6 +272,9 @@ roadmap:
            mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
                                 mate.type == "between" & trt.f > trt.m ~ trt.f,
                                 mate.type == "between" & trt.m > trt.f ~ trt.m),
+           mate.pair = case_when(trt.f == trt.m ~ "M + F same trt",
+                                 trt.f > trt.m ~ "hot F + ctrl M",
+                                 trt.f < trt.m ~ "hot M + ctrl F"),
            mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
                                 pop.f == "col" & pop.m == "lab" ~ "f",
                                 pop.m == "col" & pop.f == "lab" ~ "m" ),
@@ -405,9 +408,6 @@ dfs_stdised$events <-
 
 ### collate
 
-TODO
-- somehow account for def m/f's that prob = unviable eggs?
-
 ```{r}
 # troubleshooting tents: A2, B2, C14, C4
 dfs_stdised <- list_modify(
@@ -421,6 +421,11 @@ dfs_stdised <- list_modify(
 ### export
 ```{r}
 dfs_export <- list(
+  tents25 = dfs_stdised$tents %>% 
+    merge(.,
+          dfs_stdised$info %>% select(c("cage", starts_with("trt"))),
+          all = TRUE) %>%
+    mutate(year = 2025)
   )
 ```
 
@@ -598,9 +603,6 @@ dfs <- list_modify(
   tents = rbindlist(dfs_export, fill = TRUE)
 )
 ```
-
-
-
 
 # # cleanup
 ```{r remove intermediate objects}

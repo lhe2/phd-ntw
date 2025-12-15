@@ -358,7 +358,7 @@ dfs_dev_ss$sup_outcomes %>%
 
 # # tents
 
-## btwn yrs 
+## hatch+laid btwn yrs 
 
 ```{r}
 # both yrs
@@ -407,7 +407,7 @@ dfs_tents_ss$eggs_nocol %>%
   labs(caption = "2025")
 ```
 
-## effect of col bugs in 2025
+## hatch+laid effect of col bugs in 2025
 ```{r}
 ## testing effect of including the col or not for 2025
 .plotfn <- function(x){
@@ -481,5 +481,93 @@ p3
 
 ```
 
+## eggs laid
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+  FilterForLabEggs() %>% 
+  ggplot(aes(#y = avg.coll.perf, 
+             y = avg.sqrt.coll.perf,
+             x = mate.trt,
+             lty = mate.pair, shape = mate.pair,
+             group = interaction(mate.pair, mate.hs),
+             col = mate.pair
+             # shape = mate.hs, lty = mate.type,
+             # group = interaction(mate.hs, mate.type)
+  )) + 
+  # very overwhelming w error bars lol
+  # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
+  #                   ymin = avg.coll.perf - se.coll.perf,),
+  #               lty = "solid", width = 0.5) +
+  # geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+  #                   ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+  #               lty = "solid", width = 0.5) +
+  # geom_text(aes(label = n.f.total),
+  #           vjust = -0.5, hjust = -0.5, position = "jitter") +
+  # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
+  #           vjust = -0.5, hjust = -0.5, 
+  #           #position = "jitter"
+  #           ) +
+  geom_point(size=2) + geom_line() +
+  facet_grid(~year) +
+  theme_bw() +
+  scale_shape_manual(values = c(2, 0, 16)) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_linetype_manual(values = c(3, 2, 1)) +
+  labs(col = "treatment pair", lty = "treatment pair", shape = "treatment pair",
+       caption = "mean±se; lab only",
+       y = "sqrt [eggs laid per female]", x = "treatment")
+}
+
+dfs_tents_ss$eggs_nocol %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_tents_ss$eggs_nocol %>%
+  filter(mate.trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  
+```
+## eggs hatched
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+  FilterForLabEggs() %>% 
+  ggplot(aes(y = p.hatch,
+             x = mate.trt,
+             lty = mate.pair, shape = mate.pair,
+             group = interaction(mate.pair, mate.hs),
+             col = mate.pair
+  )) + 
+  geom_errorbar(aes(ymax = p.hatch + se.hatch,
+                    ymin = p.hatch - se.hatch,),
+                lty = "solid", width = 0.25) +
+      # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
+      #       vjust = -0.5, hjust = -0.5, size = 3
+      #       #position = "jitter"
+      #       ) +
+  geom_point(size=2) + geom_line() +
+  facet_grid(~year) +
+  theme_bw() +
+  scale_shape_manual(values = c(2, 0, 16)) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_linetype_manual(values = c(3, 2, 1)) +
+  labs(col = "treatment pair", lty = "treatment pair", shape = "treatment pair",
+       caption = "bars = se; lab only",
+       y = "proportion eggs hatched", x = "treatment")
+}
+
+dfs_tents_ss$eggs_nocol %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_tents_ss$eggs_nocol %>%
+  filter(mate.trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+```
 
 
