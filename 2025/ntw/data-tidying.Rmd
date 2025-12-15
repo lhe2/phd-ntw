@@ -24,7 +24,7 @@ knitr::purl("data-tidying.Rmd", "tidy-data.R")
 # creates an archive
 knitr::purl("data-tidying.Rmd", 
             paste0(here(bin_paths$y25$ntw), "/archive/cleaning/", 
-                   format(Sys.time(), "%y%m%d"), "_tidy-data.R"))
+                   format(Sys.time(), "%y%m%d-%H%M"), "_tidy-data.R"))
 ```
 
 # load libs & pkgs

@@ -26,6 +26,25 @@ source(here(bin_paths$y25$ntw, "utils.R"))
 load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
 ```
 
+```{r make factors}
+dfs_dev_ss <- dfs_dev_ss %>%
+  lapply(., \(x){
+    x %>%
+      ungroup() %>%
+      mutate(across(c("year", "trt"), as.factor))
+  })
+
+dfs_tents_ss <- dfs_tents_ss %>%
+  lapply(., \(x){
+    x %>%
+      ungroup() %>%
+      mutate(across(c("year", "mate.trt"), as.factor),
+             mate.type = factor(mate.type, 
+                                levels = c("within", "between")))
+  })
+```
+
+
 # # overall dev
 
 ## survival to pup

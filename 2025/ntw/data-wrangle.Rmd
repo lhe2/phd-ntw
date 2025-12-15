@@ -26,7 +26,7 @@ source(here::here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
 ```
 
-```{r}
+```{r, message=FALSE}
 # data import
 source(here(bin_paths$y25$ntw, "tidy-data.R"))
 ```
