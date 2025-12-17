@@ -5,32 +5,39 @@ date: "2025-11-29"
 
 # # preamble & loading
 
-- do data wrangling for ntw 2025 data here
-- run in entirety just to update the RData objects
+- data wrangling for ntw 2025 data here
+- data gets purled for wrangling later (update script as needed)
 
-LAST RUN: 2025-12-15
-
-```{r}
-# libraries
-library(tidyverse)
-# #library(MuMIn) # for survival nested model comparisons
-# library(survival) # for fitting 
-# library(survminer) # for plotting
-# library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
-
-# pathfinding
+```{r set paths, eval=FALSE, purl=FALSE}
+# run if things arent working
 here::i_am("2025/ntw/data-wrangle.Rmd")
 library(here)
-
-source(here::here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "utils.R")) # helper functions
+source(here("set-paths.R"))
 ```
 
-```{r, message=FALSE}
-# data import
-source(here(bin_paths$y25$ntw, "tidy-data.R"))
+```{r purl, eval=FALSE, purl=FALSE}
+# rerun to update .R script (save .Rmd first)
+knitr::purl("data-wrangle.Rmd", 
+            here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
 ```
 
+```{r about}
+# purled wrangling code for ntw figs.
+# compiles 2023-25 development and tent summary statistics.
+```
+
+
+```{r load libs and data, message=FALSE}
+# libraries
+library(tidyverse)
+library(here)
+
+# objects
+source(here("set-paths.R"))
+source(here(bin_paths$y25$ntw, "utils.R")) 
+
+source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
+```
 
 
 # # development stuff
@@ -48,8 +55,8 @@ dfs_dev_ss <- list()
 
 dfs_dev_ss <- list(
   sup_outcomes = 
-    dfs$wide %>% 
     filter(fate.code != 2) %>%
+    dfs_tidy$wide %>% 
     group_by(year, pop, diet, trt) %>%
     summarise(N = n(),
               surv_tot = sum(fate.code == 1),
@@ -104,25 +111,25 @@ dfs_dev_ss <- list(
 dfs_dev_ss <- list_modify(
   dfs_dev_ss,
   dev_outcomes_wpmd =
-    dfs$long %>% 
+    dfs_tidy$long %>% 
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
   dev_outcomes_nopmd =
-    dfs$long %>% 
     filter(fate.code != 0 | is.na(fate.code)) %>%
+    dfs_tidy$long %>% 
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
   ad_dev = 
-    dfs$long %>%
+    dfs_tidy$long %>%
     filter(instar %in% c("pupa", "eclose", "surv")) %>%
     group_by(year, pop, diet, trt, instar) %>%
     mutate(mass = mass/1000) %>%
     .CalcDevSS(),
   
   ad_dev_bysex = 
-    dfs$long %>%
+    dfs_tidy$long %>%
     filter(instar %in% c("pupa", "eclose", "surv"), !is.na(sex)) %>%
     group_by(year, pop, diet, trt, sex, instar) %>%
     mutate(mass = mass/1000) %>%
@@ -136,8 +143,8 @@ dfs_dev_ss <- list_modify(
 dfs_dev_ss <- list_modify(
   dfs_dev_ss,
     surv_outcomes =
-    dfs$wide %>%
     filter(fate.code != 2) %>%
+    dfs_tidy$wide %>%
     group_by(year, pop, diet, trt) %>%
     summarise(n = n(),
               prop.pup = sum(fate.code == 1)/n,
@@ -243,21 +250,21 @@ dfs_tents_ss <- list()
 
 dfs_tents_ss <- list(
   # treat all col like lab expt bugs
-  eggs_nocol = dfs$tents %>%
+  eggs_nocol = dfs_tidy$tents %>%
     select(-mate.col) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>% 
     .CalcTentsSS(),
   
   # treats col like lab expt bugs, but notes which sex was the col
-  eggs_matecol = dfs$tents %>%
+  eggs_matecol = dfs_tidy$tents %>%
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop)),
            mate.col = na_if(mate.col, "both")) %>%
     .CalcTentsSS(),
   
   # retains all indicators of col status (population + affected sex)
-  eggs_allcol = dfs$tents %>%
+  eggs_allcol = dfs_tidy$tents %>%
     .CalcTentsSS()
 )
 ```
@@ -266,13 +273,10 @@ dfs_tents_ss <- list(
 
 # RData export
 
-```{r}
-# update objects before saving!
-# save(dfs_dev_ss, dfs_tents_ss, 
-#      file = here(bin_paths$y25$ntwdata, "wrangled.RData"))
+## TODO
+- need sth seperate for stats wrangle?
 
-# for viz
-saveRDS(dfs_dev_ss, file = here(bin_paths$y25$ntwdata, "dev_ss.rds"))
-saveRDS(dfs_tents_ss, file = here(bin_paths$y25$ntwdata, "tents_ss.rds"))
+```{r}
+rm(dfs_tidy)
 ```
 

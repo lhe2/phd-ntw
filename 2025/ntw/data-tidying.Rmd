@@ -19,7 +19,7 @@ here::i_am("2025/ntw/data-tidying.Rmd")
 # rerun this chunk if purled .R script needs to be updated.
 # save and apply updates to current .Rmd before purling!
 
-knitr::purl("data-tidying.Rmd", "tidy-data.R")
+knitr::purl("data-tidying.Rmd", here(bin_paths$y25$ntw, "/R/tidy-data.R"))
 
 # creates an archive
 knitr::purl("data-tidying.Rmd", 
@@ -202,7 +202,7 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
 
 ```{r prep dev data for export}
 # combine dfs and remove short-lived larvae
-dfs <- list(
+dfs_tidy <- list(
   wide = data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
               filter(jdate.exit - jdate.hatch > 1 #| is.na(jdate.exit)
                      ) %>%
@@ -210,8 +210,9 @@ dfs <- list(
 )
 
 
-dfs <- list_modify(dfs,
-                   long = dfs$wide %>% 
+  # TODO could drop jdate column after pivot maybe?
+dfs_tidy <- list_modify(dfs_tidy,
+                   long = dfs_tidy$wide %>% 
                      mutate(tt.3rd = jdate.3rd - jdate.hatch,
                             tt.4th = jdate.4th - jdate.hatch,
                             tt.5th = jdate.5th - jdate.hatch,
@@ -604,19 +605,19 @@ dfs_export <- list_modify(
 ## prep for final export
 
 ```{r export tent data}
-dfs <- list_modify(
-  dfs,
+dfs_tidy <- list_modify(
+  dfs_tidy,
   tents = rbindlist(dfs_export, fill = TRUE)
 )
 ```
 
 ```{r export for stats, eval=FALSE, include=FALSE, purl=FALSE}
 # update objects in environment before saving RDS!
-list(wide = dfs$wide,
-     long = dfs$long) %>% 
+list(wide = dfs_tidy$wide,
+     long = dfs_tidy$long) %>% 
   saveRDS(., file = here(bin_paths$y25$ntwdata, "dev_tidy.rds"))
 
-dfs$tents %>%
+dfs_tidy$tents %>%
   saveRDS(., file = here(bin_paths$y25$ntwdata, "tents_tidy.rds"))
 ```
 
