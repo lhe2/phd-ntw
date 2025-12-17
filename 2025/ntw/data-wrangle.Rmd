@@ -55,20 +55,20 @@ dfs_dev_ss <- list()
 
 dfs_dev_ss <- list(
   sup_outcomes = 
-    filter(fate.code != 2) %>%
     dfs_tidy$wide %>% 
+    filter(is.pup != 2) %>%
     group_by(year, pop, diet, trt) %>%
     summarise(N = n(),
-              surv_tot = sum(fate.code == 1),
-              surv_0th = sum(fate.code == 1 & is.na(sup)),
-              surv_6th = sum(fate.code == 1 & sup == 6, na.rm = TRUE),
-              surv_7th = sum(fate.code == 1 & sup == 7, na.rm = TRUE),
-              surv_8th = sum(fate.code == 1 & sup == 8, na.rm = TRUE),
-              died_tot = sum(fate.code == 0),
-              died_0th = sum(fate.code == 0 & is.na(sup)),
-              died_6th = sum(fate.code == 0 & sup == 6, na.rm = TRUE),
-              died_7th = sum(fate.code == 0 & sup == 7, na.rm = TRUE),
-              died_8th = sum(fate.code == 0 & sup == 8, na.rm = TRUE),
+              surv_tot = sum(is.pup == 1),
+              surv_0th = sum(is.pup == 1 & is.na(sup)),
+              surv_6th = sum(is.pup == 1 & sup == 6, na.rm = TRUE),
+              surv_7th = sum(is.pup == 1 & sup == 7, na.rm = TRUE),
+              surv_8th = sum(is.pup == 1 & sup == 8, na.rm = TRUE),
+              died_tot = sum(is.pup == 0),
+              died_0th = sum(is.pup == 0 & is.na(sup)),
+              died_6th = sum(is.pup == 0 & sup == 6, na.rm = TRUE),
+              died_7th = sum(is.pup == 0 & sup == 7, na.rm = TRUE),
+              died_8th = sum(is.pup == 0 & sup == 8, na.rm = TRUE),
               ) %>%
       pivot_longer(cols = starts_with(c("surv", "died")),
                  names_to = c("status", ".value"),
@@ -116,8 +116,8 @@ dfs_dev_ss <- list_modify(
     .CalcDevSS(),
   
   dev_outcomes_nopmd =
-    filter(fate.code != 0 | is.na(fate.code)) %>%
     dfs_tidy$long %>% 
+    filter(is.pup != 0 | is.na(is.pup)) %>%
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
@@ -143,11 +143,11 @@ dfs_dev_ss <- list_modify(
 dfs_dev_ss <- list_modify(
   dfs_dev_ss,
     surv_outcomes =
-    filter(fate.code != 2) %>%
     dfs_tidy$wide %>%
+    filter(is.pup != 2) %>%
     group_by(year, pop, diet, trt) %>%
     summarise(n = n(),
-              prop.pup = sum(fate.code == 1)/n,
+              prop.pup = sum(is.pup == 1)/n,
               se.pup = se.prop(prop.pup, n))
 )
 ```
