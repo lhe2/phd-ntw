@@ -175,7 +175,7 @@ dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>%
 # fix exit dates
 dfs_stdised <- lapply(dfs_stdised, \(x){
   x %>%
-    mutate(fate.code = case_when(fate.dev %in% c("ec", "pup") ~ 1,
+    mutate(is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
                                  fate.dev == "pmd" ~ 0,
                                  fate.dev == "other" ~ 2),
            sup = case_when(!is.na(jdate.8th) ~ 8,
@@ -184,6 +184,8 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
                            #!is.na(jdate.5th) ~ 5,
                            #FALSE ~ as.numeric(sup)
                             ),
+           is.sup = case_when(!is.na(sup) ~ 1,
+                              TRUE ~ 0),
            jdate.exit = case_when(!is.na(jdate.surv) ~ as.numeric(jdate.surv),
                                   !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
                                   !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),
@@ -280,7 +282,11 @@ roadmap:
                                 pop.m == "col" & pop.f == "lab" ~ "m" ),
            mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
                                trt.m > trt.f | is.na(trt.f) ~ "m",
-                               TRUE ~ "both"))
+                               TRUE ~ "both"),
+           is.hs.f = case_when(trt.f == 260 ~ 0,
+                               trt.f > 260 ~ 1),
+           is.hs.m = case_when(trt.m == 260 ~ 0,
+                               trt.m > 260 ~ 1))
 } 
 
 
@@ -423,7 +429,7 @@ dfs_stdised <- list_modify(
 dfs_export <- list(
   tents25 = dfs_stdised$tents %>% 
     merge(.,
-          dfs_stdised$info %>% select(c("cage", starts_with("trt"))),
+          dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
           all = TRUE) %>%
     mutate(year = 2025)
   )
@@ -589,7 +595,7 @@ dfs_export <- list_modify(
   dfs_export,
   tents23 = dfs_stdised$tents %>% 
     merge(.,
-          dfs_stdised$info %>% select(c("cage", starts_with("trt"))),
+          dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
           all = TRUE) %>%
     mutate(year = 2023)
 )

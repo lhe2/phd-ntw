@@ -19,7 +19,7 @@ se.prop <- function(p, n){
 }
 
 
-# DATA VIZ ----------------------------------------------------------------
+# ANALYSIS ----------------------------------------------------------------
 ### FILTERS ###
 FilterOutLabTB <- function(data){
   data %>%
@@ -32,7 +32,18 @@ FilterForLabEggs <- function(data){
            mate.type != "virgin f") 
 }
 
-### GGPLOT ###
+
+### STATS ###
+GetModelResults <- function(x){
+  list(
+    model_summary = summary(x),
+    #anova_results = anova(x),
+    anova_wchisq = anova(x, test = "Chisq")
+  )
+}
+
+
+### VIZ (GGPLOT) ###
 # sets error bar width/height to some % of the other axis
 ## struggling w ggplot error bar width issues again... 
 ## see also https://gist.github.com/tomhopper/9076152 for suggested defaults
