@@ -19,22 +19,22 @@ library(patchwork) # for plot_layout
 # library(survminer) # for plotting surv
 ```
 
-```{r load data and helpers}
+```{r load data and helpers, message=FALSE}
 source(here::here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "utils.R"))
+source(here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
+```
 
+```{r}
 # convert things into factors for ease of graphing
-#load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
-dfs_dev_ss <- 
-  readRDS(here(bin_paths$y25$ntwdata, "dev_ss.rds")) %>%
+dfs_dev_ss <- dfs_dev_ss %>%
     lapply(., \(x){
     x %>%
       ungroup() %>%
       mutate(across(c("year", "trt"), as.factor))
   })
 
-dfs_tents_ss <-
-  readRDS(here(bin_paths$y25$ntwdata, "tents_ss.rds")) %>%
+dfs_tents_ss <- dfs_tents_ss %>%
     lapply(., \(x){
     x %>%
       ungroup() %>%
