@@ -267,8 +267,12 @@ dfs_tents_ss <- list(
 # RData export
 
 ```{r}
-# update objects before saving
-save(dfs_dev_ss, dfs_tents_ss, 
-     file = here(bin_paths$y25$ntwdata, "wrangled.RData"))
+# update objects before saving!
+# save(dfs_dev_ss, dfs_tents_ss, 
+#      file = here(bin_paths$y25$ntwdata, "wrangled.RData"))
+
+# for viz
+saveRDS(dfs_dev_ss, file = here(bin_paths$y25$ntwdata, "dev_ss.rds"))
+saveRDS(dfs_tents_ss, file = here(bin_paths$y25$ntwdata, "tents_ss.rds"))
 ```
 

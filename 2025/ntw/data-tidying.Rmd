@@ -45,7 +45,7 @@ library(data.table) # for rbindlist
 
 source(here::here("set-paths.R"))
 
-source(here::here(bin_paths$y25$ntw, "utils.R"))
+#source(here::here(bin_paths$y25$ntw, "utils.R"))
 ```
 
 
@@ -602,6 +602,16 @@ dfs <- list_modify(
   dfs,
   tents = rbindlist(dfs_export, fill = TRUE)
 )
+```
+
+```{r export for stats, eval=FALSE, include=FALSE, purl=FALSE}
+# update objects in environment before saving RDS!
+list(wide = dfs$wide,
+     long = dfs$long) %>% 
+  saveRDS(., file = here(bin_paths$y25$ntwdata, "dev_tidy.rds"))
+
+dfs$tents %>%
+  saveRDS(., file = here(bin_paths$y25$ntwdata, "tents_tidy.rds"))
 ```
 
 # # cleanup

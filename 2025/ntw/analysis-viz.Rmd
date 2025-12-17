@@ -23,25 +23,44 @@ library(patchwork) # for plot_layout
 source(here::here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "utils.R"))
 
-load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
-```
-
-```{r make factors}
-dfs_dev_ss <- dfs_dev_ss %>%
-  lapply(., \(x){
+# convert things into factors for ease of graphing
+#load(here(bin_paths$y25$ntwdata, "wrangled.RData"))
+dfs_dev_ss <- 
+  readRDS(here(bin_paths$y25$ntwdata, "dev_ss.rds")) %>%
+    lapply(., \(x){
     x %>%
       ungroup() %>%
       mutate(across(c("year", "trt"), as.factor))
   })
 
-dfs_tents_ss <- dfs_tents_ss %>%
-  lapply(., \(x){
+dfs_tents_ss <-
+  readRDS(here(bin_paths$y25$ntwdata, "tents_ss.rds")) %>%
+    lapply(., \(x){
     x %>%
       ungroup() %>%
       mutate(across(c("year", "mate.trt"), as.factor),
              mate.type = factor(mate.type, 
                                 levels = c("within", "between")))
   })
+  
+```
+
+```{r make factors}
+# dfs_dev_ss <- dfs_dev_ss %>%
+#   lapply(., \(x){
+#     x %>%
+#       ungroup() %>%
+#       mutate(across(c("year", "trt"), as.factor))
+#   })
+# 
+# dfs_tents_ss <- dfs_tents_ss %>%
+#   lapply(., \(x){
+#     x %>%
+#       ungroup() %>%
+#       mutate(across(c("year", "mate.trt"), as.factor),
+#              mate.type = factor(mate.type, 
+#                                 levels = c("within", "between")))
+#   })
 ```
 
 
