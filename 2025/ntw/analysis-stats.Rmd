@@ -34,7 +34,8 @@ conflicts_prefer(
 
 ```{r load data and helpers, message=FALSE}
 source(here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "utils.R"))
+source(here(bin_paths$y25$ntw, "/utils/general.R"))
+source(here(bin_paths$y25$ntw, "/utils/analysis-stats.R"))
 source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
 
 imported_dev <- list(

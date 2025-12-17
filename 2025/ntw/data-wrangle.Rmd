@@ -34,8 +34,7 @@ library(here)
 
 # objects
 source(here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "utils.R")) 
-
+source(here(bin_paths$y25$ntw, "/utils/data-wrangle.R")) 
 source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
 ```
 
@@ -277,6 +276,7 @@ dfs_tents_ss <- list(
 - need sth seperate for stats wrangle?
 
 ```{r}
-rm(dfs_tidy)
+rm(dfs_tidy,
+   se, se.prop)
 ```
 
