@@ -1,0 +1,169 @@
+---
+title: "ntw 2025 stats analyses"
+date: "2025-12-02"
+---
+
+# # preamble & loading
+
+stats analyses for ntw 2025
+
+```{r set pathfinding}
+here::i_am("2025/ntw/analysis-stats.Rmd")
+library(here)
+```
+
+```{r load libraries}
+library(lme4) # glm, lm, glmer
+library(lmerTest) # lmer
+library(MuMIn) # dredge (nested model comparisons)
+library(tidyverse)
+
+library(conflicted)
+conflicts_prefer(
+  lmerTest::lmer,
+  dplyr::filter
+)
+
+#conflicts_prefer(lmerTest::lmer) # overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
+
+# library(survival) # for fitting 
+# library(survminer) # for plotting
+# library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
+```
+
+
+```{r load data and helpers, message=FALSE}
+source(here("set-paths.R"))
+source(here(bin_paths$y25$ntw, "utils.R"))
+source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
+
+imported_dev <- list(
+  wide = dfs_tidy$wide
+  ) %>%
+  lapply(., \(x){
+    x %>%
+    mutate(across(c("year", "minT"), as.factor))
+  })
+
+#rm(dfs_tidy)
+```
+
+```{r prep data for stats}
+# add cols
+imported_dev$wide <- imported_dev$wide %>%
+      mutate(tt.pupa = jdate.pupa - jdate.hatch) 
+
+# subset
+# in dev data: drop controls and lab+TB
+dfs <- list(
+  wide = 
+    imported_dev[["wide"]] %>%
+    FilterOutLabTB() %>%
+    filter(trt != 260,
+           is.pup < 2),
+  
+  # sexed pupa only
+  wide_pups =
+    imported_dev[["wide"]] %>%
+    FilterOutLabTB() %>%
+    filter(trt != 260,
+           !is.na(jdate.pupa) & !is.na(sex))
+  
+)
+
+```
+
+# # pupal stats
+
+## survival to pup
+
+```{r pup surv model generation}
+#df <- mutate(dfs$wide, year = as.numeric(year))
+
+mods_pupsurv <- list(
+  glm_fullint = glm(is.pup ~ year*pop*minT, 
+                family = "binomial", data = dfs$wide, 
+                na.action = na.fail),
+  
+  glmer_randyr = glmer(is.pup ~ pop*minT + (1|year),
+                     family = "binomial", data = dfs$wide),
+  
+  # compare to glmer_randyr to examine year
+  glm_noyr = glm(is.pup ~ pop*minT,
+                     family = "binomial", data = dfs$wide)
+  )
+```
+
+```{r pup surv model main results}
+mods_pupsurv %>%
+  lapply(., GetModelResults)
+
+# mostly for glm_fullint
+mods_pupsurv %>%
+  lapply(., \(x){
+    x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+  })
+```
+```{r pup surv model other results}
+# approx p-value for (1|year)?
+anova(mods_pupsurv$glmer_randyr, mods_pupsurv$glm_noyr, test = "Chisq") 
+```
+
+
+## [ ] pupal mass
+
+```{r pup mass model generation}
+df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
+
+mods_pupmass <- list(
+  add = lm(mass.pupa ~ year + minT+ pop + sex,
+           data = df, na.action = na.fail),
+  fullint = lm(mass.pupa ~ year*minT*pop*sex,
+               data = df, na.action = na.fail),
+  randyr = lmer(mass.pupa ~ minT*pop*sex + (1|year),
+              data = df),
+  
+  # subsets of the full model..
+  twoway = lm(mass.pupa ~ (year + minT + pop + sex)^2,
+              data = df, na.action = na.fail),
+  threeway = lm(mass.pupa ~ year*minT*pop + sex,
+              data = df, na.action = na.fail)
+)
+```
+
+```{r pup mass model main results}
+mods_pupmass %>%
+  lapply(., GetModelResults)
+
+mods_pupmass %>%
+    lapply(., \(x){
+    x %>% dredge()
+  })
+```
+
+```{r pup mass model other results}
+anova(mods_pupmass$add, mods_pupmass$fullint, test = "Chisq")
+anova(mods_pupmass$twoway, mods_pupmass$fullint, test = "Chisq")
+anova(mods_pupmass$threeway, mods_pupmass$fullint, test = "Chisq")
+anova(mods_pupmass$twoway, mods_pupmass$threeway, test = "Chisq")
+```
+
+
+## [ ] time to pup
+
+```{r pup time model generation}
+
+mods_puptime <- list(
+  fullint = lm(tt.pupa ~ year*minT*pop, data = dfs$wide),
+
+  #int_randyr2 = lme4::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide),
+  int_randyr = lmerTest::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide)
+  )
+```
+
+```{r pup time model main results}
+mods_puptime %>%
+  lapply(., GetModelResults)
+```
+
+
