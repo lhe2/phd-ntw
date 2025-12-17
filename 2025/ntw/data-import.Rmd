@@ -92,7 +92,7 @@ export <- data %>%
 
 ```{r}
 # export
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-larva.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_larva.csv"), row.names = FALSE)
 write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-larva.csv"), row.names = FALSE)
 ```
 
@@ -175,7 +175,7 @@ export <- data %>%
 
 ```{r}
 # export
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-adults.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_adults.csv"), row.names = FALSE)
 write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-adults.csv"), row.names = FALSE)
 ```
 
@@ -222,7 +222,7 @@ data <- data %>%
 # raw data
 raw <- raw %>% reduce(left_join, by = c("date.collected", "id.cage"))
 
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/archive/", today, "_raw-eggs.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_eggs.csv"), row.names = FALSE)
 ```
 
 
