@@ -14,30 +14,36 @@ library(here)
 
 ```{r load libraries}
 library(lme4) # glm, lm, glmer
-library(lmerTest) # lmer
+#library(lmerTest) # lmer
 library(MuMIn) # dredge (nested model comparisons)
 library(tidyverse)
 
 library(conflicted)
-conflicts_prefer(
-  lmerTest::lmer,
+conflicts_prefer( 
+  #lmerTest::lmer, 
   dplyr::filter
 )
+# lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 
-#conflicts_prefer(lmerTest::lmer) # overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 
 # library(survival) # for fitting 
 # library(survminer) # for plotting
 # library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
 ```
 
+- `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data and helpers, message=FALSE}
 source(here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "/utils/general.R"))
 source(here(bin_paths$y25$ntw, "/utils/analysis-stats.R"))
-source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
 
+source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
+```
+
+## data prep
+
+```{r light wrangling}
 imported_dev <- list(
   wide = dfs_tidy$wide
   ) %>%
@@ -46,15 +52,14 @@ imported_dev <- list(
     mutate(across(c("year", "minT"), as.factor))
   })
 
-#rm(dfs_tidy)
-```
-
-```{r prep data for stats}
 # add cols
 imported_dev$wide <- imported_dev$wide %>%
       mutate(tt.pupa = jdate.pupa - jdate.hatch) 
 
-# subset
+```
+
+
+```{r make subsets}
 # in dev data: drop controls and lab+TB
 dfs <- list(
   wide = 
@@ -79,19 +84,10 @@ dfs <- list(
 ## survival to pup
 
 ```{r pup surv model generation}
-#df <- mutate(dfs$wide, year = as.numeric(year))
-
 mods_pupsurv <- list(
   glm_fullint = glm(is.pup ~ year*pop*minT, 
                 family = "binomial", data = dfs$wide, 
-                na.action = na.fail),
-  
-  glmer_randyr = glmer(is.pup ~ pop*minT + (1|year),
-                     family = "binomial", data = dfs$wide),
-  
-  # compare to glmer_randyr to examine year
-  glm_noyr = glm(is.pup ~ pop*minT,
-                     family = "binomial", data = dfs$wide)
+                na.action = na.fail)
   )
 ```
 
@@ -99,19 +95,14 @@ mods_pupsurv <- list(
 mods_pupsurv %>%
   lapply(., GetModelResults)
 
-# mostly for glm_fullint
-mods_pupsurv %>%
-  lapply(., \(x){
-    x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
-  })
-```
-```{r pup surv model other results}
-# approx p-value for (1|year)?
-anova(mods_pupsurv$glmer_randyr, mods_pupsurv$glm_noyr, test = "Chisq") 
+# # mostly for glm_fullint
+# mods_pupsurv %>%
+#   lapply(., \(x){
+#     x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+#   })
 ```
 
-
-## [ ] pupal mass
+## pupal mass
 
 ```{r pup mass model generation}
 df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
@@ -120,15 +111,9 @@ mods_pupmass <- list(
   add = lm(mass.pupa ~ year + minT+ pop + sex,
            data = df, na.action = na.fail),
   fullint = lm(mass.pupa ~ year*minT*pop*sex,
-               data = df, na.action = na.fail),
-  randyr = lmer(mass.pupa ~ minT*pop*sex + (1|year),
-              data = df),
+               data = df, na.action = na.fail)
   
-  # subsets of the full model..
-  twoway = lm(mass.pupa ~ (year + minT + pop + sex)^2,
-              data = df, na.action = na.fail),
-  threeway = lm(mass.pupa ~ year*minT*pop + sex,
-              data = df, na.action = na.fail)
+  # subsets of the full model are in a later chunk otherwise results r crazy
 )
 ```
 
@@ -136,13 +121,32 @@ mods_pupmass <- list(
 mods_pupmass %>%
   lapply(., GetModelResults)
 
-mods_pupmass %>%
-    lapply(., \(x){
-    x %>% dredge()
-  })
+# mods_pupmass %>%
+#     lapply(., \(x){
+#     x %>% dredge()
+#   })
 ```
+basically, per anovas, `lm(mass.pupa ~ year + minT + pop + sex + year:minT)` seems good...
 
-```{r pup mass model other results}
+other results: 
+
+- bc the dredge of the full interactive model (`year*pop*minT*sex`) is crazy, how do the subsets compare?
+  - doing `anova(simpler, complex)` per https://www.geeksforgeeks.org/machine-learning/comparing-two-linear-models-with-anova-in-r/ 
+
+
+```{r pup mass subsets, eval=FALSE}
+# keep separate otherwise console blows up
+
+mods_pupmass <- list_modify(
+  mods_pupmass,
+  # subsets of the full model
+  twoway = lm(mass.pupa ~ (year + minT + pop + sex)^2,
+              data = df, na.action = na.fail),
+  threeway = lm(mass.pupa ~ year*minT*pop + sex,
+              data = df, na.action = na.fail)
+)
+
+# testing anova(simplermod, complexmod)
 anova(mods_pupmass$add, mods_pupmass$fullint, test = "Chisq")
 anova(mods_pupmass$twoway, mods_pupmass$fullint, test = "Chisq")
 anova(mods_pupmass$threeway, mods_pupmass$fullint, test = "Chisq")
@@ -150,15 +154,14 @@ anova(mods_pupmass$twoway, mods_pupmass$threeway, test = "Chisq")
 ```
 
 
-## [ ] time to pup
+## time to pup
+
+notes
+- checked that `sex` PROBABLY doesnt matter: bc sex is only determined after pupation anyway... (so omit from mods)
 
 ```{r pup time model generation}
-
 mods_puptime <- list(
-  fullint = lm(tt.pupa ~ year*minT*pop, data = dfs$wide),
-
-  #int_randyr2 = lme4::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide),
-  int_randyr = lmerTest::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide)
+  fullint = lm(tt.pupa ~ year*minT*pop, data = dfs$wide)
   )
 ```
 
@@ -167,4 +170,65 @@ mods_puptime %>%
   lapply(., GetModelResults)
 ```
 
+
+# # extra (archive)
+
+some lengthier extra analyses that clutter up the main analyses so moved down here. 
+
+## yr as random on pup dev
+
+per 251217 wkly mtg, keep year as a fixed effect in the models (but here is some EDA for reference just in case.) 
+
+each chunk is self-contained (model fitting + tests) and overwrites the `mods_pup_randyr` object. just run `GetModelResults` on them to be reminded of what happened)
+
+```{r pup surv rand yr, eval=FALSE}
+### model generation
+df <- mutate(dfs$wide, year = as.numeric(year))
+
+mods_pup_randyr <- list(
+  surv = glmer(is.pup ~ pop*minT + (1|year),
+                     family = "binomial", data = dfs$wide),
+  
+  surv_ctsyr = glmer(is.pup ~ pop*minT + (1|year),
+                     family = "binomial", data = df),
+    # compare to `surv` to examine effs of yr as cts or cat
+  
+  surv_noyr = glm(is.pup ~ pop*minT,
+                     family = "binomial", data = dfs$wide)
+    # compare to `surv` to examine effs of year
+)
+
+
+### tests
+# effect of cts vs cat yr
+anova(mods_pup_randyr$surv, mods_pup_randyr$surv_ctsyr, test = "Chisq") 
+
+# to get approx p-value for (1|year)?:
+anova(mods_pup_randyr$surv, mods_pup_randyr$surv_noyr, test = "Chisq") 
+  # i forget what this means...
+```
+
+notes about `(1|year)` on pup surv:
+
+- `glmer(is.pup ~ pop*minT + (1|year))` results are same if `year` is numeric or factor
+- can approximate the p-value of the random effect by using `anova` to compare models with and without the effect of interest (bc they're nested) -- see more https://stats.stackexchange.com/questions/381208/r-how-to-get-estimates-and-p-values-for-random-effects-in-glmer
+
+```{r pup time rand yr, eval=FALSE}
+# mostly reminding myself of how lmerTest works
+mods_pup_randyr <- list(
+  time_lmertest = lmerTest::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide),
+  time_lme4 = lme4::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide)
+)
+
+mods_pup_randyr %>% lapply(., summary)
+```
+
+```{r pup dev rand yr, eval=FALSE}
+df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
+
+mods_pup_randyr <- list(
+  mass = lmer(mass.pupa ~ minT*pop*sex + (1|year),
+              data = df)
+)
+```
 
