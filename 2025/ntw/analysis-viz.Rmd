@@ -19,11 +19,12 @@ library(patchwork) # for plot_layout
 # library(survminer) # for plotting surv
 ```
 
-```{r load data and helpers, message=FALSE}
+```{r load data and helpers, message = FALSE, warning=FALSE}
 source(here::here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "/utils/general.R"))
 source(here(bin_paths$y25$ntw, "/utils/analysis-viz.R"))
 source(here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
+rm(dfs_pertent_ss)
 ```
 
 ```{r}
@@ -39,31 +40,12 @@ dfs_tents_ss <- dfs_tents_ss %>%
     lapply(., \(x){
     x %>%
       ungroup() %>%
-      mutate(across(c("year", "mate.trt"), as.factor),
+      mutate(across(c("year", "mate.trt", starts_with("trt")), as.factor),
              mate.type = factor(mate.type, 
                                 levels = c("within", "between")))
   })
   
 ```
-
-```{r make factors}
-# dfs_dev_ss <- dfs_dev_ss %>%
-#   lapply(., \(x){
-#     x %>%
-#       ungroup() %>%
-#       mutate(across(c("year", "trt"), as.factor))
-#   })
-# 
-# dfs_tents_ss <- dfs_tents_ss %>%
-#   lapply(., \(x){
-#     x %>%
-#       ungroup() %>%
-#       mutate(across(c("year", "mate.trt"), as.factor),
-#              mate.type = factor(mate.type, 
-#                                 levels = c("within", "between")))
-#   })
-```
-
 
 # # overall dev
 
@@ -559,9 +541,9 @@ p3
   ggplot(aes(#y = avg.coll.perf, 
              y = avg.sqrt.coll.perf,
              x = mate.trt,
-             lty = mate.pair, shape = mate.pair,
-             group = interaction(mate.pair, mate.hs),
-             col = mate.pair
+             lty = mate.hs, shape = mate.hs,
+             group = mate.hs,
+             col = mate.hs
              # shape = mate.hs, lty = mate.type,
              # group = interaction(mate.hs, mate.type)
   )) + 
@@ -581,16 +563,41 @@ p3
   geom_point(size=2) + geom_line() +
   facet_grid(~year) +
   theme_bw() +
-  scale_shape_manual(values = c(2, 0, 16)) +
+  #scale_shape_manual(values = c(2, 0, 16)) +
   scale_color_brewer(palette = "Dark2") +
-  scale_linetype_manual(values = c(3, 2, 1)) +
-  labs(col = "treatment pair", lty = "treatment pair", shape = "treatment pair",
+  #scale_linetype_manual(values = c(3, 2, 1)) +
+  labs(col = "treated sex", lty = "treated sex", shape = "treated sex",
        caption = "mean±se; lab only",
        y = "sqrt [eggs laid per female]", x = "treatment")
 }
 
+# connect "btwn" trts to 26-26
+.plotfn2 <- function(x){
+    list(
+      geom_line(data = x %>%
+                  #FilterForLabEggs(dfs_tents_ss$eggs_nocol) %>%
+                  filter(trt.f %in% c(260, 419), mate.hs %in% c("both", "f"),
+                         trt.m != 419) %>%
+                  select(-mate.trt) %>%
+                  rename(mate.trt = trt.f) %>% mutate(mate.hs = "f") #%>% View()
+                #, color = "black"
+                , aes(group = mate.hs), show.legend = FALSE,
+                ),
+        geom_line(data = x %>%
+                    #FilterForLabEggs(dfs_tents_ss$eggs_nocol) %>%
+                    filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
+                           trt.f != 419) %>%
+                    select(-mate.trt) %>%
+                    rename(mate.trt = trt.m) %>% mutate(mate.hs = "m") #%>% View()
+                  ,
+                  #aes(group = mate.trt), 
+                  show.legend = FALSE)
+      )
+}
+
 dfs_tents_ss$eggs_nocol %>%
   .plotfn() +
+  .plotfn2(FilterForLabEggs(dfs_tents_ss$eggs_nocol)) +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
 dfs_tents_ss$eggs_nocol %>%
@@ -607,9 +614,9 @@ dfs_tents_ss$eggs_nocol %>%
   FilterForLabEggs() %>% 
   ggplot(aes(y = p.hatch,
              x = mate.trt,
-             lty = mate.pair, shape = mate.pair,
-             group = interaction(mate.pair, mate.hs),
-             col = mate.pair
+             lty = mate.hs, shape = mate.hs,
+             group = interaction(mate.hs),
+             col = mate.hs
   )) + 
   geom_errorbar(aes(ymax = p.hatch + se.hatch,
                     ymin = p.hatch - se.hatch,),
@@ -621,16 +628,17 @@ dfs_tents_ss$eggs_nocol %>%
   geom_point(size=2) + geom_line() +
   facet_grid(~year) +
   theme_bw() +
-  scale_shape_manual(values = c(2, 0, 16)) +
+  #scale_shape_manual(values = c(2, 0, 16)) +
   scale_color_brewer(palette = "Dark2") +
-  scale_linetype_manual(values = c(3, 2, 1)) +
-  labs(col = "treatment pair", lty = "treatment pair", shape = "treatment pair",
+  #scale_linetype_manual(values = c(3, 2, 1)) +
+  labs(col = "treated sex", lty = "treated sex", shape = "treated sex",
        caption = "bars = se; lab only",
        y = "proportion eggs hatched", x = "treatment")
 }
 
 dfs_tents_ss$eggs_nocol %>%
   .plotfn() +
+  .plotfn2(FilterForLabEggs(dfs_tents_ss$eggs_nocol)) +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
 dfs_tents_ss$eggs_nocol %>%

@@ -15,8 +15,7 @@ here::i_am("2025/ntw/data-wrangle.Rmd")
 
 ```{r purl, eval=FALSE, purl=FALSE}
 # rerun to update .R script (save .Rmd first)
-knitr::purl("data-wrangle.Rmd", 
-            here::here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
+knitr::purl("data-wrangle.Rmd", here::here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
 ```
 
 ```{r about}
@@ -25,7 +24,7 @@ knitr::purl("data-wrangle.Rmd",
 ```
 
 
-```{r load libs and data, message=FALSE}
+```{r load libs and data, message=FALSE, warning=FALSE}
 # libraries
 library(tidyverse)
 library(here)
@@ -158,7 +157,7 @@ dfs_dev_ss <- list_modify(
 .CalcPerTentSS <- function(x){
   x %>%
   #dfs_tidy$tents %>% # for testing
-  group_by(across(c("year", "cage", starts_with(c("mate", "trt"))))) %>%
+  group_by(across(c("year", "cage", starts_with(c("mate", "trt", "is"))))) %>%
   summarise(
     #n = n(), # number of days a tent existed for
     n.f = sum(f.added),
