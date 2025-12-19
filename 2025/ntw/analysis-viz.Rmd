@@ -24,7 +24,7 @@ source(here::here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "/utils/general.R"))
 source(here(bin_paths$y25$ntw, "/utils/analysis-viz.R"))
 source(here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
-rm(dfs_pertent_ss)
+#rm(dfs_pertent_ss)
 ```
 
 ```{r}

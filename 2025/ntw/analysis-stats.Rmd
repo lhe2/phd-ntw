@@ -20,7 +20,7 @@ library(tidyverse)
 
 library(conflicted)
 conflicts_prefer( 
-  #lmerTest::lmer, 
+  #lmerTest::lmer, # dont rlly need..
   dplyr::filter
 )
 # lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
@@ -30,6 +30,7 @@ conflicts_prefer(
 # library(survminer) # for plotting
 # library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
 ```
+notes
 
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
@@ -38,30 +39,34 @@ source(here("set-paths.R"))
 source(here(bin_paths$y25$ntw, "/utils/general.R"))
 source(here(bin_paths$y25$ntw, "/utils/analysis-stats.R"))
 
-source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
+source(here(bin_paths$y25$ntw, "/R/tidy-data.R")) # dev data
+source(here(bin_paths$y25$ntw, "/R/wrangle-data.R")) # tents data
+rm(dfs_tents_ss, dfs_dev_ss)
+
+dfs <- list() # for stats dfs
 ```
 
 ## data prep
 
-```{r light wrangling}
-imported_dev <- list(
-  wide = dfs_tidy$wide
-  ) %>%
+
+```{r dev data prep}
+# formatting
+  # dont think this needs to be a list tbh LOL
+imported_dev <- 
+  list(wide = dfs_tidy$wide) %>%
   lapply(., \(x){
     x %>%
-    mutate(across(c("year", "minT"), as.factor))
+      mutate(across(c("year", "minT"), as.factor))
   })
 
-# add cols
 imported_dev$wide <- imported_dev$wide %>%
       mutate(tt.pupa = jdate.pupa - jdate.hatch) 
 
-```
+#rm(dfs_tidy)
 
 
-```{r make subsets}
-# in dev data: drop controls and lab+TB
-dfs <- list(
+# subset: drop controls and lab+TB
+dfs <- dfs %>% list_modify(
   wide = 
     imported_dev[["wide"]] %>%
     FilterOutLabTB() %>%
@@ -73,12 +78,27 @@ dfs <- list(
     imported_dev[["wide"]] %>%
     FilterOutLabTB() %>%
     filter(trt != 260,
-           !is.na(jdate.pupa) & !is.na(sex))
+           !is.na(jdate.pupa) & !is.na(sex)),
   
 )
 
 ```
 
+```{r tent data prep}
+# formatting
+imported_tents <- 
+  dfs_pertent_ss %>%
+  mutate(across(starts_with("trt"), as.factor))
+
+#rm(dfs_pertent_ss)
+
+# subset
+dfs <- dfs %>% list_modify(
+  tents =
+    imported_tents %>%
+    FilterForLabEggs()
+)
+```
 # # pupal stats
 
 ## survival to pup
@@ -94,12 +114,6 @@ mods_pupsurv <- list(
 ```{r pup surv model main results}
 mods_pupsurv %>%
   lapply(., GetModelResults)
-
-# # mostly for glm_fullint
-# mods_pupsurv %>%
-#   lapply(., \(x){
-#     x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
-#   })
 ```
 
 ## pupal mass
@@ -120,11 +134,6 @@ mods_pupmass <- list(
 ```{r pup mass model main results}
 mods_pupmass %>%
   lapply(., GetModelResults)
-
-# mods_pupmass %>%
-#     lapply(., \(x){
-#     x %>% dredge()
-#   })
 ```
 basically, per anovas, `lm(mass.pupa ~ year + minT + pop + sex + year:minT)` seems good...
 
@@ -174,6 +183,25 @@ mods_puptime %>%
 # # extra (archive)
 
 some lengthier extra analyses that clutter up the main analyses so moved down here. 
+
+## pup model dredging
+
+looking into some of the nested models.. (output is too long LOL so shoving it all here)
+
+```{r pup mod dredging eval=FALSE}
+# run upstream dfs first!!!
+
+mods_pupsurv %>%
+  lapply(., \(x){
+    x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+  })
+
+mods_pupmass %>%
+  lapply(., \(x){
+    x %>% dredge()
+  })
+```
+
 
 ## yr as random on pup dev
 
