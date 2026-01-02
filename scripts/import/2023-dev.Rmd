@@ -3,25 +3,35 @@ title: "ntw_data_cleaning"
 date: "2023-11-07"
 ---
 
+about:
+- imports and cleans ntw 2023 data (larval and tents) from googlesheets
+
+notes:
+- rerun this Rmd in entirety when the gsheets gets updated
+
 # roadmap
 
 1. load data & packages
 2. cleaning: prefiltering, fix columns, add columns
 3. save output
 
-# 1. load data & packages
+# loading
+## - packages
 ```{r message = FALSE}
-library(conflicted)
-library(dplyr)
-conflicts_prefer(dplyr::filter)
-library(tidyr)
-library(purrr)
-
-# to load data from gsheets
+library(tidyverse)
 library(googlesheets4)
+#conflicts_prefer(dplyr::filter)
+
+here::i_am("_ntw/scripts/import/2023-dev.Rmd")
+library(here)
 ```
 
-## - data import from gsheets
+```{r}
+# setup for export
+today <- format(Sys.time(), "%y%m%d-%H%M")
+```
+
+## - gsheets data
 
 note: 2024-07-02 updated gsheet with the field diapausers(?); should be the final update. as of now, has yet to be incorporated into cleaned data used for analyses (should look into "tossing" criteria before deleting this note)
 
@@ -31,113 +41,127 @@ note: 2024-07-02 updated gsheet with the field diapausers(?); should be the fina
   # check column/row alignment + proper sorting (adult sheets)
 
 # larva data
-data_field <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field", col_types = "c")
-data_labsu <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab", col_types = "c")
-data_labF1 <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1", col_types = "c")
-data_labsp <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c")
-```
-
-## - consolidation
-
-```{r}
-# function to standardise column format
-fix.columns <- function(data) {
-  cleaned_data <- data %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
-    mutate(mutate(across(starts_with("mass."), as.numeric))
-    )
+dfs_raw <- list(
+  field = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field", col_types = "c") %>%
+    mutate(src = "field"),
   
-  return(cleaned_data)
-}
-
-# add IDs to imported data sheets and merge
-data_field <- mutate(data_field, src = "field")
-data_labF1 <- mutate(data_labF1, src = "F1")
-data_labsp <- mutate(data_labsp, src = "sp")
-data_labsu <- mutate(data_labsu, src = "su")
-
-data_all <- data.table::rbindlist(lapply(list(data_field, data_labF1, data_labsp, data_labsu), fix.columns), fill = T)
-
-check_raw <- data_all #for troubleshooting lol
+  labsu = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab", col_types = "c") %>%
+    mutate(src = "su"),
+  
+  labF1 = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1", col_types = "c") %>%
+    mutate(src = "F1"),
+  
+  labsp = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c") %>%
+    mutate(src = "sp")
+)
 ```
 
 
-# 2. clean data
+# consolidating
 
-## - prefiltering
 ```{r}
-# filter out individuals that didnt hatch at 26C / ctrl temps
-data_all <- data_all %>%
-    filter(!(src == "sp" & (from.E == 2 | (from.E == 0 & (treatment == 337 | treatment == 330 | treatment == 267)))))
+# standardise some column formats and merge
+df_all <- lapply(dfs_raw, \(x){
+  x %>%
+    mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
+    mutate(mutate(across(starts_with("mass."), as.numeric)))
+}) %>%
+  data.table::rbindlist(fill = TRUE)
+```
 
-# filter random deaths (got squished/empty)
-data_all <- subset(data_all, !(ID %in% c(1002, 1007, 1017)))
-#data_all <- data_all %>% filter(is.na(reason.ignore))
+## - filtering & column renaming
+
+remove bad individuals:
+- individuals that didnt hatch at 26C/ctrl temps
+- random deaths (squished/empty)
+- bonus ctrl field bugs
+
+```{r}
+df_filtered <- df_all %>%
+  filter(!(src == "sp" & (from.E == 2 | (from.E == 0 & (treatment %in% c(337, 330, 267))))),
+         !(ID %in% c(1002, 1007, 1017)),
+         treatment != "ctrl") %>%
+  rename(trt = treatment,
+         id = ID,
+         date.LPI = date.LP)
+
+# check: 
+# df_filtered %>% filter(is.na(reason.ignore))
 ```
 
 ## - column/value formatting, other fixes
+
+
 ```{r}
 # julian date formatting
-data_all <- data_all %>%
+df_cleaned <- df_filtered %>%
   mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric))
 
 # value standardising
-data_all$treatment[data_all$treatment=="426"] <- "337" # match for consistency
-data_all$instar.enter[data_all$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
-data_all$final.fate[data_all$final.fate == "LP"] <- "LPI"
+df_cleaned$trt[df_cleaned$trt=="426"] <- "337" # match for consistency to the 2x2 expt; keep as char bc of "ctrl" trts
+df_cleaned$instar.enter[df_cleaned$trt.stage == "1st"] <- "hatch" # change field 1sts to hatchlings
+df_cleaned$final.fate[df_cleaned$final.fate == "LP"] <- "LPI"
 
+# TODO: work this into scripts later
 # add instar.enter levels
-data_all$instar.enter <- factor(data_all$instar.enter, levels = c("hatch", "1st", "3rd", "4th"))
+#df_cleaned$instar.enter <- factor(df_cleaned$instar.enter, levels = c("hatch", "1st", "3rd", "4th"))
 
 # add in late dead pupa
-data_all <- data_all %>%
+df_cleaned <- df_cleaned %>%
   mutate(final.fate = case_when(!is.na(date.exit) & is.na(final.fate) ~ "pupa",
                                 TRUE ~ as.character(final.fate)))
 ```
 
-## - column creation for stats
+# column creation
+## - development binaries
 ```{r}
 # survival/development binaries
-data_all <- data_all %>% mutate(
-  if.stuck = case_when(is.na(date.stuck) ~ "N", TRUE ~ "Y"),
-  if.pupa = case_when(is.na(date.LP) & is.na(date.pupa) ~ "N", TRUE ~ "Y"),
-  if.sup = case_when(is.na(date.6th) ~ "N", TRUE ~ "Y"),
-  sup = case_when(!is.na(date.7th) ~ 7, !is.na(date.6th) ~ 6, TRUE ~ 0) # type of sup
+df_cleaned <- df_cleaned %>% mutate(
+  if.stuck = case_when(is.na(date.stuck) ~ "N", 
+                       TRUE ~ "Y"),
+  if.pupa = case_when(is.na(date.LPI) & is.na(date.pupa) ~ "N", 
+                      TRUE ~ "Y"),
+  if.sup = case_when(is.na(date.6th) ~ "N", 
+                     TRUE ~ "Y"),
+  # type of sup
+  sup = case_when(!is.na(date.7th) ~ 7, 
+                  !is.na(date.6th) ~ 6, 
+                  !is.na(date.pupa) | !is.na(date.LPI) ~ 0) # TODO: check... (used to be "TRUE ~ 0")
   )
 
 # subdivide treatments
-data_all <- data_all %>%
-  mutate(treatment = as.character(treatment),
-         trt.stage = as.character(paste(treatment,instar.enter, sep = "-")), # treatment @ instar
+df_cleaned <- df_cleaned %>%
+  mutate(trt = as.numeric(trt),
+         trt.stage = as.character(paste(trt,instar.enter, sep = "-")), # treatment @ instar
          grp.trt = paste(expt.group, trt.stage, sep = "-")) # cohort & treatment
 
 # mean/fluc Ts; correction for diurnal trts
-data_all <- data_all %>%
-  mutate(meanT = case_when(treatment == 260 | treatment == 267 | treatment == "ctrl" ~ 26,
-                           treatment == 337 | treatment == 330 ~ 33,
-                           treatment == 433 ~ 36.5,
-                           treatment == 419 ~ 29.5),
-         flucT = case_when(treatment == 260 | treatment == 330 ~ 0,
-                           treatment == 267 | treatment == 337 ~ 7,
-                           treatment == 433 ~ 3.5,
-                           treatment == 419 ~ 10.5),
-         maxT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
-                          treatment == 267 | treatment == 330 ~ 33,
-                          treatment > 331 ~ 40),
-         minT = case_when(treatment == 260 | treatment == "ctrl" ~ 26,
-                          treatment == 267 | treatment == 419 ~ 19,
-                          treatment == 337 ~ 26,
-                          treatment == 433 | treatment == 330 ~ 33)) %>%
-  mutate(flucT = case_when((treatment == 260 & 
-                              (expt.group == "C" | expt.group == "D" | expt.group == "E" | expt.group == "F" | expt.group == "G" | expt.group == "H")) ~ 2.5,
+df_cleaned <- df_cleaned %>%
+  mutate(meanT = case_when(trt %in% c(260, 267) ~ 26,
+                           trt %in% c(337, 330) ~ 33,
+                           trt == 433 ~ 36.5,
+                           trt == 419 ~ 29.5),
+         flucT = case_when(trt %in% c(260, 330) ~ 0,
+                           trt %in% c(267, 337) ~ 7,
+                           trt == 433 ~ 3.5,
+                           trt == 419 ~ 10.5),
+         maxT = case_when(trt == 260 ~ 26,
+                          trt %in% c(267, 337) ~ 33,
+                          trt > 331 ~ 40),
+         minT = case_when(trt == 260 ~ 26,
+                          trt %in% c(267, 419) ~ 19,
+                          trt == 337 ~ 26,
+                          trt%in% c(433, 330) ~ 33)) %>%
+  mutate(flucT = case_when(trt == 260 & 
+                              expt.group %in% LETTERS[3:8] ~ 2.5,
                            TRUE ~ as.numeric(flucT)))
 ```
 
 ## - column creation for notes
 ```{r}
 # indicate field/lab pops, diet, parents
-data_all <- data_all %>%
+df_cleaned <- df_cleaned %>%
   mutate(pop = case_when(location == "CC" ~ "field",
                          src == "F1" ~ "F1",
                          TRUE ~ "lab"),
@@ -148,19 +172,18 @@ data_all <- data_all %>%
 
 # fill in reason.ignore (optional reasons to ignore individs later when graphing/stats/etc)
   # indicate overly long-lived individuals: things that took > 25 days to die
-data_all <- data_all %>% 
+df_cleaned <- df_cleaned %>% 
   mutate(reason.ignore = case_when(jdate.pmd-jdate.hatch > 25 ~ "slow larva",
                                    #jdate.eclose - jdate.pupa > 25 ~ "diapaused?",
-                                   src == "F1" & ID < 3036 ~ "early F1",
-                                   expt.group == "E" & treatment == "337" & ID < 247 ~ "early field",
+                                   src == "F1" & id < 3036 ~ "early F1",
+                                   expt.group == "E" & trt == 337 & id < 247 ~ "early field",
                                    #final.fate == "culled" & instar.culled == "pupa" ~ "winter culling",
                                    final.fate == "culled" & instar.culled != "pupa" ~ "culled larva",
                                    reason.pmd == "toast" ~ "hot larva",
                                    TRUE ~ as.character(reason.ignore)))
 
-# check: table(data_all$reason.ignore)
-
-check_newcols <- data_all
+# check: 
+# table(df_cleaned$reason.ignore)
 ```
 
 # 3. save the output
@@ -168,39 +191,37 @@ check_newcols <- data_all
 ```{r}
 today <- format(Sys.time(), "%y%m%d")
 
-# MQs only
-mqs <- data_all %>% filter(species == "MQ")
+# raw data
+write.csv(df_all, file = paste0(here("_ntw/data/raw/2023/"), "raw_", today, ".csv"), row.names = FALSE) 
 
-write.csv(mqs, file = "~/Documents/repos/ntw/2023/data/clean-MQs.csv", row.names = FALSE)
-write.csv(mqs, file = paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-MQs.csv" ), row.names = FALSE)
+# MQs only
+export <- df_cleaned %>% 
+  filter(species == "MQ") %>%
+  select(-c("species", "from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
+
+write.csv(export, file = here("_ntw/data/clean/2023/MQs.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "MQs_", today, ".csv" ), row.names = FALSE)
 
 
 # wordier notes
-notes <- data_all %>% select(c("treatment", "ID", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled")))
-
-write.csv(notes, file = "~/Documents/repos/ntw/2023/data/notes_ntw.csv", row.names = FALSE)
-write.csv(notes, file = paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_ntw.csv" ), row.names = FALSE)
+# export <- df_cleaned %>% select(c("trt", "id", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled")))
+# 
+# write.csv(export, file = here("_ntw/data/clean/2023-ntw-notes.csv"), row.names = FALSE)
+# write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "ntw-notes_", today, ".csv" ), row.names = FALSE)
   
 # cleaned up sexta
-check_final <- data_all %>%
+export <- df_cleaned %>%
   filter(is.na(species)) %>% 
-  select(-c("species", "from.E", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", "date.stuck", ends_with(".culled"), "eclose-3"))
+  select(-c("species", "from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
 
-write.csv(check_final, file = "~/Documents/repos/ntw/2023/data/clean-ntw.csv", row.names = FALSE)
-write.csv(check_final, file = paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean_ntw.csv" ), row.names = FALSE)
+write.csv(export, file = here("_ntw/data/clean/2023/sexta.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "sexta_", today, ".csv" ), row.names = FALSE)
 ```
 
-## - troubleshooting
+## - cleanup
 
 ```{r}
-# data_all <- check_raw
-# data_all <- check_newcols
-# data_all <- check_final
-```
-
-```{r}
-# if all goes well!
-rm(check_raw, check_newcols)
-rm(today, mqs, notes, check_final, data_all)
-rm(data_field, data_labF1, data_labsp, data_labsu, fix.columns)
+rm(dfs_raw, df_all,
+   df_cleaned, df_filtered, 
+   today, export)
 ```
