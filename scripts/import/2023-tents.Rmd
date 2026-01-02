@@ -11,14 +11,12 @@ date: "2023-02-15"
 
 # 1. load data & packages
 ```{r message = FALSE}
-library(conflicted)
-library(dplyr)
-conflicts_prefer(dplyr::filter)
-library(tidyr)
-library(purrr)
-
-# to load data from gsheets
+library(tidyverse)
 library(googlesheets4)
+#conflicts_prefer(dplyr::filter)
+
+here::i_am("_ntw/scripts/import/2023-tents.Rmd")
+library(here)
 ```
 
 ## - data import from gsheets
@@ -28,16 +26,13 @@ library(googlesheets4)
   # run cleaning macros,
   # check column/row alignment + proper sorting
 
-# tents/hatch data
-data_pairs <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c", na = c("#N/A", "NA", "--", "", "#REF!"))
-data_tentstats <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:Q", na = c("#N/A", "NA", "--", "", "#REF!", "unk"))
-data_hatch <- read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c", range = "A:F", na = c("#N/A", "NA", "--", "", "#REF!"))
-
-# for when i mess up!
-ogtents <- list(data_pairs, data_tentstats, data_hatch)
-data_pairs <- ogtents[[1]]
-data_tentstats <- ogtents[[2]]
-data_hatch <- ogtents[[3]]
+dfs_raw <- list(
+  pairs = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c", na = c("#N/A", "NA", "na", "--", "", "#REF!")),
+  
+  tents = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:Q", na = c("#N/A", "NA", "--", "", "#REF!", "unk")),
+  
+  hatch = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c", range = "A:F", na = c("#N/A", "NA", "--", "", "#REF!"))
+)
 ```
 
 # 2. cleaning
@@ -50,29 +45,13 @@ matepairs:
 - fill in other tents (i.e cages) w/ sth
 - *standardise column names*
 
-## - add/drop columns
+## - standardise and consolidate columns
 ```{r}
-# drop unneeded columns
-data_pairs <- select(data_pairs, -c("sex_A", "sex_B", "id_F2", "id_M2", "id_A-orig", "id_B-orig", "combo2"))
-data_tentstats <- select(data_tentstats, -starts_with(c("total", "lifetime")))
-
-# add IDs
-# data_pairs <- mutate(data_pairs, src = "pairs")
-# data_tentstats <- mutate(data_tentstats, src = "tstats")
-# data_hatch <- mutate(data_hatch, src = "hatch")
-```
-
-## - standardise column names, row trimming
-```{r}
-data_hatch <- data_hatch %>%
-  rename(date.hatch = date.hatchlings,
-         id.tent = "tent id",
-         id.coll = "coll-tent", # collection id (date-tent)
-         n.hatch = n.hatchlings,
-         notes.hatch = notes)
-
-data_pairs <- data_pairs %>%
-  rename(trt.pair = combo,
+# drop unneeded columns/rows and standardise column names
+dfs_filtered <- list(
+  pairs = dfs_raw[["pairs"]] %>%
+    select(-c("sex_A", "sex_B", "id_F2", "id_M2", "id_A-orig", "id_B-orig", "combo2")) %>%
+      rename(trt.pair = combo,
          id.tent = tent_id,
          id.pair = pair_id,
          room = location,
@@ -86,23 +65,33 @@ data_pairs <- data_pairs %>%
          track.f = purpose_F,
          trt.m = trt_M,
          date.m.ec = eclose_M,
-         track.m = purpose_B)
-
-data_tentstats <- data_tentstats %>%
-  rename(date.coll = date,
-         id.tent = tent.ID,
+         track.m = purpose_B) %>%
+    drop_na(id.tent),
+  
+  tents = dfs_raw[["tents"]] %>% 
+    select(-starts_with(c("total", "lifetime"))) %>%
+    rename(date.coll = date,
+         id.tent = tent.ID, # dropping the splits
          n.coll = "eggs collected",
          n.new.f = "females added",
          n.curr.f = "females alive current",
+         n.active.f = "females laying", # doesnt actually get used in analysis scripts..
          n.died.f = "females dead",
          n.new.m = "males added",
          n.curr.m = "males alive",
          n.died.m = "males dead",
-         notes.tents = notes)
+         notes.tents = notes),
+    
+  hatch = dfs_raw[["hatch"]] %>%
+      rename(date.hatch = date.hatchlings,
+         id.tent = "tent id",
+         id.coll = "coll-tent", # collection id (date-tent)
+         n.hatch = n.hatchlings,
+         notes.hatch = notes) %>%
+    drop_na(id.tent)
+)
+    
 
-# drop empty rows
-data_pairs <- drop_na(data_pairs, id.tent)
-data_hatch <- drop_na(data_hatch, id.tent)
 ```
 
 
@@ -118,28 +107,32 @@ the summed # of hatchlings per day is being appended to the daily tent happening
 # hatchinfo <- select(data_tents, c(id.coll, id.tent, date.coll, date.hatch, n.hatch, notes.hatch)) %>%
 #   drop_na(date.hatch)
 
-hatchinfo <- data_hatch %>%
-  mutate(n.hatch = as.numeric(n.hatch)) %>%
-  group_by(id.tent, date.hatch) %>%
-  summarise(n.tothatch = sum(n.hatch))
-
 # data_tents <- select(data_tentstats, -c(date.hatch, n.hatch, id.coll, notes.hatch)) %>%
 #   distinct()
 
-data_tents <- 
-  full_join(data_tentstats, hatchinfo, by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE) %>%
-  mutate(trt.f = case_when(trt.f == "ctrl" ~ 900, # bc 107-I gets yeeted
-                           TRUE ~ as.numeric(trt.f))) %>%
-  group_by(id.tent) %>% # fill in missing parent trt info
-  fill(c(trt.f, trt.m), .direction = "updown") %>%
-  ungroup() %>%
-  mutate(trt.f = case_when(id.tent == "301-Z" ~ 260,
-                           TRUE ~ as.numeric(trt.f)),
-         trt.m = case_when(id.tent == "107-H" ~ 260,
-                           #id.tent == "107-I" ~ ,
-                           #id.tent == "301-T" ~ ,
-                           id.tent == "301-U" ~ 260,
-                           TRUE ~ as.numeric(trt.m)))
+dfs_cleaned <- list(
+  hatch = dfs_filtered[["hatch"]],
+  
+  tents = 
+    full_join(dfs_filtered[["tents"]], 
+              dfs_filtered[["hatch"]] %>%
+                mutate(n.hatch = as.numeric(n.hatch)) %>%
+                group_by(id.tent, date.hatch) %>%
+                summarise(n.tothatch = sum(n.hatch)),
+              by = c("id.tent", "date.coll" = "date.hatch"), all = TRUE) %>%
+    mutate(trt.f = case_when(trt.f == "ctrl" ~ 900, # bc 107-I gets yeeted
+                             TRUE ~ as.numeric(trt.f))) %>%
+    group_by(id.tent) %>% # fill in missing parent trt info
+    fill(c(trt.f, trt.m), .direction = "updown") %>%
+    ungroup() %>%
+    mutate(trt.f = case_when(id.tent == "301-Z" ~ 260,
+                             TRUE ~ as.numeric(trt.f)),
+           trt.m = case_when(id.tent == "107-H" ~ 260,
+                             #id.tent == "107-I" ~ ,
+                             #id.tent == "301-T" ~ ,
+                             id.tent == "301-U" ~ 260,
+                             TRUE ~ as.numeric(trt.m)))
+)
 
 ```
 
@@ -152,33 +145,15 @@ data_tents <-
 
 # data_tents <- left_join(data_tentstats, data_hatch, by = c("date.coll" = "date.hatched", "id.tent"), all = TRUE) 
 
-tentlist <- list(data_tents, data_pairs)
-
-# function to fix values, column format
-fix.values <- function(data) {
+# per-df cleaning
+dfs_cleaned <- list_modify(
+  dfs_cleaned,
+  tents = dfs_cleaned[["tents"]] %>%
+    filter(is.na(if.ignore)) %>%
+    rename(date = date.coll),
   
-  data <- data %>%
-    mutate(# fix column format
-           across(starts_with("date."),  as.Date, format = "%m/%d/%y"),
-           across(starts_with("n."), as.numeric),
-           
-           # fix values
-           trt.m = case_when(trt.m == "col" ~ 999,
-                             trt.m == "ctrl" ~ 900,
-                             TRUE ~ as.numeric(trt.m)),
-           trt.f = case_when(trt.f == "col" ~ 999,
-                             trt.f == "ctrl" ~ 900,
-                             TRUE ~ as.numeric(trt.f))
-           )
-}
-
-tentlist_clean <- lapply(tentlist, fix.values)
-data_tents <- tentlist_clean[[1]]
-data_pairs <- tentlist_clean[[2]]
-
-# per df value fixing & cleaning
-data_pairs <- data_pairs %>%
-  mutate(id.pair = as.numeric(id.pair),
+  pairs = dfs_filtered[["pairs"]] %>%
+    mutate(id.pair = as.numeric(id.pair),
          room = as.numeric(room),
          tent = case_when(is.na(tent) ~ "cage",
                           TRUE ~ as.character(tent)),
@@ -193,65 +168,98 @@ data_pairs <- data_pairs %>%
                               room == 301 & (tent %in% c("G", "U")) ~ "R3",
                               room == 301 & (tent %in% c("H", "X", "Z")) ~ "R4",
                               TRUE ~ "107")) %>%
-  naniar::replace_with_na_all(condition = ~.x %in% c("unk", "na"))
+    naniar::replace_with_na_all(condition = ~.x %in% c("unk", "na"))
+)
 
-data_tents <- data_tents %>%
-  filter(is.na(if.ignore)) %>%
-  rename(date = date.coll)
+# column/value standardising
+## column formatting
+dfs_cleaned <- 
+  dfs_cleaned %>% lapply(\(x){
+    x %>%
+      mutate(
+        across(starts_with("date"),  as.Date, format = "%m/%d/%y"),
+        across(starts_with("date"), as.Date, "%j"),
+        across(starts_with(c("date", "n.")), as.numeric)) %>%
+      rename_with(~ paste0("j", .x), starts_with("date"))
+  }
+)
+
+## fix trt values
+dfs_cleaned[c("tents", "pairs")] <- lapply(
+  dfs_cleaned[c("tents", "pairs")], \(x){
+    x %>%
+      mutate(
+           trt.m = case_when(trt.m == "col" ~ 999,
+                             trt.m == "ctrl" ~ 900,
+                             TRUE ~ as.numeric(trt.m)),
+           trt.f = case_when(trt.f == "col" ~ 999,
+                             trt.f == "ctrl" ~ 900,
+                             TRUE ~ as.numeric(trt.f))
+           )
+  })
+
 ```
 
 
 ```{r add addtl room, pop info}
-moreinfo <- data_pairs %>%
-  select(id.tent, room, tent, tent.loc, pop) %>%
-  mutate(pop = case_when(pop == "lab + col ctrl" | pop == "lab + 260 ctrl" ~ "lab",
-                         TRUE ~ as.character(pop))) %>%
-  distinct()
-
-data_tents <- left_join(data_tents, moreinfo, by = "id.tent", all = TRUE)
-data_tents <- data_tents[, c(1, 15:16, 2, 17, 3, 14, 4:13, 18:19)]
+dfs_cleaned[["tents"]] <- left_join(
+  dfs_cleaned[["tents"]], 
+  dfs_cleaned[["pairs"]] %>%
+    select(id.tent, #room, tent, tent.loc, 
+           pop) %>%
+    mutate(pop = case_when(pop == "lab + col ctrl" | pop == "lab + 260 ctrl" ~ "lab",
+                           TRUE ~ as.character(pop))) %>%
+    distinct(), 
+  by = "id.tent")
+#dfs_cleaned[["tents"]] <- dfs_cleaned[["tents"]][, c(1, 15:16, 2, 17, 3, 14, 4:13, 18:19)]
+  # dont need anymore after removing the extra cols...
 ```
 
 # 3. extracting notes & saving outputs
 
 ```{r}
-today <- format(Sys.time(), "%y%m%d")
+today <- format(Sys.time(), "%y%m%d-%H%M")
+
+# raw
+write_csv(dfs_raw[["pairs"]], file = paste0(here("_ntw/data/raw/2023/"), "pairs_", today, ".csv"))
+write_csv(dfs_raw[["tents"]], file = paste0(here("_ntw/data/raw/2023/"), "tents_", today, ".csv"))
+write_csv(dfs_raw[["hatch"]], file = paste0(here("_ntw/data/raw/2023/"), "hatching_", today, ".csv"))
 
 # save notes elsewhere
-notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
-notes_tents <- select(data_tents, date, id.tent, room, tent, tent.loc, notes.tents)
-
-write.csv(notes_pairs, "~/Documents/repos/ntw/2023/data/notes_tentpairs.csv", row.names = FALSE)
-write.csv(notes_pairs, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentpairs.csv"), row.names = FALSE)
-
-write.csv(notes_tents, "~/Documents/repos/ntw/2023/data/notes_tentstats.csv", row.names = FALSE)
-write.csv(notes_tents, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentstats.csv"), row.names = FALSE)
-
-# drop from main dfs
-data_pairs <- select(data_pairs, -notes)
-data_tents <- select(data_tents, -c(notes.tents, if.ignore))
-data_hatch <- select(data_hatch, -notes.hatch)
+# notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
+# notes_tents <- select(data_tents, date, id.tent, room, tent, tent.loc, notes.tents)
+# 
+# write.csv(notes_pairs, "~/Documents/repos/ntw/2023/data/notes_tentpairs.csv", row.names = FALSE)
+# write.csv(notes_pairs, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentpairs.csv"), row.names = FALSE)
+# 
+# write.csv(notes_tents, "~/Documents/repos/ntw/2023/data/notes_tentstats.csv", row.names = FALSE)
+# write.csv(notes_tents, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentstats.csv"), row.names = FALSE)
 
 # save cleaned dfs
-write.csv(data_tents, "~/Documents/repos/ntw/2023/data/clean-tentstats.csv", row.names = FALSE)
-write.csv(data_tents, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-tentstats.csv"), row.names = FALSE)
+dfs_cleaned <- dfs_cleaned %>%
+  lapply(\(x){
+    x %>%
+    select(-starts_with("notes"))
+  })
 
-write.csv(data_pairs, "~/Documents/repos/ntw/2023/data/clean-tentpairs.csv", row.names = FALSE)
-write.csv(data_pairs, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-tentpairs.csv"), row.names = FALSE)
+export <- dfs_cleaned[["tents"]] %>% select(-if.ignore)
+write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-info.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "tents_", today, ".csv"), row.names = FALSE)
 
-write.csv(data_hatch, "~/Documents/repos/ntw/2023/data/clean-hatchstats.csv", row.names = FALSE)
-write.csv(data_hatch, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_clean-hatchstats.csv"), row.names = FALSE)
+
+export <- dfs_cleaned[["pairs"]]
+write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-pairs.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "pairs_", today, ".csv"), row.names = FALSE)
+
+export <- dfs_cleaned[["hatch"]]
+write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-hatch.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "hatch_", today, ".csv"), row.names = FALSE)
 ```
 
 ```{r}
 # cleanup
-rm(today,
-   data_tents, data_pairs, data_hatch, data_tentstats, 
-   notes_pairs, notes_tents,
-   tentlist, tentlist_clean,
-   fix.values, hatchinfo, moreinfo)
-
-rm(ogtents)
+rm(dfs_raw, dfs_filtered, 
+   dfs_cleaned, today, export)
 ```
 
 
@@ -273,6 +281,3 @@ rm(ogtents)
 # clean_list_data <- lapply(mget(dfs), formatear)
 # clean_list_data[[1]]
 ```
-
-
-
