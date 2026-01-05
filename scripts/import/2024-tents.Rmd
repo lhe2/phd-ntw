@@ -16,15 +16,11 @@ stealing from `2023/cleaning_tents.Rmd` again!!
 # 1. load data & packages
 
 ```{r message = FALSE}
-library(conflicted)
-library(dplyr)
-conflicts_prefer(dplyr::filter)
-library(tidyr)
-library(purrr)
-library(stringr)
-
-# to load data from gsheets
+library(tidyverse)
 library(googlesheets4)
+
+here::i_am("_ntw/scripts/import/2024-tents.Rmd")
+library(here)
 ```
 
 ## - data import from gsheets
@@ -34,15 +30,11 @@ library(googlesheets4)
   # run cleaning macros,
   # check column/row alignment + proper sorting
 
-# tents/hatch data
-data_tents <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1854350692", sheet = "tents", range = "A:N", col_types = "c", na = c("", "n/a"))
-data_tentstats <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", sheet = "tent stats", range = "A:Q", col_types = "c", na = c("", "#REF!", "#N/A"))
-
-# for when i mess up!
-ogtents <- list(data_tents, data_tentstats)
-#data_tents <- ogtents[[1]]
-#data_tentstats <- ogtents[[2]]
-
+dfs_raw <- list(
+  tents = read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1854350692", sheet = "tents", range = "A:N", col_types = "c", na = c("", "n/a")),
+  
+  tentstats = read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", sheet = "tent stats", range = "A:Q", col_types = "c", na = c("", "#REF!", "#N/A"))
+)
 ```
 
 # 2. cleaning
@@ -99,7 +91,7 @@ data_tentstats <- data_tentstats %>%
 # 3. extracting notes & saving outputs
 
 ```{r}
-today <- format(Sys.time(), "%y%m%d")
+today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # save cleaned dfs
 write.csv(data_tents, "~/Documents/repos/ntw/2024/data/clean-longevity.csv", row.names = FALSE)
