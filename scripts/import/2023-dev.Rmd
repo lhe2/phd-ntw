@@ -26,11 +26,6 @@ here::i_am("_ntw/scripts/import/2023-dev.Rmd")
 library(here)
 ```
 
-```{r}
-# setup for export
-today <- format(Sys.time(), "%y%m%d-%H%M")
-```
-
 ## - gsheets data
 
 note: 2024-07-02 updated gsheet with the field diapausers(?); should be the final update. as of now, has yet to be incorporated into cleaned data used for analyses (should look into "tossing" criteria before deleting this note)
@@ -94,7 +89,7 @@ df_filtered <- df_all %>%
 
 ```{r}
 # julian date formatting
-df_cleaned <- df_filtered %>%
+df_cleaned <- df_filtered %>% 
   mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
   mutate(across(starts_with("jdate."), as.numeric))
 
@@ -189,10 +184,10 @@ df_cleaned <- df_cleaned %>%
 # 3. save the output
 
 ```{r}
-today <- format(Sys.time(), "%y%m%d")
+today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # raw data
-write.csv(df_all, file = paste0(here("_ntw/data/raw/2023/"), "raw_", today, ".csv"), row.names = FALSE) 
+write.csv(df_all, file = paste0(here("_ntw/data/raw/2023/"), "dev_", today, ".csv"), row.names = FALSE) 
 
 # MQs only
 # export <- df_cleaned %>% 
@@ -214,8 +209,8 @@ export <- df_cleaned %>%
   #filter(is.na(species)) %>% 
   select(-c("species", "from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
 
-write.csv(export, file = here("_ntw/data/clean/2023/sexta.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "sexta_", today, ".csv" ), row.names = FALSE)
+write.csv(export, file = here("_ntw/data/clean/2023/dev.csv"), row.names = FALSE)
+#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "dev-sexta_", today, ".csv" ), row.names = FALSE)
 ```
 
 ## - cleanup

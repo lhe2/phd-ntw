@@ -87,6 +87,7 @@ data <- data %>%
          )
   
 ```
+
 ## - export
 
 ```{r}
@@ -95,8 +96,8 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 # trim
 export <- data %>% select(-c(starts_with("date"), "jdate.culled", "notes"))
 
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_adults.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-adults.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "tent-matings_", today, ".csv"), row.names = FALSE) # "adults"
+write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-matings.csv"), row.names = FALSE)
 ```
 
 # eggs
@@ -142,15 +143,15 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # raw data
 raw <- raw %>% reduce(left_join, by = c("date.collected", "id.cage"))
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_eggs.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "eggs_", today, ".csv"), row.names = FALSE) # "hatching"
 
 # collected
 export <- data$coll %>% select(-c(starts_with("date"), "notes"))
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-coll.csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-eggs.csv"), row.names = FALSE)  # "coll"
 
 # hatched
-export <- merge(data$coll, data$hatch, all = TRUE) %>% select(-c(starts_with("date"), "notes"))
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-hatch.csv"), row.names = FALSE)
+export <- merge(data$coll, data$hatch, all = TRUE) %>% select(-c(starts_with("date"), "notes")) 
+write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-events.csv"), row.names = FALSE) # "hatch"
 ```
 
 

@@ -221,9 +221,9 @@ dfs_cleaned[["tents"]] <- left_join(
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # raw
-write_csv(dfs_raw[["pairs"]], file = paste0(here("_ntw/data/raw/2023/"), "pairs_", today, ".csv"))
-write_csv(dfs_raw[["tents"]], file = paste0(here("_ntw/data/raw/2023/"), "tents_", today, ".csv"))
-write_csv(dfs_raw[["hatch"]], file = paste0(here("_ntw/data/raw/2023/"), "hatching_", today, ".csv"))
+write_csv(dfs_raw[["pairs"]], file = paste0(here("_ntw/data/raw/2023/"), "tent-matings_", today, ".csv")) # "tentpairs"
+write_csv(dfs_raw[["tents"]], file = paste0(here("_ntw/data/raw/2023/"), "tent-events_", today, ".csv")) # "tentstats"
+write_csv(dfs_raw[["hatch"]], file = paste0(here("_ntw/data/raw/2023/"), "eggs_", today, ".csv")) # "hatching"
 
 # save notes elsewhere
 # notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
@@ -244,16 +244,16 @@ dfs_cleaned <- dfs_cleaned %>%
 
 export <- dfs_cleaned[["tents"]] %>% select(-if.ignore)
 write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-info.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "tents_", today, ".csv"), row.names = FALSE)
+#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "tents_", today, ".csv"), row.names = FALSE)
 
 
 export <- dfs_cleaned[["pairs"]]
 write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-pairs.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "pairs_", today, ".csv"), row.names = FALSE)
+#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "pairs_", today, ".csv"), row.names = FALSE)
 
 export <- dfs_cleaned[["hatch"]]
 write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-hatch.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "hatch_", today, ".csv"), row.names = FALSE)
+#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "hatch_", today, ".csv"), row.names = FALSE)
 ```
 
 ```{r}

@@ -83,8 +83,8 @@ export <- data %>%
 # export
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_larva.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-larva.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "dev_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "dev.csv"), row.names = FALSE)
 ```
 
 

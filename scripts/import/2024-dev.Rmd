@@ -203,8 +203,8 @@ export <- df_cleaned %>%
            "sup", "surv.outcome"
           )) #%>% View()
 
-write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev-sexta.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-sexta_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev.csv"), row.names = FALSE)
+#write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-sexta_", today, ".csv"), row.names = FALSE)
 
 ```
 
