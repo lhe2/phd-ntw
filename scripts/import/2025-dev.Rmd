@@ -11,27 +11,16 @@ re-run sections whenever the gsheets gets updated
 
 ```{r message = FALSE}
 library(tidyverse)
-  # tidyr: drop_na
-  # stringr: string handling
-  # lubridate: time stuff
-  # purrr: working w lists
 library(googlesheets4)
+#conflicts_prefer(dplyr::filter)
 
-here::i_am("2025/ntw/data-import.Rmd")
+here::i_am("_ntw/scripts/import/2025-dev.Rmd")
 library(here)
-
-source(here::here("set-paths.R"))
 ```
-
-```{r}
-# setup for export
-today <- format(Sys.time(), "%y%m%d-%H%M")
-```
-
-# larval dev data
 
 LAST RUN: 2025-12-14
 
+# larval data 
 ## - import
 
 ```{r}
@@ -92,155 +81,10 @@ export <- data %>%
 
 ```{r}
 # export
+today <- format(Sys.time(), "%y%m%d-%H%M")
+
 write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_larva.csv"), row.names = FALSE)
 write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-larva.csv"), row.names = FALSE)
-```
-
-
-# adult info
-
-LAST RUN: 2025-12-14
-
-## - import
-
-```{r}
-raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                  sheet = "adults", col_types = "c",
-                  ) %>%
-  drop_na(id)
-
-data <- raw %>%
-  select(-c(ends_with("type"), "date.outby", "with.ctrl", "id.tent", "id.cage2")) %>%
-  rename(sex = id.sex,
-         notes = "notes (deformities)",
-         if.fridge = to.fridge,
-         cage = id.cage)
-```
-
-
-## - column cleaning
-
-```{r}
-# formatting, renaming, column cleanup
-data <- data %>%
-  mutate(across(starts_with("trt"), as.numeric),
-         across(starts_with("date"), as.character)) %>%
-  filter(!(is.na(cage)) & !is.na(date.removed))
-
-# individual fixes
-data[data$id == "1023", "cage"]$cage <- "A3" # typo
-data[data$cage == "B6", "cage"]$cage <- NA # temp males
-data[data$id == "1046", "date.added"]$date.added <- "10/21/2025" # this is date added to tent
-data[data$id %in% c("f08", "f09", "1044", "2001"), "cage"]$cage <- "A6" # typo
-```
-
-```{r}
-# column creation, value editing
-data <- data %>%
-  # fixing stuff
-  mutate(id = case_when(grepl("f|m", id) ~ gsub(pattern = "f|m", replacement = "", x = id),
-                        TRUE ~ as.character(id)),
-         id = as.numeric(id),
-         id = case_when(pop == "col" & sex == "m" ~ as.numeric(id + 3000),
-                        pop == "col" & sex == "f" ~ as.numeric(id + 4000),
-                        TRUE ~ as.numeric(id)),
-         cage = case_when(grepl("temp", cage) ~ NA_character_,
-                          TRUE ~ as.character(cage)),
-         date.added = case_when(is.na(cage) ~ NA_character_,
-                                TRUE ~ as.character(date.added)),
-  ) %>% 
-  
-  # adding stuff
-  mutate(if.culled = case_when(!is.na(date.culled) ~ "x"),
-         if.def = case_when(grepl("def|wings|PIW", notes) ~ "x"),
-         id.tent = str_sub(cage, 1, 1),
-         id.cage = str_sub(cage, 2) #%>% sprintf("%02s", .)
-         ,
-         #cage = paste0(id.tent, id.cage)
-         ) %>%
-  mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
-         across(starts_with("jdate"), as.numeric), .before = 1,
-         )
-  
-```
-## - export
-
-```{r}
-# trim
-export <- data %>%
-  select(-c(starts_with("date"), "jdate.culled", "notes"))
-```
-
-
-```{r}
-# export
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_adults.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-adults.csv"), row.names = FALSE)
-```
-
-# eggs
-
-LAST RUN: 2025-12-14
-
-## - import
-```{r}
-raw <- list(
-  coll = read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                    sheet = "collected", col_types = "c") %>%
-    select(1:5) %>%
-    rename(eggs.collected = egg.collected),
-  
-  hatch = read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                     sheet = "hatched",  col_types = "c") %>%
-    select(1:4) %>%
-    rename(eggs.hatched = hatched)
-)
-
-data <- raw
-```
-
-## - column cleaning
-
-```{r}
-# reformat columns
-data <- data %>% 
-  lapply(., \(x){
-  x %>%
-  rename(cage = id.cage) %>%
-  mutate(across(starts_with("eggs."), as.numeric),
-         across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
-         across(starts_with("jdate."), as.numeric))
-})
-
-```
-
-## - export
-
-```{r}
-# raw data
-raw <- raw %>% reduce(left_join, by = c("date.collected", "id.cage"))
-
-write.csv(raw, file = paste0(here(bin_paths$y25$ntwdata), "/raw/", today, "_eggs.csv"), row.names = FALSE)
-```
-
-
-```{r}
-# collected
-export <- data$coll %>%
-  select(-c(starts_with("date"), "notes"))
-
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-coll.csv"), row.names = FALSE)
-
-```
-
-```{r}
-# hatched
-export <- merge(data$coll, data$hatch, all = TRUE) %>%
-  select(-c(starts_with("date"), "notes"))
-
-write.csv(export, file = paste0(here(bin_paths$y25$ntwdata), "/clean-hatch.csv"), row.names = FALSE)
 ```
 
 
