@@ -186,15 +186,15 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 write_csv(df_raw, file = paste0(here("_ntw/data/raw/2024/"), "dev_", today, ".csv"))
   
 # MQs only
-export <- df_cleaned %>% filter(species == "MQ")
-
-write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev-MQ.csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-MQ_", today, ".csv"), row.names = FALSE)
+# export <- df_cleaned %>% filter(species == "MQ")
+# 
+# write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev-MQ.csv"), row.names = FALSE)
+# write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-MQ_", today, ".csv"), row.names = FALSE)
 
   
 # useful columns only
 export <- df_cleaned %>%
-  filter(is.na(species)) %>%
+  #filter(is.na(species)) %>%
   select(-"jdate.collected") %>%
   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
            "instar.enter", starts_with(c("jdate", "mass")), 

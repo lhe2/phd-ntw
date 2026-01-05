@@ -67,10 +67,13 @@ dfs_imported <- list(
 ## standardising
 
 ```{r filtering and column cleanup}
+# preremove all MQs
+
 dfs_filtered <- list(
   
   y23 = dfs_imported[["y23"]] %>%
-    filter(instar.enter == "hatch",
+    filter(is.na(species),
+           instar.enter == "hatch",
            pop %in% c("field", "lab"),
            !(treatment %in% c("ctrl", "267", "330")),
            reason.ignore != "lost" | is.na(reason.ignore),
@@ -85,7 +88,8 @@ dfs_filtered <- list(
               "parent.tent", "src", "trt.stage", "grp.trt")),
 
   y24 = dfs_imported[["y24"]] %>%
-    filter(instar.enter == "hatch") %>%
+    filter(is.na(species),
+           instar.enter == "hatch") %>%
     select(-c("trt.type", "jdate.enter", "instar.enter", ends_with("2nd"))),
   
   y25 = dfs_imported[["y25"]] %>%
