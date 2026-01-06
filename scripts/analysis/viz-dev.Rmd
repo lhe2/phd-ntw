@@ -1,0 +1,398 @@
+---
+title: "ntw 2025 data viz"
+date: "2025-12-01"
+---
+
+# # preamble & loading
+
+data viz for ntw 2025
+
+```{r set pathfinding}
+here::i_am("_ntw/scripts/analysis/viz-dev.Rmd")
+library(here)
+```
+
+```{r load libraries}
+library(tidyverse)
+library(patchwork) # for plot_layout
+# library(survival) # for fitting surv
+# library(survminer) # for plotting surv
+```
+
+```{r load data and helpers, message = FALSE, warning=FALSE}
+source(here("_ntw/scripts/utils/general.R"))
+source(here("_ntw/scripts/utils/analysis-viz.R"))
+source(here("_ntw/scripts/R/wrangle-dev.R"))
+
+```
+
+```{r}
+# convert things into factors for ease of graphing
+dfs_dev_ss <- dfs_dev_ss %>%
+    lapply(., \(x){
+    x %>%
+      ungroup() %>%
+      mutate(across(c("year", "trt"), as.factor))
+  })
+  
+```
+
+# # overall dev
+
+## survival to pup
+```{r}
+.plotfn <- function(x){
+  x %>%
+  FilterOutLabTB() %>%
+  ggplot(aes(y = prop.pup,
+             x = trt,
+             col = year, lty = year,
+             group = year
+             )) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = prop.pup + se.pup,
+                    ymin = prop.pup - se.pup),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  # geom_text(aes(label = n),
+  #           hjust = -0.2, vjust = -.2,
+  #           show.legend = FALSE) +
+  facet_wrap(~pop) +
+  labs(y = "survived to pupation",
+       x = "treatment",
+       col = "year", lty = "year") +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw()
+}
+
+dfs_dev_ss$surv_outcomes %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_dev_ss$surv_outcomes %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("19", "26", "33")) +
+  labs(x = "minimum T (°C)")
+
+```
+
+## pup mass
+
+```{r}
+# sexes combined
+.plotfn <- function(x){
+  x %>%
+      FilterOutLabTB() %>%
+    filter(instar == "pupa") %>%
+  ggplot(aes(y = avg.mass, x = trt,
+             #lty = year, 
+             col = year,
+             group = year,
+             ))+
+  geom_point() + geom_line() +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, 
+                    ymin = avg.mass - se.mass),
+                width = 0.3, lty = "solid") +
+  # geom_text(aes(label = n),
+  #           vjust = -0.2, hjust = -0.3,
+  #           show.legend = FALSE) +
+  facet_grid(~pop) +
+  labs(y = "pupal mass (g)",
+       caption = "mean±se; combined sexes") +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw()
+}
+
+
+dfs_dev_ss$ad_dev%>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev%>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+```
+
+```{r}
+# sexes parsed
+# 2x2 pop + sex (better)
+
+.plotfn <- function(x){
+  x %>%
+    FilterOutLabTB() %>%
+    filter(instar == "pupa") %>%
+    ggplot(aes(y = avg.mass, x = trt,
+             col = year,
+             group = interaction(year)
+             )) +
+  geom_point() + geom_line() +
+    # geom_text(aes(label = n),
+  #           vjust = -0.5, hjust = -0.5, size = 3.5,
+  #           position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+  #           show.legend = FALSE) + # too busy
+    geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.3, lty = "solid") + # remove if including ctrl
+  labs(y = "pupal mass (g)", 
+       caption = "mean±se") +
+  facet_grid(sex~pop) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw()
+}
+
+dfs_dev_ss$ad_dev_bysex %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev_bysex %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev_bysex %>%
+  filter(trt != 260, sex == "m") %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("19", "26", "33")) +
+  labs(x = "minimum T (°C)")
+```
+
+```{r}
+# sexes parsed
+# by sex (meh)
+.plotfn <- function(x){
+  x %>%
+    FilterOutLabTB() %>%
+    filter(instar == "pupa") %>%
+    ggplot(aes(y = avg.mass, x = trt,
+             col = year,
+             group = interaction(year, pop), 
+             shape = pop, lty = pop
+             )) +
+  geom_point(size = 2) + geom_line() +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.3, lty = "solid") + # remove if including ctrl
+  # geom_text(aes(label = n),
+  #           vjust = -0.5, hjust = -0.5, size = 3.5,
+  #           position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+  #           show.legend = FALSE) + # too busy
+  labs(y = "pupal mass (g)", 
+       caption = "mean±se") +
+  facet_grid(~sex) +
+    scale_color_brewer(palette = "Dark2") +
+    scale_shape_manual(values = c(1, 16)) +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  theme_bw()
+}
+
+dfs_dev_ss$ad_dev_bysex %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev_bysex %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+```
+
+```{r}
+# sexes parsed
+# by pop (no)
+.plotfn <- function(x){
+  x %>%
+    FilterOutLabTB() %>%
+    filter(instar == "pupa") %>%
+    ggplot(aes(y = avg.mass, x = trt,
+             col = year,
+             group = interaction(year, sex), 
+             shape = sex, lty = sex
+             )) +
+  geom_point(size = 2) + geom_line() +
+  geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
+                width = 0.3, lty = "solid") +
+  labs(y = "pupal mass (g)", 
+       caption = "mean±se") +
+  facet_grid(~pop) +
+    scale_color_brewer(palette = "Dark2") +
+    scale_shape_manual(values = c(1, 16)) +
+  scale_linetype_manual(values = c("dashed", "solid")) +
+  theme_bw()
+}
+
+dfs_dev_ss$ad_dev_bysex %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev_bysex %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+```
+## pup time
+
+```{r}
+.plotfn <- function(x){
+  x %>%
+    FilterOutLabTB() %>%
+    filter(instar == "pupa") %>%
+     ggplot(aes(y = avg.tt, x = trt,
+             col = year,
+             group = year)) +
+  geom_point(size = 2) + geom_line() +
+  geom_errorbar(aes(ymax = avg.tt + se.tt,
+                    ymin = avg.tt - se.tt),
+                width = 0.25) +
+  # geom_text(aes(label = n),
+  #           vjust = -0.75, hjust = -0.5, size = 3.5,
+  #           #position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+  #           show.legend = FALSE) +
+  facet_grid(~pop) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw()
+}
+
+dfs_dev_ss$ad_dev %>%
+  filter(trt != 260) %>%  
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+# LOL the 260 lab every yr ...  i think its bc they take so long from 5 to wander
+```
+
+
+## dev trajectories 
+
+```{r}
+# dev by year
+.plotfn <- function(x){
+  x %>%
+  FilterOutLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = year)) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = CalcErrWd(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = CalcErrHt(avg.logmass))) +
+  facet_grid(pop ~ trt) +
+  #scale_color_brewer(palette = "Greens") +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw()
+}
+
+dfs_dev_ss$dev_outcomes_nopmd %>%
+  .plotfn() +
+  labs(title = "development trajectories (pup'd only)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "year",
+       )
+
+
+dfs_dev_ss$dev_outcomes_wpmd %>%
+  .plotfn() +
+  labs(title = "development trajectories (with pmd)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "year",
+       )
+```
+
+```{r}
+# dev by trt
+.plotfn <- function(x){
+  x %>%
+  FilterOutLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = trt)) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = CalcErrWd(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = CalcErrHt(avg.logmass))) +
+  facet_grid(pop ~ year) +
+  #scale_color_brewer(palette = "Greens") +
+  scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE))
+}
+
+dfs_dev_ss$dev_outcomes_nopmd %>%
+  .plotfn() +
+  labs(title = "development trajectories (pups only)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "treatment",
+  )
+
+dfs_dev_ss$dev_outcomes_wpmd %>%
+  .plotfn() +
+  labs(title = "development trajectories (all)",
+       caption = "mean ± se",
+       y = "log(mass mg)", x = "dev time (days)",
+       col = "treatment",
+       )
+```
+
+```{r}
+# wtf goin on w the lab controls
+dfs_dev_ss$dev_outcomes_wpmd %>%
+  FilterOutLabTB() %>% 
+  filter(instar %in% c("3rd", "4th", "5th", "wander", "pupa"),
+         trt == 260) %>% #View()
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = year, lty = pop, shape = pop,
+             group = interaction(year, pop))) +
+  geom_errorbarh(aes(xmax = avg.tt + se.tt,
+                     xmin = avg.tt - se.tt,
+                     height = 0.3), lty = "solid") +
+  geom_point() +
+  geom_line() +
+  facet_grid(#pop 
+             ~ trt) +
+  #scale_color_brewer(palette = "Greens") +
+  scale_color_brewer(palette = "Dark2") +
+  scale_shape_manual(values = c(16, 1)) +
+  labs(caption = "what's up w the controls") +
+  theme_bw()
+```
+
+
+## supernumerary
+
+```{r}
+dfs_dev_ss$sup_outcomes %>% 
+  FilterOutLabTB() %>%
+  filter(status == "surv") %>%
+  ggplot(aes(y = p,
+             x = interaction(trt),
+             fill = sup)) +
+  geom_col() +
+  geom_text(data = . %>% distinct(interaction(year, trt, pop), .keep_all = TRUE), 
+            aes(label = N), y = 0.1) +
+  facet_grid(pop~year) +
+  labs(title = "# instars before pupation",
+       y = "proportion survived", x = "trt",
+       fill = "extra instars",
+       caption = "N = total entered") +
+  guides(x = guide_axis(angle = 45)) +
+  scale_fill_brewer(palette = "Blues", direction = -1,
+                    labels = c("0", "1", "2", "3", "died")) +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33")) +
+  #scale_fill_discrete(labels = c("0", "1", "2", "3", "died")) +
+  theme_bw()
+```

@@ -1,0 +1,111 @@
+---
+title: "01-cleaning/tents"
+date: "2025-01-13"
+---
+
+stealing from `2023/cleaning_tents.Rmd` again!!
+
+(cleans 2024 tents data only)
+
+# roadmap
+
+1.  load data & packages
+2.  cleaning: prefiltering, fix columns, add columns, value fixing
+3.  save output
+
+# 1. load data & packages
+
+```{r message = FALSE}
+library(tidyverse)
+library(googlesheets4)
+
+here::i_am("_ntw/scripts/import/2024-tents.Rmd")
+library(here)
+```
+
+## - data import from gsheets
+
+```{r}
+# before importing,
+  # run cleaning macros,
+  # check column/row alignment + proper sorting
+
+dfs_raw <- list(
+  tents = read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1854350692", sheet = "tents", range = "A:N", col_types = "c", na = c("", "n/a")),
+  
+  tentstats = read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", sheet = "tent stats", range = "A:Q", col_types = "c", na = c("", "#REF!", "#N/A"))
+)
+```
+
+# 2. cleaning
+
+## - column/row dropping/stdising
+
+```{r}
+data_tents <- select(data_tents, -c("mass.eclose", "uid", "id.cage"))
+
+data_tentstats <- data_tentstats %>%
+  filter(!is.na(uid2)) %>%
+  filter(sex == "f") %>%
+  select(-c("uid", "id.cage", "processed?"))
+
+data_tentstats <- data_tentstats %>%
+  rename(date.coll = date,
+         n.coll = "eggs collected",
+         n.new = added,
+         n.curr = alive,
+         n.ovi = "females laying",
+         n.rem = removed,
+         n.died = died)
+```
+
+## - data formatting
+
+```{r}
+tentlist <- list(data_tents, data_tentstats)
+#data_tents <- tentlist[[1]]
+#data_tentstats <- tentlist[[2]]
+
+# function to fix values, column format
+fix.values <- function(data) {
+  
+  data <- data %>%
+    mutate(# fix column format
+           across(starts_with("date."), as.Date, format = "%m/%d/%y"),
+           across(starts_with("n."), as.numeric),
+           trt = as.numeric(trt)
+    )
+}
+
+tentlist_clean <- lapply(tentlist, fix.values)
+data_tents <- tentlist_clean[[1]]
+data_tentstats <- tentlist_clean[[2]]
+
+
+# other fixes
+data_tentstats <- data_tentstats %>%
+  mutate(id.tent = str_sub(uid2, 1, 1))
+
+```
+
+# 3. extracting notes & saving outputs
+
+```{r}
+today <- format(Sys.time(), "%y%m%d-%H%M")
+
+# save cleaned dfs
+write.csv(data_tents, "~/Documents/repos/ntw/2024/data/clean-longevity.csv", row.names = FALSE)
+write.csv(data_tents, paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_clean-longevity.csv"), row.names = FALSE)
+
+write.csv(data_tentstats, "~/Documents/repos/ntw/2024/data/clean-fertility.csv", row.names = FALSE)
+write.csv(data_tentstats, paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_clean-fertility.csv"), row.names = FALSE)
+```
+
+```{r}
+# cleanup
+rm(today,
+   data_tents,data_tentstats,
+   ogtents,
+   fix.values,
+   tentlist, tentlist_clean)
+```

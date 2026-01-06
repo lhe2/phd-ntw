@@ -1,0 +1,128 @@
+---
+title: "ntw 2025 tents wrangling"
+date: "2025-11-29"
+---
+
+# # preamble & loading
+
+- data wrangling for ntw 2025 data here
+- data gets purled for wrangling later (update script as needed)
+
+```{r set paths, eval=FALSE, purl=FALSE}
+# run if things arent working
+here::i_am("_ntw/scripts/wrangle-tents.Rmd")
+```
+
+```{r purl, eval=FALSE, purl=FALSE}
+# rerun to update .R script (save .Rmd first)
+knitr::purl("wrangle-tents.Rmd", here::here("_ntw/scripts/R/wrangle-tents.R"))
+```
+
+```{r about}
+# purled wrangling code for ntw figs.
+# compiles 2023-25 development and tent summary statistics.
+```
+
+```{r load libs and data, message=FALSE, warning=FALSE}
+# libraries
+library(tidyverse)
+library(here)
+
+# objects
+source(here("_ntw/scripts/utils/data-wrangle.R"))
+source(here("_ntw/scripts/R/wrangle-tents.R"))
+```
+
+# # tents + egg stuff
+
+  
+```{r eggs ss custom fns}
+# counts per cage -- for stats
+.CalcPerTentSS <- function(x){
+  x %>%
+  #dfs_tidy$tents %>% # for testing
+  group_by(across(c("year", "cage", starts_with(c("mate", "trt", "is"))))) %>%
+  summarise(
+    #n = n(), # number of days a tent existed for
+    n.f = sum(f.added),
+    n.viable = sum(eggs.fert),
+    n.coll = sum(eggs.coll),
+    n.hatch = sum(eggs.hatched),
+    n.coll.perf = n.coll/n.f,
+    sqrt.coll.perf = sqrt(n.coll.perf)
+  ) %>% 
+    #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>% View()
+  ungroup() 
+}
+
+# counts per cage trt (i.e. mate type) -- for viz
+.CalcTentsSS <- function(x){
+  x %>%
+  #dfs_tidy$tents %>% # for testing
+  .CalcPerTentSS() %>%
+  group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
+  summarise(
+    n.cages.total = n(),
+    n.f.total = sum(n.f),
+    
+    # these look rly bad compared to the daily level LOL
+    avg.coll.total = mean(n.coll),
+    se.coll.total = se(n.coll),
+    avg.coll.perf = mean(n.coll.perf),
+    se.coll.perf = se(n.coll.perf),
+    
+    avg.sqrt.coll.perf = mean(sqrt.coll.perf),
+    se.sqrt.coll.perf = se(sqrt.coll.perf),
+    #p.hatch = n.hatch.total/n.viable.total, 
+      # will get prop.hatch per tent if not sum()'d beforehand
+    p.hatch = sum(n.hatch)/sum(n.viable), 
+    se.hatch = se.prop(p.hatch, sum(n.viable))
+            ) %>%
+  #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>%
+  mutate(across(.cols = everything(), 
+                ~ replace(.x, is.nan(.x), NA))) #%>% View()
+}
+```
+
+
+## ss calcs
+
+```{r eggs ss calcs}
+# (for stats)
+dfs_pertent_ss <-
+  dfs_tidy$tents %>%
+  .CalcPerTentSS()
+
+# (for viz)
+# 2025-12-10: have variations on handling colony bugs for now...
+dfs_tents_ss <- list(
+  # treat all col like lab expt bugs
+  eggs_nocol = dfs_tidy$tents %>%
+    select(-mate.col) %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop))) %>% 
+    .CalcTentsSS(),
+  
+  # treats col like lab expt bugs, but notes which sex was the col
+  eggs_matecol = dfs_tidy$tents %>%
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop)),
+           mate.col = na_if(mate.col, "both")) %>%
+    .CalcTentsSS(),
+  
+  # retains all indicators of col status (population + affected sex)
+  eggs_allcol = dfs_tidy$tents %>%
+    .CalcTentsSS()
+)
+```
+
+
+# cleanup
+
+## TODO
+- need sth seperate for stats wrangle?
+
+```{r cleanup}
+rm(dfs_tidy,
+   se, se.prop)
+```

@@ -1,0 +1,96 @@
+---
+title: "ntw 2025 import"
+date: "2025-11-24"
+---
+
+for importing + some pre-cleaning of ntw 2025 data from googlesheets
+
+re-run sections whenever the gsheets gets updated
+
+# loading & init (all)
+
+```{r message = FALSE}
+library(tidyverse)
+library(googlesheets4)
+#conflicts_prefer(dplyr::filter)
+
+here::i_am("_ntw/scripts/import/2025-dev.Rmd")
+library(here)
+```
+
+LAST RUN: 2025-12-14
+
+# larval data 
+## - import
+
+```{r}
+raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+                  sheet = "ntw aug 2025",
+                  col_types = "c",
+                  #na = c("#VALUE!")
+                  ) %>%
+  drop_na(id)
+
+data <- raw
+```
+
+## - column futzing
+
+todo: filter out bad bugs? sub 1 day dead bugs? (in the wrangle?)
+
+```{r}
+# standardise column formats
+data <- data %>%
+  mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
+         across(c("id", starts_with("mass")), as.numeric)) %>% 
+  # julian date conversions
+  mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
+  # attempts at putting the new columns after the old ones sighs
+  #relocate(sort(grep("^jdate", names(.), value = TRUE)), .after = starts_with("date"))
+  #select(sort(names(.)))
+  mutate(across(starts_with("jdate."), as.numeric))
+```
+
+```{r}
+# consolidate dates
+data <- data %>%
+  # dead pupa (exit dates will get handled in the tidying)
+  mutate(jdate.culled = case_when(is.na(jdate.eclose) & !is.na(jdate.pupa) ~ 
+                                    NA_real_,
+                                  TRUE ~ as.numeric(jdate.culled))) %>%
+  # exit dates
+  mutate(jdate.exit = case_when(!is.na(jdate.culled) ~ jdate.culled,
+                               !is.na(jdate.LPI) ~ jdate.LPI,
+                               !is.na(jdate.surv) ~ jdate.surv,
+                               # is.na(jdate.eclose) & !is.na(jdate.pupa) ~
+                               #    as.numeric(jdate.15 + 21),
+                               !is.na(jdate.pmd) ~ jdate.pmd))
+
+```
+
+## - export
+
+```{r}
+# remove extra columns
+export <- data %>%
+  select(-c("location", "time.enter",
+            starts_with(c("date.", "h.", "stuck", "notes.last")),
+            "jdate.collected", "jdate.outby", "jdate.15",
+            "if.fridge"))
+```
+
+```{r}
+# export
+today <- format(Sys.time(), "%y%m%d-%H%M")
+
+write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "dev_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "dev.csv"), row.names = FALSE)
+```
+
+
+# cleanup
+
+```{r}
+# remove troubleshooting objects
+rm(today, raw, data, export)
+```

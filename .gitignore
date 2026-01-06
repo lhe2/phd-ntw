@@ -45,6 +45,7 @@ etc/*
 **/figs/*
 **/etc/*
 **/archive/*
+**/dump/*
 
 # other files
 ## purled cleaning/pre-wrangling scripts

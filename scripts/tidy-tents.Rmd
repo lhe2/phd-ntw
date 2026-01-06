@@ -1,0 +1,414 @@
+---
+title: "2025 ntw tents tidying"
+date: "2025-11-26"
+---
+
+# # preamble
+
+prepping ntw data for 2025 wrangling
+
+final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
+
+
+```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
+# run this prior to other pathing stuff if things are breaking
+here::i_am("_ntw/scripts/tidy-tents.Rmd")
+```
+
+```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
+# rerun this chunk if purled .R script needs to be updated.
+# save and apply updates to current .Rmd before purling!
+
+knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
+
+# creates an archive
+# knitr::purl("data-tidying.Rmd", 
+#             paste0(here::here(bin_paths$y25$ntw), "/archive/cleaning/", 
+#                    format(Sys.time(), "%y%m%d-%H%M"), "_tidy-data.R"))
+```
+
+# load libs & pkgs
+
+```{r about}
+# ntw/tidy-tents.R
+
+# knitted tidying code for 2025 ntw dev figs/analyses.
+# source() this in corresponding analysis scripts.
+
+# this script compiles ntw data from 2023-25 into cohesive units for easier wrangling.
+```
+
+
+```{r load libs}
+library(data.table) # for rbindlist
+library(tidyverse)
+library(here)
+```
+
+# # adult data
+
+preamble:
+- for each yr, have adult counts (when added/removed), egg collection counts, egg hatch counts.
+- bc my method of tracking the daily egg/moth #s is very convoluted, need to split + wrangle the dfs in a certain order before finally collating into the final df that can be used in `summarise()` for data analysis
+  - note that 2023 data is also formatted a little differently than 2025 data (i.e. pairing was more deliberate), so it needs some additional pre-wrangling
+- see also some random TODOs left thruout this section,,,
+
+roadmap:
+1. create stdised `info` (about mating pairs) and `events` dfs
+2. `events` gets created in the following manner to avoid incorrect duplication of jdates:
+  a. `events` is first generated from `info` (to get counts of moths removed/added)
+  b. later, `events` is overwritten by merged collection + hatching data, with
+     moth counts extracted from `events` appended on
+3. `events` then gets used to generate the daily running count of eggs/moths/etc
+  a. counts are determined separately per cage and then recollated again
+     (avoids wonkiness with `cumsum()` at the first/last values of the df)
+4. 2023/2025 are handled separately, then combined for final export.
+
+
+## # fns for info generation
+```{r tent data common functions}
+# to assign cage mating info
+# note: data needs to be "wide" (...f, ...m) to determine mate types
+.GenerateCageMateInfo <- function(x){
+  x %>%
+    mutate(mate.type = case_when(trt.f == trt.m ~ "within",
+                                 trt.f != trt.m ~ "between",
+                                 is.na(trt.m) ~ "virgin f"),
+           # if both m+f are from col, then mate.pop = "col", otherwise "lab"
+           mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
+                                mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
+           mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
+                                mate.type == "between" & trt.f > trt.m ~ trt.f,
+                                mate.type == "between" & trt.m > trt.f ~ trt.m),
+           mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
+                                pop.f == "col" & pop.m == "lab" ~ "f",
+                                pop.m == "col" & pop.f == "lab" ~ "m" ),
+           mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
+                               trt.m > trt.f | is.na(trt.f) ~ "m",
+                               TRUE ~ "both"),
+           is.hs.f = case_when(trt.f == 260 ~ 0,
+                               trt.f > 260 ~ 1),
+           is.hs.m = case_when(trt.m == 260 ~ 0,
+                               trt.m > 260 ~ 1))
+} 
+
+
+# to determine daily m/f counts for cage events
+.GenerateCageMothCounts <- function(x){
+  x %>%
+    group_by(cage, jdate) %>%
+    summarise(f.added = sum(sex == "f" & event == "added"),
+              m.added = sum(sex == "m" & event == "added"),
+              f.removed = sum(sex == "f" & event == "removed"),
+              m.removed = sum(sex == "m" & event == "removed")) %>%
+    drop_na(cage)
+}
+
+# appends cage mate info + daily moth events to daily egg events
+# needs dfs_stdised$info and $events to exist alrdy
+.AppendCageMothEvents <- function(x){
+  x %>%
+  merge(., dfs_stdised$events, all = TRUE) %>%
+  merge(., dfs_stdised$info %>%
+          select(c("cage", starts_with("mate"))) #%>% View()
+        ,
+        all = TRUE, by = "cage") %>%
+  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0))
+}
+
+
+# gets daily running counts of new/dead moths + eggs collected
+# splits $events by cage to avoid cumsum wonkiness, then recombines
+
+.GenerateCageDailyEvents <- function(x){
+  x %>%
+    split(f = dfs_stdised$events$cage) %>% 
+    lapply(., \(x){
+      x %>%
+        arrange(jdate) %>%
+        mutate(f.diff = dplyr::lag(f.added, default = 0) - dplyr::lag(f.removed, default = 0),
+               f.curr = 0,
+               f.curr = cumsum(f.diff + f.curr),
+               m.diff = dplyr::lag(m.added, default = 0) - dplyr::lag(m.removed, default = 0),
+               m.curr = 0,
+               m.curr = cumsum(m.diff + m.curr),
+               
+               # fix egg counts: excludes eggs from hatch proportion if no males present
+               ## TODO: just kidding not doing this anymore bc females can sequester sperm!
+               eggs.exclude = case_when(#f.curr > 0 & m.curr == 0 | 
+                                          mate.type == "virgin f" ~ 
+                                          as.numeric(eggs.collected + eggs.exclude),
+                                        TRUE ~ as.numeric(eggs.exclude)),
+               eggs.collected = case_when(#f.curr > 0 & m.curr == 0 |
+                                            mate.type == "virgin f" ~ 0,
+                                          TRUE ~ as.numeric(eggs.collected)),
+               eggs.coll = eggs.collected + eggs.exclude) %>%
+        select(-ends_with(c(".removed", ".diff"))) %>%
+        rename(eggs.fert = eggs.collected,
+               eggs.unfert = eggs.exclude)
+    }) %>%
+    rbindlist()
+}
+```
+
+## # 2025 data
+### loading
+
+```{r load 2025 tents data}
+dfs_imported <- list(
+  ad25 = read.csv(here("_ntw/data/clean/2025/tent-matings.csv"), header = TRUE),
+  coll25 = read.csv(here("_ntw/data/clean/2025/tent-eggs.csv"), header = TRUE),
+  hatch25 = read.csv(here("_ntw/data/clean/2025/tent-events.csv"), header = TRUE)
+)
+```
+
+### stdise cage/egg events
+```{r prep 2025 tent data for wrangling}
+### need to rerun the WHOLE chunk at once if updating $info to avoid dups later on in $events
+
+dfs_stdised <- list(
+  
+  # cage info (mating pairs)
+  # TODO maybe could tidyr::complete this but i dont get the nesting lol
+  info =
+  merge(
+    dfs_imported[["ad25"]] %>% filter(sex == "f") %>%
+      select(cage, id, pop, trt, sex) %>%
+      pivot_wider(names_from = "sex", values_from = c("pop", "trt"), 
+                  names_sep = ".") %>% 
+       select(-id) %>% distinct(),
+    dfs_imported[["ad25"]] %>% filter(sex == "m") %>%
+      select(cage, id, pop, trt, sex) %>%
+      pivot_wider(names_from = "sex", values_from = c("pop", "trt"), 
+                  names_sep = ".") %>% 
+       select(-id) %>% distinct(),
+    all = TRUE) %>% 
+    drop_na(cage) %>% #View() #for events23 futzing
+    .GenerateCageMateInfo() %>% #View()
+    # some fixes
+    filter(!(cage == "A8" & pop.m == "lab")) %>%
+    mutate(mate.pop = case_when(cage %in% c("A6", "B16", "C7") ~ "lab",
+                                TRUE ~ as.character(mate.pop))),
+  
+  # cage timelines (moth additions/removals)
+  events = dfs_imported[["ad25"]] %>%
+    pivot_longer(starts_with("jdate"),
+                 names_to = c(".value", "event"),
+                 names_sep = "\\.") %>% 
+    drop_na("jdate") %>% #View()
+    group_by(cage, jdate) %>%
+    .GenerateCageMothCounts() #%>% View()
+)
+
+
+# cage timelines (append egg hatching + collection info)
+dfs_stdised$events <- 
+  dfs_imported[["coll25"]] %>%
+  rename(jdate = jdate.collected) %>%
+  merge(., dfs_imported[["hatch25"]] %>% 
+          select(c("cage", ends_with(".hatched"))) %>%
+          rename(jdate = jdate.hatched) %>%
+          group_by(jdate, cage) %>%
+          summarise(eggs.hatched = sum(eggs.hatched)) %>%
+          drop_na(),
+        all = TRUE) %>% #View()
+  .AppendCageMothEvents()
+```
+
+### collate
+
+```{r}
+# troubleshooting tents: A2, B2, C14, C4
+dfs_stdised <- list_modify(
+  dfs_stdised, 
+  tents = 
+    dfs_stdised$events[order(dfs_stdised$events$cage, dfs_stdised$events$jdate),] %>%
+    .GenerateCageDailyEvents()
+)
+```
+
+### export
+```{r}
+dfs_export <- list(
+  tents25 = dfs_stdised$tents %>% 
+    merge(.,
+          dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
+          all = TRUE) %>%
+    mutate(year = 2025)
+  )
+```
+
+
+## # 2023 data
+
+### loading
+```{r load 2023 tent data}
+dfs_imported <- list(
+  ad23 = 
+    read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
+    # minor fixes
+    mutate(id.tent = case_when(id.tent == "107-cage" & is.na(trt.f) ~ NA_character_,
+                               TRUE ~ as.character(id.tent))) %>%
+    filter(!(id.f %in% c(282, 284))),
+  
+  coll23 = 
+    read.csv(here("_ntw/data/clean/2023/tent-events.csv"), header = TRUE) %>%
+    filter(id.tent != "107-I"),
+  
+  hatch23 = 
+    read.csv(here("_ntw/data/clean/2023/tent-eggs.csv"), header = TRUE)
+  ) %>%
+  
+  lapply(., \(x){
+    x %>%
+      rename(cage = id.tent)
+  })
+```
+
+```{r}
+# filter out useful columns
+dfs_filtered <- list(
+  ad23 = dfs_imported[["ad23"]] %>%
+    select(c("cage", "id.pair", starts_with("jdate"), ends_with(c(".m", ".f"))),
+           -starts_with("track")),
+  coll23 = dfs_imported[["coll23"]] %>%
+    select(c("cage", "n.coll", "jdate")),
+  hatch23 = dfs_imported[["hatch23"]] %>%
+    select(c("cage", "n.hatch", "jdate.hatch")))
+```
+
+### stdise cage/egg events
+
+#### reformat 2023 data
+
+(match 2023 data to 2025 formatting)
+
+```{r 2023 adult info fixes}
+## run entire chunk to properly update dfs_stdised$ad23 (to build final tent events dfs)
+
+# rename jdate cols, add uids to ctrls/cols
+dfs_filtered$ad23 <- dfs_filtered$ad23 %>%
+  rename_with(., 
+              ~paste("jdate", str_extract(.,"[a-z]*$"), 
+                     str_sub(., 7, 7), sep = "."), 
+              starts_with(c("jdate.m", "jdate.f"))) %>%
+  mutate(id.m = case_when(id.m %in% c("col", "ctrl") ~ 
+                            paste0(id.m, "-m", sprintf("%03d", id.pair)),
+                          #id.f == "146" & id.m == "253" ~ NA_character_,
+                          TRUE ~ as.character(id.m)),
+         id.f = case_when(id.f %in% c("col", "ctrl") ~ 
+                            paste0(id.f, "-f", sprintf("%03s", id.pair)),
+                          #id.f == "244" & id.m == "224" ~ NA_character_,
+                          TRUE ~ as.character(id.f)))
+
+# fixing dup'd individuals
+dfs_stdised <- list(
+  ad23 = merge(
+    dfs_filtered$ad23 %>%
+      select(c("cage", contains("pair"), ends_with(".m"))) %>%
+      pivot_longer(matches("^(?!jdate).*m", perl = T),
+                   names_to = c(".value", "sex"), names_sep = "\\.") %>% 
+      rename_with(., ~ gsub(".m", "", .)),
+    dfs_filtered$ad23 %>%
+      select(c("cage", contains("pair"), ends_with(".f"))) %>%
+      pivot_longer(matches("^(?!jdate).*f", perl = T),
+                   names_to = c(".value", "sex"), names_sep = "\\.") %>% 
+      rename_with(., ~ gsub(".f", "", .)),
+    all = TRUE) %>% 
+    drop_na(id))
+
+# adding in other trt info
+dfs_stdised$ad23 <- dfs_stdised$ad23 %>%
+  mutate(ctrl = case_when(grepl("col", id) ~ "col",
+                          grepl("ctrl", id) ~ "diurnal"), 
+         pop = case_when(grepl("col", id) ~ "col",
+                         !is.na(ctrl) | as.numeric(id) > 1000 ~ "lab",
+                         as.numeric(id) < 1000 ~ "field"),
+         if.fridge = case_when(jdate.paired != jdate.ec ~ "x"))
+
+```
+
+#### generate dfs
+```{r prep 2023 tent data for wrangling}
+## rerun the whole chunk to regenerate dfs_tents$events, $info
+dfs_stdised <- list_modify(
+  dfs_stdised,
+  
+  info = 
+    dfs_stdised[["ad23"]] %>%
+    pivot_wider(id_cols = c("cage", "id.pair", #"ctrl", "if.fridge"
+                            ), 
+                names_from = "sex", values_from = c("trt", "pop"),
+                names_sep = ".") %>% #View()
+    select(c("cage", starts_with(c("trt", "pop")))) %>%
+    distinct() %>%
+    .GenerateCageMateInfo() %>% #View() %>%
+    # fixes (NOT solo f tents: 301P, 301U, 107H...)
+    filter(!(mate.type == "virgin f" & !(cage %in% c("107-cage", "301-T"))),
+           !(cage == "301-M" & pop.f == "lab")) ,
+  
+  events = 
+    dfs_filtered[["ad23"]] %>%
+    pivot_longer(ends_with(c(".f", ".m")),
+                 names_to = c(".value", "sex"),
+                 names_pattern = "([a-z]*.[a-z]*).(m|f)") %>% 
+    drop_na(id) %>% 
+    pivot_longer(starts_with("jdate"),
+                 names_to = c(".value", "event"),
+                 names_sep = "\\.") %>%
+    mutate(event = case_when(event == "paired" ~ "added",
+                             event == "died" ~ "removed")
+    ) %>% 
+    drop_na(jdate, event) %>% 
+    .GenerateCageMothCounts()
+)
+
+# overwrite moth events (append egg info)
+dfs_stdised$events <- 
+  dfs_filtered[["coll23"]] %>%
+  rename(eggs.collected = n.coll) %>%
+  merge(., dfs_filtered[["hatch23"]] %>% 
+          rename(jdate = "jdate.hatch") %>%
+          group_by(cage, jdate) %>%
+          summarise(eggs.hatched = sum(n.hatch)) %>%
+          drop_na(),
+        all = TRUE) %>% 
+  .AppendCageMothEvents() %>%
+  mutate(eggs.exclude = 0) # a column in 2025 but not 2023
+```
+
+### collate
+```{r}
+dfs_stdised <- list_modify(
+  dfs_stdised,
+  tents = 
+    dfs_stdised$events[order(dfs_stdised$events$cage, dfs_stdised$events$jdate),] %>%
+    .GenerateCageDailyEvents()
+)
+```
+
+### export
+```{r}
+dfs_export <- list_modify(
+  dfs_export,
+  tents23 = dfs_stdised$tents %>% 
+    merge(.,
+          dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
+          all = TRUE) %>%
+    mutate(year = 2023)
+)
+```
+
+## prep for final export
+
+```{r export tent data}
+dfs_tidy <- list(
+  tents = rbindlist(dfs_export, fill = TRUE)
+)
+```
+
+# # cleanup
+```{r remove intermediate objects}
+rm(dfs_imported, dfs_filtered, dfs_stdised,
+   dfs_export)
+```

@@ -1,0 +1,221 @@
+---
+title: "2024 ntw dev data cleaning"
+date: "2024-09-23"
+---
+
+REVISIT
+- fate.dev stuff (per 2025?)
+
+# 0. roadmap
+
+1. load data & packages; pre-filtering
+2. column formatting + rearrangement
+3. save output into `2024/data/`
+
+*notes:* this is mostly copied over from `cleaning_ox.Rmd` so some comments/notes have been taken out if u compare versions
+
+# 1. load data & packages
+
+```{r message = FALSE, eval = FALSE}
+library(tidyverse)
+library(googlesheets4)
+#conflicts_prefer(dplyr::filter)
+
+here::i_am("_ntw/scripts/import/2024-dev.Rmd")
+library(here)
+```
+
+googlesheets import
+
+```{r}
+df_import <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1256964024", sheet = "ntw repeat", col_types = "c")
+
+```
+
+pre-filtering/value fixing
+
+```{r}
+# value fixing
+df_raw <- df_import %>%
+  filter(date.pmd != "ignore" | is.na(date.pmd)) %>%
+  mutate(
+    across(-starts_with("notes"), gsub, pattern="\\?", replacement = ""), 
+    # removes `?`s from all columns excepts notes column (assuming its the last col in the df)
+    across(notes, gsub, pattern=",", replacement = ";"),
+     # replaces commas w/ ;'s to avoid csv breaking
+    
+    #across(id, gsub, pattern="\\.\\d", replacement = "") ,
+      # turns the repeat entries into whole numbers so theres no decimals going on after as.numeric(id)
+      # but a terrible idea so not doing this anymore
+    
+    across(date.pmd, gsub, pattern = "\\s\\w*", replacement = ""),
+    across(c(starts_with(c("date.", "stuck.")), "notes.lastevent"),  
+           gsub, pattern = "(\\d*/\\d*)", replacement = "\\1/24")
+    #across(starts_with(c("date.", "stuck.", "notes.lastevent")),  ~ ifelse(!is.na(.), paste0(.x, "/24"), NA)
+    
+  ) %>%
+  drop_na(id)
+  
+
+# filtering
+df_filtered <- df_raw %>%
+  filter(!(notes.ignore %in% c("early pmd", "lost")), # dropping things that died in 1 day or got lost
+         instar.enter != "3rd") %>% 
+  select(-"date.15")
+```
+
+# 2. column futzing
+
+## - standardising
+
+```{r}
+df_cleaned <- df_filtered %>%
+  mutate(
+    across(starts_with(c("date.", "stuck.")),  as.Date, format = "%m/%d/%y"),
+    across(starts_with("date."), as.Date, "%j"),
+    across(starts_with(c("mass.", "treatment", "id", "date")), as.numeric),
+    time.enter = as.character(lubridate::hm(time.enter)) # breaks write_csv if left as a `lubridate` object
+  ) %>% 
+  rename(trt = treatment,
+         pop = population) %>%
+  rename_with(~paste0("j", .x), starts_with("date"))
+```
+
+## - update trt info
+
+```{r}
+# assume late/early field 1sts hatched day before collection and treat as hatchlings
+df_cleaned <- df_cleaned %>%
+  mutate(
+    jdate.hatch = case_when(
+      pop == "field" & instar.enter == "1st" ~ as.numeric(jdate.collected - 1),
+      pop == "field" & instar.enter == "hatch" & is.na(jdate.hatch) ~ as.numeric(jdate.collected),
+      TRUE ~ as.numeric(jdate.hatch)),
+    instar.enter = case_when(instar.enter == "1st" ~ "hatch",
+                             TRUE ~ as.character(instar.enter))
+    )
+
+# temperature trts
+df_cleaned <- df_cleaned %>%
+  mutate(meanT = case_when(trt == 260 ~ 26,
+                           trt == 419 ~ 29.5,
+                           trt == 426 ~ 33,
+                           trt == 433 ~ 36.5),
+         flucT = case_when(trt == 260 ~ 0,
+                           trt == 419 ~ 10.5,
+                           trt == 426 ~ 7,
+                           trt == 433 ~ 3.5),
+         maxT = case_when(trt == 260 ~ 26,
+                          TRUE ~ 40),
+         minT = case_when(trt == 260 | trt == 426 ~ 26,
+                          trt == 419 ~ 19,
+                          trt == 433 ~ 33),
+         trt.type = case_when(trt == 260 ~ "ctrl",
+                              TRUE ~ "expt")
+         )
+```
+
+
+## - add development info
+
+parse out dev trajectories
+
+// TODO: 2024-09-23 revisit the eclosion thing w/ a dedicated `fate` column
+
+```{r}
+df_cleaned <- df_cleaned %>% mutate(
+  # stage of sup
+  sup = case_when(!is.na(jdate.8th) ~ 8,
+                  !is.na(jdate.7th) ~ 7,
+                  !is.na(jdate.6th) ~ 6,
+                  is.na(jdate.pmd) & !is.na(jdate.pupa) ~ 0),
+  
+  # 0 = pmd, 1 = pupated, 2 = died of other reason (injury)
+  surv.outcome = case_when(notes.ignore == "injured" ~ 2,
+                           !is.na(jdate.pmd) | is.na(jdate.pupa) ~ 0,
+                           !is.na(jdate.pupa) ~ 1),
+  
+  # stuck indicators per instar (0 = no, 1 = yes)
+  is.stuck3rd = case_when(is.na(stuck.3rd) ~ 0, TRUE ~ 1),
+  is.stuck4th = case_when(is.na(stuck.4th) ~ 0, TRUE ~ 1),
+  is.stuck5th = case_when(is.na(stuck.5th) ~ 0, TRUE ~ 1),
+  is.stuck6th = case_when(is.na(stuck.6th) ~ 0, TRUE ~ 1),
+  is.stuck7th = case_when(is.na(stuck.7th) ~ 0, TRUE ~ 1)
+) 
+
+### old surv outcomes
+# # 0 = pupated, 1 = pmd, 2 = died of other reason (i.e. injury)
+#   mutate(surv.outcome = case_when(!is.na(date.pmd) & notes.ignore == "injured" ~ 2,
+#                                   !is.na(date.pmd) ~ 1,
+#                                   !is.na(date.pupa) ~ 0))
+
+```
+
+
+development outcomes & exit dates
+
+2025-02-02: (idk if i need this ngl. in my head i do)
+
+```{r}
+# data <- data %>%
+#   mutate(jdate.exit = case_when())
+  
+```
+
+
+# 3. saving output & tidying up
+
+maybe keep?
+  - instar.enter (idk bc they're all sposed to start at hatching lol)
+  - notes.ignore
+
+
+```{r}
+today <- format(Sys.time(), "%y%m%d-%H%M")
+
+# wordier notes/less-informative columns
+# notes <- data %>%
+#   select(c("cohort", "pop", "diet", "trt", "id", # identifying info
+#            "species", "location", "date.collected", # collection/demog info
+#            "instar.enter", "time.enter", # prob dont need
+#            starts_with(c("date.", "h.")), contains(c("stuck", "notes")), # dev stuff that is jdated
+#            "sup", "surv.outcome"
+#            )) #%>% View()
+# 
+# write.csv(notes, file = "~/Documents/repos/ntw/2024/data/ntw-notes.csv", row.names = FALSE)
+# write.csv(notes, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ntw-notes.csv" ), row.names = FALSE)
+
+# raw data
+write_csv(df_raw, file = paste0(here("_ntw/data/raw/2024/"), "dev_", today, ".csv"))
+  
+# MQs only
+# export <- df_cleaned %>% filter(species == "MQ")
+# 
+# write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev-MQ.csv"), row.names = FALSE)
+# write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-MQ_", today, ".csv"), row.names = FALSE)
+
+  
+# useful columns only
+export <- df_cleaned %>%
+  #filter(is.na(species)) %>%
+  select(-"jdate.collected") %>%
+  select(c("species", "cohort", "pop", "diet", "trt", "id", # identifying info
+           "instar.enter", starts_with(c("jdate", "mass")), 
+           "sex",
+           ends_with("T", ignore.case = FALSE), "trt.type",
+           "sup", "surv.outcome"
+          )) #%>% View()
+
+write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev.csv"), row.names = FALSE)
+#write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-sexta_", today, ".csv"), row.names = FALSE)
+
+```
+
+remove troubleshooting objects
+
+```{r}
+rm(df_import, df_raw, df_filtered, df_cleaned, today, export)
+```
+
+
+
