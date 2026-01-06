@@ -207,7 +207,7 @@ write.csv(df_all, file = paste0(here("_ntw/data/raw/2023/"), "dev_", today, ".cs
 # cleaned up sexta
 export <- df_cleaned %>%
   #filter(is.na(species)) %>% 
-  select(-c("species", "from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
+  select(-c("from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
 
 write.csv(export, file = here("_ntw/data/clean/2023/dev.csv"), row.names = FALSE)
 #write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "dev-sexta_", today, ".csv" ), row.names = FALSE)

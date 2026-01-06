@@ -29,9 +29,8 @@ library(tidyverse)
 library(here)
 
 # objects
-source(here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "/utils/data-wrangle.R")) 
-source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
+source(here("_ntw/scripts/utils/data-wrangle.R"))
+source(here("_ntw/scripts/R/wrangle-tents.R"))
 ```
 
 # # tents + egg stuff

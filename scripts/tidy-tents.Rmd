@@ -43,8 +43,6 @@ knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
 library(data.table) # for rbindlist
 library(tidyverse)
 library(here)
-
-#source(here("set-paths.R"))
 ```
 
 # # adult data
@@ -158,9 +156,9 @@ roadmap:
 
 ```{r load 2025 tents data}
 dfs_imported <- list(
-  ad25 = read.csv(here(bin_paths$y25$ntwdata, "clean-adults.csv"), header = TRUE),
-  coll25 = read.csv(here(bin_paths$y25$ntwdata, "clean-coll.csv"), header = TRUE),
-  hatch25 = read.csv(here(bin_paths$y25$ntwdata, "clean-hatch.csv"), header = TRUE)
+  ad25 = read.csv(here("_ntw/data/clean/2025/tent-matings.csv"), header = TRUE),
+  coll25 = read.csv(here("_ntw/data/clean/2025/tent-eggs.csv"), header = TRUE),
+  hatch25 = read.csv(here("_ntw/data/clean/2025/tent-events.csv"), header = TRUE)
 )
 ```
 
@@ -247,29 +245,23 @@ dfs_export <- list(
 ```{r load 2023 tent data}
 dfs_imported <- list(
   ad23 = 
-    read.csv(here("_ntw/data/clean/2023/tent-pairs.csv"), header = TRUE) %>%
-    mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")) %>%
+    read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
     # minor fixes
     mutate(id.tent = case_when(id.tent == "107-cage" & is.na(trt.f) ~ NA_character_,
                                TRUE ~ as.character(id.tent))) %>%
     filter(!(id.f %in% c(282, 284))),
   
   coll23 = 
-    read.csv(here("_ntw/data/clean/2023/tent-info.csv"), header = TRUE) %>%
-    #mutate(across(starts_with("date"), as.Date, "%Y-%m-%d")) %>% 
+    read.csv(here("_ntw/data/clean/2023/tent-events.csv"), header = TRUE) %>%
     filter(id.tent != "107-I"),
   
   hatch23 = 
-    read.csv(here("_ntw/data/clean/2023/tent-hatch.csv"), header = TRUE) %>% 
-    #mutate(across(starts_with("date"), as.Date, "%m/%d/%y"))
+    read.csv(here("_ntw/data/clean/2023/tent-eggs.csv"), header = TRUE)
   ) %>%
   
   lapply(., \(x){
     x %>%
-      rename(cage = id.tent) #%>%
-      # mutate(across(starts_with("date"), as.Date, "%j", .names = "j{.col}"),
-      #        across(starts_with("jdate"), as.numeric)) %>%
-      # select(-starts_with("date"))
+      rename(cage = id.tent)
   })
 ```
 
@@ -413,16 +405,6 @@ dfs_export <- list_modify(
 dfs_tidy <- list(
   tents = rbindlist(dfs_export, fill = TRUE)
 )
-```
-
-```{r export for stats, eval=FALSE, include=FALSE, purl=FALSE}
-# update objects in environment before saving RDS!
-list(wide = dfs_tidy$wide,
-     long = dfs_tidy$long) %>% 
-  saveRDS(., file = here(bin_paths$y25$ntwdata, "dev_tidy.rds"))
-
-dfs_tidy$tents %>%
-  saveRDS(., file = here(bin_paths$y25$ntwdata, "tents_tidy.rds"))
 ```
 
 # # cleanup

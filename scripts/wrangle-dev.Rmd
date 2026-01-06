@@ -10,12 +10,12 @@ date: "2025-11-29"
 
 ```{r set paths, eval=FALSE, purl=FALSE}
 # run if things arent working
-here::i_am("2025/ntw/data-wrangle.Rmd")
+here::i_am("_ntw/scripts/wrangle-dev.Rmd")
 ```
 
 ```{r purl, eval=FALSE, purl=FALSE}
 # rerun to update .R script (save .Rmd first)
-knitr::purl("data-wrangle.Rmd", here::here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
+knitr::purl("wrangle-dev.Rmd", here::here("_ntw/scripts/R/wrangle-dev.R"))
 ```
 
 ```{r about}
@@ -30,9 +30,8 @@ library(tidyverse)
 library(here)
 
 # objects
-source(here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "/utils/data-wrangle.R")) 
-source(here(bin_paths$y25$ntw, "/R/tidy-data.R"))
+source(here("_ntw/scripts/utils/data-wrangle.R"))
+source(here("_ntw/scripts/R/wrangle-dev.R"))
 ```
 
 

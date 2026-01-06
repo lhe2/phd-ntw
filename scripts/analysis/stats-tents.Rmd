@@ -1,0 +1,58 @@
+---
+title: "ntw 2025 stats analyses"
+date: "2025-12-02"
+---
+
+# # preamble & loading
+
+stats analyses for ntw 2025
+
+```{r set pathfinding}
+here::i_am("_ntw/scripts/analysis/stats-tents.Rmd")
+library(here)
+```
+
+```{r load libraries}
+library(lme4) # glm, lm, glmer
+#library(lmerTest) # lmer
+library(MuMIn) # dredge (nested model comparisons)
+library(tidyverse)
+
+library(conflicted)
+conflicts_prefer( 
+  #lmerTest::lmer, # dont rlly need..
+  dplyr::filter
+)
+# lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
+
+
+# library(survival) # for fitting 
+# library(survminer) # for plotting
+# library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
+```
+notes
+
+- `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
+
+```{r load data and helpers, message=FALSE}
+source(here("_ntw/scripts/utils/general.R"))
+source(here("_ntw/scripts/utils/analysis-stats.R"))
+
+source(here("_ntw/scripts/R/wrangle-tents.R")) # tents data
+```
+
+```{r tent data prep}
+# formatting
+imported_tents <- 
+  dfs_pertent_ss %>%
+  mutate(across(starts_with("trt"), as.factor))
+
+#rm(dfs_pertent_ss)
+
+# subset
+dfs <- list(
+  tents =
+    imported_tents %>%
+    FilterForLabEggs()
+)
+```

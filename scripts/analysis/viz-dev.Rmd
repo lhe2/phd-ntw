@@ -8,7 +8,7 @@ date: "2025-12-01"
 data viz for ntw 2025
 
 ```{r set pathfinding}
-here::i_am("2025/ntw/analysis-viz.Rmd")
+here::i_am("_ntw/scripts/analysis/viz-dev.Rmd")
 library(here)
 ```
 
@@ -20,11 +20,10 @@ library(patchwork) # for plot_layout
 ```
 
 ```{r load data and helpers, message = FALSE, warning=FALSE}
-source(here::here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "/utils/general.R"))
-source(here(bin_paths$y25$ntw, "/utils/analysis-viz.R"))
-source(here(bin_paths$y25$ntw, "/R/wrangle-data.R"))
-#rm(dfs_pertent_ss)
+source(here("_ntw/scripts/utils/general.R"))
+source(here("_ntw/scripts/utils/analysis-viz.R"))
+source(here("_ntw/scripts/R/wrangle-dev.R"))
+
 ```
 
 ```{r}

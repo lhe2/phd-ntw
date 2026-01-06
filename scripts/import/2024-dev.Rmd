@@ -196,7 +196,7 @@ write_csv(df_raw, file = paste0(here("_ntw/data/raw/2024/"), "dev_", today, ".cs
 export <- df_cleaned %>%
   #filter(is.na(species)) %>%
   select(-"jdate.collected") %>%
-  select(c("cohort", "pop", "diet", "trt", "id", # identifying info
+  select(c("species", "cohort", "pop", "diet", "trt", "id", # identifying info
            "instar.enter", starts_with(c("jdate", "mass")), 
            "sex",
            ends_with("T", ignore.case = FALSE), "trt.type",

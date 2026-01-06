@@ -43,8 +43,6 @@ knitr::purl("tidy-dev.Rmd", here::here("_ntw/scripts/R/tidy-dev.R"))
 library(data.table) # for rbindlist
 library(tidyverse)
 library(here)
-
-source(here("set-paths.R"))
 ```
 
 
@@ -53,13 +51,13 @@ source(here("set-paths.R"))
 ## loading
 ```{r load larval data}
 dfs_imported <- list(
-  y23 = read.csv(here(bin_paths$y23$data, "clean-ntw.csv"), header = TRUE) %>%
+  y23 = read.csv(here("_ntw/data/clean/2023/dev.csv"), header = TRUE) %>%
     mutate(year = 2023) %>%
-    mutate(ID = case_when(ID == 1379 & !is.na(jdate.pmd) ~ 1379.1,
-                          TRUE ~ as.numeric(ID))),
-  y24 = read.csv(here(bin_paths$y24$data, "ntw.csv"), header = TRUE) %>%
+    mutate(id = case_when(id == 1379 & !is.na(jdate.pmd) ~ 1379.1,
+                          TRUE ~ as.numeric(id))),
+  y24 = read.csv(here("_ntw/data/clean/2024/dev.csv"), header = TRUE) %>%
     mutate(year = 2024),
-  y25 = read.csv(here(bin_paths$y25$ntwdata, "clean-larva.csv"), header = TRUE) %>%
+  y25 = read.csv(here("_ntw/data/clean/2025/dev.csv"), header = TRUE) %>%
     mutate(year = 2025)
 )
 ```
@@ -75,7 +73,7 @@ dfs_filtered <- list(
     filter(is.na(species),
            instar.enter == "hatch",
            pop %in% c("field", "lab"),
-           !(treatment %in% c("ctrl", "267", "330")),
+           !(trt %in% c("ctrl", "267", "330")),
            reason.ignore != "lost" | is.na(reason.ignore),
            ) %>%
     rename(#id = ID,
@@ -90,7 +88,7 @@ dfs_filtered <- list(
   y24 = dfs_imported[["y24"]] %>%
     filter(is.na(species),
            instar.enter == "hatch") %>%
-    select(-c("trt.type", "jdate.enter", "instar.enter", ends_with("2nd"))),
+    select(-c("jdate.enter", "instar.enter", ends_with("2nd"))),
   
   y25 = dfs_imported[["y25"]] %>%
     filter(is.na(species),
@@ -244,9 +242,10 @@ dfs_tidy <- list_modify(dfs_tidy,
 ) 
 ```
 
+
+
 # # cleanup
 ```{r remove intermediate objects}
-rm(dfs_imported, dfs_filtered, dfs_stdised,
-   dfs_export)
+rm(dfs_imported, dfs_filtered, dfs_stdised)
 ```
 

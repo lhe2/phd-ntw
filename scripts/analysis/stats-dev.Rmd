@@ -8,7 +8,7 @@ date: "2025-12-02"
 stats analyses for ntw 2025
 
 ```{r set pathfinding}
-here::i_am("2025/ntw/analysis-stats.Rmd")
+here::i_am("_ntw/scripts/analysis/stats-dev.Rmd")
 library(here)
 ```
 
@@ -35,19 +35,13 @@ notes
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data and helpers, message=FALSE}
-source(here("set-paths.R"))
-source(here(bin_paths$y25$ntw, "/utils/general.R"))
-source(here(bin_paths$y25$ntw, "/utils/analysis-stats.R"))
+source(here("_ntw/scripts/utils/general.R"))
+source(here("_ntw/scripts/utils/analysis-stats.R"))
 
-source(here(bin_paths$y25$ntw, "/R/tidy-data.R")) # dev data
-source(here(bin_paths$y25$ntw, "/R/wrangle-data.R")) # tents data
-rm(dfs_tents_ss, dfs_dev_ss)
-
-dfs <- list() # for stats dfs
+source(here("_ntw/scripts/R/tidy-dev.R")) # dev data
 ```
 
 ## data prep
-
 
 ```{r dev data prep}
 # formatting
@@ -66,7 +60,7 @@ imported_dev$wide <- imported_dev$wide %>%
 
 
 # subset: drop controls and lab+TB
-dfs <- dfs %>% list_modify(
+dfs <- list(
   wide = 
     imported_dev[["wide"]] %>%
     FilterOutLabTB() %>%
@@ -78,27 +72,12 @@ dfs <- dfs %>% list_modify(
     imported_dev[["wide"]] %>%
     FilterOutLabTB() %>%
     filter(trt != 260,
-           !is.na(jdate.pupa) & !is.na(sex)),
+           !is.na(jdate.pupa) & !is.na(sex))
   
 )
 
 ```
 
-```{r tent data prep}
-# formatting
-imported_tents <- 
-  dfs_pertent_ss %>%
-  mutate(across(starts_with("trt"), as.factor))
-
-#rm(dfs_pertent_ss)
-
-# subset
-dfs <- dfs %>% list_modify(
-  tents =
-    imported_tents %>%
-    FilterForLabEggs()
-)
-```
 # # pupal stats
 
 ## survival to pup
