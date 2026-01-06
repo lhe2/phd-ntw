@@ -23,6 +23,7 @@ library(here)
 
 # adult info
 
+LAST RUN: 2025-12-14
 
 ## - import
 
@@ -102,6 +103,7 @@ write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-matings.csv
 
 # eggs
 
+LAST RUN: 2025-12-14
 
 ## - import
 ```{r}

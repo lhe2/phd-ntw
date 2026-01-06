@@ -3,6 +3,9 @@ title: "2024 ntw dev data cleaning"
 date: "2024-09-23"
 ---
 
+REVISIT
+- fate.dev stuff (per 2025?)
+
 # 0. roadmap
 
 1. load data & packages; pre-filtering

@@ -46,7 +46,7 @@ dfs_tents_ss <- dfs_tents_ss %>%
 # both yrs
 dfs_tents_ss$eggs_nocol %>%
   FilterForLabEggs() %>%
-  ggplot(aes(y = p.eggs.hatched, x = n.eggs.coll,
+  ggplot(aes(y = p.eggs.hatched, x = n.eggs.coll, # TODO: missing n.eggs.coll 
              col = mate.trt, shape = mate.hs)) +
   geom_point() +
   geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,

@@ -3,6 +3,10 @@ title: "tents_data_cleaning"
 date: "2023-02-15"
 ---
 
+APPEND 2025 FIXES LOL
+- separate the tent csvs better t b h (too mushed up..)
+
+
 # roadmap
 
 1. load data & packages
