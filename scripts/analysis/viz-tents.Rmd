@@ -24,9 +24,7 @@ source(here("_ntw/scripts/utils/analysis-viz.R"))
 
 ```{r load data, message = FALSE, warning=FALSE}
 source(here("_ntw/scripts/R/wrangle-tents.R"))
-```
 
-```{r}
 # convert things into factors for ease of graphing
 dfs_tents_ss <- dfs_tents_ss %>%
     lapply(., \(x){
@@ -36,7 +34,7 @@ dfs_tents_ss <- dfs_tents_ss %>%
              mate.type = factor(mate.type, 
                                 levels = c("within", "between")))
   })
-  
+
 ```
 
 # # tents
@@ -47,11 +45,11 @@ dfs_tents_ss <- dfs_tents_ss %>%
 # both yrs
 dfs_tents_ss$eggs_nocol %>%
   FilterForLabEggs() %>%
-  ggplot(aes(y = p.eggs.hatched, x = n.eggs.coll, # TODO: missing n.eggs.coll 
+  ggplot(aes(y = p.hatch, x = n.total.coll, 
              col = mate.trt, shape = mate.hs)) +
   geom_point() +
-  geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,
-                    ymin = p.eggs.hatched - se.eggs.hatched),
+  geom_errorbar(aes(ymax = p.hatch + se.hatch,
+                    ymin = p.hatch - se.hatch),
                 width = 100) +
   # x err bar is too small to notice for 2025
   facet_wrap(mate.type ~ year) +
@@ -64,12 +62,12 @@ dfs_tents_ss$eggs_nocol %>%
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>%
-    ggplot(aes(y = p.eggs.hatched, x = n.eggs.coll,
+    ggplot(aes(y = p.hatch, x = n.total.coll,
                col = mate.trt, shape = mate.hs)) +
     geom_point(size = 2) +
-    geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,
-                      ymin = p.eggs.hatched - se.eggs.hatched),
-                  width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.eggs.coll, 
+    geom_errorbar(aes(ymax = p.hatch + se.hatch,
+                      ymin = p.hatch - se.hatch),
+                  width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.total.coll, 
                                     pct = 0.05)) +
     # x err bar is too small to notice so omit
     geom_text(aes(label = n.f.total),
@@ -101,16 +99,16 @@ dfs_tents_ss$eggs_nocol %>%
            #mate.trt == 260
            ) %>%
     ###############################
-   ggplot(aes(y = p.eggs.hatched, x = n.eggs.coll,
+   ggplot(aes(y = p.hatch, x = n.total.coll,
              col = mate.trt, 
              shape = mate.col
              )) +
   geom_point(size = 2) +
     geom_text(aes(label = n.f.total),
             hjust = 1.25, vjust = -1.3, show.legend = FALSE) + 
-  geom_errorbar(aes(ymax = p.eggs.hatched + se.eggs.hatched,
-                    ymin = p.eggs.hatched - se.eggs.hatched),
-                width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.eggs.coll,
+  geom_errorbar(aes(ymax = p.hatch + se.hatch,
+                    ymin = p.hatch - se.hatch),
+                width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.total.coll,
                                   pct = 0.025)
                 ) +
   facet_wrap(~mate.type) +
@@ -126,7 +124,7 @@ p1 <-
   .plotfn() +
   labs(caption = "mate.type and mate.pop = lab for col") +
   scale_shape_manual(values = 16) +
-  guides(shape = FALSE)
+  guides(shape = "none")
 
 p2 <- 
 dfs_tents_ss$eggs_matecol %>%
@@ -135,7 +133,7 @@ dfs_tents_ss$eggs_matecol %>%
   .plotfn() +
   labs(caption = "mate.type = col") +
   scale_shape_manual(values = c(17, 15, 16)) +
-  guides(shape = FALSE)
+  guides(shape = "none")
 
 p3 <- 
 dfs_tents_ss$eggs_allcol %>%

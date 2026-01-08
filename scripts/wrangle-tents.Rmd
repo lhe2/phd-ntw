@@ -63,6 +63,7 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
   summarise(
     n.cages.total = n(),
     n.f.total = sum(n.f),
+    n.total.coll = sum(n.coll),
     
     # these look rly bad compared to the daily level LOL
     avg.coll.total = mean(n.coll),
