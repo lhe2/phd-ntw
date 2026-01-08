@@ -85,14 +85,17 @@ dfs_dev_ss <- list(
 ```{r dev ss custom fn}
 .CalcDevSS <- function(x){
   x %>%
-    mutate(log.mass = log(mass)) %>%
+    mutate(log.mass = log(mass),
+           devrate = 1/tt) %>%
     summarise(n = n(),
               avg.logmass = mean(log.mass, na.rm = TRUE),
               se.logmass = se(log.mass),
               avg.mass = mean(mass, na.rm = TRUE),
               se.mass = se(mass),
               avg.tt = mean(tt, na.rm = TRUE),
-              se.tt = se(tt))
+              se.tt = se(tt),
+              avg.devrate = mean(devrate, na.rm = TRUE),
+              se.devrate = se(devrate))
 }
 ```
 
@@ -105,15 +108,31 @@ dfs_dev_ss <- list()
 ```{r overall development}
 dfs_dev_ss <- list_modify(
   dfs_dev_ss,
-  dev_outcomes_wpmd =
+  dev_outcomes_all =
     dfs_tidy$long %>% 
     group_by(year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
-  dev_outcomes_nopmd =
-    dfs_tidy$long %>% 
-    filter(is.pup != 0 | is.na(is.pup)) %>%
-    group_by(year, pop, diet, trt, instar) %>%
+  # groups survivors + culled bugs together
+  dev_outcomes_allgrpd =
+    dfs_tidy$long %>%
+    mutate(is.pup = case_when(is.pup == 2 ~ 1,
+                              TRUE ~ as.numeric(is.pup))) %>%
+    group_by(is.pup, year, pop, diet, trt, instar) %>%
+    .CalcDevSS(),
+  
+  # groups survivors + culled bugs
+  # dev_outcomes_nopmd =
+  #   dfs_tidy$long %>% 
+  #   filter(is.pup != 0 | is.na(is.pup)) %>%
+  #   group_by(year, pop, diet, trt, instar) %>%
+  #   .CalcDevSS(),
+  
+  dev_outcomes_allgrpd2 =
+    dfs_tidy$long %>%
+    # mutate(is.pup = case_when(is.pup == 2 ~ 1,
+    #                           TRUE ~ as.numeric(is.pup))) %>%
+    group_by(is.pup, year, pop, diet, trt, instar) %>%
     .CalcDevSS(),
   
   ad_dev = 

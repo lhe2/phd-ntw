@@ -45,7 +45,7 @@ dfs_dev_ss <- dfs_dev_ss %>%
   FilterOutLabTB() %>%
   ggplot(aes(y = prop.pup,
              x = trt,
-             col = year, lty = year,
+             col = year, #lty = year,
              group = year
              )) +
   geom_point() +
@@ -57,9 +57,10 @@ dfs_dev_ss <- dfs_dev_ss %>%
   #           hjust = -0.2, vjust = -.2,
   #           show.legend = FALSE) +
   facet_wrap(~pop) +
-  labs(y = "survived to pupation",
+  labs(y = "% survived to pupation",
        x = "treatment",
-       col = "year", lty = "year") +
+       col = "year", #lty = "year"
+       ) +
   scale_color_brewer(palette = "Dark2") +
   theme_bw()
 }
@@ -227,27 +228,31 @@ dfs_dev_ss$ad_dev_bysex %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
 ```
+
 ## pup time
 
-```{r}
+```{r days to pup}
 .plotfn <- function(x){
   x %>%
     FilterOutLabTB() %>%
     filter(instar == "pupa") %>%
-     ggplot(aes(y = avg.tt, x = trt,
-             col = year,
-             group = year)) +
-  geom_point(size = 2) + geom_line() +
-  geom_errorbar(aes(ymax = avg.tt + se.tt,
-                    ymin = avg.tt - se.tt),
-                width = 0.25) +
-  # geom_text(aes(label = n),
-  #           vjust = -0.75, hjust = -0.5, size = 3.5,
-  #           #position = position_jitter(width = 0.2, height = 0.3, seed = 1),
-  #           show.legend = FALSE) +
-  facet_grid(~pop) +
-  scale_color_brewer(palette = "Dark2") +
-  theme_bw()
+    ggplot(aes(y = avg.tt, x = trt,
+               col = year,
+               group = year)) +
+    geom_point(size = 2) + geom_line() +
+    geom_errorbar(aes(ymax = avg.tt + se.tt,
+                      ymin = avg.tt - se.tt),
+                  width = 0.25) +
+    # geom_text(aes(label = n),
+    #           vjust = -0.75, hjust = -0.5, size = 3.5,
+    #           #position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+    #           show.legend = FALSE) +
+    facet_grid(~pop) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    labs(y = "mean±se time to pupation (days)",
+         x = "temperature trt",
+         title = "time to pupation")
 }
 
 dfs_dev_ss$ad_dev %>%
@@ -261,6 +266,40 @@ dfs_dev_ss$ad_dev %>%
 # LOL the 260 lab every yr ...  i think its bc they take so long from 5 to wander
 ```
 
+```{r pup rate}
+.plotfn <- function(x){
+  x %>%
+    FilterOutLabTB() %>%
+    filter(instar == "pupa") %>%
+    ggplot(aes(y = avg.devrate, x = trt,
+               col = year,
+               group = year)) +
+    geom_point(size = 2) + geom_line() +
+    geom_errorbar(aes(ymax = avg.devrate + se.devrate,
+                      ymin = avg.devrate - se.devrate),
+                  width = 0.25) +
+    # geom_text(aes(label = n),
+    #           vjust = -0.75, hjust = -0.5, size = 3.5,
+    #           #position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+    #           show.legend = FALSE) +
+    facet_grid(~pop) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    labs(y = "development rate (1/days)",
+         x = "temperature trt",
+         title = "time to pupation")
+}
+
+dfs_dev_ss$ad_dev %>%
+  filter(trt != 260) %>%  
+  .plotfn() +
+  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+
+dfs_dev_ss$ad_dev %>%
+  .plotfn() +
+  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+```
+
 
 ## dev trajectories 
 
@@ -268,42 +307,73 @@ dfs_dev_ss$ad_dev %>%
 # dev by year
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>% 
-  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
-  ggplot(aes(y = avg.logmass,
-             x = avg.tt,
-             col = year)) +
-  geom_point() +
-  geom_line() +
-  # hard to see with these lol bc theyre pretty close
-  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
-  #                   ymin = avg.logmass - se.logmass,
-  #                   width = CalcErrWd(avg.tt))) +
-  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
-  #                    xmin = avg.tt - se.tt,
-  #                    height = CalcErrHt(avg.logmass))) +
-  facet_grid(pop ~ trt) +
-  #scale_color_brewer(palette = "Greens") +
-  scale_color_brewer(palette = "Dark2") +
-  theme_bw()
+    FilterOutLabTB() %>% 
+    filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
+    ggplot(aes(y = avg.logmass,
+               x = avg.tt,
+               col = year)) +
+    geom_point() +
+    geom_line() +
+    # hard to see with these lol bc theyre pretty close
+    # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+    #                   ymin = avg.logmass - se.logmass,
+    #                   width = CalcErrWd(avg.tt))) +
+    # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+    #                    xmin = avg.tt - se.tt,
+    #                    height = CalcErrHt(avg.logmass))) +
+    facet_grid(pop ~ trt) +
+    #scale_color_brewer(palette = "Greens") +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    labs(caption = "mean ± se",
+         y = "log(mass mg)", x = "dev time (days)",
+         col = "year")
 }
 
-dfs_dev_ss$dev_outcomes_nopmd %>%
+dfs_dev_ss$dev_outcomes_all %>%
   .plotfn() +
-  labs(title = "development trajectories (pup'd only)",
-       caption = "mean ± se",
-       y = "log(mass mg)", x = "dev time (days)",
-       col = "year",
+  labs(title = "development trajectories (with pmd)")
+
+dfs_dev_ss$dev_outcomes_allgrpd %>%
+  filter(is.pup != 0) %>%
+  .plotfn() +
+  labs(title = "development trajectories (pup'd only)", # this actually includes pups + culled lol
        )
+```
+
+```{r}
+# dev by year; parse out pmds more
+.plotfn <- function(x){
+  x %>%
+    FilterOutLabTB() %>% 
+    mutate(is.pup = as.factor(is.pup)) %>%
+    filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
+    ggplot(aes(y = avg.logmass,
+               x = avg.tt,
+               col = year, lty = is.pup, 
+               group = interaction(year, is.pup, trt, pop))) +
+    geom_point() +
+    geom_line() +
+    facet_grid(pop ~ trt) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    labs(title = "development trajectories",
+         caption = "mean ± se",
+         y = "log(mass mg)", x = "dev time (days)",
+         col = "year", lty = "fate"
+    ) +
+    scale_linetype_discrete(labels = c("pupated", "died"))
+}
+
+# surv + culled combined
+dfs_dev_ss$dev_outcomes_allgrpd %>%
+  .plotfn()
 
 
-dfs_dev_ss$dev_outcomes_wpmd %>%
-  .plotfn() +
-  labs(title = "development trajectories (with pmd)",
-       caption = "mean ± se",
-       y = "log(mass mg)", x = "dev time (days)",
-       col = "year",
-       )
+# culled omitted
+dfs_dev_ss$dev_outcomes_allgrpd2 %>%
+  filter(is.pup != 2) %>%
+  .plotfn()
 ```
 
 ```{r}
@@ -326,29 +396,25 @@ dfs_dev_ss$dev_outcomes_wpmd %>%
   #                    height = CalcErrHt(avg.logmass))) +
   facet_grid(pop ~ year) +
   #scale_color_brewer(palette = "Greens") +
-  scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE))
+  scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
+    labs(caption = "mean ± se",
+         y = "log(mass mg)", x = "dev time (days)",
+         col = "treatment")
 }
 
-dfs_dev_ss$dev_outcomes_nopmd %>%
+dfs_dev_ss$dev_outcomes_allgrpd %>%
+  filter(is.pup != 0) %>%
   .plotfn() +
-  labs(title = "development trajectories (pups only)",
-       caption = "mean ± se",
-       y = "log(mass mg)", x = "dev time (days)",
-       col = "treatment",
-  )
+  labs(title = "development trajectories (pups only)")
 
-dfs_dev_ss$dev_outcomes_wpmd %>%
+dfs_dev_ss$dev_outcomes_all %>%
   .plotfn() +
-  labs(title = "development trajectories (all)",
-       caption = "mean ± se",
-       y = "log(mass mg)", x = "dev time (days)",
-       col = "treatment",
-       )
+  labs(title = "development trajectories (all)")
 ```
 
 ```{r}
 # wtf goin on w the lab controls
-dfs_dev_ss$dev_outcomes_wpmd %>%
+dfs_dev_ss$dev_outcomes_all %>%
   FilterOutLabTB() %>% 
   filter(instar %in% c("3rd", "4th", "5th", "wander", "pupa"),
          trt == 260) %>% #View()

@@ -87,7 +87,7 @@ dfs_filtered <- list(
   y24 = dfs_imported[["y24"]] %>%
     filter(is.na(species),
            instar.enter == "hatch") %>%
-    select(-c("jdate.enter", "instar.enter", ends_with("2nd"))),
+    select(-c("jdate.enter", "instar.enter", ends_with("2nd"), "trt.type")),
   
   y25 = dfs_imported[["y25"]] %>%
     filter(is.na(species),
