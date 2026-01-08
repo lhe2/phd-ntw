@@ -20,10 +20,9 @@ library(patchwork) # for plot_layout
 ```
 
 ```{r load data and helpers, message = FALSE, warning=FALSE}
-source(here("_ntw/scripts/utils/general.R"))
+source(here("_ntw/scripts/utils/analysis.R"))
 source(here("_ntw/scripts/utils/analysis-viz.R"))
 source(here("_ntw/scripts/R/wrangle-dev.R"))
-
 ```
 
 ```{r}

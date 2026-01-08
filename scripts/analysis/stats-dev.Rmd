@@ -35,7 +35,7 @@ notes
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data and helpers, message=FALSE}
-source(here("_ntw/scripts/utils/general.R"))
+source(here("_ntw/scripts/utils/analysis.R"))
 source(here("_ntw/scripts/utils/analysis-stats.R"))
 
 source(here("_ntw/scripts/R/tidy-dev.R")) # dev data

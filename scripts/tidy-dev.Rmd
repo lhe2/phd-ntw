@@ -9,12 +9,6 @@ prepping ntw data for 2025 wrangling
 
 final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
 
-
-```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
-# run this prior to other pathing stuff if things are breaking
-here::i_am("_ntw/scripts/tidy-dev.Rmd")
-```
-
 ```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
 # rerun this chunk if purled .R script needs to be updated.
 # save and apply updates to current .Rmd before purling!
@@ -25,6 +19,11 @@ knitr::purl("tidy-dev.Rmd", here::here("_ntw/scripts/R/tidy-dev.R"))
 # knitr::purl("data-tidying.Rmd", 
 #             paste0(here::here(bin_paths$y25$ntw), "/archive/cleaning/", 
 #                    format(Sys.time(), "%y%m%d-%H%M"), "_tidy-data.R"))
+```
+
+```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
+# run this prior to other pathing stuff if things are breaking
+here::i_am("_ntw/scripts/tidy-dev.Rmd")
 ```
 
 # load libs & pkgs

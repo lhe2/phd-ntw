@@ -8,14 +8,14 @@ date: "2025-11-29"
 - data wrangling for ntw 2025 data here
 - data gets purled for wrangling later (update script as needed)
 
-```{r set paths, eval=FALSE, purl=FALSE}
-# run if things arent working
-here::i_am("_ntw/scripts/wrangle-tents.Rmd")
-```
-
 ```{r purl, eval=FALSE, purl=FALSE}
 # rerun to update .R script (save .Rmd first)
 knitr::purl("wrangle-tents.Rmd", here::here("_ntw/scripts/R/wrangle-tents.R"))
+```
+
+```{r set paths, eval=FALSE, purl=FALSE}
+# run if things arent working
+here::i_am("_ntw/scripts/wrangle-tents.Rmd")
 ```
 
 ```{r about}
@@ -29,7 +29,7 @@ library(tidyverse)
 library(here)
 
 # objects
-source(here("_ntw/scripts/utils/data-wrangle.R"))
+source(here("_ntw/scripts/utils/wrangle.R"))
 source(here("_ntw/scripts/R/wrangle-tents.R"))
 ```
 
