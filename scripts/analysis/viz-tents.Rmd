@@ -12,16 +12,17 @@ here::i_am("_ntw/scripts/analysis/viz-tents.Rmd")
 library(here)
 ```
 
-```{r load libraries}
+```{r load libraries and utils}
 library(tidyverse)
 library(patchwork) # for plot_layout
 # library(survival) # for fitting surv
 # library(survminer) # for plotting surv
-```
 
-```{r load data and helpers, message = FALSE, warning=FALSE}
 source(here("_ntw/scripts/utils/analysis.R"))
 source(here("_ntw/scripts/utils/analysis-viz.R"))
+```
+
+```{r load data, message = FALSE, warning=FALSE}
 source(here("_ntw/scripts/R/wrangle-tents.R"))
 ```
 

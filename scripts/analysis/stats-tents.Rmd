@@ -12,7 +12,7 @@ here::i_am("_ntw/scripts/analysis/stats-tents.Rmd")
 library(here)
 ```
 
-```{r load libraries}
+```{r load libraries and utils}
 library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
 library(MuMIn) # dredge (nested model comparisons)
@@ -29,16 +29,16 @@ conflicts_prefer(
 # library(survival) # for fitting 
 # library(survminer) # for plotting
 # library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
+
+source(here("_ntw/scripts/utils/analysis.R"))
+source(here("_ntw/scripts/utils/analysis-stats.R"))
 ```
 notes
 
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
-```{r load data and helpers, message=FALSE}
-source(here("_ntw/scripts/utils/analysis.R"))
-source(here("_ntw/scripts/utils/analysis-stats.R"))
-
-source(here("_ntw/scripts/R/wrangle-tents.R")) # tents data
+```{r load data, message=FALSE}
+source(here("_ntw/scripts/R/wrangle-tents.R"))
 ```
 
 ```{r tent data prep}

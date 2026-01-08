@@ -3,19 +3,19 @@ title: "ntw 2025 wrangling"
 date: "2025-11-29"
 ---
 
-# # preamble & loading
+# preamble & loading
 
 - data wrangling for ntw 2025 data here
 - data gets purled for wrangling later (update script as needed)
 
-```{r purl, eval=FALSE, purl=FALSE}
-# rerun to update .R script (save .Rmd first)
-knitr::purl("wrangle-dev.Rmd", here::here("_ntw/scripts/R/wrangle-dev.R"))
-```
-
 ```{r set paths, eval=FALSE, purl=FALSE}
 # run if things arent working
 here::i_am("_ntw/scripts/wrangle-dev.Rmd")
+```
+
+```{r purl, eval=FALSE, purl=FALSE}
+# rerun to update .R script (save .Rmd first)
+knitr::purl("wrangle-dev.Rmd", here::here("_ntw/scripts/R/wrangle-dev.R"))
 ```
 
 ```{r about}
@@ -23,64 +23,17 @@ here::i_am("_ntw/scripts/wrangle-dev.Rmd")
 # compiles 2023-25 development and tent summary statistics.
 ```
 
-
 ```{r load libs and data, message=FALSE, warning=FALSE}
-# libraries
+# libraries, utils
 library(tidyverse)
 library(here)
-
-# objects
 source(here("_ntw/scripts/utils/wrangle.R"))
+
+# data
 source(here("_ntw/scripts/R/tidy-dev.R"))
 ```
 
-
-# # development stuff
-
-
-## sup proportions
-
-```{r supernumerary development}
-# TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
-
-dfs_dev_ss <- list(
-  sup_outcomes = 
-    dfs_tidy$wide %>% 
-    filter(is.pup != 2) %>%
-    group_by(year, pop, diet, trt) %>%
-    summarise(N = n(),
-              surv_tot = sum(is.pup == 1),
-              surv_0th = sum(is.pup == 1 & is.na(sup)),
-              surv_6th = sum(is.pup == 1 & sup == 6, na.rm = TRUE),
-              surv_7th = sum(is.pup == 1 & sup == 7, na.rm = TRUE),
-              surv_8th = sum(is.pup == 1 & sup == 8, na.rm = TRUE),
-              died_tot = sum(is.pup == 0),
-              died_0th = sum(is.pup == 0 & is.na(sup)),
-              died_6th = sum(is.pup == 0 & sup == 6, na.rm = TRUE),
-              died_7th = sum(is.pup == 0 & sup == 7, na.rm = TRUE),
-              died_8th = sum(is.pup == 0 & sup == 8, na.rm = TRUE),
-              ) %>%
-      pivot_longer(cols = starts_with(c("surv", "died")),
-                 names_to = c("status", ".value"),
-                 names_sep = "_") %>%
-    mutate(not = N - tot,
-           across(c("not", "0th", "6th", "7th", "8th"), ~ ./N, .names = "p_{.col}")) %>%
-      rename_with(~ paste0("n_", .x), matches("^(not)|^(\\dth)")) %>%
-        pivot_longer(cols = starts_with(c("n_", "p_")),
-                 names_to = c(".value", "sup"), names_sep = "_") %>%
-    mutate(sup = gsub(sup, pattern = "th", replacement = ""),
-           sup = case_when(sup == "not" & status == "surv" ~ "died",
-                           sup == "not" & status == "died" ~ "survived",
-                           TRUE ~ as.character(sup),
-                           ))
-)
-
-# nts: for when the names were n_status_stage: 
-# names_pattern = "(n_[a-z]*)_(\\d*[a-z]*)")
-    
-```
-
-## development outcomes
+# util functions
 
 ```{r dev ss custom fn}
 .CalcDevSS <- function(x){
@@ -99,11 +52,14 @@ dfs_dev_ss <- list(
 }
 ```
 
+# ss calcs
 
-```{r eval=FALSE, purl=FALSE}
-# just for troubleshooting (if dev ss list wasnt created yet)
+
+```{r}
 dfs_dev_ss <- list()
 ```
+
+## development outcomes
 
 ```{r overall development}
 dfs_dev_ss <- list_modify(
@@ -166,10 +122,50 @@ dfs_dev_ss <- list_modify(
 )
 ```
 
-# cleanup
+## sup proportions
 
-## TODO
-- need sth seperate for stats wrangle?
+```{r supernumerary development}
+# TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
+
+dfs_dev_ss <- list_modify(
+  dfs_dev_ss,
+  sup_outcomes = 
+    dfs_tidy$wide %>% 
+    filter(is.pup != 2) %>%
+    group_by(year, pop, diet, trt) %>%
+    summarise(N = n(),
+              surv_tot = sum(is.pup == 1),
+              surv_0th = sum(is.pup == 1 & is.na(sup)),
+              surv_6th = sum(is.pup == 1 & sup == 6, na.rm = TRUE),
+              surv_7th = sum(is.pup == 1 & sup == 7, na.rm = TRUE),
+              surv_8th = sum(is.pup == 1 & sup == 8, na.rm = TRUE),
+              died_tot = sum(is.pup == 0),
+              died_0th = sum(is.pup == 0 & is.na(sup)),
+              died_6th = sum(is.pup == 0 & sup == 6, na.rm = TRUE),
+              died_7th = sum(is.pup == 0 & sup == 7, na.rm = TRUE),
+              died_8th = sum(is.pup == 0 & sup == 8, na.rm = TRUE),
+              ) %>%
+      pivot_longer(cols = starts_with(c("surv", "died")),
+                 names_to = c("status", ".value"),
+                 names_sep = "_") %>%
+    mutate(not = N - tot,
+           across(c("not", "0th", "6th", "7th", "8th"), ~ ./N, .names = "p_{.col}")) %>%
+      rename_with(~ paste0("n_", .x), matches("^(not)|^(\\dth)")) %>%
+        pivot_longer(cols = starts_with(c("n_", "p_")),
+                 names_to = c(".value", "sup"), names_sep = "_") %>%
+    mutate(sup = gsub(sup, pattern = "th", replacement = ""),
+           sup = case_when(sup == "not" & status == "surv" ~ "died",
+                           sup == "not" & status == "died" ~ "survived",
+                           TRUE ~ as.character(sup),
+                           ))
+)
+
+# nts: for when the names were n_status_stage: 
+# names_pattern = "(n_[a-z]*)_(\\d*[a-z]*)")
+    
+```
+
+# cleanup
 
 ```{r cleanup}
 rm(dfs_tidy,
