@@ -90,8 +90,8 @@ df_filtered <- df_all %>%
 ```{r}
 # julian date formatting
 df_cleaned <- df_filtered %>% 
-  mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
-  mutate(across(starts_with("jdate."), as.numeric))
+  mutate(across(starts_with("date."), as.numeric)) %>%
+  rename_with(., ~paste0("j", .), starts_with("date."))
 
 # value standardising
 df_cleaned$trt[df_cleaned$trt=="426"] <- "337" # match for consistency to the 2x2 expt; keep as char bc of "ctrl" trts
@@ -104,7 +104,7 @@ df_cleaned$final.fate[df_cleaned$final.fate == "LP"] <- "LPI"
 
 # add in late dead pupa
 df_cleaned <- df_cleaned %>%
-  mutate(final.fate = case_when(!is.na(date.exit) & is.na(final.fate) ~ "pupa",
+  mutate(final.fate = case_when(!is.na(jdate.exit) & is.na(final.fate) ~ "pupa",
                                 TRUE ~ as.character(final.fate)))
 ```
 
@@ -113,16 +113,16 @@ df_cleaned <- df_cleaned %>%
 ```{r}
 # survival/development binaries
 df_cleaned <- df_cleaned %>% mutate(
-  if.stuck = case_when(is.na(date.stuck) ~ "N", 
+  if.stuck = case_when(is.na(jdate.stuck) ~ "N", 
                        TRUE ~ "Y"),
-  if.pupa = case_when(is.na(date.LPI) & is.na(date.pupa) ~ "N", 
+  if.pupa = case_when(is.na(jdate.LPI) & is.na(jdate.pupa) ~ "N", 
                       TRUE ~ "Y"),
-  if.sup = case_when(is.na(date.6th) ~ "N", 
+  if.sup = case_when(is.na(jdate.6th) ~ "N", 
                      TRUE ~ "Y"),
   # type of sup
-  sup = case_when(!is.na(date.7th) ~ 7, 
-                  !is.na(date.6th) ~ 6, 
-                  !is.na(date.pupa) | !is.na(date.LPI) ~ 0) # TODO: check... (used to be "TRUE ~ 0")
+  sup = case_when(!is.na(jdate.7th) ~ 7, 
+                  !is.na(jdate.6th) ~ 6, 
+                  !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ 0) # TODO: check... (used to be "TRUE ~ 0")
   )
 
 # subdivide treatments
@@ -207,7 +207,7 @@ write.csv(df_all, file = paste0(here("_ntw/data/raw/2023/"), "dev_", today, ".cs
 # cleaned up sexta
 export <- df_cleaned %>%
   #filter(is.na(species)) %>% 
-  select(-c("from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
+  select(-c("from.E", "location", starts_with("h."), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
 
 write.csv(export, file = here("_ntw/data/clean/2023/dev.csv"), row.names = FALSE)
 #write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "dev-sexta_", today, ".csv" ), row.names = FALSE)

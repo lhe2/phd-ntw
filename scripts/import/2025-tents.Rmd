@@ -83,9 +83,9 @@ data <- data %>%
          #cage = paste0(id.tent, id.cage)
          ) %>%
   mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
-         across(starts_with("jdate"), as.numeric), .before = 1,
-         )
+         across(starts_with("date"), as.numeric)) %>%
+  rename_with(~ paste0("j", .x), starts_with("date"))
+  
   
 ```
 
@@ -128,12 +128,12 @@ data <- raw
 # reformat columns
 data <- data %>% 
   lapply(., \(x){
-  x %>%
-  rename(cage = id.cage) %>%
-  mutate(across(starts_with("eggs."), as.numeric),
-         across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(starts_with("date"), as.Date, format = "%j", .names = "j{.col}"),
-         across(starts_with("jdate."), as.numeric))
+    x %>%
+      rename(cage = id.cage) %>%
+      mutate(across(starts_with("eggs."), as.numeric),
+             across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
+             across(starts_with("date"), as.numeric)) %>%
+      rename_with(~ paste0("j", .x), starts_with("date"))
 })
 
 ```

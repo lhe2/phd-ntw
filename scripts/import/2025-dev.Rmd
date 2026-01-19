@@ -42,13 +42,9 @@ todo: filter out bad bugs? sub 1 day dead bugs? (in the wrangle?)
 # standardise column formats
 data <- data %>%
   mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(c("id", starts_with("mass")), as.numeric)) %>% 
-  # julian date conversions
-  mutate(across(starts_with("date."), as.Date, "%j", .names = "j{.col}")) %>%
-  # attempts at putting the new columns after the old ones sighs
-  #relocate(sort(grep("^jdate", names(.), value = TRUE)), .after = starts_with("date"))
-  #select(sort(names(.)))
-  mutate(across(starts_with("jdate."), as.numeric))
+         across(c("id", starts_with(c("mass", "date"))), as.numeric)) %>% 
+  rename_with(~ paste0("j", .x), starts_with("date"))
+
 ```
 
 ```{r}
@@ -74,7 +70,7 @@ data <- data %>%
 # remove extra columns
 export <- data %>%
   select(-c("location", "time.enter",
-            starts_with(c("date.", "h.", "stuck", "notes.last")),
+            starts_with(c("h.", "stuck", "notes.last")),
             "jdate.collected", "jdate.outby", "jdate.15",
             "if.fridge"))
 ```

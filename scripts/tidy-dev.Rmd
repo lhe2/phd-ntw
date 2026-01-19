@@ -79,7 +79,7 @@ dfs_filtered <- list(
            #jdate.LPI = jdate.LP,
            #trt = treatment,
            cohort = expt.group) %>%
-    select(-c(starts_with(c("date", "h.", "if.")), ends_with("2nd"), 
+    select(-c(starts_with(c("h.", "if.")), ends_with("2nd"), 
               "instar.enter",  "jdate.collected", "jdate.enter", 
               "jdate.stuck", "jdate.15", "jdate.died",
               "parent.tent", "src", "trt.stage", "grp.trt")),
@@ -100,9 +100,7 @@ dfs_filtered <- list(
 # stdise column types
 dfs_stdised <- lapply(dfs_filtered, \(x){
   x %>%
-  mutate(trt = as.numeric(trt),
-         id = as.numeric(id),
-         across(starts_with("jdate"), as.numeric))
+  mutate(across(c("trt", "id", starts_with("jdate")), as.numeric))
 })
 ```
 
