@@ -66,7 +66,7 @@ dfs_dev_ss <- list_modify(
   dfs_dev_ss,
   dev_outcomes_all =
     dfs_tidy$long %>% 
-    group_by(year, pop, diet, trt, instar) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
     .CalcDevSS(),
   
   # groups survivors + culled bugs together
@@ -74,7 +74,7 @@ dfs_dev_ss <- list_modify(
     dfs_tidy$long %>%
     mutate(is.pup = case_when(is.pup == 2 ~ 1,
                               TRUE ~ as.numeric(is.pup))) %>%
-    group_by(is.pup, year, pop, diet, trt, instar) %>%
+    group_by(across(c(is.pup, year, pop, diet, starts_with("trt"), instar))) %>%
     .CalcDevSS(),
   
   # groups survivors + culled bugs
@@ -88,20 +88,20 @@ dfs_dev_ss <- list_modify(
     dfs_tidy$long %>%
     # mutate(is.pup = case_when(is.pup == 2 ~ 1,
     #                           TRUE ~ as.numeric(is.pup))) %>%
-    group_by(is.pup, year, pop, diet, trt, instar) %>%
+    group_by(across(c(is.pup, year, pop, diet, starts_with("trt"), instar))) %>%
     .CalcDevSS(),
   
   ad_dev = 
     dfs_tidy$long %>%
     filter(instar %in% c("pupa", "eclose", "surv")) %>%
-    group_by(year, pop, diet, trt, instar) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
     mutate(mass = mass/1000) %>%
     .CalcDevSS(),
   
   ad_dev_bysex = 
     dfs_tidy$long %>%
     filter(instar %in% c("pupa", "eclose", "surv"), !is.na(sex)) %>%
-    group_by(year, pop, diet, trt, sex, instar) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar, sex))) %>%
     mutate(mass = mass/1000) %>%
     .CalcDevSS()
 )
@@ -115,7 +115,7 @@ dfs_dev_ss <- list_modify(
     surv_outcomes =
     dfs_tidy$wide %>%
     filter(is.pup != 2) %>%
-    group_by(year, pop, diet, trt) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
     summarise(n = n(),
               prop.pup = sum(is.pup == 1)/n,
               se.pup = se.prop(prop.pup, n))
@@ -132,7 +132,7 @@ dfs_dev_ss <- list_modify(
   sup_outcomes = 
     dfs_tidy$wide %>% 
     filter(is.pup != 2) %>%
-    group_by(year, pop, diet, trt) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
     summarise(N = n(),
               surv_tot = sum(is.pup == 1),
               surv_0th = sum(is.pup == 1 & is.na(sup)),

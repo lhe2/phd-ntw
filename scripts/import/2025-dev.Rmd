@@ -64,6 +64,26 @@ data <- data %>%
 
 ```
 
+```{r}
+# add trt info
+data <- data %>% 
+  rename(trt = treatment) %>%
+  mutate(trt.meanT = case_when(trt == 260 ~ 26,
+                               trt == 419 ~ 29.5,
+                               trt == 330 ~ 33,
+                               trt == 433 ~ 36.5),
+         trt.flucT = case_when(trt == 260 ~ 0,
+                               trt == 419 ~ 10.5,
+                               trt == 426 ~ 7,
+                               trt == 433 ~ 3.5),
+         trt.maxT = case_when(trt == 260 ~ 26,
+                              TRUE ~ 40),
+         trt.minT = case_when(trt %in% c(260, 426) ~ 26,
+                              trt == 419 ~ 19,
+                              trt == 433 ~ 33))
+```
+
+
 ## - export
 
 ```{r}

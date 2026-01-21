@@ -92,15 +92,14 @@ dfs_filtered <- list(
   y25 = dfs_imported[["y25"]] %>%
     filter(is.na(species),
            !(notes.ignore == "empty") | is.na(notes.ignore)) %>%
-    rename(pop = population,
-           trt = treatment) %>%
+    rename(pop = population) %>%
     select(-c("species", "jdate.enter", "instar.enter", ends_with("2nd")))
 )
 
 # stdise column types
 dfs_stdised <- lapply(dfs_filtered, \(x){
   x %>%
-  mutate(across(c("trt", "id", starts_with("jdate")), as.numeric))
+  mutate(across(c("trt", "id", starts_with("jdate"), ends_with("T", ignore.case = FALSE)), as.numeric))
 })
 ```
 
@@ -157,7 +156,7 @@ dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>%
 ```
 
 ```{r standardisng values for all}
-# redo: survival, sup coding (counts after reaching 5th), temp trt info
+# redo: survival, sup coding (counts after reaching 5th)
 # fix: exit dates
 # add parsing of non-ntw temps
 dfs_stdised <- lapply(dfs_stdised, \(x){
@@ -173,20 +172,6 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
                             ),
            is.sup = case_when(!is.na(sup) ~ 1,
                               TRUE ~ 0),
-           meanT = case_when(trt %in% c(260, 267) ~ 26,
-                             trt == 419 ~ 29.5,
-                             trt %in% c(426, 330) ~ 33,
-                             trt == 433 ~ 36.5),
-           flucT = case_when(trt %in% c(260, 330) ~ 0,
-                             trt == 419 ~ 10.5,
-                             trt %in% c(426, 267) ~ 7,
-                             trt == 433 ~ 3.5),
-           maxT = case_when(trt == 260 ~ 26,
-                            trt %in% c(267, 330) ~ 33,
-                            TRUE ~ 40),
-           minT = case_when(trt %in% c(260, 426) ~ 26,
-                            trt %in% c(419, 267) ~ 19,
-                            trt %in% c(433, 330) ~ 33),
            jdate.exit = case_when(!is.na(jdate.surv) ~ as.numeric(jdate.surv),
                                   !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
                                   !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),

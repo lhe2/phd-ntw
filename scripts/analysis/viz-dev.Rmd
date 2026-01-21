@@ -30,7 +30,7 @@ dfs_dev_ss <- dfs_dev_ss %>%
     lapply(., \(x){
     x %>%
       ungroup() %>%
-      mutate(across(c("year", "trt"), as.factor))
+      mutate(across(c("year", starts_with("trt")), as.factor))
   })
 ```
 
