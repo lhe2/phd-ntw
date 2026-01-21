@@ -394,10 +394,13 @@ dfs_dev_ss$dev_outcomes_allgrpd2 %>%
   #                    height = CalcErrHt(avg.logmass))) +
   facet_grid(pop ~ year) +
   #scale_color_brewer(palette = "Greens") +
-  scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
+  #scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
+    scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9C25C"),
+                       labels = c("26-26", "40-19", "40-26", "40-33")) +
     labs(caption = "mean ± se",
          y = "log(mass mg)", x = "dev time (days)",
-         col = "treatment")
+         col = "treatment") +
+    theme_bw()
 }
 
 dfs_dev_ss$dev_outcomes_allgrpd %>%
@@ -409,6 +412,50 @@ dfs_dev_ss$dev_outcomes_all %>%
   .plotfn() +
   labs(title = "development trajectories (all)")
 ```
+```{r}
+# dev traj by trt + surv to pupation
+.plotfn <- function(x){
+  x %>%
+  FilterOutLabTB() %>% 
+    mutate(is.pup = case_when(is.pup == 0 ~ "died",
+                                is.pup == 1 ~ "pupated")) %>%
+    mutate(is.pup = factor(is.pup, levels = c("pupated", "died"))) %>%
+  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+  ggplot(aes(y = avg.logmass,
+             x = avg.tt,
+             col = trt,
+             group = interaction(year, pop, is.pup, trt))) +
+  geom_point() +
+  geom_line() +
+  # hard to see with these lol bc theyre pretty close
+  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+  #                   ymin = avg.logmass - se.logmass,
+  #                   width = CalcErrWd(avg.tt))) +
+  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+  #                    xmin = avg.tt - se.tt,
+  #                    height = CalcErrHt(avg.logmass))) +
+  facet_grid(is.pup ~ year) +
+  #scale_color_brewer(palette = "Greens") +
+  #scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
+    scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9C25C"),
+                       labels = c("26-26", "40-19", "40-26", "40-33")) +
+    labs(caption = "mean ± se",
+         y = "log(mass mg)", x = "dev time (days)",
+         col = "treatment") +
+    theme_bw()
+}
+
+dfs_dev_ss$dev_outcomes_allgrpd2 %>%
+  filter(is.pup != 2, pop == "field") %>% 
+  .plotfn() +
+  labs(title = "development trajectories (field)")
+
+dfs_dev_ss$dev_outcomes_allgrpd2 %>%
+  filter(is.pup != 2, pop == "lab") %>%
+  .plotfn() +
+  labs(title = "development trajectories (lab)")
+```
+
 
 ```{r}
 # wtf goin on w the lab controls

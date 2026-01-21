@@ -86,6 +86,8 @@ dfs <- list(
 
 ## survival to pup
 
+- 1 and 2-way ints are signif
+
 ```{r pup surv model generation}
 mods_pupsurv <- list(
   glm_fullint = glm(is.pup ~ year*pop*minT, 
@@ -100,6 +102,8 @@ mods_pupsurv %>%
 ```
 
 ## pupal mass
+
+- 1-ways, `year:minT`, and `minT:pop` are sig
 
 ```{r pup mass model generation}
 df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
@@ -148,12 +152,14 @@ anova(mods_pupmass$twoway, mods_pupmass$threeway, test = "Chisq")
 
 ## time to pup
 
+- 1 ways and `year:minT`, `year:pop` are sig
+
 notes
 - checked that `sex` PROBABLY doesnt matter: bc sex is only determined after pupation anyway... (so omit from mods)
 
 ```{r pup time model generation}
 mods_puptime <- list(
-  fullint = lm(tt.pupa ~ year*minT*pop, data = dfs$wide)
+  fullint = lm(1/tt.pupa ~ year*minT*pop, data = dfs$wide)
   )
 ```
 
@@ -161,6 +167,7 @@ mods_puptime <- list(
 mods_puptime %>%
   lapply(., GetModelResults)
 ```
+
 
 
 # # extra (archive)
