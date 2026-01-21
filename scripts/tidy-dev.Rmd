@@ -72,7 +72,7 @@ dfs_filtered <- list(
     filter(is.na(species),
            instar.enter == "hatch",
            pop %in% c("field", "lab"),
-           !(trt %in% c("ctrl", "267", "330")),
+           #!(trt %in% c("ctrl", "267", "330")),
            reason.ignore != "lost" | is.na(reason.ignore),
            ) %>%
     rename(#id = ID,
@@ -151,27 +151,15 @@ dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>%
                               !is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
          jdate.culled = case_when(fate.dev == "other" ~ as.numeric(jdate.culled),
-                                  FALSE ~ NA_real_),
-         meanT = case_when(trt == 260 ~ 26,
-                           trt == 419 ~ 29.5,
-                           trt == 426 ~ 33,
-                           trt == 433 ~ 36.5),
-         flucT = case_when(trt == 260 ~ 0,
-                           trt == 419 ~ 10.5,
-                           trt == 426 ~ 7,
-                           trt == 433 ~ 3.5),
-         maxT = case_when(trt == 260 ~ 26,
-                          TRUE ~ 40),
-         minT = case_when(trt == 260 | trt == 426 ~ 26,
-                          trt == 419 ~ 19,
-                          trt == 433 ~ 33)) %>%
+                                  FALSE ~ NA_real_)) %>%
   filter(!is.na(status)) %>%
   select(-c(starts_with("notes"), "status"))
 ```
 
 ```{r standardisng values for all}
-# redo survival, sup coding (counts after reaching 5th);
-# fix exit dates
+# redo: survival, sup coding (counts after reaching 5th), temp trt info
+# fix: exit dates
+# add parsing of non-ntw temps
 dfs_stdised <- lapply(dfs_stdised, \(x){
   x %>%
     mutate(is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
@@ -185,13 +173,30 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
                             ),
            is.sup = case_when(!is.na(sup) ~ 1,
                               TRUE ~ 0),
+           meanT = case_when(trt %in% c(260, 267) ~ 26,
+                             trt == 419 ~ 29.5,
+                             trt %in% c(426, 330) ~ 33,
+                             trt == 433 ~ 36.5),
+           flucT = case_when(trt %in% c(260, 330) ~ 0,
+                             trt == 419 ~ 10.5,
+                             trt %in% c(426, 267) ~ 7,
+                             trt == 433 ~ 3.5),
+           maxT = case_when(trt == 260 ~ 26,
+                            trt %in% c(267, 330) ~ 33,
+                            TRUE ~ 40),
+           minT = case_when(trt %in% c(260, 426) ~ 26,
+                            trt %in% c(419, 267) ~ 19,
+                            trt %in% c(433, 330) ~ 33),
            jdate.exit = case_when(!is.na(jdate.surv) ~ as.numeric(jdate.surv),
                                   !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
                                   !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),
                                   !is.na(jdate.pupa) & is.na(jdate.eclose) ~
-                                    as.numeric(jdate.pupa + 36),
+                                    as.numeric(jdate.pupa + 36), # 15d + 3 wks
                                   !is.na(jdate.culled) ~ as.numeric(jdate.culled),
-                                  !is.na(jdate.pmd) ~ as.numeric(jdate.pmd))
+                                  !is.na(jdate.pmd) ~ as.numeric(jdate.pmd)),
+           is.ntw = case_when(trt %in% c(419, 433) ~ 1,
+                              trt %in% c(260, 426) ~ 2,
+                              TRUE ~ 0)
     )
 }) #%>% data.table::rbindlist(., fill = TRUE) %>% View()
 

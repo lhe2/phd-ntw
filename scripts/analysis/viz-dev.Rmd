@@ -40,7 +40,7 @@ dfs_dev_ss <- dfs_dev_ss %>%
 ```{r}
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>%
+  FilterOutLabTB() %>% FilterForNTW() %>%
   ggplot(aes(y = prop.pup,
              x = trt,
              col = year, #lty = year,
@@ -81,7 +81,7 @@ dfs_dev_ss$surv_outcomes %>%
 # sexes combined
 .plotfn <- function(x){
   x %>%
-      FilterOutLabTB() %>%
+      FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar == "pupa") %>%
   ggplot(aes(y = avg.mass, x = trt,
              #lty = year, 
@@ -119,7 +119,7 @@ dfs_dev_ss$ad_dev%>%
 
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>%
+    FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
@@ -160,7 +160,7 @@ dfs_dev_ss$ad_dev_bysex %>%
 # by sex (meh)
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>%
+    FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
@@ -198,7 +198,7 @@ dfs_dev_ss$ad_dev_bysex %>%
 # by pop (no)
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>%
+    FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
@@ -232,7 +232,7 @@ dfs_dev_ss$ad_dev_bysex %>%
 ```{r days to pup}
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>%
+    FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.tt, x = trt,
                col = year,
@@ -267,7 +267,7 @@ dfs_dev_ss$ad_dev %>%
 ```{r pup rate}
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>%
+    FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.devrate, x = trt,
                col = year,
@@ -305,7 +305,7 @@ dfs_dev_ss$ad_dev %>%
 # dev by year
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% 
+    FilterOutLabTB() %>% FilterForNTW() %>%
     filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
     ggplot(aes(y = avg.logmass,
                x = avg.tt,
@@ -343,7 +343,7 @@ dfs_dev_ss$dev_outcomes_allgrpd %>%
 # dev by year; parse out pmds more
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% 
+    FilterOutLabTB() %>% FilterForNTW() %>%
     mutate(is.pup = as.factor(is.pup)) %>%
     filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
     ggplot(aes(y = avg.logmass,
@@ -378,7 +378,7 @@ dfs_dev_ss$dev_outcomes_allgrpd2 %>%
 # dev by trt
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>% 
+  FilterOutLabTB() %>% FilterForNTW() %>%
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
@@ -416,7 +416,7 @@ dfs_dev_ss$dev_outcomes_all %>%
 # dev traj by trt + surv to pupation
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>% 
+  FilterOutLabTB() %>% FilterForNTW() %>%
     mutate(is.pup = case_when(is.pup == 0 ~ "died",
                                 is.pup == 1 ~ "pupated")) %>%
     mutate(is.pup = factor(is.pup, levels = c("pupated", "died"))) %>%
@@ -460,7 +460,7 @@ dfs_dev_ss$dev_outcomes_allgrpd2 %>%
 ```{r}
 # wtf goin on w the lab controls
 dfs_dev_ss$dev_outcomes_all %>%
-  FilterOutLabTB() %>% 
+  FilterOutLabTB() %>% FilterForNTW() %>%
   filter(instar %in% c("3rd", "4th", "5th", "wander", "pupa"),
          trt == 260) %>% #View()
   ggplot(aes(y = avg.logmass,
@@ -486,7 +486,7 @@ dfs_dev_ss$dev_outcomes_all %>%
 
 ```{r}
 dfs_dev_ss$sup_outcomes %>% 
-  FilterOutLabTB() %>%
+  FilterOutLabTB() %>% FilterForNTW() %>%
   filter(status == "surv") %>%
   ggplot(aes(y = p,
              x = interaction(trt),

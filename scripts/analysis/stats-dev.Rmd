@@ -48,35 +48,31 @@ source(here("_ntw/scripts/R/tidy-dev.R"))
 ## data prep
 
 ```{r dev data prep}
-# formatting
-  # dont think this needs to be a list tbh LOL
+# formatting (dont think this needs to be a list tbh LOL)
+# for stats, drop ctrls and lab+TB
 imported_dev <- 
   list(wide = dfs_tidy$wide) %>%
   lapply(., \(x){
     x %>%
-      mutate(across(c("year", "minT"), as.factor))
+      FilterOutLabTB() %>% FilterForNTW() %>%
+      filter(trt != 260) %>%
+      mutate(across(c("year", "minT"), as.factor),
+             tt.pupa = jdate.pupa - jdate.hatch)
   })
-
-imported_dev$wide <- imported_dev$wide %>%
-      mutate(tt.pupa = jdate.pupa - jdate.hatch) 
 
 #rm(dfs_tidy)
 
 
-# subset: drop controls and lab+TB
+# subsets
 dfs <- list(
   wide = 
     imported_dev[["wide"]] %>%
-    FilterOutLabTB() %>%
-    filter(trt != 260,
-           is.pup < 2),
+    filter(is.pup < 2),
   
   # sexed pupa only
   wide_pups =
     imported_dev[["wide"]] %>%
-    FilterOutLabTB() %>%
-    filter(trt != 260,
-           !is.na(jdate.pupa) & !is.na(sex))
+    filter(!is.na(jdate.pupa) & !is.na(sex))
   
 )
 

@@ -22,7 +22,11 @@ FilterForLabEggs <- function(data){
            mate.type != "virgin f") 
 }
 
-
+# keeps trts 260, 419, 426, 433 only
+FilterForNTW <- function(data){
+  data %>%
+    filter(is.ntw > 0)
+}
 
 
 
