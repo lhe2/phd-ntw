@@ -70,7 +70,7 @@ data <- data %>%
   rename(trt = treatment) %>%
   mutate(trt.meanT = case_when(trt == 260 ~ 26,
                                trt == 419 ~ 29.5,
-                               trt == 330 ~ 33,
+                               trt == 426 ~ 33,
                                trt == 433 ~ 36.5),
          trt.flucT = case_when(trt == 260 ~ 0,
                                trt == 419 ~ 10.5,
