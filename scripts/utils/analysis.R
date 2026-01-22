@@ -24,8 +24,11 @@ FilterForLabEggs <- function(data){
 
 # keeps trts 260, 419, 426, 433 only
 FilterForNTW <- function(data){
-  data %>%
-    filter(is.ntw > 0)
+  if(rlang::has_name(data, "is.ntw")){
+    filter(data, is.ntw > 0)
+  } else {
+    filter(data, trt %in% c(260, 419, 426, 433))
+  }
 }
 
 
