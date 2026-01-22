@@ -298,6 +298,7 @@ dfs_dev_ss$ad_dev %>%
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 ```
 
+# # bonus stuff
 
 ## dev trajectories 
 
@@ -506,3 +507,49 @@ dfs_dev_ss$sup_outcomes %>%
   #scale_fill_discrete(labels = c("0", "1", "2", "3", "died")) +
   theme_bw()
 ```
+
+# # alternate x axes
+
+(using dev rate)
+
+```{r}
+dfs_dev_ss$dev_outcomes_all %>%
+  FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
+  #FilterForNTW() %>% #View()
+  filter(instar == "pupa") %>% #View()
+  mutate(trt.flucT = as.numeric(as.character(trt.flucT)),
+         trt.flucT = case_when(trt.flucT == 0 ~ "N",
+                               TRUE ~ "Y")) %>% 
+  ggplot(aes(y = avg.devrate,
+             x = trt.minT, col = trt.type,
+             group = interaction(trt.type))) +
+  geom_line() + 
+  geom_point(#aes(shape = trt.flucT),
+             aes(shape = trt.maxT),
+             size = 2) +
+  facet_grid(pop~year) +
+  scale_color_discrete(direction = -1)
+
+dfs_dev_ss$dev_outcomes_all %>%
+  FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
+  #FilterForNTW() %>% #View()
+  filter(instar == "pupa") %>% 
+  ggplot(aes(y = avg.devrate,
+             x = trt.flucT, col = trt.type,
+             group = interaction(trt.type))) +
+  geom_line() + geom_point(aes(shape = trt.meanT), size = 2) +
+  facet_grid(pop~year) +
+  scale_color_discrete(direction = -1)
+
+dfs_dev_ss$dev_outcomes_all %>%
+  FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
+  #FilterForNTW() %>% #View()
+  filter(instar == "pupa") %>% 
+  ggplot(aes(y = avg.devrate,
+             x = trt.meanT, col = trt.type,
+             group = interaction(trt.type))) +
+  geom_line() + geom_point(aes(shape = trt.minT), size = 2) +
+  facet_grid(pop~year) +
+  scale_color_discrete(direction = -1)
+```
+
