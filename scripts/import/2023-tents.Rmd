@@ -218,6 +218,49 @@ dfs_cleaned[["tents"]] <- left_join(
   # dont need anymore after removing the extra cols...
 ```
 
+## - match format to 2025 data
+
+(saves on tidying later):
+2023 data entered as pairs while 2025 data entered as individuals
+
+```{r}
+# rename jdate cols; add uids to ctrls/cols
+dfs_cleaned[["pairs"]] <- dfs_cleaned[["pairs"]] %>%
+  # rename jdate cols
+    rename_with(., 
+                ~paste("jdate", str_extract(.,"[a-z]*$"), 
+                       str_sub(., 7, 7), sep = "."), 
+                starts_with(c("jdate.m", "jdate.f"))) %>%
+  
+  # add uids to ctrls/cols
+    mutate(id.m = case_when(id.m %in% c("col", "ctrl") ~ 
+                              paste0(id.m, "-m", sprintf("%03d", id.pair)),
+                            #id.f == "146" & id.m == "253" ~ NA_character_,
+                            TRUE ~ as.character(id.m)),
+           id.f = case_when(id.f %in% c("col", "ctrl") ~ 
+                              paste0(id.f, "-f", sprintf("%03s", id.pair)),
+                            #id.f == "244" & id.m == "224" ~ NA_character_,
+                            TRUE ~ as.character(id.f))) %>%
+  
+  # separate pairs into individual m/fs
+      select(c("id.tent", contains("pair"), ends_with(c(".m", ".f")))) %>%
+      pivot_longer(ends_with(c(".m", ".f")),
+                   names_to = c(".value", "sex"), #names_sep = "\\."
+                   names_pattern = "(.*)\\.(m|f)"
+                   ) %>% 
+      rename_with(., ~ gsub(".m|.f", "", .)) %>% 
+  drop_na(id) %>% 
+
+# add in more trt info
+  mutate(ctrl = case_when(grepl("col", id) ~ "col",
+                          grepl("ctrl", id) ~ "diurnal"), 
+         pop = case_when(grepl("col", id) ~ "col",
+                         !is.na(ctrl) | as.numeric(id) > 1000 ~ "lab",
+                         as.numeric(id) < 1000 ~ "field"),
+         if.fridge = case_when(jdate.paired != jdate.ec ~ "x"))
+  
+```
+
 # 3. extracting notes & saving outputs
 
 ```{r}
@@ -245,17 +288,17 @@ dfs_cleaned <- dfs_cleaned %>%
     select(-starts_with("notes"))
   })
 
-export <- dfs_cleaned[["tents"]] %>% select(-if.ignore)
-write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-info.csv"), row.names = FALSE)
+export <- dfs_cleaned[["tents"]] %>% select(-if.ignore) ## tent-info
+write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-events.csv"), row.names = FALSE)
 #write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "tents_", today, ".csv"), row.names = FALSE)
 
 
-export <- dfs_cleaned[["pairs"]]
-write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-pairs.csv"), row.names = FALSE)
+export <- dfs_cleaned[["pairs"]] ## tent-pairs
+write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-matings.csv"), row.names = FALSE)
 #write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "pairs_", today, ".csv"), row.names = FALSE)
 
-export <- dfs_cleaned[["hatch"]]
-write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-hatch.csv"), row.names = FALSE)
+export <- dfs_cleaned[["hatch"]] ## tent-hatch
+write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-eggs.csv"), row.names = FALSE)
 #write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "hatch_", today, ".csv"), row.names = FALSE)
 ```
 

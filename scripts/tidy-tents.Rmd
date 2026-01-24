@@ -26,7 +26,7 @@ knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
 #                    format(Sys.time(), "%y%m%d-%H%M"), "_tidy-data.R"))
 ```
 
-# load libs & pkgs
+## load libs & pkgs
 
 ```{r about}
 # ntw/tidy-tents.R
@@ -44,7 +44,7 @@ library(tidyverse)
 library(here)
 ```
 
-# # adult data
+## roadmap
 
 preamble:
 - for each yr, have adult counts (when added/removed), egg collection counts, egg hatch counts.
@@ -64,7 +64,7 @@ roadmap:
 4. 2023/2025 are handled separately, then combined for final export.
 
 
-## # fns for info generation
+## fns for info generation
 ```{r tent data common functions}
 # to assign cage mating info
 # note: data needs to be "wide" (...f, ...m) to determine mate types
@@ -150,8 +150,8 @@ roadmap:
 }
 ```
 
-## # 2025 data
-### loading
+# # 2025 data
+## loading
 
 ```{r load 2025 tents data}
 dfs_imported <- list(
@@ -161,7 +161,7 @@ dfs_imported <- list(
 )
 ```
 
-### stdise cage/egg events
+## stdise cage/egg events
 ```{r prep 2025 tent data for wrangling}
 ### need to rerun the WHOLE chunk at once if updating $info to avoid dups later on in $events
 
@@ -214,7 +214,7 @@ dfs_stdised$events <-
   .AppendCageMothEvents()
 ```
 
-### collate
+## collate
 
 ```{r}
 # troubleshooting tents: A2, B2, C14, C4
@@ -226,7 +226,7 @@ dfs_stdised <- list_modify(
 )
 ```
 
-### export
+## export
 ```{r}
 dfs_export <- list(
   tents25 = dfs_stdised$tents %>% 
@@ -238,17 +238,18 @@ dfs_export <- list(
 ```
 
 
-## # 2023 data
+# # 2023 data
 
-### loading
+## loading
 ```{r load 2023 tent data}
 dfs_imported <- list(
   ad23 = 
     read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
-    # minor fixes
-    mutate(id.tent = case_when(id.tent == "107-cage" & is.na(trt.f) ~ NA_character_,
+    # drop solo m/f's
+        mutate(id.tent = case_when(id.tent == "107-cage" & sex == "f" ~ NA_character_,
                                TRUE ~ as.character(id.tent))) %>%
-    filter(!(id.f %in% c(282, 284))),
+    filter(!(id %in% c(282, 284))),
+
   
   coll23 = 
     read.csv(here("_ntw/data/clean/2023/tent-events.csv"), header = TRUE) %>%
@@ -268,73 +269,23 @@ dfs_imported <- list(
 # filter out useful columns
 dfs_filtered <- list(
   ad23 = dfs_imported[["ad23"]] %>%
-    select(c("cage", "id.pair", starts_with("jdate"), ends_with(c(".m", ".f"))),
-           -starts_with("track")),
+    select(-"track"),
+    # select(c("cage", "id.pair", starts_with("jdate"), ends_with(c(".m", ".f"))),
+    #        -starts_with("track")),
   coll23 = dfs_imported[["coll23"]] %>%
     select(c("cage", "n.coll", "jdate")),
   hatch23 = dfs_imported[["hatch23"]] %>%
     select(c("cage", "n.hatch", "jdate.hatch")))
 ```
 
-### stdise cage/egg events
+## stdise cage/egg events
 
-#### reformat 2023 data
-
-(match 2023 data to 2025 formatting)
-
-```{r 2023 adult info fixes}
-## run entire chunk to properly update dfs_stdised$ad23 (to build final tent events dfs)
-
-# rename jdate cols, add uids to ctrls/cols
-dfs_filtered$ad23 <- dfs_filtered$ad23 %>%
-  rename_with(., 
-              ~paste("jdate", str_extract(.,"[a-z]*$"), 
-                     str_sub(., 7, 7), sep = "."), 
-              starts_with(c("jdate.m", "jdate.f"))) %>%
-  mutate(id.m = case_when(id.m %in% c("col", "ctrl") ~ 
-                            paste0(id.m, "-m", sprintf("%03d", id.pair)),
-                          #id.f == "146" & id.m == "253" ~ NA_character_,
-                          TRUE ~ as.character(id.m)),
-         id.f = case_when(id.f %in% c("col", "ctrl") ~ 
-                            paste0(id.f, "-f", sprintf("%03s", id.pair)),
-                          #id.f == "244" & id.m == "224" ~ NA_character_,
-                          TRUE ~ as.character(id.f)))
-
-# fixing dup'd individuals
-dfs_stdised <- list(
-  ad23 = merge(
-    dfs_filtered$ad23 %>%
-      select(c("cage", contains("pair"), ends_with(".m"))) %>%
-      pivot_longer(matches("^(?!jdate).*m", perl = T),
-                   names_to = c(".value", "sex"), names_sep = "\\.") %>% 
-      rename_with(., ~ gsub(".m", "", .)),
-    dfs_filtered$ad23 %>%
-      select(c("cage", contains("pair"), ends_with(".f"))) %>%
-      pivot_longer(matches("^(?!jdate).*f", perl = T),
-                   names_to = c(".value", "sex"), names_sep = "\\.") %>% 
-      rename_with(., ~ gsub(".f", "", .)),
-    all = TRUE) %>% 
-    drop_na(id))
-
-# adding in other trt info
-dfs_stdised$ad23 <- dfs_stdised$ad23 %>%
-  mutate(ctrl = case_when(grepl("col", id) ~ "col",
-                          grepl("ctrl", id) ~ "diurnal"), 
-         pop = case_when(grepl("col", id) ~ "col",
-                         !is.na(ctrl) | as.numeric(id) > 1000 ~ "lab",
-                         as.numeric(id) < 1000 ~ "field"),
-         if.fridge = case_when(jdate.paired != jdate.ec ~ "x"))
-
-```
-
-#### generate dfs
+### generate dfs
 ```{r prep 2023 tent data for wrangling}
 ## rerun the whole chunk to regenerate dfs_tents$events, $info
-dfs_stdised <- list_modify(
-  dfs_stdised,
-  
+dfs_stdised <- list(
   info = 
-    dfs_stdised[["ad23"]] %>%
+    dfs_filtered[["ad23"]] %>%
     pivot_wider(id_cols = c("cage", "id.pair", #"ctrl", "if.fridge"
                             ), 
                 names_from = "sex", values_from = c("trt", "pop"),
@@ -348,10 +299,6 @@ dfs_stdised <- list_modify(
   
   events = 
     dfs_filtered[["ad23"]] %>%
-    pivot_longer(ends_with(c(".f", ".m")),
-                 names_to = c(".value", "sex"),
-                 names_pattern = "([a-z]*.[a-z]*).(m|f)") %>% 
-    drop_na(id) %>% 
     pivot_longer(starts_with("jdate"),
                  names_to = c(".value", "event"),
                  names_sep = "\\.") %>%
@@ -376,7 +323,7 @@ dfs_stdised$events <-
   mutate(eggs.exclude = 0) # a column in 2025 but not 2023
 ```
 
-### collate
+## collate
 ```{r}
 dfs_stdised <- list_modify(
   dfs_stdised,
@@ -386,7 +333,7 @@ dfs_stdised <- list_modify(
 )
 ```
 
-### export
+## export
 ```{r}
 dfs_export <- list_modify(
   dfs_export,
@@ -398,7 +345,7 @@ dfs_export <- list_modify(
 )
 ```
 
-## prep for final export
+# # prep for final export
 
 ```{r export tent data}
 dfs_tidy <- list(
