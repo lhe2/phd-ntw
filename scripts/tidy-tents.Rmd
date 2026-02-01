@@ -58,16 +58,17 @@ roadmap:
   a. `events` is first generated from `info` (to get counts of moths removed/added)
   b. later, `events` is overwritten by merged collection + hatching data, with
      moth counts extracted from `events` appended on
+  c. hatching events are aligned with collection date (i.e. hatch date is dropped)
 3. `events` then gets used to generate the daily running count of eggs/moths/etc
   a. counts are determined separately per cage and then recollated again
      (avoids wonkiness with `cumsum()` at the first/last values of the df)
-4. 2023/2025 are handled separately, then combined for final export.
+4. 2023/2025 are handled separately (bc of column name diffs), then combined for final export.
 
 
 ## fns for info generation
 ```{r tent data common functions}
 # to assign cage mating info
-# note: data needs to be "wide" (...f, ...m) to determine mate types
+## note: data needs to be "wide" (...f, ...m) to determine mate types
 .GenerateCageMateInfo <- function(x){
   x %>%
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
@@ -104,7 +105,7 @@ roadmap:
 }
 
 # appends cage mate info + daily moth events to daily egg events
-# needs dfs_stdised$info and $events to exist alrdy
+## needs dfs_stdised$info and $events to exist alrdy
 .AppendCageMothEvents <- function(x){
   x %>%
   merge(., dfs_stdised$events, all = TRUE) %>%
@@ -117,8 +118,7 @@ roadmap:
 
 
 # gets daily running counts of new/dead moths + eggs collected
-# splits $events by cage to avoid cumsum wonkiness, then recombines
-
+## splits $events by cage to avoid cumsum wonkiness at the ends of the range, then recombines
 .GenerateCageDailyEvents <- function(x){
   x %>%
     split(f = dfs_stdised$events$cage) %>% 
@@ -134,11 +134,11 @@ roadmap:
                
                # fix egg counts: excludes eggs from hatch proportion if no males present
                ## TODO: just kidding not doing this anymore bc females can sequester sperm!
-               eggs.exclude = case_when(#f.curr > 0 & m.curr == 0 | 
+               eggs.exclude = case_when(#f.curr > 0 & m.curr == 0 | # revisit?
                                           mate.type == "virgin f" ~ 
                                           as.numeric(eggs.collected + eggs.exclude),
                                         TRUE ~ as.numeric(eggs.exclude)),
-               eggs.collected = case_when(#f.curr > 0 & m.curr == 0 |
+               eggs.collected = case_when(#f.curr > 0 & m.curr == 0 | # revisit?
                                             mate.type == "virgin f" ~ 0,
                                           TRUE ~ as.numeric(eggs.collected)),
                eggs.coll = eggs.collected + eggs.exclude) %>%
@@ -205,8 +205,8 @@ dfs_stdised$events <-
   dfs_imported[["coll25"]] %>%
   rename(jdate = jdate.collected) %>%
   merge(., dfs_imported[["hatch25"]] %>% 
-          select(c("cage", ends_with(".hatched"))) %>%
-          rename(jdate = jdate.hatched) %>%
+          select(c("jdate.collected", "cage", "eggs.hatched")) %>%
+          rename(jdate = jdate.collected) %>%
           group_by(jdate, cage) %>%
           summarise(eggs.hatched = sum(eggs.hatched)) %>%
           drop_na(),
@@ -248,8 +248,7 @@ dfs_imported <- list(
     # drop solo m/f's
         mutate(id.tent = case_when(id.tent == "107-cage" & sex == "f" ~ NA_character_,
                                TRUE ~ as.character(id.tent))) %>%
-    filter(!(id %in% c(282, 284))),
-
+    filter(!(id %in% c(282, 284))), 
   
   coll23 = 
     read.csv(here("_ntw/data/clean/2023/tent-events.csv"), header = TRUE) %>%
@@ -275,7 +274,7 @@ dfs_filtered <- list(
   coll23 = dfs_imported[["coll23"]] %>%
     select(c("cage", "n.coll", "jdate")),
   hatch23 = dfs_imported[["hatch23"]] %>%
-    select(c("cage", "n.hatch", "jdate.hatch")))
+    select(c("cage", "n.hatch", "jdate.coll")))
 ```
 
 ## stdise cage/egg events
@@ -314,7 +313,7 @@ dfs_stdised$events <-
   dfs_filtered[["coll23"]] %>%
   rename(eggs.collected = n.coll) %>%
   merge(., dfs_filtered[["hatch23"]] %>% 
-          rename(jdate = "jdate.hatch") %>%
+          rename(jdate = jdate.coll) %>%
           group_by(cage, jdate) %>%
           summarise(eggs.hatched = sum(n.hatch)) %>%
           drop_na(),
