@@ -26,7 +26,7 @@ source(here("_ntw/scripts/utils/analysis-viz.R"))
 source(here("_ntw/scripts/R/wrangle-tents.R"))
 
 # convert things into factors for ease of graphing
-dfs_tents_ss <- dfs_tents_ss %>%
+dfs_tents <- dfs_tents %>%
     lapply(., \(x){
     x %>%
       ungroup() %>%
@@ -43,7 +43,7 @@ dfs_tents_ss <- dfs_tents_ss %>%
 
 ```{r}
 # both yrs
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   FilterForLabEggs() %>%
   ggplot(aes(y = p.hatch, x = n.total.coll, 
              col = mate.trt, shape = mate.hs)) +
@@ -67,22 +67,24 @@ dfs_tents_ss$eggs_nocol %>%
     geom_point(size = 2) +
     geom_errorbar(aes(ymax = p.hatch + se.hatch,
                       ymin = p.hatch - se.hatch),
-                  width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.total.coll, 
+                  width = CalcErrWd(x = dfs_tents$ss_nocol$n.total.coll, 
                                     pct = 0.05)) +
     # x err bar is too small to notice so omit
     geom_text(aes(label = n.f.total),
               hjust = 1.25, vjust = -1.3,
               show.legend = FALSE) + 
-    scale_color_brewer(palette = "Dark2") +
-    facet_wrap(~ mate.type)
+    #scale_color_brewer(palette = "Dark2") +
+    scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9A92E")) +
+    facet_wrap(~ mate.type) +
+    ylim(c(0, 0.305))
 }
 
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   filter(year == 2023) %>%
   .plotfn() +
   labs(caption = "2023") 
 
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   filter(year == 2025) %>%
   .plotfn() +
   labs(caption = "2025")
@@ -108,7 +110,7 @@ dfs_tents_ss$eggs_nocol %>%
             hjust = 1.25, vjust = -1.3, show.legend = FALSE) + 
   geom_errorbar(aes(ymax = p.hatch + se.hatch,
                     ymin = p.hatch - se.hatch),
-                width = CalcErrWd(x = dfs_tents_ss$eggs_nocol$n.total.coll,
+                width = CalcErrWd(x = dfs_tents$ss_nocol$n.total.coll,
                                   pct = 0.025)
                 ) +
   facet_wrap(~mate.type) +
@@ -118,7 +120,7 @@ dfs_tents_ss$eggs_nocol %>%
 }
 
 p1 <- 
-  dfs_tents_ss$eggs_nocol %>%
+  dfs_tents$ss_nocol %>%
   mutate(mate.col = "na") %>%
   filter(year == "2025") %>%
   .plotfn() +
@@ -127,7 +129,7 @@ p1 <-
   guides(shape = "none")
 
 p2 <- 
-dfs_tents_ss$eggs_matecol %>%
+dfs_tents$ss_matecol %>%
   mutate(mate.col = replace_na(mate.col, "na")) %>%
   filter(year == "2025") %>%
   .plotfn() +
@@ -136,7 +138,7 @@ dfs_tents_ss$eggs_matecol %>%
   guides(shape = "none")
 
 p3 <- 
-dfs_tents_ss$eggs_allcol %>%
+dfs_tents$ss_allcol %>%
   mutate(mate.col = replace_na(mate.col, "na")) %>%
   filter(year == "2025") %>%
   .plotfn() +
@@ -207,7 +209,7 @@ p3
 .plotfn2 <- function(x){
     list(
       geom_line(data = x %>%
-                  #FilterForLabEggs(dfs_tents_ss$eggs_nocol) %>%
+                  #FilterForLabEggs(dfs_tents$ss_nocol) %>%
                   filter(trt.f %in% c(260, 419), mate.hs %in% c("both", "f"),
                          trt.m != 419) %>%
                   select(-mate.trt) %>%
@@ -216,7 +218,7 @@ p3
                 , aes(group = mate.hs), show.legend = FALSE,
                 ),
         geom_line(data = x %>%
-                    #FilterForLabEggs(dfs_tents_ss$eggs_nocol) %>%
+                    #FilterForLabEggs(dfs_tents$ss_nocol) %>%
                     filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
                            trt.f != 419) %>%
                     select(-mate.trt) %>%
@@ -228,12 +230,12 @@ p3
       )
 }
 
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   .plotfn() +
-  .plotfn2(FilterForLabEggs(dfs_tents_ss$eggs_nocol)) +
+  .plotfn2(FilterForLabEggs(dfs_tents$ss_nocol)) +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   filter(mate.trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
@@ -274,12 +276,12 @@ dfs_tents_ss$eggs_nocol %>%
          y = "proportion eggs hatched", x = "treatment")
 }
 
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   .plotfn() +
-  .plotfn2(FilterForLabEggs(dfs_tents_ss$eggs_nocol)) +
+  .plotfn2(FilterForLabEggs(dfs_tents$ss_nocol)) +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_tents_ss$eggs_nocol %>%
+dfs_tents$ss_nocol %>%
   filter(mate.trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))

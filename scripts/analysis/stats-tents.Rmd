@@ -39,20 +39,21 @@ notes
 
 ```{r load data, message=FALSE}
 source(here("_ntw/scripts/R/wrangle-tents.R"))
-```
 
-```{r tent data prep}
 # formatting
-imported_tents <- 
-  dfs_pertent_ss %>%
-  mutate(across(starts_with("trt"), as.factor))
+# imported_tents <- 
+#   dfs_tents$n_pertent %>%
+#   mutate(across(starts_with("trt"), as.factor))
 
 #rm(dfs_pertent_ss)
 
 # subset
 dfs <- list(
-  tents =
-    imported_tents %>%
-    FilterForLabEggs()
+  tents = #imported_tents %>%
+    dfs_tents$n_pertent %>%
+    FilterForLabEggs() %>% 
+    mutate(across(starts_with("trt"), as.factor))
+)
+```
 )
 ```

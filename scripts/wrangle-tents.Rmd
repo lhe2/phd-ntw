@@ -37,14 +37,14 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
   
 ```{r eggs ss custom fns}
 # counts per cage -- for stats
-.CalcPerTentSS <- function(x){
+.CalcTentCounts <- function(x){
   x %>%
   #dfs_tidy$tents %>% # for testing
   group_by(across(c("year", "cage", starts_with(c("mate", "trt", "is"))))) %>%
   summarise(
-    #n = n(), # number of days a tent existed for
+    # see notes on calc'ing tent duration
     n.f = sum(f.added),
-    n.viable = sum(eggs.fert),
+    n.viable = sum(eggs.fert), # (dont rly need?)
     n.coll = sum(eggs.coll),
     n.hatch = sum(eggs.hatched),
     n.coll.perf = n.coll/n.f,
@@ -54,13 +54,14 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
   ungroup() 
 }
 
-# counts per cage trt (i.e. mate type) -- for viz
+# counts per cage trt (i.e. per mate type combo) -- for viz
 .CalcTentsSS <- function(x){
   x %>%
   #dfs_tidy$tents %>% # for testing
-  .CalcPerTentSS() %>%
+  .CalcTentCounts() %>%
   group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
   summarise(
+    # see notes on calc'ing tent duration
     n.cages.total = n(),
     n.f.total = sum(n.f),
     n.total.coll = sum(n.coll),
@@ -88,39 +89,37 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
 # ss calcs
 
 ```{r eggs ss calcs}
-# (for stats)
-dfs_pertent_ss <-
-  dfs_tidy$tents %>%
-  .CalcPerTentSS()
-
-# (for viz)
-# 2025-12-10: have variations on handling colony bugs for now...
-dfs_tents_ss <- list(
-  # treat all col like lab expt bugs
-  eggs_nocol = dfs_tidy$tents %>%
+dfs_tents <- list( #dfs_tents_ss 
+  # (for stats)
+  ## all tents individually parsed 
+  n_pertent = #dfs_pertent_ss
+    dfs_tidy$tents %>% 
+    .CalcTentCounts(),
+  
+  # (for viz)
+  ## 2025-12-10: have variations on handling colony bugs for now...
+  ## treat all col like lab expt bugs
+  ss_nocol = dfs_tidy$tents %>% #eggs_nocol
     select(-mate.col) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>% 
     .CalcTentsSS(),
   
-  # treats col like lab expt bugs, but notes which sex was the col
-  eggs_matecol = dfs_tidy$tents %>%
+  ## treats col like lab expt bugs, but notes which sex was the col
+  ss_matecol = dfs_tidy$tents %>% #eggs_matecol
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop)),
            mate.col = na_if(mate.col, "both")) %>%
     .CalcTentsSS(),
   
-  # retains all indicators of col status (population + affected sex)
-  eggs_allcol = dfs_tidy$tents %>%
+  ## retains all indicators of col status (population + affected sex)
+  ss_allcol = dfs_tidy$tents %>% #eggs_allcol
     .CalcTentsSS()
 )
 ```
 
 
 # cleanup
-
-## TODO
-- need sth seperate for stats wrangle?
 
 ```{r cleanup}
 rm(dfs_tidy,
