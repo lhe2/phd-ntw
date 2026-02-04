@@ -52,29 +52,30 @@ source(here("_ntw/scripts/R/tidy-dev.R"))
 }
 ```
 
-# ss calcs
 
 
-```{r}
-dfs_dev_ss <- list()
 ```
 
-## development outcomes
+# ss calcs
+
+## l development outcomes 
 
 ```{r overall development}
-dfs_dev_ss <- list_modify(
-  dfs_dev_ss,
-  dev_outcomes_all =
+dfs_ldev <- list( #dfs_dev_ss
+  ss_all = #dev_outcomes_all (incls pmd)
     dfs_tidy$long %>% 
+    filter(pop != "col") %>%
     group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
     .CalcDevSS(),
   
   # groups survivors + culled bugs together
-  dev_outcomes_allgrpd =
+  ss_ispup_unparsed = # dev_outcomes_allgrpd
     dfs_tidy$long %>%
+    filter(pop != "col") %>%
     mutate(is.pup = case_when(is.pup == 2 ~ 1,
                               TRUE ~ as.numeric(is.pup))) %>%
-    group_by(across(c(is.pup, year, pop, diet, starts_with("trt"), instar))) %>%
+    group_by(across(c(is.pup, 
+                      year, pop, diet, starts_with("trt"), instar))) %>%
     .CalcDevSS(),
   
   # groups survivors + culled bugs
@@ -84,35 +85,54 @@ dfs_dev_ss <- list_modify(
   #   group_by(year, pop, diet, trt, instar) %>%
   #   .CalcDevSS(),
   
-  dev_outcomes_allgrpd2 =
+  # survivors/culled bugs kept separate
+  ss_ispup_parsed = #dev_outcomes_allgrpd2
     dfs_tidy$long %>%
+    filter(pop != "col") %>%
     # mutate(is.pup = case_when(is.pup == 2 ~ 1,
     #                           TRUE ~ as.numeric(is.pup))) %>%
-    group_by(across(c(is.pup, year, pop, diet, starts_with("trt"), instar))) %>%
-    .CalcDevSS(),
-  
-  ad_dev = 
-    dfs_tidy$long %>%
-    filter(instar %in% c("pupa", "eclose", "surv")) %>%
-    group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
-    mutate(mass = mass/1000) %>%
-    .CalcDevSS(),
-  
-  ad_dev_bysex = 
-    dfs_tidy$long %>%
-    filter(instar %in% c("pupa", "eclose", "surv"), !is.na(sex)) %>%
-    group_by(across(c(year, pop, diet, starts_with("trt"), instar, sex))) %>%
-    mutate(mass = mass/1000) %>%
+    group_by(across(c(is.pup, 
+                      year, pop, diet, starts_with("trt"), instar))) %>%
     .CalcDevSS()
 )
 ```
 
+## a development outcomes 
+
+```{r}
+dfs_adev <- list( #dfs_dev_ss
+    ss_all = #ad_dev
+    dfs_tidy$long %>%
+    filter(instar %in% c("pupa", "eclose", "long")) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
+    mutate(mass = mass/1000) %>%
+    .CalcDevSS(),
+  
+  ss_bysex = #ad_dev_bysex
+    dfs_tidy$long %>%
+    filter(instar %in% c("pupa", "eclose", "long"), !is.na(sex)) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar, sex))) %>%
+    mutate(mass = mass/1000) %>%
+    .CalcDevSS(),
+  
+    ss_all_iffr = #ad_dev_fr
+    dfs_tidy$long %>%
+    filter(instar %in% c("pupa", "eclose", "long")) %>%
+    group_by(across(c(if.fridge,
+                      year, pop, diet, starts_with("trt"), instar))) %>%
+    mutate(mass = mass/1000) %>%
+    .CalcDevSS()
+  
+)
+```
+
+
 ## survival props
 
 ```{r}
-dfs_dev_ss <- list_modify(
-  dfs_dev_ss,
-    surv_outcomes =
+dfs_ldev <- list_modify( #dfs_dev_ss
+  dfs_ldev,
+  props_surv = #surv_outcomes
     dfs_tidy$wide %>%
     filter(is.pup != 2) %>%
     group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
@@ -127,9 +147,9 @@ dfs_dev_ss <- list_modify(
 ```{r supernumerary development}
 # TODO maybe a: dfs_wider with TT, pcts, outcomes, etc... sublists? see 2024 ntw wrangle Rmd
 
-dfs_dev_ss <- list_modify(
-  dfs_dev_ss,
-  sup_outcomes = 
+dfs_ldev <- list_modify( #dfs_dev_ss
+  dfs_ldev,
+  props_sup = # sup_outcomes
     dfs_tidy$wide %>% 
     filter(is.pup != 2) %>%
     group_by(across(c(year, pop, diet, starts_with("trt")))) %>%

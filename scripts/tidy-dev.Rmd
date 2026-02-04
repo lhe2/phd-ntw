@@ -51,6 +51,7 @@ library(here)
 ```{r load data}
 dfs_imported <- list(
   y23 = read.csv(here("_ntw/data/clean/2023/dev.csv"), header = TRUE) %>%
+    # dealing w dup ids
     mutate(id = case_when(id == "1379" & !is.na(jdate.pmd) ~ "1379a",
                           expt.group == "A" ~ paste0(id, "a"),
                           TRUE ~ as.character(id))),
@@ -60,7 +61,7 @@ dfs_imported <- list(
   a23 = read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
     select(c("id", "trt", "sex", "pop", "id.tent",
              "jdate.ec", "jdate.paired", "jdate.died", "ctrl")) %>%
-        filter(!(id %in% c(282, 284))),
+        filter(!(id %in% c(282, 284))), # bad bugs
   a25 = read.csv(here("_ntw/data/clean/2025/tent-matings.csv"), header = TRUE) %>%
     select(c("id", "trt", "sex", "pop", "cage",
              "jdate.eclosed", "jdate.added", "jdate.removed", 
@@ -175,7 +176,7 @@ dfs_stdised <- list(
 # 2023: redo trt values, survival coding/notes, sup coding; add trt group
 dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>% 
   mutate(mass.8th = NA, jdate.8th = NA,
-         if.fridge = case_when(is.na(jdate.tent) & jdate.tent != jdate.eclose ~ "x"),
+         if.fridge = case_when(is.na(jdate.tent) & jdate.tent - jdate.eclose > 0 ~ "x"), 
          trt = case_when(trt == 337 ~ 426,
                          TRUE ~ trt),
          trt.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal"),
@@ -280,7 +281,7 @@ dfs_tidy <- list_modify(dfs_tidy,
                             tt.wander = jdate.wander - jdate.hatch,
                             tt.pupa = jdate.pupa - jdate.hatch,
                             tt.eclose = jdate.eclose - jdate.pupa,
-                            tt.long = jdate.long - jdate.eclose,
+                            tt.long = jdate.long - jdate.eclose, 
                             tt.fridge = jdate.tent - jdate.eclose
                             #tt.exit = jdate.exit - jdate.hatch
                             ) %>%

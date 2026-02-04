@@ -36,7 +36,7 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
 # util functions
   
 ```{r eggs ss custom fns}
-# counts per cage -- for stats
+# counts per cage -- for modeling & downstream summary stats
 .CalcTentCounts <- function(x){
   x %>%
   #dfs_tidy$tents %>% # for testing
@@ -44,11 +44,14 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
   summarise(
     # see notes on calc'ing tent duration
     n.f = sum(f.added),
-    n.viable = sum(eggs.fert), # (dont rly need?)
+    #n.viable = sum(eggs.fert), # (dont need until counting fert eggs properly addressed)
     n.coll = sum(eggs.coll),
-    n.hatch = sum(eggs.hatched),
     n.coll.perf = n.coll/n.f,
-    sqrt.coll.perf = sqrt(n.coll.perf)
+    sqrt.coll.perf = sqrt(n.coll.perf),
+    
+    n.hatch = sum(eggs.hatched),
+    n.hatch.perf = n.hatch/n.f,
+    sqrt.hatch.perf = sqrt(n.hatch.perf)
   ) %>% 
     #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>% View()
   ungroup() 
@@ -74,10 +77,16 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
     
     avg.sqrt.coll.perf = mean(sqrt.coll.perf),
     se.sqrt.coll.perf = se(sqrt.coll.perf),
+    avg.sqrt.hatch.perf = mean(sqrt.hatch.perf),
+    se.sqrt.hatch.perf = se(sqrt.hatch.perf),
+    
     #p.hatch = n.hatch.total/n.viable.total, 
-      # will get prop.hatch per tent if not sum()'d beforehand
-    p.hatch = sum(n.hatch)/sum(n.viable), 
-    se.hatch = se.prop(p.hatch, sum(n.viable))
+      # do earlier -- will get prop.hatch per tent if not sum()'d beforehand
+    p.hatch = sum(n.hatch)/sum(n.coll),
+    se.hatch = se.prop(p.hatch, sum(n.coll)),
+      # until n.viable is handled properly, n.coll = n.viable
+    # p.hatch = sum(n.hatch)/sum(n.viable), 
+    # se.hatch = se.prop(p.hatch, sum(n.viable))
             ) %>%
   #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>%
   mutate(across(.cols = everything(), 
