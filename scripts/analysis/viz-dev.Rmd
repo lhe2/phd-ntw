@@ -26,7 +26,14 @@ source(here("_ntw/scripts/utils/analysis-viz.R"))
 source(here("_ntw/scripts/R/wrangle-dev.R"))
 
 # convert things into factors for ease of graphing
-dfs_dev_ss <- dfs_dev_ss %>%
+dfs_ldev <- dfs_ldev %>%
+    lapply(., \(x){
+    x %>%
+      ungroup() %>%
+      mutate(across(c("year", starts_with("trt")), as.factor))
+  })
+
+dfs_adev <- dfs_adev %>%
     lapply(., \(x){
     x %>%
       ungroup() %>%
@@ -34,13 +41,13 @@ dfs_dev_ss <- dfs_dev_ss %>%
   })
 ```
 
-# # overall dev
+# # larval dev
 
 ## survival to pup
 ```{r}
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>% FilterForNTW() %>%
+  FilterForBugs() %>%
   ggplot(aes(y = prop.pup,
              x = trt,
              col = year, #lty = year,
@@ -63,11 +70,11 @@ dfs_dev_ss <- dfs_dev_ss %>%
   theme_bw()
 }
 
-dfs_dev_ss$surv_outcomes %>%
+dfs_ldev$props_surv %>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_dev_ss$surv_outcomes %>%
+dfs_ldev$props_surv %>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("19", "26", "33")) +
@@ -81,7 +88,7 @@ dfs_dev_ss$surv_outcomes %>%
 # sexes combined
 .plotfn <- function(x){
   x %>%
-      FilterOutLabTB() %>% FilterForNTW() %>%
+      FilterForBugs() %>%
     filter(instar == "pupa") %>%
   ggplot(aes(y = avg.mass, x = trt,
              #lty = year, 
@@ -103,11 +110,11 @@ dfs_dev_ss$surv_outcomes %>%
 }
 
 
-dfs_dev_ss$ad_dev%>%
+dfs_adev$ss_all%>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev%>%
+dfs_adev$ss_all%>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
@@ -119,7 +126,7 @@ dfs_dev_ss$ad_dev%>%
 
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
@@ -139,16 +146,16 @@ dfs_dev_ss$ad_dev%>%
     theme_bw()
 }
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   filter(trt != 260, sex == "m") %>%
   .plotfn() +
   scale_x_discrete(labels = c("19", "26", "33")) +
@@ -160,7 +167,7 @@ dfs_dev_ss$ad_dev_bysex %>%
 # by sex (meh)
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
@@ -183,11 +190,11 @@ dfs_dev_ss$ad_dev_bysex %>%
   theme_bw()
 }
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
@@ -198,7 +205,7 @@ dfs_dev_ss$ad_dev_bysex %>%
 # by pop (no)
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
@@ -217,11 +224,11 @@ dfs_dev_ss$ad_dev_bysex %>%
   theme_bw()
 }
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev_bysex %>%
+dfs_adev$ss_bysex %>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
@@ -232,7 +239,7 @@ dfs_dev_ss$ad_dev_bysex %>%
 ```{r days to pup}
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.tt, x = trt,
                col = year,
@@ -253,12 +260,12 @@ dfs_dev_ss$ad_dev_bysex %>%
          title = "time to pupation")
 }
 
-dfs_dev_ss$ad_dev %>%
+dfs_adev$ss_all %>%
   filter(trt != 260) %>%  
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev %>%
+dfs_adev$ss_all %>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 # LOL the 260 lab every yr ...  i think its bc they take so long from 5 to wander
@@ -267,7 +274,7 @@ dfs_dev_ss$ad_dev %>%
 ```{r pup rate}
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     filter(instar == "pupa") %>%
     ggplot(aes(y = avg.devrate, x = trt,
                col = year,
@@ -288,17 +295,17 @@ dfs_dev_ss$ad_dev %>%
          title = "time to pupation")
 }
 
-dfs_dev_ss$ad_dev %>%
+dfs_adev$ss_all %>%
   filter(trt != 260) %>%  
   .plotfn() +
   scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
 
-dfs_dev_ss$ad_dev %>%
+dfs_adev$ss_all %>%
   .plotfn() +
   scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
 ```
 
-# # bonus stuff
+# # bonus larval dev
 
 ## dev trajectories 
 
@@ -306,7 +313,7 @@ dfs_dev_ss$ad_dev %>%
 # dev by year
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
     ggplot(aes(y = avg.logmass,
                x = avg.tt,
@@ -329,11 +336,11 @@ dfs_dev_ss$ad_dev %>%
          col = "year")
 }
 
-dfs_dev_ss$dev_outcomes_all %>%
+dfs_ldev$ss_all %>%
   .plotfn() +
   labs(title = "development trajectories (with pmd)")
 
-dfs_dev_ss$dev_outcomes_allgrpd %>%
+dfs_ldev$ss_ispup_unparsed %>%
   filter(is.pup != 0) %>%
   .plotfn() +
   labs(title = "development trajectories (pup'd only)", # this actually includes pups + culled lol
@@ -344,7 +351,7 @@ dfs_dev_ss$dev_outcomes_allgrpd %>%
 # dev by year; parse out pmds more
 .plotfn <- function(x){
   x %>%
-    FilterOutLabTB() %>% FilterForNTW() %>%
+    FilterForBugs() %>%
     mutate(is.pup = as.factor(is.pup)) %>%
     filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
     ggplot(aes(y = avg.logmass,
@@ -365,12 +372,12 @@ dfs_dev_ss$dev_outcomes_allgrpd %>%
 }
 
 # surv + culled combined
-dfs_dev_ss$dev_outcomes_allgrpd %>%
+dfs_ldev$ss_ispup_unparsed %>%
   .plotfn()
 
 
 # culled omitted
-dfs_dev_ss$dev_outcomes_allgrpd2 %>%
+dfs_ldev$ss_ispup_parsed %>%
   filter(is.pup != 2) %>%
   .plotfn()
 ```
@@ -379,7 +386,7 @@ dfs_dev_ss$dev_outcomes_allgrpd2 %>%
 # dev by trt
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>% FilterForNTW() %>%
+  FilterForBugs() %>%
   filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
@@ -404,12 +411,12 @@ dfs_dev_ss$dev_outcomes_allgrpd2 %>%
     theme_bw()
 }
 
-dfs_dev_ss$dev_outcomes_allgrpd %>%
+dfs_ldev$ss_ispup_unparsed %>%
   filter(is.pup != 0) %>%
   .plotfn() +
   labs(title = "development trajectories (pups only)")
 
-dfs_dev_ss$dev_outcomes_all %>%
+dfs_ldev$ss_all %>%
   .plotfn() +
   labs(title = "development trajectories (all)")
 ```
@@ -417,7 +424,7 @@ dfs_dev_ss$dev_outcomes_all %>%
 # dev traj by trt + surv to pupation
 .plotfn <- function(x){
   x %>%
-  FilterOutLabTB() %>% FilterForNTW() %>%
+  FilterForBugs() %>%
     mutate(is.pup = case_when(is.pup == 0 ~ "died",
                                 is.pup == 1 ~ "pupated")) %>%
     mutate(is.pup = factor(is.pup, levels = c("pupated", "died"))) %>%
@@ -446,12 +453,12 @@ dfs_dev_ss$dev_outcomes_all %>%
     theme_bw()
 }
 
-dfs_dev_ss$dev_outcomes_allgrpd2 %>%
+dfs_ldev$ss_ispup_parsed %>%
   filter(is.pup != 2, pop == "field") %>% 
   .plotfn() +
   labs(title = "development trajectories (field)")
 
-dfs_dev_ss$dev_outcomes_allgrpd2 %>%
+dfs_ldev$ss_ispup_parsed %>%
   filter(is.pup != 2, pop == "lab") %>%
   .plotfn() +
   labs(title = "development trajectories (lab)")
@@ -460,8 +467,8 @@ dfs_dev_ss$dev_outcomes_allgrpd2 %>%
 
 ```{r}
 # wtf goin on w the lab controls
-dfs_dev_ss$dev_outcomes_all %>%
-  FilterOutLabTB() %>% FilterForNTW() %>%
+dfs_ldev$ss_all %>%
+  FilterForBugs() %>%
   filter(instar %in% c("3rd", "4th", "5th", "wander", "pupa"),
          trt == 260) %>% #View()
   ggplot(aes(y = avg.logmass,
@@ -486,8 +493,8 @@ dfs_dev_ss$dev_outcomes_all %>%
 ## supernumerary
 
 ```{r}
-dfs_dev_ss$sup_outcomes %>% 
-  FilterOutLabTB() %>% FilterForNTW() %>%
+dfs_ldev$props_sup %>% 
+  FilterForBugs() %>%
   filter(status == "surv") %>%
   ggplot(aes(y = p,
              x = interaction(trt),
@@ -508,14 +515,14 @@ dfs_dev_ss$sup_outcomes %>%
   theme_bw()
 ```
 
-# # alternate x axes
+## alternate x axes explorations
 
 (using dev rate)
 
 ```{r}
-dfs_dev_ss$dev_outcomes_all %>%
+dfs_ldev$ss_all %>%
   FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
-  #FilterForNTW() %>% #View()
+  #FilterForNTWTrts() %>% #View()
   filter(instar == "pupa") %>% #View()
   mutate(trt.flucT = as.numeric(as.character(trt.flucT)),
          trt.flucT = case_when(trt.flucT == 0 ~ "N",
@@ -530,9 +537,9 @@ dfs_dev_ss$dev_outcomes_all %>%
   facet_grid(pop~year) +
   scale_color_discrete(direction = -1)
 
-dfs_dev_ss$dev_outcomes_all %>%
+dfs_ldev$ss_all %>%
   FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
-  #FilterForNTW() %>% #View()
+  #FilterForNTWTrts() %>% #View()
   filter(instar == "pupa") %>% 
   ggplot(aes(y = avg.devrate,
              x = trt.flucT, col = trt.type,
@@ -541,9 +548,9 @@ dfs_dev_ss$dev_outcomes_all %>%
   facet_grid(pop~year) +
   scale_color_discrete(direction = -1)
 
-dfs_dev_ss$dev_outcomes_all %>%
+dfs_ldev$ss_all %>%
   FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
-  #FilterForNTW() %>% #View()
+  #FilterForNTWTrts() %>% #View()
   filter(instar == "pupa") %>% 
   ggplot(aes(y = avg.devrate,
              x = trt.meanT, col = trt.type,
