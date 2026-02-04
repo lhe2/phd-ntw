@@ -23,7 +23,7 @@ FilterForLabEggs <- function(data){
 }
 
 # keeps trts 260, 419, 426, 433 only
-FilterForNTW <- function(data){
+FilterForNTWTrts <- function(data){
   if(rlang::has_name(data, "is.ntw")){
     filter(data, is.ntw > 0)
   } else {
@@ -31,7 +31,16 @@ FilterForNTW <- function(data){
   }
 }
 
+## combined filters
+FilterForBugs <- function(data){
+  data %>% 
+    FilterOutLabTB() %>% FilterForNTWTrts()
+}
 
+FilterForMoths <- function(data){
+  data %>% 
+    FilterForLabEggs() %>% FilterForNTWTrts()
+}
 
 
 
