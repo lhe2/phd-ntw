@@ -519,6 +519,12 @@ dfs_ldev$props_sup %>%
 
 (using dev rate)
 
+- colors are good to show "ctrl" vs "expt" (hot bugs)
+- some x-axes are a little confusing bc there's so many other points (in 2023).
+  not sure what other `trt.` var to choose as another geom. 
+  - (prob sth that emphasises the minTs or other aspect of the temp trt, but also dont want like
+     3 additional levels max..)
+
 ```{r}
 dfs_ldev$ss_all %>%
   FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
@@ -558,5 +564,42 @@ dfs_ldev$ss_all %>%
   geom_line() + geom_point(aes(shape = trt.minT), size = 2) +
   facet_grid(pop~year) +
   scale_color_discrete(direction = -1)
+```
+
+# # adult dev
+
+## longevity
+```{r}
+# TODO add in sex? remove fridge bugs...
+
+.plotfn <- function(x){
+  x %>%
+    FilterForBugs() %>% 
+    filter(pop != "col") %>%
+    filter(instar == "long") %>%
+    ggplot(aes(y = avg.tt, x = trt,
+               color = pop)
+           )+
+    geom_errorbar(aes(ymin = avg.tt - se.tt,
+                      ymax = avg.tt + se.tt),
+                  width = 0.5, lty = "solid") +
+    geom_point() + geom_line() +
+    facet_grid(~ year) +
+    labs(y = "longevity (days after eclosion)") +
+    ylim(c(4.5, 18))
+}
+
+dfs_adev$ss_all %>%
+  .plotfn() +
+  aes(group = interaction(pop))
+
+
+dfs_adev$ss_all_iffr %>%
+  mutate(if.fridge = case_when(is.na(if.fridge) ~ "no",
+                               TRUE ~ "yes")) %>%
+  .plotfn() +
+  aes(group = interaction(pop, if.fridge),
+      lty = if.fridge)
+  
 ```
 

@@ -62,6 +62,9 @@ dfs_tents$ss_nocol %>%
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>%
+        mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
+                               mate.hs == "f" ~ "*F + M",
+                               mate.hs == "m" ~ "F + *M")) %>%
     ggplot(aes(y = p.hatch, x = n.total.coll,
                col = mate.trt, shape = mate.hs)) +
     geom_point(size = 2) +
@@ -74,20 +77,25 @@ dfs_tents$ss_nocol %>%
               hjust = 1.25, vjust = -1.3,
               show.legend = FALSE) + 
     #scale_color_brewer(palette = "Dark2") +
+    labs(col = "treatment",
+         shape = "treated sex",
+         y = "proportion hatched",
+         x = "eggs laid") +
     scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9A92E")) +
-    facet_wrap(~ mate.type) +
+    facet_wrap(~ mate.type, labeller = as_labeller(c(`within` = "overall trt effects", 
+                                                     `between` = "sex-specific effects"))) +
     ylim(c(0, 0.305))
 }
 
 dfs_tents$ss_nocol %>%
   filter(year == 2023) %>%
   .plotfn() +
-  labs(caption = "2023") 
+  labs(caption = "2023; N = # females") 
 
 dfs_tents$ss_nocol %>%
   filter(year == 2025) %>%
   .plotfn() +
-  labs(caption = "2025")
+  labs(caption = "2025; N = # females")
 ```
 
 ## hatch+laid effect of col bugs in 2025
@@ -170,6 +178,9 @@ p3
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>% 
+    mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
+                               mate.hs == "f" ~ "*F + M",
+                               mate.hs == "m" ~ "F + *M")) %>%
     ggplot(aes(#y = avg.coll.perf, 
       y = avg.sqrt.coll.perf,
       x = mate.trt,
@@ -213,7 +224,8 @@ p3
                   filter(trt.f %in% c(260, 419), mate.hs %in% c("both", "f"),
                          trt.m != 419) %>%
                   select(-mate.trt) %>%
-                  rename(mate.trt = trt.f) %>% mutate(mate.hs = "f") #%>% View()
+                  rename(mate.trt = trt.f) %>% mutate(#mate.hs = "f",
+                                                      mate.hs = "*F + M") #%>% View()
                 #, color = "black"
                 , aes(group = mate.hs), show.legend = FALSE,
                 ),
@@ -222,7 +234,8 @@ p3
                     filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
                            trt.f != 419) %>%
                     select(-mate.trt) %>%
-                    rename(mate.trt = trt.m) %>% mutate(mate.hs = "m") #%>% View()
+                    rename(mate.trt = trt.m) %>% mutate(#mate.hs = "m",
+                                                        mate.hs = "F + *M") #%>% View()
                   ,
                   #aes(group = mate.trt), 
                   show.legend = FALSE
@@ -247,6 +260,9 @@ dfs_tents$ss_nocol %>%
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>% 
+    mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
+                               mate.hs == "f" ~ "*F + M",
+                               mate.hs == "m" ~ "F + *M")) %>%
     ggplot(aes(y = p.hatch,
                x = mate.trt,
                lty = mate.hs, shape = mate.hs,
@@ -272,7 +288,7 @@ dfs_tents$ss_nocol %>%
     scale_color_manual(values = c("slateblue2", "maroon2", "deepskyblue")) +
     #scale_linetype_manual(values = c(3, 2, 1)) +
     labs(col = "treated sex", lty = "treated sex", shape = "treated sex",
-         caption = "bars = se; lab only",
+         caption = "bars = se; lab only; prop = of total eggs laid",
          y = "proportion eggs hatched", x = "treatment")
 }
 

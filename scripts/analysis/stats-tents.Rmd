@@ -17,6 +17,7 @@ library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
 library(MuMIn) # dredge (nested model comparisons)
 library(tidyverse)
+library(ggfortify) # autoplot (diagnosing)
 
 library(conflicted)
 conflicts_prefer( 
@@ -33,8 +34,8 @@ conflicts_prefer(
 source(here("_ntw/scripts/utils/analysis.R"))
 source(here("_ntw/scripts/utils/analysis-stats.R"))
 ```
-notes
 
+notes: 
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data, message=FALSE}
@@ -52,8 +53,160 @@ dfs <- list(
   tents = #imported_tents %>%
     dfs_tents$n_pertent %>%
     FilterForLabEggs() %>% 
-    mutate(across(starts_with("trt"), as.factor))
+    mutate(across(starts_with(c("trt")), as.factor))
 )
 ```
+# diagnosing
+
+trying out different response variables for the egg numbers.
+
+## eggs laid
+- `mods_laid$sqrt` is the better transform (smaller resids, better QQ but still a little off..)
+- `mods_laid$log` has a very ugly QQ plot
+
+```{r warning=FALSE}
+# trying out difference response variables
+mods <- list(
+  raw = glm(n.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson"),
+  sqrt = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson"),
+  log = glm(log(n.coll.perf + 1) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson")
 )
+
+mods %>% DiagnoseModel() # use sqrt
+```
+
+## eggs hatched
+- dont need `n.f` in the model...? tho maybe need `n.coll.perf`?
+- they all REALLY suck... need a different model? drop that one ctrl point?
+
+```{r warning=FALSE, message=FALSE}
+mods <- list(
+  raw = glm(n.hatch.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year, data = dfs$tents, family = "poisson"),
+  sqrt = glm(sqrt.hatch.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year, data = dfs$tents, family = "poisson"),
+  cbrt = glm((n.hatch.perf)^(1/3) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year,
+             data = dfs$tents, family = "poisson"),
+  log = glm(log(n.hatch.perf + 1) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year, data = dfs$tents, family = "poisson")
+)
+
+mods %>% DiagnoseModel() # they all really suck (cube rt is sorta okay)
+```
+
+
+# futzing
+
+- Z: eggs hatched
+  - sorta wonky bc the distribution is sooo bad to begin w lol...
+
+## number eggs laid
+- `cage` breaks things. not rly sure why though... (colinearity?)
+
+```{r cages break, eval=FALSE, warning=FALSE, message=FALSE}
+# drop tents with only 1 m/f trt combo (colinear?) for diagnosing
+dfs <- list_modify(
+  dfs,
+  mod = dfs$tents %>%
+  group_by(trt.f, trt.m) %>%
+  mutate(n = n(),
+         cage = case_when(n == 1 ~ NA_character_,
+                          TRUE ~ cage))
+  )
+
+mods <- list(
+  # diagnosing mods
+  # full = glm(sqrt.coll.perf ~ mate.trt*is.hs.f*is.hs.m + n.f + cage + year,
+  #            data = dfs$tents, family = "poisson"),
+  # cage_fixed = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.m + is.hs.f + n.f + cage,
+  #              data = dfs$mod, na.action = na.omit,
+  #              family = "poisson"),
+  # cage_rand = glmer(sqrt.coll.perf ~ trt.f + trt.m + is.hs.m + is.hs.f + n.f + (1|cage),
+  #            data = dfs$mod, na.action = na.omit,
+  #            family = "poisson"),
+  test = glm(sqrt.coll.perf ~ trt.f + trt.m,
+             data = dfs$tents, family = "poisson")
+  
+)
+  
+mods %>% GetModelResults()
+mods %>% DiagnoseModel() # breaks (NA/missing data) 
+
+resid(mods$test) # try -- when `cage` is included, resids are 0
+
+```
+
+- how to code the trts?
+
+```{r warning=FALSE}
+# lets give up on tents and look at the interactions instead
+mods <- list(
+  # which vars are needed?
+  add = glm(sqrt.coll.perf ~ trt.f + is.hs.f + trt.m + is.hs.m,
+            data = dfs$tents, family = "poisson"),
+  add_nf = glm(sqrt.coll.perf ~ trt.f + is.hs.f + trt.m + is.hs.m + n.f,
+            data = dfs$tents, family = "poisson"),
+  add_yr = glm(sqrt.coll.perf ~ trt.f + is.hs.f + trt.m + is.hs.m + n.f + year,
+              data = dfs$tents, family = "poisson"),
+  
+  # testing ints
+  ## (keep simple for now and omit extra preds - focus on the trts)
+  int = glm(sqrt.coll.perf ~ trt.f:is.hs.f + trt.m:is.hs.m,
+            data = dfs$tents, family = "poisson"),
+  # (this is the "add" model)
+  # int2 = glm(sqrt.coll.perf ~ trt.f*is.hs.f + trt.m*is.hs.m,
+  #                data = dfs$tents, family = "poisson"), 
+  int_is = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.m:is.hs.f,
+            data = dfs$tents, family = "poisson"),
+  int_trt = glm(sqrt.coll.perf ~ trt.f:trt.m + is.hs.m:is.hs.f,
+            data = dfs$tents, family = "poisson"),
+  # (this is same as int_trt?)
+  int_trt2 = glm(sqrt.coll.perf ~ trt.f*trt.m + is.hs.m*is.hs.f,
+                 data = dfs$tents, family = "poisson")
+)
+
+# testing additional vars
+anova(mods$add, mods$add_nf, test = "Chisq") # including n.f is better
+anova(mods$add_nf, mods$add_yr, test = "Chisq") # including year is better
+## so include yr and n.f
+
+# testing add vs int?
+anova(mods$add, mods$int, test = "Chisq") # they are the same lol?
+
+# testing coding interactions
+anova(mods$int, mods$int_is, test = "Chisq") # complex model better
+anova(mods$int, mods$int_trt, test = "Chisq") # complex is better
+anova(mods$int, mods$int_trt2, test = "Chisq") # complex is better
+anova(mods$int_trt, mods$int_trt2, test = "Chisq") # these are the same?
+anova(mods$int_is, mods$int_trt, test = "Chisq") # better to have both trts and is.hs interact
+anova(mods$add, mods$int_trt, test = "Chisq") # complex is better
+```
+## eggs coll + laid (binomials)
+- seems like `trt` of the m/f is more impt? (everything sig except `is.hs`...)
+- but go look at data transforming before continuing more lol
+
+```{r}
+# for simplicity, focus on the trts
+dfs <- list_modify(
+  dfs,
+  mods = dfs$tents %>%
+    mutate(n.fail = n.coll - n.hatch)
+)
+
+mods <- list(
+  # as (# successes, # failures)
+  raw_sf = glm(cbind(n.hatch, n.fail) ~
+                 #trt.f + trt.m + is.hs.m + is.hs.f + n.f + year,
+                 trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+               data = dfs$mods, family = "binomial"),
+  # as a prop
+  raw_hc = glm(cbind(n.hatch, n.coll) ~
+                 #trt.f + trt.m + is.hs.m + is.hs.f + n.f + year,
+                 trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+               data = dfs$mods, family = "binomial"),
+  
+  raw_hprop = glm(n.hatch/n.coll ~ trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+               data = dfs$mods, family = "quasibinomial") # use qb for non-int binomials
+)
+
+#mods %>% DiagnoseModel() # breaks bc of cbind
+mods %>% GetModelResults()
+#anova(mods$raw_sf, mods$raw_hc, test = "Chisq") # breaks bc of cbind?
 ```
