@@ -51,7 +51,8 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
     
     n.hatch = sum(eggs.hatched),
     n.hatch.perf = n.hatch/n.f,
-    sqrt.hatch.perf = sqrt(n.hatch.perf)
+    sqrt.hatch.perf = sqrt(n.hatch.perf),
+    p.hatch.perc = n.hatch/n.coll
   ) %>% 
     #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>% View()
   ungroup() 
@@ -60,30 +61,43 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
 # counts per cage trt (i.e. per mate type combo) -- for viz
 .CalcTentsSS <- function(x){
   x %>%
-  #dfs_tidy$tents %>% # for testing
-  .CalcTentCounts() %>%
+  #dfs_tidy$tents %>% # for testing -- should get 37 rows
+  .CalcTentCounts() %>% #View() # metrics at individ cage level
   group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
   summarise(
-    # see notes on calc'ing tent duration
+    # grand totals
+    ## see notes on calc'ing tent duration
     n.cages.total = n(),
     n.f.total = sum(n.f),
     n.total.coll = sum(n.coll),
+    n.total.hatch = sum(n.hatch),
     
-    # these look rly bad compared to the daily level LOL
+    # eggs collected
+    ## these look rly bad compared to the daily level LOL
     avg.coll.total = mean(n.coll),
     se.coll.total = se(n.coll),
     avg.coll.perf = mean(n.coll.perf),
     se.coll.perf = se(n.coll.perf),
-    
+    ## transformed
     avg.sqrt.coll.perf = mean(sqrt.coll.perf),
     se.sqrt.coll.perf = se(sqrt.coll.perf),
     avg.sqrt.hatch.perf = mean(sqrt.hatch.perf),
     se.sqrt.hatch.perf = se(sqrt.hatch.perf),
     
-    #p.hatch = n.hatch.total/n.viable.total, 
-      # do earlier -- will get prop.hatch per tent if not sum()'d beforehand
-    p.hatch = sum(n.hatch)/sum(n.coll),
-    se.hatch = se.prop(p.hatch, sum(n.coll)),
+    # eggs hatched (overall count)
+    avg.hatch = mean(n.hatch),
+    se.hatch = se(n.hatch),
+    # (doesnt rly make sense to have count per f?)
+    
+    # eggs hatched (props)
+    #p.hatch.perc = n.hatch/n.coll,
+          ## do earlier -- will get dups from prop.hatch per tent if not sum()'d beforehand
+    ## per cage for each trt group
+    avg.p.hatch.perc = mean(p.hatch.perc),
+    se.p.hatch.perc = se.prop(avg.p.hatch.perc, n.cages.total),
+    ## per trt group
+    p.hatch = n.total.hatch/n.total.coll,
+    se.hatch = se.prop(p.hatch, n.total.coll),
       # until n.viable is handled properly, n.coll = n.viable
     # p.hatch = sum(n.hatch)/sum(n.viable), 
     # se.hatch = se.prop(p.hatch, sum(n.viable))
