@@ -54,7 +54,10 @@ dfs <- list(
   tents = #imported_tents %>%
     dfs_tents$n_pertent %>%
     FilterForLabEggs() %>% 
-    mutate(across(starts_with(c("trt")), as.factor))
+    mutate(across(starts_with(c("trt", "mate")), as.factor)) %>%
+    mutate(mate.ishs = case_when(is.na(mate.ishs) ~ "neither",
+                                 TRUE ~ as.character(mate.ishs)),
+           mate.ishs = factor(mate.ishs, levels = c("neither", "f", "m", "both")))
 )
 ```
 
@@ -74,10 +77,18 @@ trying out different response variables for the egg numbers.
 mods <- list(
   raw = glm(n.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
             data = dfs$tents, family = "poisson"),
+  raw2 = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year, 
+            data = dfs$tents, family = "poisson"),
   sqrt = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
+             data = dfs$tents, family = "poisson"),
+  sqrt2 = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year, 
              data = dfs$tents, family = "poisson"),
   log = glm(log(n.coll.perf + 1) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
             data = dfs$tents, family = "poisson"),
+  log2 = glm(log(n.coll.perf + 1) ~ mate.trt*mate.ishs + n.f + year, 
+            data = dfs$tents, family = "poisson"),
+  sqrt_q = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
+             data = dfs$tents, family = "quasipoisson")
 )
 
 mods %>% DiagnoseModel() # use sqrt -- more balanced
@@ -135,6 +146,8 @@ mods <- list(
   # (this is same as int_trt?)
   int_trt2 = glm(sqrt.coll.perf ~ trt.f*trt.m + is.hs.m*is.hs.f + n.f + year,
                  data = dfs$tents, family = "poisson"),
+  int3 = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+             data = dfs$tents, family = "poisson")
 )
 
 # testing additional vars
@@ -155,6 +168,18 @@ anova(mods$int, mods$int_trt2, test = "Chisq") # int_trt2 is marginally better
 anova(mods$int_trt, mods$int_trt2, test = "Chisq") # these are the same? (so just use int_trt for the below)
 anova(mods$int_is, mods$int_trt, test = "Chisq") # int_trt marginally better
 anova(mods$add_yr, mods$int_trt, test = "Chisq") # int_trt marginally better
+anova(mods$add_yr, mods$int3, test = "Chisq") # int3 marginally better...
+
+# testing coding interactions (trts + hs separated)
+anova(mods$int_trt, mods$int3, test = "Chisq") # these are the same?
+AIC(mods$int_trt)
+AIC(mods$int3)
+drop1(mods$int_trt)
+drop1(mods$int3)
+
+# looking at the final model bc i think this is the better one?
+mods$int3 %>% GetModelResults()
+
 ```
 
 
@@ -164,6 +189,20 @@ anova(mods$add_yr, mods$int_trt, test = "Chisq") # int_trt marginally better
 ### cage    
 - works when fixed (and sig) but not rly what we're trying to do here...
 
+```{r try 2, warning=FALSE}
+mods <- list(
+  nocage = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+               data = dfs$tents, family = "poisson"),
+  cage_fixed = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year + cage, # works but not what we want..
+                   data = dfs$tents, family = "poisson")
+  # breaks: bc of https://forum.posit.co/t/error-in-eval-f-x-downdated-vtv-is-not-positive-definite/73846/2?
+  # cage_rand = glmer(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year + (1|cage),
+  #                  data = dfs$tents, family = "poisson")
+)
+
+mods %>% GetModelResults()
+
+```
 
 - `cage` breaks things. not rly sure why though... (colinearity?)
 ```{r try 1 cages break, eval=FALSE, warning=FALSE, message=FALSE}
@@ -226,11 +265,63 @@ qqnorm(resid(mods$log)); qqline(resid(mods$log))
 ```
 
 ```{r warning=FALSE}
+# more glms with different response var and diff preds
+# (try on the whole number instead of hatch per f bc that doesn't rlly make sense... also try w the trt interaction)
+
 mods <- list(
+  raw = glm(n.hatch ~ mate.trt*mate.ishs + year,
             data = dfs$tents, family = "poisson"),
-  
+  log = glm(log(n.hatch + 1) ~ mate.trt*mate.ishs + year, 
+            data = dfs$tents, family = "poisson")
+  # raw_nb = MASS::glm.nb(n.hatch ~ mate.trt*mate.ishs + year,
+  #              data = dfs$tents) # errors...
 )
 
+mods %>% DiagnoseModel()
+```
+
+### zips (try 1)
+- need to code the trts differently.. otherwise warnings
+
+```{r , eval=FALSE}
+# zip/zinb
+mods <- list(
+  raw_p = zeroinfl(n.hatch ~ trt.f|1, data = dfs$tents),
+  raw_nb = zeroinfl(n.hatch ~ trt.f|1, data = dfs$tents, dist = "negbin")
+  # raw_p2 = zeroinfl(n.hatch ~ mate.trt*mate.ishs + year, data = dfs$tents),
+  # raw_nb2 = zeroinfl(n.hatch ~ mate.trt*mate.ishs + year, data = dfs$tents, dist = "negbin")
+  
+  # break: probably bc of how the trt info is handled
+  # raw_p = zeroinfl(n.hatch ~ trt.f + trt.m + as.factor(is.hs.f) + as.factor(is.hs.m) + n.coll + year, 
+  #                data = dfs$tents),
+  # raw_nb = zeroinfl(n.hatch ~ trt.f + trt.m + as.factor(is.hs.f) + as.factor(is.hs.m) + n.coll + year, 
+  #                data = dfs$tents, dist = "negbin")
+
+)
+
+
+mods %>% DiagnoseModel2()
+#qqnorm(mods$raw_p$residuals); qqline(mods$raw_p$residuals)
+#qqnorm(resid(mods$raw_p)); qqline(resid(mods$raw_p))
+```
+
+### zips (try 2)
+- zip model wont fit if the trts are too piecemealy, so try just `mate.trt * mate.ishs`
+  - (try `year` and `n.f` later)
+
+```{r}
+# df <- dfs$tents %>%
+#   mutate(mate.ishs = case_when(mate.ishs == "none" ~ NA_character_, 
+#                                TRUE ~ as.character(mate.ishs)))
+
+mods <- list(
+  raw_p = zeroinfl(n.hatch ~ mate.trt*mate.ishs|1, 
+                   data = dfs$tents, dist = "poisson"),
+  raw_nb = zeroinfl(n.hatch ~ mate.trt*mate.ishs|1, 
+                    data = dfs$tents, dist = "negbin")
+)
+
+mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it need to be transformed tho ??
 
 ```
 
@@ -267,15 +358,20 @@ mods <- list(
   # as (# successes, # failures)
   raw_sf = glm(cbind(n.hatch, n.fail) ~
                  #trt.f + trt.m + is.hs.m + is.hs.f + n.f + year,
-                 trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+                 #trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+                 mate.trt*mate.ishs + n.f + year,
                data = dfs$mods, family = "binomial"),
+  
+  
   # as a prop
   raw_hc = glm(cbind(n.hatch, n.coll) ~
                  #trt.f + trt.m + is.hs.m + is.hs.f + n.f + year,
-                 trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+                 #trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+               mate.trt*mate.ishs + n.f + year,
                data = dfs$mods, family = "binomial"),
   
-  raw_hprop = glm(n.hatch/n.coll ~ trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+  raw_hprop = glm(n.hatch/n.coll ~ mate.trt*mate.ishs + n.f + year,
+                  #trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
                data = dfs$mods, family = "quasibinomial") # use qb for non-int binomials
 )
 
