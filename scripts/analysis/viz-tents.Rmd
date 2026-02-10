@@ -7,12 +7,10 @@ date: "2025-12-01"
 
 data viz for ntw 2025
 
-```{r set pathfinding}
+```{r load libraries and utils}
 here::i_am("_ntw/scripts/analysis/viz-tents.Rmd")
 library(here)
-```
 
-```{r load libraries and utils}
 library(tidyverse)
 library(patchwork) # for plot_layout
 # library(survival) # for fitting surv
@@ -174,13 +172,14 @@ p3
 
 ## eggs laid
 
+### facet by year
 ```{r}
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>% 
-    mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
-                               mate.hs == "f" ~ "*F + M",
-                               mate.hs == "m" ~ "F + *M")) %>%
+    # mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
+    #                            mate.hs == "f" ~ "*F + M",
+    #                            mate.hs == "m" ~ "F + *M")) %>%
     ggplot(aes(#y = avg.coll.perf, 
       y = avg.sqrt.coll.perf,
       x = mate.trt,
@@ -224,18 +223,21 @@ p3
                   filter(trt.f %in% c(260, 419), mate.hs %in% c("both", "f"),
                          trt.m != 419) %>%
                   select(-mate.trt) %>%
-                  rename(mate.trt = trt.f) %>% mutate(#mate.hs = "f",
-                                                      mate.hs = "*F + M") #%>% View()
+                  rename(mate.trt = trt.f) %>% mutate(mate.hs = "f",
+                                                      #mate.hs = "*F + M"
+                                                      ), #%>% View()
                 #, color = "black"
-                , aes(group = mate.hs), show.legend = FALSE,
+                #, aes(group = mate.hs), 
+                show.legend = FALSE
                 ),
         geom_line(data = x %>%
                     #FilterForLabEggs(dfs_tents$ss_nocol) %>%
                     filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
                            trt.f != 419) %>%
                     select(-mate.trt) %>%
-                    rename(mate.trt = trt.m) %>% mutate(#mate.hs = "m",
-                                                        mate.hs = "F + *M") #%>% View()
+                    rename(mate.trt = trt.m) %>% mutate(mate.hs = "m",
+                                                        #mate.hs = "F + *M"
+                                                        ) #%>% View()
                   ,
                   #aes(group = mate.trt), 
                   show.legend = FALSE
@@ -256,13 +258,16 @@ dfs_tents$ss_nocol %>%
 ```
 ## eggs hatched
 
+### facet by year (overall)
+
 ```{r}
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>% 
-    mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
-                               mate.hs == "f" ~ "*F + M",
-                               mate.hs == "m" ~ "F + *M")) %>%
+    # check if matches w .plotfn2
+    # mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
+    #                            mate.hs == "f" ~ "*F + M",
+    #                            mate.hs == "m" ~ "F + *M")) %>%
     ggplot(aes(y = p.hatch,
                x = mate.trt,
                lty = mate.hs, shape = mate.hs,
@@ -288,8 +293,37 @@ dfs_tents$ss_nocol %>%
     scale_color_manual(values = c("slateblue2", "maroon2", "deepskyblue")) +
     #scale_linetype_manual(values = c(3, 2, 1)) +
     labs(col = "treated sex", lty = "treated sex", shape = "treated sex",
-         caption = "bars = se; lab only; prop = of total eggs laid",
+         caption = "lab only; overall hatch prop. per mating combination",
          y = "proportion eggs hatched", x = "treatment")
+}
+.plotfn2 <- function(x){
+    list(
+      geom_line(data = x %>%
+                  #FilterForLabEggs(dfs_tents$ss_nocol) %>%
+                  filter(trt.f %in% c(260, 419), 
+                         mate.hs %in% c("both", "f"),
+                         trt.m != 419) %>%
+                  select(-mate.trt) %>% 
+                  rename(mate.trt = trt.f) %>% mutate(mate.hs = "f",
+                                                      #mate.hs = "*F + M"
+                                                      ) #%>% View()
+                #, color = "black"
+                , #aes(group = mate.hs), 
+                show.legend = FALSE,
+                ),
+        geom_line(data = x %>%
+                    #FilterForLabEggs(dfs_tents$ss_nocol) %>%
+                    filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
+                           trt.f != 419) %>%
+                    select(-mate.trt) %>%
+                    rename(mate.trt = trt.m) %>% mutate(mate.hs = "m",
+                                                        #mate.hs = "F + *M"
+                                                        ) #%>% View()
+                  ,
+                  #aes(group = mate.trt), 
+                  show.legend = FALSE
+                  )
+      )
 }
 
 dfs_tents$ss_nocol %>%
