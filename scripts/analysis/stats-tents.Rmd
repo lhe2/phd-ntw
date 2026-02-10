@@ -62,6 +62,13 @@ dfs <- list(
 ```
 
 
+# [OLD] on all the data
+- 2026-02-10 after wkly mtg, just for ref only. but TLDR:
+  - `n.f` and `year` should be inluded in the eggs laid mods
+  - Z = `n.coll.perf` is actually prob fine as the response var? (i.e. dont need to transform)
+    - BUT this gets weird w poisson bc of the non-integers (so still need to address this)
+  - need to run on a subset of the data without the ctrls (or else just as ctrls vs hot bc 26-26 mating group is confounded w/ `mate.ishs` and `mate.trt`)
+  - do the hatching as `c(# hatch, # coll)` (not as success/failures)
 
 # # Z: eggs laid
 
@@ -72,8 +79,9 @@ trying out different response variables for the egg numbers.
 - `mods_laid$sqrt` is the better transform (smaller resids, better QQ but still a little off..)
 - `mods_laid$log` has a very ugly QQ plot
 
-```{r warning=FALSE}
+```{r eval=FALSE, warning=FALSE}
 # trying out difference response variables
+#(<mod>2 = code the trt as a more straightfwd interaction)
 mods <- list(
   raw = glm(n.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
             data = dfs$tents, family = "poisson"),
@@ -94,7 +102,7 @@ mods <- list(
 mods %>% DiagnoseModel() # use sqrt -- more balanced
 ```
 
-```{r warning=FALSE}
+```{r eval=FALSE, warning=FALSE}
 # trying out different groupings
 mods <- list(
   raw = glm(n.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson"),
@@ -121,7 +129,7 @@ figuring out which vars to include in the model and what model to use
 ### trts
 - how to code the trts?
 
-```{r warning=FALSE}
+```{r eval=FALSE, warning=FALSE}
 # lets give up on tents and look at the interactions instead
 mods <- list(
   # which vars are needed?
@@ -182,49 +190,11 @@ mods$int3 %>% GetModelResults()
 
 ```
 
-```{r trying stuff w joel 260210}
-# how are the stats when the ctrl group is dropped?
-df <- dfs$tents %>% filter(mate.trt != 260)
-
-# if Z = n.coll these are amazing btw
-mods <- list(
-  # try dropping different terms
-  m1 = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
-            data = df, family = "poisson"),
-  m2 = glm(n.coll.perf ~ mate.trt + mate.ishs + n.f + year,
-            data = df, family = "poisson"),
-  m3 = glm(n.coll.perf ~ mate.ishs + n.f + year,
-            data = df, family = "poisson"),
-  # try trt as numeric?
-  m4 = glm(n.coll.perf ~ as.numeric(mate.trt)*mate.ishs + n.f + year,
-            data = df, family = "poisson"),
-  # fyi: different dist from m1-4 so cant anova it with the rest
-  m5 = glm(n.coll.perf ~ mate.ishs + n.f + year,
-            data = dfs$tents, family = "poisson")
-)
-
-mods %>% GetModelResults()
-
-anova(mods$m1, mods$m2, mods$m3, mods$m4, test = "Chisq")
-AIC(mods$m1, mods$m2, mods$m3, mods$m4)
-
-anova(mods$m5, test = "Chisq")
-summary(mods$m5)
-
-# trying other transforms/dists
-glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
-            data = df, family = "gaussian") %>% DiagnoseModel()
-glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
-            data = df, family = "gaussian") %>% DiagnoseModel() # kinda bad
-glm(n.coll.perf + 1 ~ mate.trt*mate.ishs + n.f + year,
-            data = df, family = "Gamma") %>% DiagnoseModel()
-```
-
 
 ### cage    
 - works when fixed (and sig) but not rly what we're trying to do here...
 
-```{r try 2, warning=FALSE}
+```{r try 2, eval=FALSE, warning=FALSE}
 mods <- list(
   nocage = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
                data = dfs$tents, family = "poisson"),
@@ -273,6 +243,51 @@ resid(mods$test) # try -- when `cage` is included, resids are 0
 
 ```
 
+### trying stuff w joel
+- trying stuff with the mods:
+  - use just a subset of the hot bugs only
+  - try looking at the trt interaction + dropping different terms
+  - trying trt as numeric vs factor
+  - try other distributions
+
+```{r trying stuff w joel 260210, eval=FALSE}
+# how are the stats when the ctrl group is dropped?
+df <- dfs$tents %>% filter(mate.trt != 260)
+
+# if Z = n.coll these are amazing btw
+mods <- list(
+  # try dropping different terms
+  m1 = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  m2 = glm(n.coll.perf ~ mate.trt + mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  m3 = glm(n.coll.perf ~ mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  # try trt as numeric?
+  m4 = glm(n.coll.perf ~ as.numeric(mate.trt)*mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  # fyi: different dist from m1-4 so cant anova it with the rest
+  m5 = glm(n.coll.perf ~ mate.ishs + n.f + year,
+            data = dfs$tents, family = "poisson")
+)
+
+mods %>% GetModelResults()
+
+anova(mods$m1, mods$m2, mods$m3, mods$m4, test = "Chisq")
+AIC(mods$m1, mods$m2, mods$m3, mods$m4)
+
+anova(mods$m5, test = "Chisq")
+summary(mods$m5)
+
+# trying other transforms/dists
+glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "gaussian") %>% DiagnoseModel()
+glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "gaussian") %>% DiagnoseModel() # kinda bad
+glm(n.coll.perf + 1 ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "Gamma") %>% DiagnoseModel()
+```
+
 
 # # Z: eggs hatched
 
@@ -299,7 +314,7 @@ qqnorm(mods$log$residuals); qqline(mods$log$residuals)
 qqnorm(resid(mods$log)); qqline(resid(mods$log))
 ```
 
-```{r warning=FALSE}
+```{r eval=FALSE, warning=FALSE}
 # more glms with different response var and diff preds
 # (try on the whole number instead of hatch per f bc that doesn't rlly make sense... also try w the trt interaction)
 
@@ -316,9 +331,11 @@ mods %>% DiagnoseModel()
 ```
 
 ### zips (try 1)
+- 2026-02-10: trying to code the trt interaction isnt working. 
+
 - need to code the trts differently.. otherwise warnings
 
-```{r , eval=FALSE}
+```{r eval=FALSE}
 # zip/zinb
 mods <- list(
   raw_p = zeroinfl(n.hatch ~ trt.f|1, data = dfs$tents),
@@ -344,16 +361,17 @@ mods %>% DiagnoseModel2()
 - zip model wont fit if the trts are too piecemealy, so try just `mate.trt * mate.ishs`
   - (try `year` and `n.f` later)
 
-```{r}
-# df <- dfs$tents %>%
-#   mutate(mate.ishs = case_when(mate.ishs == "none" ~ NA_character_, 
-#                                TRUE ~ as.character(mate.ishs)))
+```{r eval=FALSE}
+# will break with dfs$tents btw.
+df <- dfs$tents %>%
+  mutate(mate.ishs = case_when(mate.ishs == "none" ~ NA_character_,
+                               TRUE ~ as.character(mate.ishs)))
 
 mods <- list(
   raw_p = zeroinfl(n.hatch ~ mate.trt*mate.ishs|1, 
-                   data = dfs$tents, dist = "poisson"),
+                   data = df, dist = "poisson"),
   raw_nb = zeroinfl(n.hatch ~ mate.trt*mate.ishs|1, 
-                    data = dfs$tents, dist = "negbin")
+                    data = df, dist = "negbin")
 )
 
 mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it need to be transformed tho ??
@@ -362,17 +380,11 @@ mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it ne
 
 ## trying pred vars
 
-- Z: eggs hatched
-  - sorta wonky bc the distribution is sooo bad to begin w lol... (try ZIP model instead)
+- where Z: eggs hatched
+  - (glms are sorta wonky bc the distribution is sooo bad to begin w lol... (try ZIP model instead))
+  - nts: dont need number of F for this.. just # of eggs coll???
 
-### [wip]
-- dont need #F for this.. just # of eggs coll???
-```{r}
-# see diagnosing for early attempts
-
-```
-
-# #Z: binomial (hatch, laid)
+# # Z: binomial (hatch, laid)
 
 - [wip] Z: binomial (ie # hatch, # coll)
   - wonkkkyyy...
@@ -381,7 +393,7 @@ mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it ne
 - seems like `trt` of the m/f is more impt? (everything sig except `is.hs`...)
 - but go look at data transforming before continuing more lol
 
-```{r}
+```{r, eval=FALSE}
 # for simplicity, focus on the trts
 dfs <- list_modify(
   dfs,
