@@ -93,7 +93,7 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
     #p.hatch.perc = n.hatch/n.coll,
           ## do earlier -- will get dups from prop.hatch per tent if not sum()'d beforehand
     ## per cage for each trt group
-    avg.p.hatch.perc = mean(p.hatch.perc),
+    avg.p.hatch.perc = mean(p.hatch.perc, na.rm = TRUE), # does this mess up the n.cages lol
     se.p.hatch.perc = se.prop(avg.p.hatch.perc, n.cages.total),
     ## per trt group
     p.hatch = n.total.hatch/n.total.coll,

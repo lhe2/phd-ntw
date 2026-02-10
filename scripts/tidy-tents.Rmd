@@ -39,9 +39,11 @@ knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
 
 
 ```{r load libs}
-library(data.table) # for rbindlist
+library(data.table) # rbindlist
 library(tidyverse)
 library(here)
+
+conflicted::conflicts_prefer(dplyr::select) # in case of random stats pkgs
 ```
 
 ## roadmap
@@ -86,6 +88,9 @@ roadmap:
            mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
                                trt.m > trt.f | is.na(trt.f) ~ "m",
                                TRUE ~ "both"),
+            ## "NA" if 260+260
+           mate.ishs = case_when(mate.hs == "both" & mate.trt == 260 ~ NA_character_,
+                                TRUE ~ mate.hs),
            is.hs.f = case_when(trt.f == 260 ~ 0,
                                trt.f > 260 ~ 1),
            is.hs.m = case_when(trt.m == 260 ~ 0,
@@ -174,7 +179,7 @@ dfs_stdised <- list(
     dfs_imported[["ad25"]] %>% filter(sex == "f") %>%
       select(cage, id, pop, trt, sex) %>%
       pivot_wider(names_from = "sex", values_from = c("pop", "trt"), 
-                  names_sep = ".") %>% 
+                  names_sep = ".") %>%
        select(-id) %>% distinct(),
     dfs_imported[["ad25"]] %>% filter(sex == "m") %>%
       select(cage, id, pop, trt, sex) %>%
