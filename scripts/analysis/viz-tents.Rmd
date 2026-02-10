@@ -246,12 +246,12 @@ p3
 dfs_tents$ss_nocol %>%
   .plotfn() +
   .plotfn2(FilterForLabEggs(dfs_tents$ss_nocol)) +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = c(p_labs$temps))
 
 dfs_tents$ss_nocol %>%
   filter(mate.trt != 260) %>%
   .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = c(p_labs$temps))
   
 ```
 ## eggs hatched

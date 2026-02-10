@@ -18,13 +18,41 @@ GetModelResults <- function(x){
 
 # generate fitted vs resid; QQ plot
 ## (need to load ggfortify if not working)
-DiagnoseModel <- function(x){
-  if(inherits(x, "list") == FALSE){
-    x <- list(x)
+DiagnoseModel <- function(mod){
+  if(inherits(mod, "list") == FALSE){
+    mod <- list(mod)
   } 
   
-  x %>% lapply(., \(x){
+  mod %>% lapply(., \(x){
     list(autoplot(x, which = 1:2, na.action="fail"))
+  })
+  
+  ## trying to shove in functionality for the zeroinfl models
+  # mods %>% lapply(., \(x){
+  #   ifelse(!(class(x) %in% c("lm", "glm")), # needs to be vectorised..
+  #          {qqnorm(resid(x));qqline(resid(x))}, 
+  #          list(autoplot(x, which = 1:2, na.action="fail")) 
+  #           # not sure how to make this only give back 1 plot instead of dups...
+  #   )
+  # })
+}
+
+# for non glms/lms
+DiagnoseModel2 <- function(mod){
+  if(inherits(mod, "list") == FALSE){
+    mod <- list(mod)
+  }
+  
+  mod %>% lapply(., \(x){
+    fitted <- fitted(x)
+    res <- resid(x)
+    
+    ## resid vs fitted
+    plot(fitted, res)
+    lines(lowess(fitted, res), col = "red")
+    
+    ## qq
+    qqnorm(res); qqline(res)
   })
 }
 

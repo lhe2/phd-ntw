@@ -15,4 +15,8 @@ CalcErrHt <- function(y, pct = 0.07){
   max(y) * pct
 }
 
-
+### MISC ###
+p_labs <- list(
+  temps = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33")
+  # sth for "as_labeller" once i settle on sth
+  )
