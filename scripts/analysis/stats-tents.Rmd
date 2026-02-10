@@ -182,8 +182,43 @@ mods$int3 %>% GetModelResults()
 
 ```
 
+```{r trying stuff w joel 260210}
+# how are the stats when the ctrl group is dropped?
+df <- dfs$tents %>% filter(mate.trt != 260)
 
+# if Z = n.coll these are amazing btw
+mods <- list(
+  # try dropping different terms
+  m1 = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  m2 = glm(n.coll.perf ~ mate.trt + mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  m3 = glm(n.coll.perf ~ mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  # try trt as numeric?
+  m4 = glm(n.coll.perf ~ as.numeric(mate.trt)*mate.ishs + n.f + year,
+            data = df, family = "poisson"),
+  # fyi: different dist from m1-4 so cant anova it with the rest
+  m5 = glm(n.coll.perf ~ mate.ishs + n.f + year,
+            data = dfs$tents, family = "poisson")
+)
 
+mods %>% GetModelResults()
+
+anova(mods$m1, mods$m2, mods$m3, mods$m4, test = "Chisq")
+AIC(mods$m1, mods$m2, mods$m3, mods$m4)
+
+anova(mods$m5, test = "Chisq")
+summary(mods$m5)
+
+# trying other transforms/dists
+glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "gaussian") %>% DiagnoseModel()
+glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "gaussian") %>% DiagnoseModel() # kinda bad
+glm(n.coll.perf + 1 ~ mate.trt*mate.ishs + n.f + year,
+            data = df, family = "Gamma") %>% DiagnoseModel()
+```
 
 
 ### cage    
