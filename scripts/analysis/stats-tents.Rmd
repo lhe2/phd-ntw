@@ -58,7 +58,89 @@ dfs <- list(
                                  TRUE ~ as.character(mate.ishs)),
            mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")))
 )
+
+dfs <- list_modify(
+  dfs,
+  exptal = dfs$tents %>% 
+    filter(mate.trt != 260) %>%
+    mutate(mate.trt = case_when(mate.trt == 419 ~ 19,
+                                mate.trt == 426 ~ 26,
+                                TRUE ~ 33))
 )
+
+# format
+dfs <- lapply(dfs, \(x){
+  x %>% mutate(across(starts_with(c("trt", "mate")), as.factor))
+})
+```
+# exptal only
+- eggs/F: if the distribution is skewed right with mean greater than 1-3,  then round values to the nearest integer and use poisson
+
+# # Z: eggs laid
+
+## diagnosing
+
+- tldr
+  - offset... sometimes helps
+  - need `n.f` as a predictor still.
+  - rounding the rate is really nice!
+  - so maybe use Z = round(eggs/F) for the models.
+
+```{r warning=FALSE}
+# Z: raw n.coll
+# AICs: raw + offset = 4090.56; offset2 = 5013.118
+mods <- list(
+  raw = glm(n.coll ~ mate.trt*mate.ishs + n.f + year,
+            data = dfs$exptal, family = "poisson"),
+  # better QQ
+  offset = glm(n.coll ~ mate.trt*mate.ishs + n.f + year, 
+                   offset = n.f,
+                   data = dfs$exptal, family = "poisson"),
+  # bad QQ
+  offset2 = glm(n.coll ~ mate.trt*mate.ishs + year, 
+                    offset = n.f,
+                    data = dfs$exptal, family = "poisson")
+)
+
+# Z: n.coll/f; sqrt(n.coll/f)
+# AICs: none cuz poisonning non-integers
+mods <- list(
+  rawperf = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+            data = dfs$exptal, family = "poisson"),
+  # QQ looks like above
+  offset =  glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+                        offset = n.f,
+                        data = dfs$exptal, family = "poisson"),
+  
+  # (try the sqrt)
+  # bad QQ
+  sqrt_perf = glm(sqrt.coll.perf ~ mate.trt*mate.hs + n.f + year,
+             data = dfs$exptal, family = "poisson"),
+  
+  # QQ not that diff from 'offset'
+  ## meh. this approach also doesnt feel right (using qb to deal with the non-integers)
+  perf_qp = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year,
+                   data = dfs$exptal, family = "quasipoisson")
+)
+
+# Z: round(n.coll/f) (since dist is right-skewed with mean > 3)
+# AICs: roundperf/offset = 1430.344, offset2 = 2531.161
+mods <- list(
+  roundperf = glm(round(n.coll.perf) ~ mate.trt*mate.ishs + n.f + year, # use this?
+                  data = dfs$exptal, family = "poisson"),
+  # worse QQ (slightly)
+  offset = glm(round(n.coll.perf) ~ mate.trt*mate.ishs + n.f + year,
+                   offset = n.f, 
+                   data = dfs$exptal, family = "poisson"),
+  # uhh worse resids vs fitted? (slopes down)
+  offset2 = glm(round(n.coll.perf) ~ mate.trt*mate.ishs + year,
+                   offset = n.f,
+                   data = dfs$exptal, family = "poisson")
+)
+
+mods %>% DiagnoseModel()
+mods %>% GetModelResults()
+mods %>% lapply(., AIC)
 ```
 
 
@@ -331,8 +413,6 @@ mods %>% DiagnoseModel()
 ```
 
 ### zips (try 1)
-- 2026-02-10: trying to code the trt interaction isnt working. 
-
 - need to code the trts differently.. otherwise warnings
 
 ```{r eval=FALSE}

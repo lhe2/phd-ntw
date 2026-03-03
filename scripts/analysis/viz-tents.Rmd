@@ -32,10 +32,34 @@ dfs_tents <- dfs_tents %>%
              mate.type = factor(mate.type, 
                                 levels = c("within", "between")))
   })
-
 ```
 
-# # tents
+# # diagnostic plots
+
+## dist eggs laid per f
+
+```{r}
+hist(dfs_tents$n_pertent$n.coll.perf)
+mean(dfs_tents$n_pertent$n.coll.perf, na.rm = TRUE)
+```
+
+## dist eggs hatched (raw)
+
+- distribution is mega bad. use a ZIP/ZINB model?
+
+```{r}
+hist(dfs_tents$n_pertent$n.hatch)
+# 17/77 tents w hatchlings (both yrs)
+
+# per yr
+dfs_tents$n_pertent %>%
+  #filter(year == 2025) %>%
+  ggplot(aes(x = n.hatch, fill = as.factor(year))) +
+  geom_bar()
+```
+
+
+# # final
 
 ## hatch+laid btwn yrs 
 
@@ -434,20 +458,6 @@ p3 <- dfs_tents$ss_nocol %>%
 
 
 ## eggs hatched
-
-### overall dist (raw counts)
-- distribution is mega bad. use a ZIP/ZINB model?
-```{r}
-hist(dfs_tents$n_pertent$n.hatch)
-# 17/77 tents w hatchlings (both yrs)
-
-# per yr
-dfs_tents$n_pertent %>%
-  #filter(year == 2025) %>%
-  ggplot(aes(x = n.hatch, fill = as.factor(year))) +
-  geom_bar()
-```
-
 
 ### facet by year (overall)
 

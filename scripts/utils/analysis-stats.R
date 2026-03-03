@@ -24,7 +24,11 @@ DiagnoseModel <- function(mod){
   } 
   
   mod %>% lapply(., \(x){
-    list(autoplot(x, which = 1:2, na.action="fail"))
+    list(
+      # gridExtra::grid.arrange(grobs = autoplot(x, which = 1:2, na.action="fail")@plots,
+      #                            top = x$formula)
+      autoplot(x, which = 1:2, na.action="fail") + labs(caption = x$formula)
+      )
   })
   
   ## trying to shove in functionality for the zeroinfl models
@@ -55,4 +59,3 @@ DiagnoseModel2 <- function(mod){
     qqnorm(res); qqline(res)
   })
 }
-
