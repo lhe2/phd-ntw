@@ -17,8 +17,8 @@ library(lme4) # glm, lm, glmer
 library(pscl) # zeroinfl
 #library(MASS) # glm.nb
 
-library(tidyverse)
 library(ggfortify) # autoplot (diagnosing)
+library(tidyverse)
 
 library(conflicted)
 conflicts_prefer( 
@@ -54,10 +54,10 @@ dfs <- list(
   tents = #imported_tents %>%
     dfs_tents$n_pertent %>%
     FilterForLabEggs() %>% 
-    mutate(across(starts_with(c("trt", "mate")), as.factor)) %>%
-    mutate(mate.ishs = case_when(is.na(mate.ishs) ~ "neither",
+    mutate(mate.ishs = case_when(is.na(mate.ishs) ~ "none",
                                  TRUE ~ as.character(mate.ishs)),
-           mate.ishs = factor(mate.ishs, levels = c("neither", "f", "m", "both")))
+           mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")))
+)
 )
 ```
 

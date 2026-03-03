@@ -43,7 +43,9 @@ library(data.table) # rbindlist
 library(tidyverse)
 library(here)
 
-conflicted::conflicts_prefer(dplyr::select) # in case of random stats pkgs
+conflicted::conflicts_prefer(
+  dplyr::select,
+  dplyr::filter) 
 ```
 
 ## roadmap
@@ -68,6 +70,11 @@ roadmap:
 
 
 ## fns for info generation
+
+note: revisiting fertile eggs
+- currently, all collected eggs treated as fertile as long as males were present in the cage at some point.
+- F can sequester sperm, not sure how long this lasts, though.
+
 ```{r tent data common functions}
 # to assign cage mating info
 ## note: data needs to be "wide" (...f, ...m) to determine mate types
@@ -91,6 +98,8 @@ roadmap:
             ## "NA" if 260+260
            mate.ishs = case_when(mate.hs == "both" & mate.trt == 260 ~ NA_character_,
                                 TRUE ~ mate.hs),
+           trt.ishs = case_when(mate.trt == 260 ~ "ctrl",
+                                TRUE ~ "expt"),
            is.hs.f = case_when(trt.f == 260 ~ 0,
                                trt.f > 260 ~ 1),
            is.hs.m = case_when(trt.m == 260 ~ 0,

@@ -54,9 +54,9 @@ imported_dev <-
   list(wide = dfs_tidy$wide) %>%
   lapply(., \(x){
     x %>%
-      FilterOutLabTB() %>% FilterForNTW() %>%
+      FilterOutLabTB() %>% FilterForNTWTrts() %>%
       filter(trt != 260) %>%
-      mutate(across(c("year", "minT"), as.factor),
+      mutate(across(c("year", "trt.minT"), as.factor),
              tt.pupa = jdate.pupa - jdate.hatch)
   })
 
@@ -86,7 +86,7 @@ dfs <- list(
 
 ```{r pup surv model generation}
 mods_pupsurv <- list(
-  glm_fullint = glm(is.pup ~ year*pop*minT, 
+  glm_fullint = glm(is.pup ~ year*pop*trt.minT, 
                 family = "binomial", data = dfs$wide, 
                 na.action = na.fail)
   )
@@ -105,9 +105,9 @@ mods_pupsurv %>%
 df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
 
 mods_pupmass <- list(
-  add = lm(mass.pupa ~ year + minT+ pop + sex,
+  add = lm(mass.pupa ~ year + trt.minT + pop + sex,
            data = df, na.action = na.fail),
-  fullint = lm(mass.pupa ~ year*minT*pop*sex,
+  fullint = lm(mass.pupa ~ year*trt.minT*pop*sex,
                data = df, na.action = na.fail)
   
   # subsets of the full model are in a later chunk otherwise results r crazy
@@ -132,9 +132,9 @@ other results:
 mods_pupmass <- list_modify(
   mods_pupmass,
   # subsets of the full model
-  twoway = lm(mass.pupa ~ (year + minT + pop + sex)^2,
+  twoway = lm(mass.pupa ~ (year + trt.minT + pop + sex)^2,
               data = df, na.action = na.fail),
-  threeway = lm(mass.pupa ~ year*minT*pop + sex,
+  threeway = lm(mass.pupa ~ year*trt.minT*pop + sex,
               data = df, na.action = na.fail)
 )
 
@@ -155,7 +155,7 @@ notes
 
 ```{r pup time model generation}
 mods_puptime <- list(
-  fullint = lm(1/tt.pupa ~ year*minT*pop, data = dfs$wide)
+  fullint = lm(1/tt.pupa ~ year*trt.minT*pop, data = dfs$wide)
   )
 ```
 
@@ -200,14 +200,14 @@ each chunk is self-contained (model fitting + tests) and overwrites the `mods_pu
 df <- mutate(dfs$wide, year = as.numeric(year))
 
 mods_pup_randyr <- list(
-  surv = glmer(is.pup ~ pop*minT + (1|year),
+  surv = glmer(is.pup ~ pop*trt.minT + (1|year),
                      family = "binomial", data = dfs$wide),
   
-  surv_ctsyr = glmer(is.pup ~ pop*minT + (1|year),
+  surv_ctsyr = glmer(is.pup ~ pop*trt.minT + (1|year),
                      family = "binomial", data = df),
     # compare to `surv` to examine effs of yr as cts or cat
   
-  surv_noyr = glm(is.pup ~ pop*minT,
+  surv_noyr = glm(is.pup ~ pop*trt.minT,
                      family = "binomial", data = dfs$wide)
     # compare to `surv` to examine effs of year
 )
@@ -230,8 +230,8 @@ notes about `(1|year)` on pup surv:
 ```{r pup time rand yr, eval=FALSE}
 # mostly reminding myself of how lmerTest works
 mods_pup_randyr <- list(
-  time_lmertest = lmerTest::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide),
-  time_lme4 = lme4::lmer(tt.pupa ~ minT*pop + (1|year), data = dfs$wide)
+  time_lmertest = lmerTest::lmer(tt.pupa ~ trt.minT*pop + (1|year), data = dfs$wide),
+  time_lme4 = lme4::lmer(tt.pupa ~ trt.minT*pop + (1|year), data = dfs$wide)
 )
 
 mods_pup_randyr %>% lapply(., summary)
@@ -241,7 +241,7 @@ mods_pup_randyr %>% lapply(., summary)
 df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
 
 mods_pup_randyr <- list(
-  mass = lmer(mass.pupa ~ minT*pop*sex + (1|year),
+  mass = lmer(mass.pupa ~ trt.minT*pop*sex + (1|year),
               data = df)
 )
 ```
