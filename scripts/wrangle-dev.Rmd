@@ -27,7 +27,7 @@ knitr::purl("wrangle-dev.Rmd", here::here("_ntw/scripts/R/wrangle-dev.R"))
 # libraries, utils
 library(tidyverse)
 library(here)
-source(here("_ntw/scripts/utils/wrangle.R"))
+source(here("utils/math.R"))
 
 # data
 source(here("_ntw/scripts/R/tidy-dev.R"))
@@ -138,7 +138,7 @@ dfs_ldev <- list_modify( #dfs_dev_ss
     group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
     summarise(n = n(),
               prop.pup = sum(is.pup == 1)/n,
-              se.pup = se.prop(prop.pup, n))
+              se.pup = seprop(prop.pup, n))
 )
 ```
 
@@ -189,6 +189,6 @@ dfs_ldev <- list_modify( #dfs_dev_ss
 
 ```{r cleanup}
 rm(dfs_tidy,
-   se, se.prop)
+   se, seprop)
 ```
 

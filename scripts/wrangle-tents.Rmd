@@ -27,7 +27,7 @@ knitr::purl("wrangle-tents.Rmd", here::here("_ntw/scripts/R/wrangle-tents.R"))
 # libraries, utils
 library(tidyverse)
 library(here)
-source(here("_ntw/scripts/utils/wrangle.R"))
+source(here("utils/math.R"))
 
 # data
 source(here("_ntw/scripts/R/tidy-tents.R"))
@@ -94,13 +94,13 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
           ## do earlier -- will get dups from prop.hatch per tent if not sum()'d beforehand
     ## per cage for each trt group
     avg.p.hatch.perc = mean(p.hatch.perc, na.rm = TRUE), # does this mess up the n.cages lol
-    se.p.hatch.perc = se.prop(avg.p.hatch.perc, n.cages.total),
+    se.p.hatch.perc = seprop(avg.p.hatch.perc, n.cages.total),
     ## per trt group
     p.hatch = n.total.hatch/n.total.coll,
-    se.hatch = se.prop(p.hatch, n.total.coll),
+    se.hatch = seprop(p.hatch, n.total.coll),
       # until n.viable is handled properly, n.coll = n.viable
     # p.hatch = sum(n.hatch)/sum(n.viable), 
-    # se.hatch = se.prop(p.hatch, sum(n.viable))
+    # se.hatch = seprop(p.hatch, sum(n.viable))
             ) %>%
   #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>%
   mutate(across(.cols = everything(), 
@@ -146,5 +146,5 @@ dfs_tents <- list( #dfs_tents_ss
 
 ```{r cleanup}
 rm(dfs_tidy,
-   se, se.prop)
+   se, seprop)
 ```
