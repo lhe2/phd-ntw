@@ -12,42 +12,51 @@ here::i_am("_ntw/scripts/analysis/viz-dev.Rmd")
 library(here)
 ```
 
-```{r load libraries and utils}
+```{r load libraries and utils, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(patchwork) # for plot_layout
 # library(survival) # for fitting surv
 # library(survminer) # for plotting surv
 
+# data
+source(here("_ntw/scripts/R/tidy-dev.R"))
+
+# utils
+source(here("_ntw/scripts/utils/wrangle.R"))
 source(here("_ntw/scripts/utils/analysis.R"))
 source(here("_ntw/scripts/utils/analysis-viz.R"))
 ```
 
-```{r load data, message = FALSE, warning=FALSE}
-source(here("_ntw/scripts/R/wrangle-dev.R"))
-
+```{r convenience fns}
 # convert things into factors for ease of graphing
-dfs_ldev <- dfs_ldev %>%
-    lapply(., \(x){
-    x %>%
-      ungroup() %>%
-      mutate(across(c("year", starts_with("trt")), as.factor))
-  })
+MakeFactors <- function(ss_df){
+  ss_df %>%
+        mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
+                                     pop == "lab" ~ "lab",
+                                     pop == "field" ~ "field")) %>%
+        mutate(across(c("year", starts_with("trt")), as.factor))
+}
 
-dfs_adev <- dfs_adev %>%
-    lapply(., \(x){
-    x %>%
-      ungroup() %>%
-      mutate(across(c("year", starts_with("trt")), as.factor))
-  })
+
+#dfs_ldev <- dfs_ldev %>% MakeFactors()
+
+#dfs_adev <- dfs_adev %>% MakeFactors()
 ```
 
 # # larval dev
 
 ## survival to pup
 ```{r}
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    filter(pop != "col") %>%
+    CalcSurvProps()
+}
+
 .plotfn <- function(x){
   x %>%
-  FilterForBugs() %>%
+    MakeFactors() %>%
   ggplot(aes(y = prop.pup,
              x = trt,
              col = year, #lty = year,
@@ -69,27 +78,48 @@ dfs_adev <- dfs_adev %>%
   scale_color_brewer(palette = "Dark2") +
   theme_bw()
 }
+```
 
-dfs_ldev$props_surv %>%
+```{r}
+# all trts
+dfs_tidy$wide %>%
+  .prepfn() %>%
   .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_ldev$props_surv %>%
+# expt trts only by minT
+dfs_tidy$wide %>%
+  .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
-  scale_x_discrete(labels = c("19", "26", "33")) +
-  labs(x = "minimum T (°C)")
+  scale_x_discrete(labels = p_scales$labs_minT) +
+    labs(x = "minimum T (°C)")
+
+# ctrls vs expt
+dfs_tidy$wide %>%
+  .prepfn() %>%
+  .plotfn() +
+  facet_wrap(~trt.facet, scales = "free_x") +
+  scale_x_discrete(labels = p_scales$labs_trt) +
+  aes(shape = pop)
 
 ```
 
 ## pup mass
 
+### sexes combined
 ```{r}
-# sexes combined
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    PrepAdultSS() %>%
+    CalcDevSS() %>%
+    filter(instar == "pupa")
+}
+
 .plotfn <- function(x){
   x %>%
-      FilterForBugs() %>%
-    filter(instar == "pupa") %>%
+    MakeFactors() %>%
   ggplot(aes(y = avg.mass, x = trt,
              #lty = year, 
              col = year,
@@ -109,66 +139,78 @@ dfs_ldev$props_surv %>%
   theme_bw()
 }
 
-
-dfs_adev$ss_all%>%
-  .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
-
-dfs_adev$ss_all%>%
-  filter(trt != 260) %>%
-  .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
 ```
 
 ```{r}
-# sexes parsed
-# 2x2 pop + sex (better)
+dfs_tidy$long %>%
+  .prepfn() %>%
+  .plotfn() +
+  scale_x_discrete(labels = p_scales$labs_trt)
 
+dfs_tidy$long %>%
+  .prepfn() %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+    scale_x_discrete(labels = p_scales$labs_trt)
+```
+
+### sexes parsed
+```{r}
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    filter(!is.na(sex)) %>%
+    PrepAdultSS() %>%
+    group_by(sex, .add = TRUE) %>%
+    CalcDevSS() %>%
+    filter(instar == "pupa")
+}
+```
+
+```{r}
+# 2x2 pop + sex (better)
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
-    filter(instar == "pupa") %>%
+    MakeFactors() %>%
     ggplot(aes(y = avg.mass, x = trt,
-             col = year,
-             group = interaction(year)
-             )) +
-  geom_point() + geom_line() +
+               col = year,
+               group = interaction(year)
+               )) +
+    geom_point() + geom_line() +
     # geom_text(aes(label = n),
-  #           vjust = -0.5, hjust = -0.5, size = 3.5,
-  #           position = position_jitter(width = 0.2, height = 0.3, seed = 1),
-  #           show.legend = FALSE) + # too busy
+    #           vjust = -0.5, hjust = -0.5, size = 3.5,
+    #           position = position_jitter(width = 0.2, height = 0.3, seed = 1),
+    #           show.legend = FALSE) + # too busy
     geom_errorbar(aes(ymax = avg.mass + se.mass, ymin = avg.mass - se.mass),
-                width = 0.3, lty = "solid") + # remove if including ctrl
-  labs(y = "pupal mass (g)", 
-       caption = "mean±se") +
-  facet_grid(sex~pop) +
+                  width = 0.3, lty = "solid") + # remove if including ctrl
+    labs(y = "pupal mass (g)", 
+         caption = "mean±se") +
+    facet_grid(sex~pop) +
     scale_color_brewer(palette = "Dark2") +
     theme_bw()
 }
 
-dfs_adev$ss_bysex %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
   .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_adev$ss_bysex %>%
-  filter(trt != 260) %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
+  filter(trt != 260,
+         #sex == "m"
+         ) %>%
   .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_minT) +
+    labs(x = "minimum T (°C)")
 
-dfs_adev$ss_bysex %>%
-  filter(trt != 260, sex == "m") %>%
-  .plotfn() +
-  scale_x_discrete(labels = c("19", "26", "33")) +
-  labs(x = "minimum T (°C)")
 ```
 
 ```{r}
-# sexes parsed
 # by sex (meh)
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
-    filter(instar == "pupa") %>%
+    MakeFactors() %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
              group = interaction(year, pop), 
@@ -190,23 +232,23 @@ dfs_adev$ss_bysex %>%
   theme_bw()
 }
 
-dfs_adev$ss_bysex %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
   .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_adev$ss_bysex %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 ```
 
 ```{r}
-# sexes parsed
 # by pop (no)
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
-    filter(instar == "pupa") %>%
+    MakeFactors() %>%
     ggplot(aes(y = avg.mass, x = trt,
              col = year,
              group = interaction(year, sex), 
@@ -224,23 +266,34 @@ dfs_adev$ss_bysex %>%
   theme_bw()
 }
 
-dfs_adev$ss_bysex %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
   .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_adev$ss_bysex %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 ```
 
 ## pup time
 
+### days to pup
 ```{r days to pup}
+# sexes combined
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    PrepAdultSS() %>%
+    CalcDevSS() %>%
+    filter(instar == "pupa")
+}
+
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
-    filter(instar == "pupa") %>%
+    MakeFactors() %>%
     ggplot(aes(y = avg.tt, x = trt,
                col = year,
                group = year)) +
@@ -260,22 +313,34 @@ dfs_adev$ss_bysex %>%
          title = "time to pupation")
 }
 
-dfs_adev$ss_all %>%
-  filter(trt != 260) %>%  
+dfs_tidy$long %>%
+  .prepfn() %>%
   .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
-
-dfs_adev$ss_all %>%
-  .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 # LOL the 260 lab every yr ...  i think its bc they take so long from 5 to wander
+
+dfs_tidy$long %>%
+  .prepfn() %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  scale_x_discrete(labels = p_scales$labs_trt)
+
 ```
 
+### pup rate
 ```{r pup rate}
+# sexes combined
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    PrepAdultSS() %>%
+    CalcDevSS() %>%
+    filter(instar == "pupa")
+}
+
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
-    filter(instar == "pupa") %>%
+    MakeFactors() %>%
     ggplot(aes(y = avg.devrate, x = trt,
                col = year,
                group = year)) +
@@ -295,26 +360,67 @@ dfs_adev$ss_all %>%
          title = "time to pupation")
 }
 
-dfs_adev$ss_all %>%
-  filter(trt != 260) %>%  
+dfs_tidy$long %>%
+  .prepfn() %>%
   .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_adev$ss_all %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
+  filter(trt != 260) %>%
   .plotfn() +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  scale_x_discrete(labels = p_scales$labs_trt)
 ```
 
 # # bonus larval dev
 
 ## dev trajectories 
 
+### df prep
+```{r}
+# make some variations of the df based off how the pupae are handled
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    PrepLarvalSS()
+}
+
+.calcfn <- function(x){
+  x %>%
+    CalcDevSS() %>%
+    filter(instar %in% c("3rd", "4th", "5th", "wander"))
+}
+
+dfs <- list(
+  # default grouping
+  all = dfs_tidy$long %>%
+    .prepfn() %>%
+    .calcfn(),
+  
+  # by pup, with survivors + culled combined together
+  pups_wcull = dfs_tidy$long %>%
+    mutate(is.pup = case_when(is.pup == 2 ~ 1,
+                              TRUE ~ as.numeric(is.pup))) %>%
+    .prepfn() %>% 
+    group_by(is.pup, .add = TRUE) %>%
+    .calcfn(),
+  
+  # by pup, with survivors + culled kept separate
+  pups_sepcull = dfs_tidy$long %>%
+    .prepfn() %>%
+    group_by(is.pup, .add = TRUE) %>%
+    .calcfn()
+)
+
+```
+
+
+### figs
 ```{r}
 # dev by year
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
-    filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
+    MakeFactors() %>%
     ggplot(aes(y = avg.logmass,
                x = avg.tt,
                col = year)) +
@@ -336,24 +442,22 @@ dfs_adev$ss_all %>%
          col = "year")
 }
 
-dfs_ldev$ss_all %>%
+dfs$all %>%
   .plotfn() +
-  labs(title = "development trajectories (with pmd)")
+  labs(title = "development trajectories (incl pmd)")
 
-dfs_ldev$ss_ispup_unparsed %>%
+dfs$pups_wcull %>%
   filter(is.pup != 0) %>%
   .plotfn() +
-  labs(title = "development trajectories (pup'd only)", # this actually includes pups + culled lol
-       )
+  labs(title = "development trajectories (pup'd only)")
 ```
 
 ```{r}
 # dev by year; parse out pmds more
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>%
+    MakeFactors() %>%
     mutate(is.pup = as.factor(is.pup)) %>%
-    filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% #View()
     ggplot(aes(y = avg.logmass,
                x = avg.tt,
                col = year, lty = is.pup, 
@@ -371,23 +475,22 @@ dfs_ldev$ss_ispup_unparsed %>%
     scale_linetype_discrete(labels = c("pupated", "died"))
 }
 
-# surv + culled combined
-dfs_ldev$ss_ispup_unparsed %>%
+# surv, combined w culled
+dfs$pups_wcull %>%
   .plotfn()
 
-
-# culled omitted
-dfs_ldev$ss_ispup_parsed %>%
+# surv, culled omitted
+dfs$pups_sepcull %>%
   filter(is.pup != 2) %>%
   .plotfn()
+
 ```
 
 ```{r}
 # dev by trt
 .plotfn <- function(x){
   x %>%
-  FilterForBugs() %>%
-  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
+    MakeFactors() %>%
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
              col = trt)) +
@@ -403,63 +506,67 @@ dfs_ldev$ss_ispup_parsed %>%
   facet_grid(pop ~ year) +
   #scale_color_brewer(palette = "Greens") +
   #scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
-    scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9C25C"),
-                       labels = c("26-26", "40-19", "40-26", "40-33")) +
+    scale_color_manual(values = p_scales$cols_trt,
+                       labels = p_scales$labs_trt) +
     labs(caption = "mean ± se",
          y = "log(mass mg)", x = "dev time (days)",
          col = "treatment") +
     theme_bw()
 }
 
-dfs_ldev$ss_ispup_unparsed %>%
+
+dfs$pups_wcull %>%
   filter(is.pup != 0) %>%
   .plotfn() +
   labs(title = "development trajectories (pups only)")
 
-dfs_ldev$ss_all %>%
+dfs$all %>%
   .plotfn() +
   labs(title = "development trajectories (all)")
+
 ```
 ```{r}
 # dev traj by trt + surv to pupation
 .plotfn <- function(x){
   x %>%
-  FilterForBugs() %>%
+    MakeFactors() %>%
     mutate(is.pup = case_when(is.pup == 0 ~ "died",
-                                is.pup == 1 ~ "pupated")) %>%
+                              is.pup == 1 ~ "pupated")) %>%
     mutate(is.pup = factor(is.pup, levels = c("pupated", "died"))) %>%
-  filter(instar %in% c("3rd", "4th", "5th", "wander")) %>% 
-  ggplot(aes(y = avg.logmass,
-             x = avg.tt,
-             col = trt,
-             group = interaction(year, pop, is.pup, trt))) +
-  geom_point() +
-  geom_line() +
-  # hard to see with these lol bc theyre pretty close
-  # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
-  #                   ymin = avg.logmass - se.logmass,
-  #                   width = CalcErrWd(avg.tt))) +
-  # geom_errorbarh(aes(xmax = avg.tt + se.tt,
-  #                    xmin = avg.tt - se.tt,
-  #                    height = CalcErrHt(avg.logmass))) +
-  facet_grid(is.pup ~ year) +
-  #scale_color_brewer(palette = "Greens") +
-  #scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
-    scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9C25C"),
-                       labels = c("26-26", "40-19", "40-26", "40-33")) +
+    ggplot(aes(y = avg.logmass,
+               x = avg.tt,
+               col = trt,
+               group = interaction(year, pop, is.pup, trt))) +
+    geom_point() +
+    geom_line() +
+    # hard to see with these lol bc theyre pretty close
+    # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
+    #                   ymin = avg.logmass - se.logmass,
+    #                   width = CalcErrWd(avg.tt))) +
+    # geom_errorbarh(aes(xmax = avg.tt + se.tt,
+    #                    xmin = avg.tt - se.tt,
+    #                    height = CalcErrHt(avg.logmass))) +
+    facet_grid(is.pup ~ year) +
+    #scale_color_brewer(palette = "Greens") +
+    #scale_color_manual(values = hcl.colors(6, "Viridis", rev = TRUE)) +
+    scale_color_manual(values = p_scales$cols_trt,
+                       labels = p_scales$labs_trt) +
     labs(caption = "mean ± se",
          y = "log(mass mg)", x = "dev time (days)",
          col = "treatment") +
     theme_bw()
 }
 
-dfs_ldev$ss_ispup_parsed %>%
-  filter(is.pup != 2, pop == "field") %>% 
+
+dfs$pups_sepcull %>%
+  filter(is.pup != 2,
+         pop == "field") %>%
   .plotfn() +
   labs(title = "development trajectories (field)")
-
-dfs_ldev$ss_ispup_parsed %>%
-  filter(is.pup != 2, pop == "lab") %>%
+  
+dfs$pups_sepcull %>%
+  filter(is.pup != 2,
+         pop == "lab") %>%
   .plotfn() +
   labs(title = "development trajectories (lab)")
 ```
@@ -467,10 +574,9 @@ dfs_ldev$ss_ispup_parsed %>%
 
 ```{r}
 # wtf goin on w the lab controls
-dfs_ldev$ss_all %>%
-  FilterForBugs() %>%
-  filter(instar %in% c("3rd", "4th", "5th", "wander", "pupa"),
-         trt == 260) %>% #View()
+dfs$all %>%
+  filter(trt == 260) %>%
+  MakeFactors() %>%
   ggplot(aes(y = avg.logmass,
              x = avg.tt,
              col = year, lty = pop, shape = pop,
@@ -493,9 +599,11 @@ dfs_ldev$ss_all %>%
 ## supernumerary
 
 ```{r}
-dfs_ldev$props_sup %>% 
-  FilterForBugs() %>%
+dfs_tidy$wide %>%
+  FilterForNTWBugs() %>%
+  CalcSupProps() %>%
   filter(status == "surv") %>%
+  MakeFactors() %>%
   ggplot(aes(y = p,
              x = interaction(trt),
              fill = sup)) +
@@ -519,64 +627,98 @@ dfs_ldev$props_sup %>%
 
 (using dev rate)
 
+- how best to show ctrl vs expt? level of mean/fluct?
 - colors are good to show "ctrl" vs "expt" (hot bugs)
 - some x-axes are a little confusing bc there's so many other points (in 2023).
   not sure what other `trt.` var to choose as another geom. 
   - (prob sth that emphasises the minTs or other aspect of the temp trt, but also dont want like
      3 additional levels max..)
+     
+```{r}
+# making some dfs to test
+.prepfn <- function(x){
+  x %>%
+    PrepLarvalSS() %>%
+    CalcDevSS() %>%
+    filter(instar == "pupa")
+}
+
+dfs <- list(
+  twobytwo = dfs_tidy$long %>%
+    FilterOutLabTB() %>% 
+    #filter(trt %in% c(260, 330, 419, 426, 433)) %>% # drops 267...
+    .prepfn(),
+  
+  ntw = dfs_tidy$long %>%
+    FilterForNTWBugs() %>%
+    .prepfn()
+)
+
+```
+
 
 ```{r}
-dfs_ldev$ss_all %>%
-  FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
-  #FilterForNTWTrts() %>% #View()
-  filter(instar == "pupa") %>% #View()
-  mutate(trt.flucT = as.numeric(as.character(trt.flucT)),
-         trt.flucT = case_when(trt.flucT == 0 ~ "N",
-                               TRUE ~ "Y")) %>% 
-  ggplot(aes(y = avg.devrate,
-             x = trt.minT, col = trt.type,
-             group = interaction(trt.type))) +
-  geom_line() + 
-  geom_point(#aes(shape = trt.flucT),
-             aes(shape = trt.maxT),
-             size = 2) +
-  facet_grid(pop~year) +
-  scale_color_discrete(direction = -1)
+.plotfn <- function(x){
+  list(
+    by_minT = x %>%
+      MakeFactors() %>%
+      mutate(trt.flucT = as.numeric(as.character(trt.flucT)),
+             trt.flucT = case_when(trt.flucT == 0 ~ "N",
+                                   TRUE ~ "Y"),
+      ) %>% 
+      ggplot(aes(y = avg.devrate,
+                 x = trt.minT, col = trt.type,
+                 group = interaction(trt.type))) +
+      geom_line() + 
+      geom_point(#aes(shape = trt.flucT),
+        aes(shape = trt.maxT),
+        size = 2) +
+      facet_grid(pop~year) +
+      scale_color_discrete(direction = -1),
+    
+    by_flucT = x %>%
+      MakeFactors() %>%
+      ggplot(aes(y = avg.devrate,
+                 x = trt.flucT, col = trt.type,
+                 group = interaction(trt.type))) +
+      geom_line() + geom_point(aes(shape = trt.meanT), size = 2) +
+      facet_grid(pop~year) +
+      scale_color_discrete(direction = -1),
+    
+    by_meanT = x %>%
+      MakeFactors() %>% 
+      ggplot(aes(y = avg.devrate,
+                 x = trt.meanT, col = trt.type,
+                 group = interaction(trt.type))) +
+      geom_line() + geom_point(aes(shape = trt.minT), size = 2) +
+      facet_grid(pop~year) +
+      scale_color_discrete(direction = -1)
+    )
+}
 
-dfs_ldev$ss_all %>%
-  FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
-  #FilterForNTWTrts() %>% #View()
-  filter(instar == "pupa") %>% 
-  ggplot(aes(y = avg.devrate,
-             x = trt.flucT, col = trt.type,
-             group = interaction(trt.type))) +
-  geom_line() + geom_point(aes(shape = trt.meanT), size = 2) +
-  facet_grid(pop~year) +
-  scale_color_discrete(direction = -1)
 
-dfs_ldev$ss_all %>%
-  FilterOutLabTB() %>% #filter(trt %in% c(260, 330, 419, 426, 433)) %>%
-  #FilterForNTWTrts() %>% #View()
-  filter(instar == "pupa") %>% 
-  ggplot(aes(y = avg.devrate,
-             x = trt.meanT, col = trt.type,
-             group = interaction(trt.type))) +
-  geom_line() + geom_point(aes(shape = trt.minT), size = 2) +
-  facet_grid(pop~year) +
-  scale_color_discrete(direction = -1)
+dfs$twobytwo %>% .plotfn()
+
+dfs$ntw %>% .plotfn()
+
 ```
 
 # # adult dev
 
 ## longevity
 ```{r}
-# TODO add in sex? remove fridge bugs...
+
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    filter(pop != "col") %>%
+    PrepAdultSS() %>%
+    filter(instar == "long")
+}
 
 .plotfn <- function(x){
   x %>%
-    FilterForBugs() %>% 
-    filter(pop != "col") %>%
-    filter(instar == "long") %>%
+    MakeFactors() %>%
     ggplot(aes(y = avg.tt, x = trt,
                color = pop)
            )+
@@ -585,21 +727,33 @@ dfs_ldev$ss_all %>%
                   width = 0.5, lty = "solid") +
     geom_point() + geom_line() +
     facet_grid(~ year) +
-    labs(y = "longevity (days after eclosion)") +
-    ylim(c(4.5, 18))
+    labs(y = "longevity (days after eclosion)") 
 }
 
-dfs_adev$ss_all %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
+  CalcDevSS() %>%
   .plotfn() +
   aes(group = interaction(pop))
 
+# this is silly...
+# dfs_tidy$long %>%
+#   .prepfn() %>%
+#   group_by(if.fridge, .add = TRUE) %>%
+#   CalcDevSS() %>%
+#   mutate(if.fridge = case_when(!is.na(if.fridge) ~ "yes",
+#                                TRUE ~ "no")) %>%
+#   .plotfn() +
+#   aes(group = interaction(pop, if.fridge),
+#       lty = if.fridge)
 
-dfs_adev$ss_all_iffr %>%
-  mutate(if.fridge = case_when(is.na(if.fridge) ~ "no",
-                               TRUE ~ "yes")) %>%
+dfs_tidy$long %>%
+  .prepfn() %>%
+  group_by(if.fridge, .add = TRUE) %>%
+  CalcDevSS() %>% View()
+  filter(is.na(if.fridge)) %>%
   .plotfn() +
-  aes(group = interaction(pop, if.fridge),
-      lty = if.fridge)
+  aes(group = interaction(pop))
   
 ```
 

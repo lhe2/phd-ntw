@@ -32,12 +32,12 @@ FilterForNTWTrts <- function(data){
 }
 
 ## combined filters
-FilterForBugs <- function(data){
+FilterForNTWBugs <- function(data){
   data %>% 
     FilterOutLabTB() %>% FilterForNTWTrts()
 }
 
-FilterForMoths <- function(data){
+FilterForNTWMoths <- function(data){
   data %>% 
     FilterForLabEggs() %>% FilterForNTWTrts()
 }
