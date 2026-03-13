@@ -36,20 +36,35 @@ source(here("_ntw/scripts/R/tidy-dev.R"))
 # util functions
 
 ```{r dev ss custom fn}
-.CalcDevSS <- function(x){
-  x %>%
-    mutate(log.mass = log(mass),
+.CalcDevSS <- function(long_df){
+  long_df %>%
+    mutate(logmass = log(mass),
+           #mass_g = mass/1000, # only want to do this for adults tho lol..
            devrate = 1/tt) %>%
     summarise(n = n(),
-              avg.logmass = mean(log.mass, na.rm = TRUE),
-              se.logmass = se(log.mass),
-              avg.mass = mean(mass, na.rm = TRUE),
-              se.mass = se(mass),
-              avg.tt = mean(tt, na.rm = TRUE),
-              se.tt = se(tt),
-              avg.devrate = mean(devrate, na.rm = TRUE),
-              se.devrate = se(devrate))
+              across(.cols = c(mass, logmass, #mass_g, 
+                               tt, devrate),
+                     .fns = list(avg = ~ mean(.x, na.rm = TRUE),
+                                 se = se),
+                     .names = "{.fn}.{.col}"))
 }
+
+# old version
+# .CalcDevSS <- function(x){
+#   x %>%
+#     mutate(log.mass = log(mass),
+#            devrate = 1/tt) %>%
+#     summarise(n = n(),
+#               avg.logmass = mean(log.mass, na.rm = TRUE),
+#               se.logmass = se(log.mass),
+#               avg.mass = mean(mass, na.rm = TRUE),
+#               se.mass = se(mass),
+#               avg.tt = mean(tt, na.rm = TRUE),
+#               se.tt = se(tt),
+#               avg.devrate = mean(devrate, na.rm = TRUE),
+#               se.devrate = se(devrate))
+# }
+
 ```
 
 
@@ -138,7 +153,8 @@ dfs_ldev <- list_modify( #dfs_dev_ss
     group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
     summarise(n = n(),
               prop.pup = sum(is.pup == 1)/n,
-              se.pup = seprop(prop.pup, n))
+              se.pup = seprop(prop.pup, n)) %>%
+    ungroup()
 )
 ```
 
@@ -188,6 +204,12 @@ dfs_ldev <- list_modify( #dfs_dev_ss
 # cleanup
 
 ```{r cleanup}
+dfs_ldev <- dfs_ldev %>%
+  lapply(., ungroup)
+
+dfs_adev <- dfs_adev %>%
+  lapply(., ungroup)
+
 rm(dfs_tidy,
    se, seprop)
 ```
