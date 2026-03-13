@@ -52,7 +52,10 @@ dfs_imported <- list(
     # dealing w dup ids
     mutate(id = case_when(id == "1379" & !is.na(jdate.pmd) ~ "1379a",
                           expt.group == "A" ~ paste0(id, "a"),
-                          TRUE ~ as.character(id))),
+                          TRUE ~ as.character(id)),
+           # handle this way earlier
+           trt = case_when(trt == 337 ~ 426,
+                           TRUE ~ as.numeric(trt))),
     #mutate(id = sprintf("%.1f", id)),
   y24 = read.csv(here("_ntw/data/clean/2024/dev.csv"), header = TRUE),
   y25 = read.csv(here("_ntw/data/clean/2025/dev.csv"), header = TRUE),
@@ -70,6 +73,10 @@ dfs_imported <- list(
 ```
 
 ## standardising
+
+### initial filter and column dropping:
+- drop MQs, "ignore" bugs
+- hatchlings only
 
 ```{r filtering and column cleanup}
 dfs_filtered <- list(
@@ -109,7 +116,8 @@ dfs_filtered <- list(
   
   # adults
   a23 = dfs_imported[["a23"]] %>%
-    filter(!is.na(jdate.died)) %>% 
+    #mutate(if.fridge = case_when(jdate.ec < jdate.paired ~ "x")) %>%
+    #filter(!is.na(jdate.died)) %>% 
     rename(jdate.eclose = jdate.ec,
            jdate.tent = jdate.paired,
            jdate.long = jdate.died,
@@ -124,7 +132,9 @@ dfs_filtered <- list(
 
 ```
 
-merge adult/larval data in two steps (bc the col ctrls break `coalesce()` bc "missingness is uneven"):
+### merge adult/larval dev data
+
+do in two steps (bc the col ctrls break `coalesce()` bc "missingness is uneven"):
 1. `left_join` larval dev onto existing adult dev
 2. `merge` remaining col adults into the dev data
 3. fix ID stringiness (for duplicated ID #s, col bugs)
@@ -133,13 +143,16 @@ merge adult/larval data in two steps (bc the col ctrls break `coalesce()` bc "mi
 dfs_stdised <- list(
   y23 = dfs_filtered[["y23"]] %>% # 716+
     left_join(filter(dfs_filtered[["a23"]], id %in% dfs_filtered$y23$id), 
-              by = c("id", "trt", "sex", "pop")) %>%
-    mutate(jdate.eclose = coalesce(jdate.eclose.x, jdate.eclose.y),
+              by = c("id", "trt", "sex", "pop")) %>% #View()
+    mutate(#jdate.tent = coalesce(jdate.tent.x, jdate.tent.y),
+           jdate.eclose = coalesce(jdate.eclose.x, jdate.eclose.y),
            jdate.long = coalesce(jdate.long.x, jdate.long.y),
            .keep = "unused") %>% 
     merge(., filter(dfs_filtered[["a23"]], !(id %in% dfs_filtered$y23$id)), 
           all = TRUE) %>%
-    mutate(year = 2023),
+    mutate(year = 2023,
+           #if.fridge = case_when(jdate.eclose < jdate.tent ~ "x")
+           ),
   
   y24 = dfs_filtered[["y24"]] %>%
     mutate(year = 2024),
@@ -165,12 +178,19 @@ dfs_stdised <- list(
                   as.numeric))
 })
 ```
-standardising values + matching cols for merging: some cols do not mean the "same" thing across years:
 
+### standardising values + matching cols for merging
+
+cols that mean different things for different yrs:
 - `trt.ctrl`: ctrl bug type
   - 2023: if diurnal ctrl or not
   - 2025: if colony ctrl or not
-
+  
+individual standardising of cols:
+- dev cols thru 8th
+- `trt.<...>`: for filtering trt stuff
+- `fate`/survival stuff: dev outcome relative to pup (pmd/culled/ec/pup/other)
+- handling dates for culled/exiting
 
 ```{r standardising values by yr}
 # individual fixes: recoding values + adding missing columns
@@ -183,8 +203,6 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
   mutate(mass.8th = NA, jdate.8th = NA, 
          # if.fridge = case_when(!is.na(jdate.tent) & jdate.tent - jdate.eclose > 0 ~ "x"), 
          ## calc not relevant, just need the col: 2023 fridge bugs alrdy excluded from longev calcs
-         trt = case_when(trt == 337 ~ 426,
-                         TRUE ~ trt),
          trt.flucT = case_when(trt == 260 ~ 0, # force diurnals
                                TRUE ~ trt.flucT),
          trt.group = case_when(pop == "lab" & diet == "TB" ~ 1000,
@@ -197,7 +215,8 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
                               !is.na(jdate.pmd) ~ "pmd"),
          jdate.culled = case_when(final.fate %in% c("accidental", "culled") & fate.dev != "pup" ~ as.numeric(jdate.exit)),
          is.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal"),
-         if.fridge = case_when(!is.na(jdate.tent) & is.na(jdate.long) ~ "x")
+         # if.fridge = case_when(!is.na(jdate.tent) & is.na(jdate.long) ~ "x") 
+         if.fridge = case_when(jdate.eclose < jdate.tent ~ "x")
          ) %>%
   select(-c("final.fate", "reason.ignore"))
 
@@ -230,6 +249,13 @@ dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>%
   filter(!is.na(status) | id > 3000) %>%
   select(-c(starts_with("notes"), "status"))
 ```
+
+simultaneous standardising:
+
+(i.e. cols existed already, just making them all match up here)
+
+- `is.<...>`: if is, what it is
+- `jdate.exit` (bc all the dates should be standard now lol.)
 
 ```{r standardisng values for all}
 # redo: survival, sup coding (counts after reaching 5th)
@@ -289,10 +315,10 @@ dfs_tidy <- list_modify(
            tt.wander = jdate.wander - jdate.hatch,
            tt.pupa = jdate.pupa - jdate.hatch,
            tt.eclose = jdate.eclose - jdate.pupa,
-           tt.long = case_when(is.na(is.fridge) ~ jdate.long - jdate.eclose),
+           tt.long = case_when(is.na(if.fridge) ~ jdate.long - jdate.eclose),
             ## for fridge bugs: jdate.long - jdate.tent for them? or jdate.exit?
             ## but some bugs were culled the day of, so jdate.eclose = jdate.exit?
-           tt.fridge = case_when(!is.na(is.fridge) ~ jdate.tent - jdate.eclose)
+           tt.fridge = case_when(!is.na(if.fridge) ~ jdate.tent - jdate.eclose)
            #tt.exit = jdate.exit - jdate.hatch
     ) %>%
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
