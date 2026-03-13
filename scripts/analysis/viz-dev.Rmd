@@ -22,9 +22,9 @@ library(patchwork) # for plot_layout
 source(here("_ntw/scripts/R/tidy-dev.R"))
 
 # utils
-source(here("_ntw/scripts/utils/wrangle.R"))
-source(here("_ntw/scripts/utils/analysis.R"))
-source(here("_ntw/scripts/utils/analysis-viz.R"))
+source(here("_ntw/scripts/wrangle-dev.R"))
+source(here("_ntw/scripts/analysis/filter_utils.R"))
+source(here("_ntw/scripts/analysis/viz_utils.R"))
 ```
 
 ```{r convenience fns}

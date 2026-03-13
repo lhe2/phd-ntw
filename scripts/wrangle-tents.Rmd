@@ -27,13 +27,18 @@ knitr::purl("wrangle-tents.Rmd", here::here("_ntw/scripts/R/wrangle-tents.R"))
 # libraries, utils
 library(tidyverse)
 library(here)
-source(here("utils/math.R"))
+source(here("scripts/math_utils.R"))
 
 # data
 source(here("_ntw/scripts/R/tidy-tents.R"))
 ```
 
 # util functions
+
+note on calculating tent duration:
+- would need to do this with a df containing f.added and f.removed. (i.e. 1st day = 1st day of f.addition and last day = day (after?) the final f was removed)
+- just doing `n()` ≠ days a tent existed, bc only counts the # of rows that egg collection/hatch and m/f data are available for.
+- doing `last(jdate)-first(jdate)` isnt right either, bc some of the `jdate` rows are for hatch days that occur after the tent was closed (i.e. last f was removed)
   
 ```{r eggs ss custom fns}
 # counts per cage -- for modeling & downstream summary stats

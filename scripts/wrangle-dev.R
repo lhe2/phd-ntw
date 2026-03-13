@@ -4,9 +4,8 @@
 ## making ntw wrangle more like tdt wrangle.
 ## just the wrangle/summary fns are here -- the filtering/grouping is in analysis-viz
 
-## load fns
-source(here("utils/math.R"))
-
+## load math fns
+source(here("scripts/math_utils.R"))
 
 
 # dev calcs -----------------------------------------------------------------
