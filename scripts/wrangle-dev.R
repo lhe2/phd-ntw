@@ -16,6 +16,7 @@ source(here("scripts/math_utils.R"))
 PrepLarvalSS <- function(long_df){
   long_df %>%
     filter(pop != "col",
+           !is.na(diet), # some random bugs...
            !instar %in% c("eclose", "long", "fridge")) %>%
     group_by(across(c(year, pop, diet, starts_with("trt"), instar))) # default groupings
 }
@@ -42,28 +43,59 @@ CalcDevSS <- function(long_df){
     ungroup()
 }
 
+# combined fns
+## uses "default" groupings
+CalcDevSS_ad <- function(long_df){
+  long_df %>%
+    PrepAdultSS() %>%
+    CalcDevSS()
+}
+
+CalcDevSS_la <- function(long_df){
+  long_df %>%
+    PrepLarvalSS() %>%
+    CalcDevSS()
+}
+
 
 # proportions calcs --------------------------------------------------------------------
 
 ## survival proportions
+PrepSurvProps <- function(wide_df){
+  wide_df %>% 
+    filter(is.pup != 2, # drop culled
+           pop != "col",
+           !is.na(diet)) %>% 
+    group_by(across(c(year, pop, diet, starts_with("trt"))))
+}
+
 CalcSurvProps <- function(wide_df){
   wide_df %>%
-    filter(is.pup != 2, # drop culled
-           pop != "col") %>% 
-    group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
     summarise(n = n(),
               prop.pup = sum(is.pup == 1)/n,
               se.pup = seprop(prop.pup, n)) %>%
     ungroup()
 }
 
+## combined fn
+CalcSurvProps_def <- function(wide_df){
+  wide_df %>%
+    PrepSurvProps() %>%
+    CalcSurvProps()
+}
+
 
 ## supernumerary proportions
-CalcSupProps <- function(wide_df){
+PrepSupProps <- function(wide_df){
   wide_df %>%
     filter(is.pup != 2, # drop culled
-           pop != "col") %>% 
-    group_by(across(c(year, pop, diet, starts_with("trt")))) %>%
+           pop != "col",
+           !is.na(diet)) %>% 
+    group_by(across(c(year, pop, diet, starts_with("trt"))))
+}
+
+CalcSupProps <- function(wide_df){
+  wide_df %>%
     summarise(N = n(),
               surv_tot = sum(is.pup == 1),
               surv_0th = sum(is.pup == 1 & is.na(sup)),
@@ -91,4 +123,11 @@ CalcSupProps <- function(wide_df){
                            TRUE ~ as.character(sup))
            ) %>%
     ungroup()
+}
+
+# combined fn
+CalcSupProps_def <- function(wide_df){
+  wide_df %>%
+    PrepSupProps() %>%
+    CalcSupProps()
 }

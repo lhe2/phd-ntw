@@ -51,7 +51,7 @@ MakeFactors <- function(ss_df){
   x %>%
     FilterForNTWBugs() %>%
     filter(pop != "col") %>%
-    CalcSurvProps()
+    CalcSurvProps_def()
 }
 
 .plotfn <- function(x){
@@ -105,15 +105,14 @@ dfs_tidy$wide %>%
 
 ```
 
-## pup mass
+# # pup mass
 
 ### sexes combined
 ```{r}
 .prepfn <- function(x){
   x %>%
     FilterForNTWBugs() %>%
-    PrepAdultSS() %>%
-    CalcDevSS() %>%
+    CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
 
@@ -278,7 +277,7 @@ dfs_tidy$long %>%
   scale_x_discrete(labels = p_scales$labs_trt)
 ```
 
-## pup time
+# # pup time
 
 ### days to pup
 ```{r days to pup}
@@ -286,8 +285,7 @@ dfs_tidy$long %>%
 .prepfn <- function(x){
   x %>%
     FilterForNTWBugs() %>%
-    PrepAdultSS() %>%
-    CalcDevSS() %>%
+    CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
 
@@ -333,8 +331,7 @@ dfs_tidy$long %>%
 .prepfn <- function(x){
   x %>%
     FilterForNTWBugs() %>%
-    PrepAdultSS() %>%
-    CalcDevSS() %>%
+    CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
 
@@ -601,7 +598,7 @@ dfs$all %>%
 ```{r}
 dfs_tidy$wide %>%
   FilterForNTWBugs() %>%
-  CalcSupProps() %>%
+  CalcSupProps_def() %>%
   filter(status == "surv") %>%
   MakeFactors() %>%
   ggplot(aes(y = p,
@@ -638,8 +635,7 @@ dfs_tidy$wide %>%
 # making some dfs to test
 .prepfn <- function(x){
   x %>%
-    PrepLarvalSS() %>%
-    CalcDevSS() %>%
+    CalcDevSS_la() %>%
     filter(instar == "pupa")
 }
 
