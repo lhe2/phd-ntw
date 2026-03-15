@@ -117,6 +117,8 @@ dfs_filtered <- list(
   # adults
   a23 = dfs_imported[["a23"]] %>%
     #mutate(if.fridge = case_when(jdate.ec < jdate.paired ~ "x")) %>%
+    mutate(if.fridge = case_when(!is.na(jdate.ec) & 
+                                   (jdate.ec < jdate.paired) ~ "x")) %>%
     #filter(!is.na(jdate.died)) %>% 
     rename(jdate.eclose = jdate.ec,
            jdate.tent = jdate.paired,
@@ -214,9 +216,7 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
                                 final.fate %in% c("accidental", "culled") ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
          jdate.culled = case_when(final.fate %in% c("accidental", "culled") & fate.dev != "pup" ~ as.numeric(jdate.exit)),
-         is.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal"),
-         # if.fridge = case_when(!is.na(jdate.tent) & is.na(jdate.long) ~ "x") 
-         if.fridge = case_when(jdate.eclose < jdate.tent ~ "x")
+         is.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal")
          ) %>%
   select(-c("final.fate", "reason.ignore"))
 
@@ -315,10 +315,11 @@ dfs_tidy <- list_modify(
            tt.wander = jdate.wander - jdate.hatch,
            tt.pupa = jdate.pupa - jdate.hatch,
            tt.eclose = jdate.eclose - jdate.pupa,
-           tt.long = case_when(is.na(if.fridge) ~ jdate.long - jdate.eclose),
+           #tt.long = case_when(is.na(if.fridge) ~ jdate.long - jdate.eclose),
+           tt.long = jdate.long - jdate.eclose
             ## for fridge bugs: jdate.long - jdate.tent for them? or jdate.exit?
             ## but some bugs were culled the day of, so jdate.eclose = jdate.exit?
-           tt.fridge = case_when(!is.na(if.fridge) ~ jdate.tent - jdate.eclose)
+           #tt.fridge = case_when(!is.na(if.fridge) ~ jdate.tent - jdate.eclose)
            #tt.exit = jdate.exit - jdate.hatch
     ) %>%
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
@@ -331,7 +332,7 @@ dfs_tidy <- list_modify(
                           TRUE ~ as.numeric(tt))) %>%
     drop_na(tt) %>%
     mutate(tt = na_if(tt, 999)) %>%
-    # remove short-lived eclosed bugs
+    # remove short-lived eclosed bugs/culled on eclosion
     filter(!(instar == "long" & tt == 0))
 ) 
 ```

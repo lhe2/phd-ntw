@@ -1022,30 +1022,77 @@ dfs$ntw %>% .plotfn()
     labs(y = "longevity (days after eclosion)") 
 }
 
+# EDA: keep fridge bugs in the count
 dfs_tidy$long %>%
   .prepfn() %>%
   CalcDevSS() %>%
   .plotfn() +
   aes(group = interaction(pop))
 
-# this is silly...
-# dfs_tidy$long %>%
-#   .prepfn() %>%
-#   group_by(if.fridge, .add = TRUE) %>%
-#   CalcDevSS() %>%
-#   mutate(if.fridge = case_when(!is.na(if.fridge) ~ "yes",
-#                                TRUE ~ "no")) %>%
-#   .plotfn() +
-#   aes(group = interaction(pop, if.fridge),
-#       lty = if.fridge)
-
+# EDA: parse out the fridge bugs
 dfs_tidy$long %>%
+  mutate(if.fridge = case_when(is.na(if.fridge) ~ "no",
+                               TRUE ~ "yes")) %>%
   .prepfn() %>%
   group_by(if.fridge, .add = TRUE) %>%
-  CalcDevSS() %>% #View()
-  filter(is.na(if.fridge)) %>%
+  CalcDevSS() %>%
+  #filter(is.na(if.fridge)) %>%
   .plotfn() +
-  aes(group = interaction(pop))
-  
+  aes(group = interaction(pop, if.fridge),
+      lty = if.fridge, shape = if.fridge)
 ```
+
+### ! patchwork
+```{r}
+# final: remove the fridge bugs
+.prepfn <- function(x){
+  x %>%
+    FilterForNTWBugs() %>%
+    filter(is.na(if.fridge),
+           instar == "long",
+           pop != "col") %>%
+    CalcDevSS_ad()
+}
+
+.plotfn <- function(x){
+  x %>%
+    MakeFactors() %>%
+    ggplot(aes(y = avg.tt,
+               col = year, 
+               shape = pop, lty = pop)
+    ) +
+    geom_errorbar(aes(ymin = avg.tt - se.tt,
+                      ymax = avg.tt + se.tt),
+                  width = 0.5, lty = "solid", show.legend = FALSE) +
+    geom_point(size = 2) + geom_line() +
+    facet_grid(~ trt.facet, labeller = as_labeller(p_scales$facs_trt)) +
+    labs(y = "longevity (days after eclosion)",
+         shape = "population", lty = "population") +
+    scale_shape_manual(values = p_scales$shp_pop) +
+    scale_linetype_manual(values = p_scales$lty_pop) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw() +
+    ylim(c(4, 17.5))
+}
+
+p1 <- dfs_tidy$long %>%
+  filter(trt == 260) %>%
+  .prepfn() %>%
+  .plotfn() +
+    aes(x = pop)
+
+p2 <- dfs_tidy$long %>%
+  filter(trt != 260) %>%
+  .prepfn() %>%
+  .plotfn() +
+    aes(x = trt,
+        group = interaction(year, pop)) +
+  scale_x_discrete(labels = p_scales$labs_minT) +
+  labs(x = "minimum temperature (°C)")
+
+p1 + p2 +
+  plot_layout(widths = c(1,2),
+              axes = "collect", guides = "collect")
+```
+
 

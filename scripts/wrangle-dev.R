@@ -17,13 +17,15 @@ PrepLarvalSS <- function(long_df){
   long_df %>%
     filter(pop != "col",
            !is.na(diet), # some random bugs...
-           !instar %in% c("eclose", "long", "fridge")) %>%
+           !instar %in% c("eclose", "long" #, "fridge"
+                          )) %>%
     group_by(across(c(year, pop, diet, starts_with("trt"), instar))) # default groupings
 }
 
 PrepAdultSS <- function(long_df){
   long_df %>%
-    filter(instar %in% c("pupa", "eclose", "long", "fridge")) %>%
+    filter(instar %in% c("pupa", "eclose", "long" #, "fridge"
+                         )) %>%
     group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
     mutate(mass = mass/1000)
 }
