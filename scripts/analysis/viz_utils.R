@@ -16,11 +16,13 @@ CalcErrHt <- function(y, pct = 0.07){
 }
 
 ### MISC ###
-# labels -- tho i think this can be all scale things. p_scales? scaleaes? aes?
 p_scales <- list(
   labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
   labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
   
-  cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C")
+  cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
+  
+  shp_pop = c(`lab` = 19, `field` = 1),
+  lty_pop = c(`lab` = "solid", `field` = "dashed")
   # sth for "as_labeller" once i settle on sth
   )
