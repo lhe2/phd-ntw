@@ -37,7 +37,6 @@ knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
 # this script compiles ntw data from 2023-25 into cohesive units for easier wrangling.
 ```
 
-
 ```{r load libs}
 library(data.table) # rbindlist
 library(tidyverse)
@@ -162,13 +161,19 @@ note: revisiting fertile eggs
     }) %>%
     rbindlist()
 }
+
+# setup empty lists
+  # dfs_stdised gets overwritten/is hardcoded into .AppendCageEvents so dont create here
+sapply(c("dfs_imported", "dfs_export"),
+       \(x) assign(x, list(), envir = .GlobalEnv))
 ```
 
 # # 2025 data
 ## loading
 
 ```{r load 2025 tents data}
-dfs_imported <- list(
+dfs_imported <- list_modify(
+  dfs_imported,
   ad25 = read.csv(here("_ntw/data/clean/2025/tent-matings.csv"), header = TRUE),
   coll25 = read.csv(here("_ntw/data/clean/2025/tent-eggs.csv"), header = TRUE),
   hatch25 = read.csv(here("_ntw/data/clean/2025/tent-events.csv"), header = TRUE)
@@ -242,7 +247,8 @@ dfs_stdised <- list_modify(
 
 ## export
 ```{r}
-dfs_export <- list(
+dfs_export <- list_modify(
+  dfs_export,
   tents25 = dfs_stdised$tents %>% 
     merge(.,
           dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
@@ -256,7 +262,8 @@ dfs_export <- list(
 
 ## loading
 ```{r load 2023 tent data}
-dfs_imported <- list(
+dfs_imported <- list_modify(
+  dfs_imported,
   ad23 = 
     read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
     # drop solo m/f's
@@ -270,8 +277,9 @@ dfs_imported <- list(
   
   hatch23 = 
     read.csv(here("_ntw/data/clean/2023/tent-eggs.csv"), header = TRUE)
-  ) %>%
+  )
   
+dfs_imported[4:6] <- dfs_imported[4:6] %>%
   lapply(., \(x){
     x %>%
       rename(cage = id.tent)
