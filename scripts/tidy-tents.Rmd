@@ -56,7 +56,7 @@ preamble:
 - see also some random TODOs left thruout this section,,,
 
 roadmap:
-1. create stdised `info` (about mating pairs) and `events` dfs
+1. create stdised `info` (about mating pairs) and `events` dfs (these dfs will get recycled)
 2. `events` gets created in the following manner to avoid incorrect duplication of jdates:
   a. `events` is first generated from `info` (to get counts of moths removed/added)
   b. later, `events` is overwritten by merged collection + hatching data, with
@@ -65,7 +65,9 @@ roadmap:
 3. `events` then gets used to generate the daily running count of eggs/moths/etc
   a. counts are determined separately per cage and then recollated again
      (avoids wonkiness with `cumsum()` at the first/last values of the df)
-4. 2023/2025 are handled separately (bc of column name diffs), then combined for final export.
+4. 2023/2025 are wrangled separately (bc of column name diffs), then combined for final export.
+5. 2024 is also handled manually bc of column mismatches that prevent usage of of the info generation functions. (i.e lack of m info)
+
 
 
 ## fns for info generation
@@ -181,6 +183,9 @@ dfs_imported <- list_modify(
 ```
 
 ## stdise cage/egg events
+
+- to get `info`: convert `ad25` from long to wide (i.e. as pairs; extract m/f separately then combine)
+
 ```{r prep 2025 tent data for wrangling}
 ### need to rerun the WHOLE chunk at once if updating $info to avoid dups later on in $events
 
@@ -301,6 +306,8 @@ dfs_filtered <- list(
 
 ## stdise cage/egg events
 
+- to get `info`: parse out sex-specific mate pair info
+
 ### generate dfs
 ```{r prep 2023 tent data for wrangling}
 ## rerun the whole chunk to regenerate dfs_tents$events, $info
@@ -363,6 +370,85 @@ dfs_export <- list_modify(
           dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
           all = TRUE) %>%
     mutate(year = 2023)
+)
+```
+
+# # 2024 data
+
+- mainly just matching the columns for 2023 + 2025 bc all F are virgin
+
+## import
+```{r}
+dfs_imported = list_modify(
+  dfs_imported,
+  ad24 = read.csv(here("_ntw/data/clean/2024/tent-matings.csv"), header = TRUE),
+  coll24 = read.csv(here("_ntw/data/clean/2024/tent-events.csv"), header = TRUE)
+)
+```
+
+## stdise
+
+standardise manually bc 2024 dfs arent compatible with the info generation fns (`NA` info for males/differences in egg info breaks the fns)
+
+```{r}
+dfs_stdised = list(
+  info = dfs_imported[["ad24"]] %>% 
+    # fix 2099: sub in its new cage for longevity calcs
+    filter(!(id == 2099 & cage == "BH1")) %>% 
+    mutate(cage = case_when(id == 2099 ~ "BH1",
+                            TRUE ~ cage)) %>%
+    
+    # match outcomes of.GenerateCageMateInfo()
+    # mutate(trt.m = NA,
+    #        pop.m = NA) %>% 
+    # doesnt quite work.. bc cols.m are all NA?
+    rename(pop.f = pop,
+           trt.f = trt,
+           id.f = id) %>%
+    mutate(mate.type = "virgin f",
+           mate.pop = pop.f,
+           mate.trt = trt.f,
+           mate.col = NA,
+           # mate.hs = case_when(trt.f > 400 ~ "f"), 
+           # mate.ishs = case_when(trt.f == 260 ~ NA_character_,
+           #                       TRUE ~ "f"),
+           mate.hs = "f",
+           mate.ishs = "f",
+           trt.ishs = case_when(trt.f > 400 ~ "expt",
+                                TRUE ~ "ctrl"),
+           is.hs.f = case_when(trt.f > 400 ~ 1,
+                               TRUE ~ 0),
+    ),
+  
+  events = dfs_imported[["coll24"]] %>%
+    # skip .AppendCageMothEvents
+      ## m info added at export
+    mutate(across(c("eggs.collected", 
+                    "f.added", "f.active", "f.removed", "f.died"), replace_na, 0),
+           #f.removed = f.removed + f.died,
+           eggs.unfert = eggs.collected) %>%
+    select(-c("f.curr", "f.died", "f.removed",
+              "pop", "sex", "trt")) %>%
+    
+    # skip .GenerateCageDailyEvents
+    rename(f.curr = f.active, # math alrdy calculated here
+           eggs.coll = eggs.collected) 
+)
+```
+
+## collate and export
+```{r}
+# add on missing cols for merging
+dfs_export <- list_modify(
+  dfs_export,
+  tents24 = dfs_stdised$events %>%
+    merge(., dfs_stdised$info %>% 
+            select(c("cage", starts_with(c("trt", "mate", "is")))) %>% distinct(), 
+          by = c("cage")) %>%
+    mutate(year = 2024,
+           # missing .m stuff
+           is.hs.m = NA, trt.m = NA,
+           m.curr = 0, m.added = 0)
 )
 ```
 
