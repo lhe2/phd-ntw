@@ -316,11 +316,13 @@ dfs_tidy <- list_modify(
            tt.pupa = jdate.pupa - jdate.hatch,
            tt.eclose = jdate.eclose - jdate.pupa,
            #tt.long = case_when(is.na(if.fridge) ~ jdate.long - jdate.eclose),
-           tt.long = jdate.long - jdate.eclose
+           tt.long = jdate.long - jdate.eclose,
             ## for fridge bugs: jdate.long - jdate.tent for them? or jdate.exit?
             ## but some bugs were culled the day of, so jdate.eclose = jdate.exit?
            #tt.fridge = case_when(!is.na(if.fridge) ~ jdate.tent - jdate.eclose)
+            ## TODO omit tt.fridge? not that useful. could calculate on the fly later
            #tt.exit = jdate.exit - jdate.hatch
+            ## NOTE omit: just add this in later or else sorta interferes w PrepLarvalSS
     ) %>%
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),

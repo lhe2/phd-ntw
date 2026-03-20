@@ -7,6 +7,7 @@
 # (default value or custom)
 # see also https://gist.github.com/tomhopper/9076152 for suggested defaults
 
+# need to specify df$axis if not using the df passed into the original ggplot call
 CalcErrWd <- function(x, pct = 0.12){
   max(x) * pct 
 }
@@ -17,12 +18,20 @@ CalcErrHt <- function(y, pct = 0.07){
 
 ### MISC ###
 p_scales <- list(
+  # labels
   labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
   labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
   
+  # values
   cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
   
   shp_pop = c(`lab` = 19, `field` = 1),
-  lty_pop = c(`lab` = "solid", `field` = "dashed")
-  # sth for "as_labeller" once i settle on sth
-  )
+  lty_pop = c(`lab` = "solid", `field` = "dashed"),
+  
+  # use with facet_*(labeller)
+  facs_trtpop = c(`ctrl` = "controls (26-26°C)",
+                  `lab` = "lab (40-X°C)",
+                  `field` = "field (40-X°C)"),
+  facs_trttype = c(`ctrl` = "controls (26-26°C)",
+                   `expt` = "nighttime warming (40-X°C)"),
+    )

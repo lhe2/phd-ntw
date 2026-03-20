@@ -18,14 +18,23 @@ library(patchwork) # for plot_layout
 # library(survival) # for fitting surv
 # library(survminer) # for plotting surv
 
-# data
-source(here("_ntw/scripts/R/tidy-dev.R"))
-
 # utils
 source(here("_ntw/scripts/wrangle-dev.R"))
 source(here("_ntw/scripts/analysis/filter_utils.R"))
 source(here("_ntw/scripts/analysis/viz_utils.R"))
 ```
+
+```{r load data, message = FALSE, warning = FALSE}
+source(here("_ntw/scripts/R/tidy-dev.R"))
+
+# add pre-filtered ntw dfs
+dfs_tidy <- list_modify(
+  dfs_tidy,
+  widentw = dfs_tidy$wide %>% FilterForNTWBugs(),
+  longntw = dfs_tidy$long %>% FilterForNTWBugs()
+)
+```
+
 ## setup
 ```{r convenience fns}
 # convert things into factors for ease of graphing
@@ -41,15 +50,6 @@ MakeFactors <- function(ss_df){
       mutate(year = as.factor(year))
   } else return(ss_df)
 }
-
-p_scales <- list_modify(
-  p_scales,
-  facs_trt = c(`ctrl` = "controls (26-26°C)",
-                    `lab` = "lab (40-X°C)",
-                    `field` = "field (40-X°C)"),
-  facs_trttype = c(`ctrl` = "controls (26-26°C)",
-                    `expt` = "nighttime warming (40-X°C)")
-)
 ```
 
 # # larval dev
@@ -59,7 +59,6 @@ p_scales <- list_modify(
 ```{r}
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     filter(pop != "col") %>%
     CalcSurvProps_def()
 }
@@ -90,14 +89,14 @@ p_scales <- list_modify(
 }
 
 # all trts
-dfs_tidy$wide %>%
+dfs_tidy$widentw %>%
   .prepfn() %>% 
   filter(!is.na(diet)) %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
 # expt trts only by minT
-dfs_tidy$wide %>%
+dfs_tidy$widentw %>%
   .prepfn() %>%
   filter(trt != 260) %>% 
   .plotfn() +
@@ -106,7 +105,7 @@ dfs_tidy$wide %>%
 
 # ctrls vs expt
   # ctrls are too stacked bc of the x axis
-dfs_tidy$wide %>%
+dfs_tidy$widentw %>%
   .prepfn() %>%
   .plotfn() +
   facet_wrap(~trt.facet, scales = "free_x") +
@@ -118,7 +117,6 @@ dfs_tidy$wide %>%
 # years sep
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     filter(pop != "col") %>%
     CalcSurvProps_def()
 }
@@ -133,7 +131,7 @@ dfs_tidy$wide %>%
     geom_errorbar(aes(ymax = prop.pup + se.pup,
                       ymin = prop.pup - se.pup),
                   width = 0.25, lty = "solid", show.legend = FALSE) +
-    facet_wrap(~ trt.facet, labeller = as_labeller(p_scales$facs_trt)) +
+    facet_wrap(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
     labs(y = "% survived to pupation",
          lty = "population", shape = "population"
     ) +
@@ -143,14 +141,14 @@ dfs_tidy$wide %>%
     theme_bw()
 }
 
-p1 <- dfs_tidy$wide %>%
+p1 <- dfs_tidy$widentw %>%
   filter(trt == 260) %>%
   .prepfn() %>%
   .plotfn() +
   aes(x = year, 
       group = pop)
 
-p2 <- dfs_tidy$wide %>%
+p2 <- dfs_tidy$widentw %>%
   filter(trt != 260) %>%
   .prepfn() %>%
   .plotfn() +
@@ -170,7 +168,6 @@ p1 + p2 +
 # yrs combined
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     filter(pop != "col") %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
@@ -201,12 +198,12 @@ p1 + p2 +
 }
 
 ## TODO maybe add alpha'd out points in the back?
-p1 <- dfs_tidy$wide %>%
+p1 <- dfs_tidy$widentw %>%
   filter(trt == 260) %>%
   .prepfn() %>%
   .plotfn()
 
-p2 <- dfs_tidy$wide %>%
+p2 <- dfs_tidy$widentw %>%
   filter(trt != 260) %>%
   .prepfn() %>%
   .plotfn() +
@@ -222,14 +219,12 @@ p1 + p2 +
 ```{r}
 # yrs combined with points for individual yrs
 dfs <- list(
-  allyrs = dfs_tidy$wide %>%
-    FilterForNTWBugs() %>%
+  allyrs = dfs_tidy$widentw %>%
     filter(pop != "col") %>%
     CalcSurvProps_def() %>%
     MakeFactors(),
   
-  noyr = dfs_tidy$wide %>%
-    FilterForNTWBugs() %>%
+  noyr = dfs_tidy$widentw %>%
     filter(pop != "col") %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
@@ -302,7 +297,6 @@ p1 + p2 +
 ```{r}
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
@@ -331,12 +325,12 @@ p1 + p2 +
 ```
 
 ```{r}
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -347,7 +341,6 @@ dfs_tidy$long %>%
 ```{r}
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
@@ -364,7 +357,7 @@ dfs_tidy$long %>%
     # geom_text(aes(label = n),
     #           vjust = -0.2, hjust = -0.3,
     #           show.legend = FALSE) +
-    facet_wrap(~ trt.facet, labeller = as_labeller(p_scales$facs_trt)) +
+    facet_wrap(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
     labs(y = "pupal mass (g)",
          shape = "population", lty = "population") +
     scale_color_brewer(palette = "Dark2") +
@@ -373,13 +366,13 @@ dfs_tidy$long %>%
     theme_bw()
 }
 
-p1 <- dfs_tidy$long %>%
+p1 <- dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt == 260) %>%
   .plotfn() +
   aes(x = year, group = pop)
 
-p2 <- dfs_tidy$long %>%
+p2 <- dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -401,7 +394,6 @@ p1 + p2 +
 ```{r}
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     filter(!is.na(sex)) %>%
     PrepAdultSS() %>%
     group_by(sex, .add = TRUE) %>%
@@ -433,12 +425,12 @@ p1 + p2 +
     theme_bw()
 }
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260,
          #sex == "m"
@@ -475,12 +467,12 @@ dfs_tidy$long %>%
   theme_bw()
 }
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -509,12 +501,12 @@ dfs_tidy$long %>%
   theme_bw()
 }
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -528,7 +520,6 @@ dfs_tidy$long %>%
 # sexes combined
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
@@ -555,13 +546,13 @@ dfs_tidy$long %>%
          title = "time to pupation")
 }
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 # LOL the 260 lab every yr ...  i think its bc they take so long from 5 to wander
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -574,7 +565,6 @@ dfs_tidy$long %>%
 # sexes combined
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
@@ -601,12 +591,12 @@ dfs_tidy$long %>%
          title = "time to pupation")
 }
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -617,7 +607,6 @@ dfs_tidy$long %>%
 ```{r}
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     CalcDevSS_ad() %>%
     filter(instar == "pupa")
 }
@@ -643,13 +632,13 @@ dfs_tidy$long %>%
 }
 
 
-p1 <- dfs_tidy$long %>%
+p1 <- dfs_tidy$longntw %>%
   .prepfn() %>% 
   filter(trt == 260) %>%
   .plotfn() +
   aes(x = year, group = pop)
 
-p2 <- dfs_tidy$long %>%
+p2 <- dfs_tidy$longntw %>%
   .prepfn() %>% 
   filter(trt != 260) %>%
   .plotfn() +
@@ -665,19 +654,50 @@ p1 + p2 +
 ```
 
 
-# # bonus larval dev
 
-## dev trajectories 
+# # dev trajectories 
 
-### df prep
+## df prep
+```{r}
+# stealing tidying code to include a tt.hatch date for later things
+df <- dfs_tidy$wide %>% 
+  mutate(tt.hatch = 0,
+         tt.3rd = jdate.3rd - jdate.hatch,
+         tt.4th = jdate.4th - jdate.hatch,
+         tt.5th = jdate.5th - jdate.hatch,
+         tt.6th = jdate.6th - jdate.hatch,
+         tt.7th = jdate.7th - jdate.hatch,
+         tt.8th = jdate.8th - jdate.hatch,
+         tt.wander = jdate.wander - jdate.hatch,
+         tt.pupa = jdate.pupa - jdate.hatch,
+         tt.eclose = jdate.eclose - jdate.pupa,
+         tt.long = jdate.long - jdate.eclose,
+         #tt.exit = jdate.exit - jdate.hatch 
+          # breaks groups.. too many individ exits LOL
+         tt.pmd = jdate.pmd - jdate.hatch
+          ## hopefully this is better lol bc it should be only things that died have pmd..
+  ) %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+               names_to = c(".value", "instar"),
+               values_drop_na = TRUE,
+               names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
+  mutate(tt = case_when(is.na(tt) & !is.na(mass) ~ 999,
+                        TRUE ~ as.numeric(tt))) %>%
+  drop_na(tt) %>%
+  mutate(tt = na_if(tt, 999)) %>%
+  filter(!(instar == "long" & tt == 0)) %>%
+  mutate(instar = factor(instar, 
+                         levels = c("hatch", "pmd", "younger", "3rd", "4th", "5th", 
+                                    "6th", "7th", "8th",
+                                    "wander", "pupa", "eclose", "long"))) %>%
+FilterForNTWBugs()
+```
+
+## y =  mass
+
 ```{r}
 # make some variations of the df based off how the pupae are handled
-.prepfn <- function(x){
-  x %>%
-    FilterForNTWBugs() %>%
-    PrepLarvalSS()
-}
-
+  ## how does inclusion of culled bugs affect the trajectories?
 .calcfn <- function(x){
   x %>%
     CalcDevSS() %>%
@@ -686,29 +706,33 @@ p1 + p2 +
 
 dfs <- list(
   # default grouping
-  all = dfs_tidy$long %>%
-    .prepfn() %>%
+  all = df %>%
+    PrepLarvalSS() %>%
+    .calcfn(),
+  
+  # default grp with culled removed first
+  all_wocull = df %>%
+    filter(is.pup != 2) %>%
+    PrepLarvalSS() %>%
     .calcfn(),
   
   # by pup, with survivors + culled combined together
-  pups_wcull = dfs_tidy$long %>%
+  pups_wcull = df %>%
     mutate(is.pup = case_when(is.pup == 2 ~ 1,
                               TRUE ~ as.numeric(is.pup))) %>%
-    .prepfn() %>% 
+    PrepLarvalSS() %>% 
     group_by(is.pup, .add = TRUE) %>%
     .calcfn(),
   
   # by pup, with survivors + culled kept separate
-  pups_sepcull = dfs_tidy$long %>%
-    .prepfn() %>%
+  pups_sepcull = df %>%
+    PrepLarvalSS() %>%
     group_by(is.pup, .add = TRUE) %>%
     .calcfn()
 )
 
 ```
 
-
-### figs
 ```{r}
 # dev by year
 .plotfn <- function(x){
@@ -719,7 +743,7 @@ dfs <- list(
                col = year)) +
     geom_point() +
     geom_line() +
-    # hard to see with these lol bc theyre pretty close
+    # # hard to see with these lol bc theyre pretty close
     # geom_errorbar(aes(ymax = avg.logmass + se.logmass,
     #                   ymin = avg.logmass - se.logmass,
     #                   width = CalcErrWd(avg.tt))) +
@@ -739,10 +763,22 @@ dfs$all %>%
   .plotfn() +
   labs(title = "development trajectories (incl pmd)")
 
+dfs$all_wocull %>%
+  .plotfn() +
+  labs(title = "development trajectories (incl pmd)",
+       caption = "culled omited")
+
 dfs$pups_wcull %>%
   filter(is.pup != 0) %>%
   .plotfn() +
   labs(title = "development trajectories (pup'd only)")
+
+dfs$pups_sepcull %>%
+  filter(is.pup != 0) %>%
+  .plotfn() +
+  labs(title = "development trajectories (pup'd only)")
+  # wonky lines prob bc of the unaddressed supernumeraries in the df prep rip
+
 ```
 
 ```{r}
@@ -765,7 +801,9 @@ dfs$pups_wcull %>%
          y = "log(mass mg)", x = "dev time (days)",
          col = "year", lty = "fate"
     ) +
-    scale_linetype_discrete(labels = c("pupated", "died"))
+    scale_linetype_manual(values = c(`1` = "solid", `0` = "dashed"),
+                          labels = c(`1` = "pupated", `0` = "died"))
+    #scale_linetype_discrete(labels = c("pupated", "died"))
 }
 
 # surv, combined w culled
@@ -807,7 +845,6 @@ dfs$pups_sepcull %>%
     theme_bw()
 }
 
-
 dfs$pups_wcull %>%
   filter(is.pup != 0) %>%
   .plotfn() +
@@ -818,6 +855,7 @@ dfs$all %>%
   labs(title = "development trajectories (all)")
 
 ```
+
 ```{r}
 # dev traj by trt + surv to pupation
 .plotfn <- function(x){
@@ -888,12 +926,12 @@ dfs$all %>%
   theme_bw()
 ```
 
+# # bonus larval dev
 
 ## supernumerary
 
 ```{r}
-dfs_tidy$wide %>%
-  FilterForNTWBugs() %>%
+dfs_tidy$widentw %>%
   CalcSupProps_def() %>%
   filter(status == "surv") %>%
   MakeFactors() %>%
@@ -916,7 +954,8 @@ dfs_tidy$wide %>%
   theme_bw()
 ```
 
-## alternate x axes explorations
+
+## (EDA) alternate dev x axes explorations
 
 (using dev rate)
 
@@ -926,7 +965,8 @@ dfs_tidy$wide %>%
   not sure what other `trt.` var to choose as another geom. 
   - (prob sth that emphasises the minTs or other aspect of the temp trt, but also dont want like
      3 additional levels max..)
-     
+
+### df prep  
 ```{r}
 # making some dfs to test
 .prepfn <- function(x){
@@ -941,11 +981,9 @@ dfs <- list(
     #filter(trt %in% c(260, 330, 419, 426, 433)) %>% # drops 267...
     .prepfn(),
   
-  ntw = dfs_tidy$long %>%
-    FilterForNTWBugs() %>%
+  ntw = dfs_tidy$longntw %>%
     .prepfn()
 )
-
 ```
 
 
@@ -998,11 +1036,10 @@ dfs$ntw %>% .plotfn()
 # # adult dev
 
 ## longevity
-```{r}
 
+```{r}
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     filter(pop != "col") %>%
     PrepAdultSS() %>%
     filter(instar == "long")
@@ -1023,14 +1060,14 @@ dfs$ntw %>% .plotfn()
 }
 
 # EDA: keep fridge bugs in the count
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   .prepfn() %>%
   CalcDevSS() %>%
   .plotfn() +
   aes(group = interaction(pop))
 
 # EDA: parse out the fridge bugs
-dfs_tidy$long %>%
+dfs_tidy$longntw %>%
   mutate(if.fridge = case_when(is.na(if.fridge) ~ "no",
                                TRUE ~ "yes")) %>%
   .prepfn() %>%
@@ -1047,7 +1084,6 @@ dfs_tidy$long %>%
 # final: remove the fridge bugs
 .prepfn <- function(x){
   x %>%
-    FilterForNTWBugs() %>%
     filter(is.na(if.fridge),
            instar == "long",
            pop != "col") %>%
@@ -1065,7 +1101,7 @@ dfs_tidy$long %>%
                       ymax = avg.tt + se.tt),
                   width = 0.5, lty = "solid", show.legend = FALSE) +
     geom_point(size = 2) + geom_line() +
-    facet_grid(~ trt.facet, labeller = as_labeller(p_scales$facs_trt)) +
+    facet_grid(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
     labs(y = "longevity (days after eclosion)",
          shape = "population", lty = "population") +
     scale_shape_manual(values = p_scales$shp_pop) +
@@ -1075,13 +1111,13 @@ dfs_tidy$long %>%
     ylim(c(4, 17.5))
 }
 
-p1 <- dfs_tidy$long %>%
+p1 <- dfs_tidy$longntw %>%
   filter(trt == 260) %>%
   .prepfn() %>%
   .plotfn() +
     aes(x = pop)
 
-p2 <- dfs_tidy$long %>%
+p2 <- dfs_tidy$longntw %>%
   filter(trt != 260) %>%
   .prepfn() %>%
   .plotfn() +
