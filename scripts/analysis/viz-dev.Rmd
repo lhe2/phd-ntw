@@ -661,6 +661,16 @@ p1 + p2 +
 ```{r}
 # stealing tidying code to include a tt.hatch date for later things
 df <- dfs_tidy$wide %>% 
+  mutate(pmd.as = case_when(fate.dev == "pup" ~ "pupa",
+                            fate.dev == "pmd" & !is.na(jdate.wander) & 
+                              is.na(jdate.pupa) ~ "wander",
+                            fate.dev == "pmd" & !is.na(jdate.6th) & is.na(jdate.pupa) ~ "sup",
+                            fate.dev == "pmd" & !is.na(jdate.5th) ~ "5th",
+                            fate.dev == "pmd" & !is.na(jdate.4th) ~ "4th",
+                            fate.dev == "pmd" & !is.na(jdate.3rd) ~ "3rd",
+                            fate.dev == "pmd" ~ "younger"),
+         pmd.as = factor(pmd.as, levels = c("younger", "3rd", "4th", "5th", "sup", "wander", "pupa"))
+         ) %>%
   mutate(tt.hatch = 0,
          tt.3rd = jdate.3rd - jdate.hatch,
          tt.4th = jdate.4th - jdate.hatch,
@@ -1038,6 +1048,344 @@ df %>%
   facet_grid(pop~trt, labeller = labeller(trt = p_scales$labs_trt)) +
   scale_color_brewer(palette = "Dark2")
 ```
+
+## dying bugs?
+
+- when do bugs die? (esp those that make it to 5th/later instars but die before wandering at hot trts?)
+  - (keep things simple for now and just focus on the non-sups)
+
+- note: wrangling things that dont work lol
+  - cant group by "exit" as an instar (too many unique exits)
+  - no exit mass, so cant plot by avg mass
+
+```{r}
+# TRY 3
+  # pre:
+    # want to get an avg line for the dev rate of survivors (+ non survivors?),
+    # and plot death info separately
+
+dfs <- list(
+  ifpup = df %>%
+    filter(is.sup == 0,
+           #!(instar %in% c("hatch", "pupa")),
+           instar != "pupa",
+           is.pup != 2,
+           fate.dev != "pup") %>%
+    PrepLarvalSS() %>%
+    group_by(is.pup, .add = TRUE) %>%
+    CalcDevSS() %>%
+    MakeFactors() %>%
+    mutate(is.pup = factor(is.pup)),
+  
+  pmdas = df %>%
+    filter(is.sup == 0,
+           !(instar %in% c("hatch", "pupa")),
+           is.pup != 2,
+           !is.na(pmd.as)) %>%
+    # lump <3rds into "younger"
+    mutate(pmd.as = case_when(pmd.as == "3rd" ~ "younger",
+                              TRUE ~ as.character(pmd.as))) %>%
+    PrepLarvalSS() %>%
+    group_by(pmd.as, .add = TRUE) %>%
+    CalcDevSS() %>%
+    mutate(is.pup = 0) %>%
+    MakeFactors() %>%
+    mutate(is.pup = factor(is.pup)),
+  
+  # leave < 3rds alone
+  pmdas2 = df %>%
+        filter(is.sup == 0,
+           !(instar %in% c("hatch", "pupa")),
+           is.pup != 2,
+           !is.na(pmd.as)) %>%
+    PrepLarvalSS() %>%
+    group_by(pmd.as, .add = TRUE) %>%
+    CalcDevSS() %>%
+    mutate(is.pup = 0) %>%
+    MakeFactors() %>%
+    mutate(is.pup = factor(is.pup))
+    
+)
+
+# bunch of timelines...
+dfs$ifpup %>%
+  #filter(trt == 433) %>%
+  ggplot(aes(#y = interaction(is.pup, year),
+             #y = year,
+             y = interaction(is.pup, pop),
+             x = avg.tt)) +
+  
+  # larval dev points only
+  geom_point(data = . %>% filter(#instar != "pmd",
+                                 !(instar %in% c("pmd", "hatch"))),
+             aes(shape = instar, fill = instar),
+             size = 2.5, stroke = NA
+             ) + 
+  geom_line(aes(lty = is.pup),
+            lwd = 0.25) +
+  
+  # add pmd points
+  geom_point(data = dfs$pmdas %>% filter(instar == "pmd",
+                                         pmd.as != "pupa", # gets super long
+                                         #trt == 433
+                                         ),
+             aes(color = pmd.as), 
+             shape = 4, size = 2.5, #show.legend = FALSE
+             ) +
+  geom_errorbarh(data = dfs$pmdas %>% filter(instar == "pmd",
+                                             pmd.as != "pupa", # gets super long
+                                             #trt == 433
+                                             ),
+            aes(color = pmd.as,
+                xmax = avg.tt + se.tt,
+                xmin = avg.tt - se.tt),
+            lwd = 1, height = 0, alpha = 0.75, #show.legend = FALSE
+            ) +
+  
+  # scales
+  scale_fill_manual(values = c(`pmd` = "black",
+                               `3rd` = "#F8766D", `4th` = "#A3A500", `5th` = "#00BF7D",
+                               `wander` = "#00B0F6")) +
+  scale_color_manual(values = c(`younger` = "#F8766D",`4th` = "#A3A500", `5th` = "#00BF7D",
+                               `wander` = "#00B0F6", `pupa` = "#E76BF3")) +
+  scale_shape_manual(values = c(`pmd` = 4, 
+                                `3rd` = 21, `4th` = 24, `5th` = 22, `wander` = 23)) +
+  scale_linetype_manual(labels = c(`1` = "survived", `0` = "died"),
+                        values = c(`1` = "solid", `0` = "dashed"),
+                        limits = c("1", "0")) +
+  facet_grid(year ~ trt, scales = "free_x", 
+             labeller = labeller(.cols = p_scales$labs_trt)) +
+  labs(y = "pop & developmental outcome", x = "days",
+       col = "stage at death (± se)",
+       fill = "instar",
+       lty = "survived to pupation?") +
+  # scale when y = interaction(is.pup, pop)
+  scale_y_discrete(breaks = c("1.lab", "0.lab", "1.field", "0.field"),
+                   labels = c("lab", "lab", "field", "field")) +
+  # scale when y = interaction(is.pup, year)
+  # scale_y_discrete(breaks = c("1.2025", "0.2025", "1.2024", "0.2024", "1.2023", "0.2023"), 
+  #                  labels = c("2025", "2025", "2024", "2024", "2023", "2023"),
+  #                  # breaks = c(1:3),
+  #                  # labels = levels(interaction(dfs$ifpup$is.pup, dfs$ifpup$year, sep = "&"))
+  #                  ) +
+  theme_bw() +
+  guides(fill = guide_legend(title.position = "top", nrow = 1, byrow = TRUE),
+         lty = guide_legend(title.position = "top", nrow = 1, byrow = TRUE),
+         col = guide_legend(title.position = "top", nrow = 1, byrow = TRUE)) +
+  theme(legend.position = "bottom",
+        #legend.box = "vertical",
+        legend.title = element_text(size = 9, hjust = 0.5),
+        legend.margin = margin())
+
+
+# trajectories
+dfs$ifpup %>%
+  filter(instar != "pmd",
+         instar != "pupa",
+         #year == 2025,
+         #is.pup == 1
+         ) %>%
+  mutate(instar = factor(instar, levels = c("hatch", #"younger", 
+                                            "3rd", "4th", "5th", "wander", "pupa"))) %>%
+  ggplot(aes(y = instar, 
+             col = year,
+             x = avg.tt,
+             group = interaction(year, pop, trt, is.pup)
+             )) +
+  
+  # dev info
+  geom_point(shape = 16, size = 2,
+             show.legend = FALSE
+             ) +
+  geom_line(aes(lty = is.pup,)) +
+  
+  # # invididual pmd info
+  # geom_point(data = df %>%
+  #              filter(instar == "pmd",
+  #                     pmd.as != "pupa",
+  #                     is.sup == 0,
+  #                     is.pup != 2,
+  #                     #year == 2025
+  #                     ) %>%
+  #              rename(avg.tt = tt) %>%
+  #              MakeFactors() %>%
+  #              mutate(is.pup == 0,
+  #                     is.pup = factor(is.pup),
+  #                     # instar = case_when(instar == "younger" ~ "hatch",
+  #                     #                    TRUE ~ as.character(instar)),
+  #                     # instar = factor(instar, levels = c("hatch", #"younger",
+  #                     #                       "3rd", "4th", "5th",
+  #                     #                       "wander", "pupa"))
+  #                     ),
+  #            aes(group = interaction(instar, trt, pop),
+  #                y = pmd.as, shape = instar
+  #                ),
+  #            #shape = 4,
+  #            alpha = 0.7,
+  #            #show.legend = TRUE
+  #            ) +
+  
+  
+  # summary pmd info
+  geom_point(data = dfs$pmdas2 %>%
+               filter(instar == "pmd",
+                      pmd.as != "pupa"),
+             aes(y = pmd.as, shape = instar),
+             #shape = 4,
+              # NOTE assign value in scale_* instead of here to get
+              # the shape to show in the legend on its own
+             size = 2,
+             #show.legend = FALSE
+             ) +
+  geom_errorbarh(data = dfs$pmdas2 %>% filter(instar == "pmd",
+                                              pmd.as != "pupa"),
+                 aes(y = pmd.as, lwd = instar,
+                     xmax = avg.tt + se.tt,
+                     xmin = avg.tt - se.tt),
+                 lwd = 1,
+                 height = 0, alpha = 0.75,
+               #show.legend = FALSE
+               ) +
+  
+  # rest of the plot
+  facet_grid(pop ~ trt, scales = "free_x", 
+             labeller = labeller(.cols = p_scales$labs_trt)) +
+  scale_y_discrete(limits = c("hatch", "younger",
+                              "3rd", "4th", "5th", 
+                              "wander"#, "pupa"
+                              )) +
+  scale_color_brewer(palette = "Dark2") +
+  do.call(scale_linetype_manual, p_scales$lty_ispup) +
+  
+  # trying to get just individual "pmd" to show up LOL
+  # scale_shape_manual(#limits = c("younger"),
+  #   #limits = c("younger", "3rd", "4th", "5th", "wander"),
+  #   #limits = force,
+  #   # breaks = c("younger", "3rd", "4th", "5th", "wander"),
+  #   # #labels = c("pmd", NA, NA, NA, NA),
+  #   # labels = c("pmd", "", "", "", ""),
+  #   # values = c(4, 4, 4, 4, 4), drop = TRUE,
+  #   #breaks = 1,
+  #   labels = "pmd",
+  #   breaks = "pmd",
+  #   values = 4
+  #   ) +
+  # scale_shape_manual(#limits = c("younger"),
+  #                    limits = c("younger", "3rd", "4th", "5th", "wander"),
+  #                    #breaks = c("younger", "3rd", "4th", "5th", "wander"),
+  #                    labels = c("pmd", "pmd", "pmd", "pmd", "pmd"),
+  #                    values = c(4, 4, 4, 4, 4), 
+  #                    ) +
+  theme_bw() +
+  scale_shape_manual(values = 4, breaks = "pmd", labels = "pmd") +
+  #scale_linewidth_manual(values = 1, breaks = "pmd", labels = "pmd") +
+  labs(x = "days",
+       lty = "survived to\n pupation?",
+       shape = "if pmd",
+       col = "year")
+```
+
+
+```{r dying bug attempts eval=FALSE}
+# TRY 2
+  # pre: trying to use just 1 df lol
+  # triage: 
+    # still need 2 separate dfs (for dev stuff + pmd info.)
+    # also, grouping by is.pup and pmd.as simultaneously leads to double-plotting for pmd bugs
+df %>%
+  filter(is.sup == 0,
+         !(instar %in% c("hatch", "pupa")),
+         is.pup != 2) %>%
+  PrepLarvalSS() %>%
+  group_by(pmd.as, # TOFIX breaks the pmd stuff... (double plots)
+           is.pup, .add = TRUE) %>%
+  CalcDevSS() %>% #View()
+  # mutate(is.pup = case_when(is.pup == 1 ~ "survived",
+  #                           is.pup == 0 ~ "died")) %>%
+  MakeFactors() %>%
+  mutate(is.pup = as.factor(is.pup)) %>%
+  filter(trt == 433) %>%
+  ggplot(aes(y = interaction(is.pup, year),
+             x = avg.tt,
+             #col = instar,
+             lty = is.pup
+             )) +
+  geom_point(#data = . %>% filter(is.na(pmd.as)),
+             aes(shape = instar, fill = instar),
+             size = 2.5, stroke = NA) +
+  geom_line(#data = . %>% filter(is.na(pmd.as)),
+            aes(#lty = interaction(is.pup, year),
+                group = interaction(pop, trt, is.pup, year))
+            )+
+  geom_point(data = . %>% filter(instar == "pmd",
+                                 is.pup != 2,
+                                 !is.na(pmd.as)
+                                 ),
+             aes(col = pmd.as),
+             shape = 1, size = 2.5, lwd = 1.5) +
+  # scale_shape_manual(values = c(`pmd` = 4,
+  #                               `3rd` = 16, `4th` = 17, `5th`= 15, `wander` = 7)) +
+  # fillable shapes
+  scale_shape_manual(values = c(`pmd` = 4, # gets lost when stroke = NA tho.
+                                `3rd` = 21, `4th` = 24, `5th` = 22, `wander` = 23)) +
+  scale_linetype_manual(labels = c(`1` = "survived", `0` = "died"),
+                        values = c(`1` = "solid", `0` = "dashed")) +
+  facet_grid(pop ~ trt) +
+  theme_bw()
+
+
+# TRY 1
+  # post: thought i had to group the tt.pmd all by itself but actually i can just make seperate pups/pmd dfs!
+dfs <- list(
+  pups = df %>%
+    filter(is.sup == 0, # keeping it simple for now...
+           instar != "pmd") %>%
+    mutate(is.pup = case_when(is.pup == 2 ~ 1, 
+                              TRUE ~ is.pup)) %>%
+    PrepLarvalSS() %>%
+    group_by(is.pup, .add = TRUE) %>% # idk..
+    CalcDevSS() %>%
+    mutate(#across(ends_with("sup"), replace_na, 0),
+           across(c(starts_with("is")), as.factor)) %>%
+     filter(!is.na(is.pup),
+            !(instar %in% c("pupa", "hatch"))) %>%
+    MakeFactors(),
+  
+  pmd = df %>%
+    filter(is.sup == 0,
+           is.pup == 0, # TOFIX some things DO pup but die as pup
+           instar == "pmd", # TOFIX should be pmd per instar, not across whole dev time
+           pop != "col",
+           !is.na(diet)) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar, is.pup))) %>%
+    CalcDevSS() %>%
+    mutate(across(starts_with("is"), as.factor)) %>%
+    MakeFactors()
+)
+
+ggplot(dfs$pup %>% filter(trt == 433), 
+       aes(y = interaction(is.pup, year), 
+           x = avg.tt, 
+           shape = instar,
+           col = year,
+           lty = is.pup,
+           group = interaction(pop, trt, is.pup, year)
+       )) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_point(data = dfs$pmd %>% filter(trt == 433),
+             size = 2) +
+  scale_linetype_manual(values = c(`1` = "solid", `0` = "dashed"),
+                        labels = c(`1` = "yes", `0` = "no")) +
+  scale_color_brewer(palette = "Dark2") +
+  facet_grid(pop ~ trt) +
+  theme_bw() +
+  labs(x = "days to instar",
+       lty = "pupated?",
+       #shape = "survived to\npupation?"
+  )
+```
+
 # # bonus larval dev
 
 ## supernumerary
