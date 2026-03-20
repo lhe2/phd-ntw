@@ -926,6 +926,118 @@ dfs$all %>%
   theme_bw()
 ```
 
+## y = instar
+
+
+```{r}
+# culled bugs ignored here lol. this is basically dfs$all i think
+.prepfn <- function(x){
+  x %>%
+    filter(instar != "pmd") %>%
+    PrepLarvalSS() %>%
+    group_by(across(c("sup", "is.sup")), .add = TRUE) %>%
+    CalcDevSS() %>%
+    mutate(across(ends_with("sup"), replace_na, 0),
+           across(ends_with("sup"), as.factor))
+}
+
+.plotfn <- function(x){
+  x %>%
+    MakeFactors() %>%
+    ggplot(aes(y = instar, x = avg.tt, 
+               lty = sup,
+               group = interaction(pop, trt, sup, year))) +
+    geom_point() +
+    geom_line() +
+    # kinda messy, so omit..
+    geom_errorbarh(aes(xmax = avg.tt + se.tt,
+                       xmin = avg.tt - se.tt,
+                       height = 0.25)) +
+    labs(x = "days to instar",
+         lty = "supernumerary?") +
+    theme_bw()
+}
+
+# by year
+df %>%
+  .prepfn() %>% 
+  filter(is.sup == 0) %>% # for non-sups
+  #filter(is.sup != 0, sup != 8) %>% # for sups
+  .plotfn() +
+  aes(col = trt) +
+  facet_grid(pop~year) +
+  scale_color_manual(values = p_scales$cols_trt,
+                     labels = p_scales$labs_trt)+
+  labs(col = "treatment")
+
+# by trt
+df %>%
+  .prepfn() %>%
+  filter(is.sup == 0) %>% # for non-sups
+  #filter(trt == 433) %>%
+  #filter(is.sup != 0, sup != 8) %>% # for sups
+  .plotfn() +
+  aes(col = year) +
+  facet_grid(pop~trt, labeller = labeller(trt = p_scales$labs_trt)) +
+  scale_color_brewer(palette = "Dark2")
+
+```
+
+```{r pup version, eval=FALSE}
+# this is too messy lol, at least for when looking at the non-sups
+.prepfn <- function(x){
+  x %>%
+    filter(instar != "pmd") %>%
+    mutate(is.pup = case_when(is.pup == 2 ~ 1, 
+                              TRUE ~ is.pup)) %>% # need to do before grouping..
+    PrepLarvalSS() %>%
+    group_by(across(c("sup", "is.sup", "is.pup")), .add = TRUE) %>%
+    CalcDevSS() %>%
+    # (dont mutate is.pup here)
+    mutate(across(ends_with("sup"), replace_na, 0),
+           across(c(starts_with("is"), ends_with("sup")), as.factor))
+}
+
+.plotfn <- function(x){
+  x %>%
+    MakeFactors() %>%
+    ggplot(aes(y = instar, x = avg.tt, 
+               lty = sup,
+               shape = is.pup,
+               group = interaction(pop, trt, sup, is.pup, year))) +
+    geom_point() +
+    geom_line() +
+    scale_shape_manual(values = c(`1` = 19, `0` = 1),
+                       labels = c(`1` = "survived", `0` = "died")) +
+    labs(x = "days to instar",
+         lty = "supernumerary?",
+         shape = "survived to\npupation?") +
+    theme_bw()
+}
+
+# by year
+df %>%
+  .prepfn() %>% 
+  filter(is.sup == 0) %>% # for non-sups
+  #filter(is.sup != 0, sup != 8) %>% # for sups
+  .plotfn() +
+  aes(col = trt) +
+  facet_grid(pop~year) +
+  scale_color_manual(values = p_scales$cols_trt,
+                     labels = p_scales$labs_trt)+
+  labs(col = "treatment")
+
+# by trt
+df %>%
+  .prepfn() %>% 
+  filter(is.sup == 0) %>% # for non-sups
+  #filter(trt == 433) %>%
+  #filter(is.sup != 0, sup != 8) %>% # for sups
+  .plotfn() +
+  aes(col = year) +
+  facet_grid(pop~trt, labeller = labeller(trt = p_scales$labs_trt)) +
+  scale_color_brewer(palette = "Dark2")
+```
 # # bonus larval dev
 
 ## supernumerary
