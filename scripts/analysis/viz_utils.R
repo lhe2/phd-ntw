@@ -34,4 +34,9 @@ p_scales <- list(
                   `field` = "field (40-X°C)"),
   facs_trttype = c(`ctrl` = "controls (26-26°C)",
                    `expt` = "nighttime warming (40-X°C)"),
-    )
+  
+  # use with do.call(scale_*_*, args)
+  lty_ispup = list(labels = c(`1` = "survived", `0` = "died"),
+                   values = c(`1` = "solid", `0` = "dashed"),
+                   limits = c("1", "0"))
+  )
