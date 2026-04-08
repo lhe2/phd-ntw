@@ -1256,26 +1256,6 @@ dfs$ifpup %>%
                               )) +
   scale_color_brewer(palette = "Dark2") +
   do.call(scale_linetype_manual, p_scales$lty_ispup) +
-  
-  # trying to get just individual "pmd" to show up LOL
-  # scale_shape_manual(#limits = c("younger"),
-  #   #limits = c("younger", "3rd", "4th", "5th", "wander"),
-  #   #limits = force,
-  #   # breaks = c("younger", "3rd", "4th", "5th", "wander"),
-  #   # #labels = c("pmd", NA, NA, NA, NA),
-  #   # labels = c("pmd", "", "", "", ""),
-  #   # values = c(4, 4, 4, 4, 4), drop = TRUE,
-  #   #breaks = 1,
-  #   labels = "pmd",
-  #   breaks = "pmd",
-  #   values = 4
-  #   ) +
-  # scale_shape_manual(#limits = c("younger"),
-  #                    limits = c("younger", "3rd", "4th", "5th", "wander"),
-  #                    #breaks = c("younger", "3rd", "4th", "5th", "wander"),
-  #                    labels = c("pmd", "pmd", "pmd", "pmd", "pmd"),
-  #                    values = c(4, 4, 4, 4, 4), 
-  #                    ) +
   theme_bw() +
   scale_shape_manual(values = 4, breaks = "pmd", labels = "pmd") +
   scale_linewidth_manual(values = 1.5, breaks = "pmd", labels = "pmd") +
@@ -1444,6 +1424,135 @@ dfs_tidy$widentw %>%
   #scale_fill_discrete(labels = c("0", "1", "2", "3", "died")) +
   theme_bw()
 ```
+
+## EDA: later larval performance
+
+per KS 2021: Responses of MS to HW
+
+- Z = 5th to wandering mass gain/dev time
+
+```{r}
+# df prep
+df <- dfs_tidy$widentw %>%
+  filter(pop != "col") %>%
+  mutate(mass.last = case_when(!is.na(mass.8th) ~ mass.8th,
+                               !is.na(mass.7th) ~ mass.7th,
+                               !is.na(mass.6th) ~ mass.6th,
+                               TRUE ~ mass.5th),
+         jdate.last = case_when(!is.na(jdate.8th) ~ jdate.8th,
+                                !is.na(jdate.7th) ~ jdate.7th,
+                                !is.na(jdate.6th) ~ jdate.6th,
+                                TRUE ~ jdate.5th),
+         mass.late = mass.wander - mass.last,
+         tt.late = jdate.wander - jdate.last,
+         dev.late = 1/tt.late,
+         
+         mass.mid = mass.last - mass.3rd,
+         tt.mid = jdate.last - jdate.3rd,
+         dev.mid = 1/tt.mid,
+         mass.mid2 = mass.wander - mass.3rd,
+         tt.mid2 = jdate.wander - jdate.3rd,
+         dev.mid2 = 1/tt.mid2
+         ) %>%
+  mutate(across(c(starts_with("trt"), "year"), as.factor)) %>%
+  filter(is.sup == 0) %>%
+  
+  ## OPTIONAL: set grouping by year or not
+  #group_by(across(c(starts_with("trt"), pop, year))) %>%
+  group_by(across(c(starts_with("trt"), pop))) %>%
+  summarise(n = n(),
+            across(.cols = c("mass.late", "dev.late", "mass.mid", "dev.mid", "mass.mid2", "dev.mid2"),
+                   .fns = list(avg = ~ mean(.x, na.rm = TRUE),
+                               se = se),
+                   .names = "{.fn}_{.col}")) %>%
+  drop_na(avg_mass.late) %>%
+  pivot_longer(cols = contains(c("mass", "dev")),
+               names_to = c(".value", "stage"),
+               names_sep = "\\."
+               )
+```
+
+```{r eval=FALSE}
+# separate late/mid stage performance plots
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(x = trt, #col = year, group = interaction(trt.type, year)
+               group = interaction(trt.type))) +
+    geom_point(size = 2) +
+    geom_line() +
+    facet_grid(~pop) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw()
+}
+
+df %>%
+  .plotfn() +
+  aes(y = avg.mass.mid) +
+  geom_errorbar(aes(ymax = avg.mass.mid + se.mass.mid,
+                    ymin = avg.mass.mid - se.mass.mid,
+                    width = 0.25)) +
+  labs(y = "3rd-5th mass gain (mg)")
+
+df %>%
+  .plotfn() +
+  aes(y = avg.mass.late) +
+  geom_errorbar(aes(ymax = avg.mass.late + se.mass.late,
+                    ymin = avg.mass.late - se.mass.late,
+                    width = 0.25)) +
+  labs(y = "5th-wander mass gain (mg)")
+
+df %>%
+  .plotfn() +
+  aes(y = avg.dev.mid) +
+  geom_errorbar(aes(ymax = avg.dev.mid + se.dev.mid,
+                    ymin = avg.dev.mid - se.dev.mid,
+                    width = 0.25)) +
+  labs(y = "3rd-5th dev rate (1/days)")
+
+df %>%
+  .plotfn() +
+  aes(y = avg.dev.late) +
+  geom_errorbar(aes(ymax = avg.dev.late + se.dev.late,
+                    ymin = avg.dev.late - se.dev.late,
+                    width = 0.25)) +
+  labs(y = "5th-wander dev rate (1/days)")
+
+```
+
+```{r}
+# combined performance @ stage plots
+.plotfn <- function(x){
+  x %>%
+    mutate(stage = case_when(stage == "mid" ~ "3rd - 5th",
+                             stage == "mid2" ~ "3rd - wander",
+                            stage == "late" ~ "5th - wander")) %>%
+    ggplot(aes(x = trt, shape = stage, col = stage, 
+               group = interaction(trt.type, stage))) +
+    geom_point(size = 2) +
+    geom_line() +
+    facet_grid(~pop) +
+    scale_color_brewer(palette = "Dark2") +
+    theme_bw()
+}
+
+df %>%
+  .plotfn() +
+  aes(y = avg_mass) +
+  geom_errorbar(aes(ymax = avg_mass + se_mass,
+                    ymin = avg_mass - se_mass),
+                width = 0.25) +
+  labs(y = "mass gain")
+
+df %>%
+  .plotfn() +
+  aes(y = avg_dev) +
+  geom_errorbar(aes(ymax = avg_dev + se_dev,
+                    ymin = avg_dev - se_dev),
+                width = 0.25) +
+  labs(y = "dev rate (1/days)")
+```
+
+
 
 
 ## EDA: alternate dev x axes explorations

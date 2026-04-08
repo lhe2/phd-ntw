@@ -75,10 +75,7 @@ dfs <- list(
     filter(!is.na(jdate.pupa) & !is.na(sex))
   
 )
-
 ```
-
-# # pupal stats
 
 ## survival to pup
 
@@ -163,10 +160,37 @@ mods_puptime <- list(
 mods_puptime %>%
   lapply(., GetModelResults)
 ```
+# # misc
+
+## age vs instar
+
+looking at dev trajectories: is `age ~ instar` linear?
+
+```{r}
+# df prep
+dfs <- dfs_tidy$long %>%
+  FilterOutLabTB() %>% 
+  FilterForNTWTrts() %>%
+  # pick out from 3rd-wander bc all have same trts
+  filter(instar %in% c("3rd", "4th", "5th", 
+                       "6th", "7th", "8th", 
+                       "wander")) %>%
+  mutate(across(c("year", "sup", starts_with(c("trt", "is."))),
+                as.factor))
+```
+
+```{r}
+# non-sups only
+list(
+  nosups = lm(tt ~ instar * trt, data = filter(dfs, is.sup == 0)),
+  nosups2 = lm(tt ~ instar * trt * pop, data = filter(dfs, is.sup == 0))
+  ) %>%
+  GetModelResults()
+```
 
 
 
-# # extra (archive)
+# # extra pup stats (archive)
 
 some lengthier extra analyses that clutter up the main analyses so moved down here. 
 
@@ -175,7 +199,7 @@ some lengthier extra analyses that clutter up the main analyses so moved down he
 looking into some of the nested models.. (output is too long LOL so shoving it all here)
 
 ```{r pup mod dredging eval=FALSE}
-# run upstream dfs first!!!
+# run upstream pupal stats df prep chunks first!!!
 
 mods_pupsurv %>%
   lapply(., \(x){
