@@ -51,6 +51,8 @@ dfs_tidy <- list_modify(
 
 # # survival to pup
 ```{r}
+# sep years (rough variations)
+
 .plotfn <- function(x){
   x %>%
   ggplot(aes(y = prop.pup,
@@ -102,6 +104,7 @@ dfs_tidy$widentw %>%
 
 ```{r}
 # years sep (patchwork)
+
 .plotfn <- function(x){
   x %>% 
     ggplot(aes(y = prop.pup,
@@ -145,52 +148,37 @@ p1 + p2 +
 ```
 
 ```{r}
-# yrs combined patchwork
-.prepfn <- function(x){
-  x %>%
-    PrepSurvProps() %>%
-    ungroup(year) %>%
-    CalcSurvProps()
-}
+# yrs combined (one panel)
+df <- dfs_tidy$widentw %>%
+  PrepSurvProps() %>%
+  ungroup(year) %>%
+  CalcSurvProps()
 
-.plotfn <- function(x){
-  x %>% 
-    ggplot(aes(y = prop.pup,
-               shape = pop, lty = pop,
-               x = trt)) +
-    geom_point(size = 2) +
-    geom_line() +
-    geom_errorbar(aes(ymax = prop.pup + se.pup,
-                      ymin = prop.pup - se.pup),
-                  width = 0.25, lty = "solid", show.legend = FALSE) +
-    facet_wrap(~ trt.type, labeller = as_labeller(p_scales$facs_trttype)) +
-    labs(y = "% survived to pupation",
-         lty = "population", shape = "population",
-         x = "minimum temp (°C)"
-    ) +
-    scale_color_brewer(palette = "Dark2") +
-      scale_shape_manual(values = p_scales$shp_pop) +
-  scale_linetype_manual(values = p_scales$lty_pop) +
-  scale_x_discrete(labels = p_scales$labs_minT) +
-    theme_bw()
-}
-
-## TODO maybe add alpha'd out points in the back?
-p1 <- dfs_tidy$widentw %>%
-  filter(trt == 260) %>%
-  .prepfn() %>%
-  .plotfn()
-
-p2 <- dfs_tidy$widentw %>%
+df %>%
   filter(trt != 260) %>%
-  .prepfn() %>%
-  .plotfn() +
-  aes(group = pop)
-
-
-p1 + p2 +
-  plot_layout(widths = c(1, 2),
-              guides = "collect", axes = "collect") &
+  ggplot(aes(y = prop.pup,
+             shape = interaction(pop, trt.type), lty = pop,
+             col = trt.type,
+             group = interaction(pop, trt.type),
+             x = trt.minT)) +
+  geom_point(size = 2) +
+  geom_line(show.legend = TRUE) +
+  geom_errorbar(aes(ymax = prop.pup + se.pup,
+                    ymin = prop.pup - se.pup),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  geom_point(data = filter(df, trt == 260),
+             mapping = aes(),
+             size = 2, position = position_dodge(0.3),
+             ) +
+  geom_errorbar(filter(df, trt == 260),
+                mapping = aes(ymax = prop.pup + se.pup,
+                              ymin = prop.pup - se.pup),
+                width = 0.5, position = position_dodge(0.3),
+                lty = "solid", show.legend = FALSE) +
+  labs(y = "% survived to pupation",
+       x = "minimum temperature (°C)") +
+  AddLeg_OnePanel() +
+  theme_bw() +
   ylim(c(0, 1))
 ```
 
@@ -269,7 +257,10 @@ p1 + p2 +
 
 # # pup mass
 
+## years parsed
+
 ### sexes combined
+
 ```{r}
 .prepfn <- function(x){
   x %>%
@@ -358,11 +349,11 @@ p2 <- dfs_tidy$longntw %>%
 p1 + p2 +
   plot_layout(widths = c(1, 2),
               axes = "collect", guides = "collect") &
-  ylim(c(1, 6.7)
+  ylim(c(1, 6.7))
 ```
 
-
 ### sexes parsed
+
 ```{r}
 .prepfn <- function(x){
   x %>%
@@ -447,6 +438,49 @@ dfs_tidy$longntw %>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
+
+# try grouping by trt type..
+dfs_tidy$longntw %>%
+  .prepfn() %>%
+  ggplot(aes(x = trt, y = avg.mass, col = year,
+             lty = interaction(pop, trt.type),
+             group = interaction(year, pop, trt.type)
+             )) +
+  geom_point(size = 2) +
+  geom_line(show.legend = TRUE) +
+  geom_errorbar(aes(ymax = avg.mass + se.mass,
+                    ymin = avg.mass - se.mass),
+                width = 0.25, lty = "solid") +
+  facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
+  scale_color_brewer(palette = "Dark2") +
+  scale_linetype_manual(breaks = c("field.ctrl", "lab.expt"),
+                        labels = c("field", "lab"),
+                        values = c("field.ctrl" = 2, "field.expt" = 2,
+                                   "lab.ctrl" = 1, "lab.expt" = 1),
+                        ) +
+  scale_x_discrete(labels = p_scales$labs_trt) +
+  ## shape var 2
+  aes(shape = interaction(pop, trt.type)) +
+  scale_shape_manual(values = c("field.ctrl" = 0, "field.expt" = 1,
+                                  "lab.ctrl" = 15, "lab.expt" = 19),
+                       breaks = c("field.expt", "lab.expt"),
+                       labels = c("field", "lab")) +
+  labs(shape = "population") +
+  guides(shape = guide_legend(override.aes = list(lty = c(4, 1)))) +
+  ## shape var 1
+  # aes(shape = interaction(pop, trt.type)) +
+  # labs(shape = "treatment type") +
+  # scale_shape_manual(values = c("field.ctrl" = 0, "field.expt" = 1,
+  #                                 "lab.ctrl" = 15, "lab.expt" = 19), 
+  #                      breaks = c("lab.ctrl", "lab.expt"),
+  #                      labels = c("control (26-26°C)", "nighttime warming\n(40-X°C)")) +
+  #guides(linetype = guide_legend(override.aes = list(shape = c("field" = 1, "lab" = 19)))) +
+  labs(y = "pupal mass (g)", 
+       #x = "minimum temperature (°C)", 
+       x = "treatment (max - min °C)",
+       lty = "population",
+       col = "year") +
+  theme_bw()
 ```
 
 ```{r}
@@ -481,6 +515,52 @@ dfs_tidy$longntw %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 ```
+
+
+## years combined
+
+```{r}
+.plotfn <- function(x) {
+  x %>%
+    ggplot(aes(x = trt.minT, y = avg.mass,
+               shape = interaction(pop, trt.type), 
+               lty = pop, col = trt.type,
+               group = interaction(pop, trt.type))) +
+    geom_point(size = 2) +
+    geom_line(show.legend = TRUE) +
+    geom_errorbar(aes(ymax = avg.mass + se.mass,
+                      ymin = avg.mass - se.mass),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    labs(y = "pupal mass (g)",
+         x = "minimum temperature (°C)") +
+    AddLeg_OnePanel() +
+    theme_bw()
+}
+
+# sexes combined
+dfs_tidy$longntw %>%
+  filter(!is.na(sex),
+         instar == "pupa") %>%
+  PrepAdultSS() %>%
+  ungroup(year) %>%
+  CalcDevSS() %>%
+  .plotfn() +
+  ylim(c(1, 6.4))
+
+# sexes parsed
+dfs_tidy$longntw %>%
+  filter(!is.na(sex),
+         instar == "pupa") %>%
+  PrepAdultSS() %>%
+  group_by(sex, .add = TRUE) %>%
+  ungroup(year) %>%
+  CalcDevSS() %>%
+  .plotfn() +
+  facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
+  ylim(c(1, 6.8))
+
+```
+
 
 # # pup time
 
@@ -529,6 +609,7 @@ dfs_tidy$longntw %>%
 ```
 
 ### pup rate
+
 ```{r pup rate}
 # sexes combined
 .prepfn <- function(x){
@@ -590,13 +671,12 @@ dfs_tidy$longntw %>%
                   width = 0.25, lty = "solid", show.legend = FALSE) +
     labs(y = "development rate (1/days)") +
     scale_color_brewer(palette = "Dark2") +
-    facet_wrap(~ trt.facet, labeller = as_labeller(p_scales$facs_trttype)) +
+    facet_wrap(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
     theme_bw() +
     labs(shape = "population", lty = "population") +
     scale_shape_manual(values = p_scales$shp_pop) +
     scale_linetype_manual(values = p_scales$lty_pop)
 }
-
 
 p1 <- dfs_tidy$longntw %>%
   .prepfn() %>% 
@@ -616,8 +696,30 @@ p1 + p2 +
   plot_layout(widths = c(1, 2),
               guides = "collect", axes = "collect") &
   ylim(c(0.029, 0.054))
-  
 ```
+
+```{r}
+# one-panel
+dfs_tidy$longntw %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>%
+    CalcDevSS() %>%
+    filter(instar == "pupa") %>%
+  ggplot(aes(y = avg.devrate, x = trt.minT,
+             lty = pop, col = trt.type,
+             shape = interaction(pop, trt.type), group = interaction(pop, trt.type))) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.devrate + se.devrate,
+                    ymin = avg.devrate - se.devrate),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  labs(y = "development rate (1/days)",
+       x = "minimum temperature (°C)") +
+  AddLeg_OnePanel() +
+  #ylim(c(0.025, 0.05)) +
+  theme_bw()
+```
+
 
 
 

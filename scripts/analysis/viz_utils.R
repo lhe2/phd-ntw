@@ -1,7 +1,36 @@
 # ntw 2025 viz utils
 # 2025-11-28
 
-### ERROR BARS ###
+### SCALE VALUES ###
+p_scales <- list(
+  # labels
+  labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
+  labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
+  labs_trttype = c("ctrl" = "control (26-26°C)", "expt" = "nighttime warming\n(40-X°C)"),
+  
+  # values
+  cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
+  cols_trttype = c("ctrl" = "#6BAED6", "expt" = "#FEB24C"),
+  
+  shp_pop = c(`lab` = 19, `field` = 1),
+  lty_pop = c(`lab` = "solid", `field` = "dashed"),
+  
+  # use with facet_*(labeller)
+  facs_trtpop = c(`ctrl` = "control (26-26°C)",
+                  `lab` = "lab (40-X°C)",
+                  `field` = "field (40-X°C)"),
+  facs_trttype = c(`ctrl` = "control (26-26°C)",
+                   `expt` = "nighttime warming (40-X°C)"),
+  facs_sex = c(`f` = "female", `m` = "male"),
+  
+  # use with do.call(scale_*_*, args)
+  lty_ispup = list(labels = c(`1` = "survived", `0` = "died"),
+                   values = c(`1` = "solid", `0` = "dashed"),
+                   limits = c("1", "0"))
+  )
+
+### PLOTTING ###
+## adding error bars 
 # use with geom_errorbar/errorbarh to set width/height
 # of the error bar to some % of the other axis
 # (default value or custom)
@@ -16,27 +45,21 @@ CalcErrHt <- function(y, pct = 0.07){
   max(y) * pct
 }
 
-### MISC ###
-p_scales <- list(
-  # labels
-  labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
-  labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
-  
-  # values
-  cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
-  
-  shp_pop = c(`lab` = 19, `field` = 1),
-  lty_pop = c(`lab` = "solid", `field` = "dashed"),
-  
-  # use with facet_*(labeller)
-  facs_trtpop = c(`ctrl` = "controls (26-26°C)",
-                  `lab` = "lab (40-X°C)",
-                  `field` = "field (40-X°C)"),
-  facs_trttype = c(`ctrl` = "controls (26-26°C)",
-                   `expt` = "nighttime warming (40-X°C)"),
-  
-  # use with do.call(scale_*_*, args)
-  lty_ispup = list(labels = c(`1` = "survived", `0` = "died"),
-                   values = c(`1` = "solid", `0` = "dashed"),
-                   limits = c("1", "0"))
-  )
+## one-panel legend fn
+AddLeg_OnePanel <- function(){
+  list(
+    labs(lty = "population", shape = "population",
+         col = "treatment type"),
+    scale_shape_manual(values = c("field.ctrl" = 0, "field.expt" = 1,
+                                  "lab.ctrl" = 15, "lab.expt" = 19), 
+                       breaks = c("field.expt", "lab.expt"),
+                       labels = c("field", "lab")),
+    scale_linetype_manual(values = p_scales$lty_pop),
+    scale_color_manual(values = p_scales$cols_trttype, 
+                       labels = p_scales$labs_trttype),
+    scale_x_discrete(labels = p_scales$labs_minT),
+    guides(color = guide_legend(override.aes = list(shape = c(15, 19))),
+           shape = guide_legend(override.aes = list(linetype = c(4, 1))))
+    )
+}
+
