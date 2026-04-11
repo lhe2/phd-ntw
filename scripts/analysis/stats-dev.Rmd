@@ -9,10 +9,10 @@ stats analyses for ntw 2025
 
 ```{r set pathfinding}
 here::i_am("_ntw/scripts/analysis/stats-dev.Rmd")
-library(here)
 ```
 
 ```{r load libraries}
+library(here)
 library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
 library(MuMIn) # dredge (nested model comparisons)
@@ -24,7 +24,6 @@ conflicts_prefer(
   dplyr::filter
 )
 # lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
-
 
 # library(survival) # for fitting 
 # library(survminer) # for plotting
@@ -38,43 +37,33 @@ notes
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ## TODO
-- separate tents & dev lol? (dfs_dev and devs_tents)?
 - keep year as a fixed effect! (i.e. no mixed effs for now LOL)
 
-```{r load data, message=FALSE}
+```{r load data, warning=FALSE}
 source(here("_ntw/scripts/R/tidy-dev.R"))
 ```
+
+# # pupal stats
 
 ## data prep
 
 ```{r dev data prep}
-# formatting (dont think this needs to be a list tbh LOL)
-# for stats, drop ctrls and lab+TB
-imported_dev <- 
-  list(wide = dfs_tidy$wide) %>%
-  lapply(., \(x){
+# prep exptal only + all bugs subsets. 
+# further subset/mutate as needed closer to the codeblock (ie mutates, more filtering, etc etc)
+
+dfs_imported <- list(
+  all = dfs_tidy$wide,
+  expt = dfs_tidy$wide %>% filter(trt != 260)
+) %>%
+  lapply(., \(x) {
     x %>%
-      FilterOutLabTB() %>% FilterForNTWTrts() %>%
-      filter(trt != 260) %>%
-      mutate(across(c("year", "trt.minT"), as.factor),
-             tt.pupa = jdate.pupa - jdate.hatch)
+      FilterOutLabTB() %>%
+      FilterForNTWTrts() %>%
+      filter(pop != "col",
+             is.pup < 2, # drop culled bugs here
+             ) %>%
+      mutate(across(c("year", "trt.minT", "trt.type"), as.factor))
   })
-
-#rm(dfs_tidy)
-
-
-# subsets
-dfs <- list(
-  wide = 
-    imported_dev[["wide"]] %>%
-    filter(is.pup < 2),
-  
-  # sexed pupa only
-  wide_pups =
-    imported_dev[["wide"]] %>%
-    filter(!is.na(jdate.pupa) & !is.na(sex))
-  
-)
 ```
 
 ## survival to pup
@@ -83,29 +72,38 @@ dfs <- list(
 
 ```{r pup surv model generation}
 mods_pupsurv <- list(
-  glm_fullint = glm(is.pup ~ year*pop*trt.minT, 
-                family = "binomial", data = dfs$wide, 
-                na.action = na.fail)
+  expt_fullint = glm(is.pup ~ year*pop*trt.minT, 
+                family = "binomial", data = dfs_imported$expt, 
+                na.action = na.fail
+                )
   )
 ```
 
-```{r pup surv model main results}
+```{r pup surv model results}
 mods_pupsurv %>%
   lapply(., GetModelResults)
 ```
 
+
 ## pupal mass
+
+### df prep
+```{r}
+dfs <- dfs_imported %>%
+  lapply(., \(x) {
+    x %>% filter(!is.na(mass.pupa),
+                 !is.na(sex))
+  })
+```
 
 - 1-ways, `year:minT`, and `minT:pop` are sig
 
 ```{r pup mass model generation}
-df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
-
 mods_pupmass <- list(
-  add = lm(mass.pupa ~ year + trt.minT + pop + sex,
-           data = df, na.action = na.fail),
-  fullint = lm(mass.pupa ~ year*trt.minT*pop*sex,
-               data = df, na.action = na.fail)
+  expt_add = lm(mass.pupa ~ year + trt.minT + pop + sex,
+           data = dfs$expt, na.action = na.fail),
+  expt_fullint = lm(mass.pupa ~ year*trt.minT*pop*sex,
+               data = dfs$expt, na.action = na.fail)
   
   # subsets of the full model are in a later chunk otherwise results r crazy
 )
@@ -123,23 +121,23 @@ other results:
   - doing `anova(simpler, complex)` per https://www.geeksforgeeks.org/machine-learning/comparing-two-linear-models-with-anova-in-r/ 
 
 
-```{r pup mass subsets, eval=FALSE}
+```{r pup mass model subsets, eval=FALSE}
 # keep separate otherwise console blows up
 
 mods_pupmass <- list_modify(
   mods_pupmass,
   # subsets of the full model
-  twoway = lm(mass.pupa ~ (year + trt.minT + pop + sex)^2,
-              data = df, na.action = na.fail),
-  threeway = lm(mass.pupa ~ year*trt.minT*pop + sex,
-              data = df, na.action = na.fail)
+  expt_2way = lm(mass.pupa ~ (year + trt.minT + pop + sex)^2,
+              data = dfs$expt, na.action = na.fail),
+  expt_3way = lm(mass.pupa ~ year*trt.minT*pop + sex,
+              data = dfs$expt, na.action = na.fail)
 )
 
 # testing anova(simplermod, complexmod)
-anova(mods_pupmass$add, mods_pupmass$fullint, test = "Chisq")
-anova(mods_pupmass$twoway, mods_pupmass$fullint, test = "Chisq")
-anova(mods_pupmass$threeway, mods_pupmass$fullint, test = "Chisq")
-anova(mods_pupmass$twoway, mods_pupmass$threeway, test = "Chisq")
+anova(mods_pupmass$expt_add, mods_pupmass$expt_fullint, test = "Chisq")
+anova(mods_pupmass$expt_2way, mods_pupmass$expt_fullint, test = "Chisq")
+anova(mods_pupmass$expt_3way, mods_pupmass$expt_fullint, test = "Chisq")
+anova(mods_pupmass$expt_2way, mods_pupmass$expt_3way, test = "Chisq")
 ```
 
 
@@ -151,8 +149,16 @@ notes
 - checked that `sex` PROBABLY doesnt matter: bc sex is only determined after pupation anyway... (so omit from mods)
 
 ```{r pup time model generation}
+dfs <- dfs_imported %>%
+  lapply(., \(x) {
+    x %>% 
+      filter(!is.na(jdate.pupa)) %>%
+      mutate(tt.pupa = jdate.pupa - jdate.hatch,
+             devrate.pupa = 1/tt.pupa)
+  })
+
 mods_puptime <- list(
-  fullint = lm(1/tt.pupa ~ year*trt.minT*pop, data = dfs$wide)
+  expt_fullint = lm(devrate.pupa ~ year*trt.minT*pop, data = dfs$expt)
   )
 ```
 
@@ -186,7 +192,6 @@ list(
   nosups2 = lm(tt ~ instar * trt * pop, data = filter(dfs, is.sup == 0))
   ) %>%
   GetModelResults()
-```
 
 
 
@@ -213,26 +218,27 @@ mods_pupmass %>%
 ```
 
 
-## yr as random on pup dev
+## yr as random eff on pup dev
 
-per 251217 wkly mtg, keep year as a fixed effect in the models (but here is some EDA for reference just in case.) 
+per 251217 wkly mtg, keep year as a fixed effect in the models (but here is some EDA for reference just in case.)
 
 each chunk is self-contained (model fitting + tests) and overwrites the `mods_pup_randyr` object. just run `GetModelResults` on them to be reminded of what happened)
 
 ```{r pup surv rand yr, eval=FALSE}
-### model generation
-df <- mutate(dfs$wide, year = as.numeric(year))
+### model generation (just focus on expt bugs)
+dfs <-  dfs_imported$expt %>%
+  mutate(year_n = as.numeric(year))
 
 mods_pup_randyr <- list(
   surv = glmer(is.pup ~ pop*trt.minT + (1|year),
-                     family = "binomial", data = dfs$wide),
+                     family = "binomial", data = dfs),
   
-  surv_ctsyr = glmer(is.pup ~ pop*trt.minT + (1|year),
-                     family = "binomial", data = df),
+  surv_ctsyr = glmer(is.pup ~ pop*trt.minT + (1|year_n),
+                     family = "binomial", data = dfs),
     # compare to `surv` to examine effs of yr as cts or cat
   
   surv_noyr = glm(is.pup ~ pop*trt.minT,
-                     family = "binomial", data = dfs$wide)
+                     family = "binomial", data = dfs)
     # compare to `surv` to examine effs of year
 )
 
@@ -251,22 +257,37 @@ notes about `(1|year)` on pup surv:
 - `glmer(is.pup ~ pop*minT + (1|year))` results are same if `year` is numeric or factor
 - can approximate the p-value of the random effect by using `anova` to compare models with and without the effect of interest (bc they're nested) -- see more https://stats.stackexchange.com/questions/381208/r-how-to-get-estimates-and-p-values-for-random-effects-in-glmer
 
-```{r pup time rand yr, eval=FALSE}
+```{r pup dev time rand yr, eval=FALSE}
+dfs <- dfs_imported %>%
+  lapply(., \(x) {
+    x %>% 
+      filter(!is.na(jdate.pupa)) %>%
+      mutate(tt.pupa = jdate.pupa - jdate.hatch,
+             devrate.pupa = 1/tt.pupa)
+  })
+
 # mostly reminding myself of how lmerTest works
 mods_pup_randyr <- list(
-  time_lmertest = lmerTest::lmer(tt.pupa ~ trt.minT*pop + (1|year), data = dfs$wide),
-  time_lme4 = lme4::lmer(tt.pupa ~ trt.minT*pop + (1|year), data = dfs$wide)
+  time_lmertest = lmerTest::lmer(tt.pupa ~ trt.minT*pop + (1|year), data = dfs$expt),
+  time_lme4 = lme4::lmer(tt.pupa ~ trt.minT*pop + (1|year), data = dfs$expt)
 )
 
 mods_pup_randyr %>% lapply(., summary)
 ```
 
-```{r pup dev rand yr, eval=FALSE}
-df <- dfs$wide_pups %>% filter(!is.na(mass.pupa))
+```{r pup mass rand yr, eval=FALSE}
+dfs <- dfs_imported %>%
+  lapply(., \(x) {
+    x %>% 
+      filter(!is.na(jdate.pupa),
+             !is.na(sex),
+             !is.na(mass.pupa)
+      )
+    })
 
 mods_pup_randyr <- list(
   mass = lmer(mass.pupa ~ trt.minT*pop*sex + (1|year),
-              data = df)
+              data = dfs$expt)
 )
 ```
 
