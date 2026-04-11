@@ -82,6 +82,12 @@ mods_pupsurv <- list(
 ```{r pup surv model results}
 mods_pupsurv %>%
   lapply(., GetModelResults)
+
+## dredging: print out is long asf so dont run this
+# mods_pupsurv %>%
+#   lapply(., \(x){
+#     x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+#   })
 ```
 
 
@@ -112,6 +118,12 @@ mods_pupmass <- list(
 ```{r pup mass model main results}
 mods_pupmass %>%
   lapply(., GetModelResults)
+
+## dredging. output is long so dont run this
+# mods_pupmass %>%
+#   lapply(., \(x){
+#     x %>% dredge()
+#   })
 ```
 basically, per anovas, `lm(mass.pupa ~ year + minT + pop + sex + year:minT)` seems good...
 
@@ -195,26 +207,10 @@ list(
 
 
 
-# # extra pup stats (archive)
 
-some lengthier extra analyses that clutter up the main analyses so moved down here. 
 
-## pup model dredging
 
-looking into some of the nested models.. (output is too long LOL so shoving it all here)
 
-```{r pup mod dredging eval=FALSE}
-# run upstream pupal stats df prep chunks first!!!
-
-mods_pupsurv %>%
-  lapply(., \(x){
-    x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
-  })
-
-mods_pupmass %>%
-  lapply(., \(x){
-    x %>% dredge()
-  })
 ```
 
 
