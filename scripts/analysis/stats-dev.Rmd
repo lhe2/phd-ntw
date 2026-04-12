@@ -11,7 +11,7 @@ stats analyses for ntw 2025
 here::i_am("_ntw/scripts/analysis/stats-dev.Rmd")
 ```
 
-```{r load libraries}
+```{r load libraries, message=FALSE}
 library(here)
 library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
@@ -32,20 +32,22 @@ conflicts_prefer(
 source(here("_ntw/scripts/analysis/filter_utils.R"))
 source(here("_ntw/scripts/analysis/stats_utils.R"))
 ```
+
 notes
-
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
-
-## TODO
-- keep year as a fixed effect! (i.e. no mixed effs for now LOL)
 
 ```{r load data, warning=FALSE}
 source(here("_ntw/scripts/R/tidy-dev.R"))
 ```
 
-# # pupal stats
+## TODO
 
-## data prep
+## df prep
+
+notes
+- on handling subsets:
+  - for exptal, pred vars include `trt.minT`
+  - for ctrl + exptal, pred vars include `trt.type` (i.e. HS or not)
 
 ```{r dev data prep}
 # prep exptal only + all bugs subsets. 
@@ -62,32 +64,61 @@ dfs_imported <- list(
       filter(pop != "col",
              is.pup < 2, # drop culled bugs here
              ) %>%
-      mutate(across(c("year", "trt.minT", "trt.type"), as.factor))
+      mutate(across(c("year", "trt.minT", "trt.type", "trt"), as.factor))
   })
 ```
 
-## survival to pup
+# # main pupal stats
 
-- 1 and 2-way ints are signif
+## survival to pup
 
 ```{r pup surv model generation}
 mods_pupsurv <- list(
+  # set na.action here so can dredge later
   expt_fullint = glm(is.pup ~ year*pop*trt.minT, 
-                family = "binomial", data = dfs_imported$expt, 
-                na.action = na.fail
-                )
+                     family = "binomial", data = dfs_imported$expt, 
+                     na.action = na.fail),
+  all_fullint = glm(is.pup ~ year*pop*trt.type,
+                    family = "binomial", data = dfs_imported$all,
+                    na.action = na.fail)
   )
 ```
+
+- exptal: 1 and 2-way ints are signif
 
 ```{r pup surv model results}
 mods_pupsurv %>%
   lapply(., GetModelResults)
 
-## dredging: print out is long asf so dont run this
-# mods_pupsurv %>%
-#   lapply(., \(x){
-#     x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
-#   })
+# dredging: print out is long asf w/o subsetting
+.modfn <- function(x){
+  x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+}
+
+mods_pupsurv %>% lapply(., .modfn)
+```
+```{r write pup surv results, eval=FALSE}
+# save anova + dredge separately
+mods_pupsurv %>%
+  lapply(., \(x){
+    x %>% 
+      anova(test = "Chisq") %>%
+      as.data.frame() %>%
+      mutate(vars = rownames(.), .before = 1)
+  }) %>%
+  rbindlist(fill = TRUE, idcol = "subset") %>%
+  WriteModelResultsCsv("pup-surv_anova")
+
+mods_pupsurv %>%
+  lapply(., \(x){
+    x %>%
+      .modfn() %>%
+      as.data.frame()
+  }) %>%
+  #reduce(full_join) %>% View() # same result as rbindlist bc of diff cols
+  rbindlist(fill = TRUE, idcol = "subset") %>%
+  WriteModelResultsCsv("pup-surv_dredge")
+```
 ```
 
 
@@ -102,29 +133,58 @@ dfs <- dfs_imported %>%
   })
 ```
 
-- 1-ways, `year:minT`, and `minT:pop` are sig
+- exptal: 1-ways, `year:minT`, and `minT:pop` are sig
 
 ```{r pup mass model generation}
+# set na.action here to dredge later
+
 mods_pupmass <- list(
-  expt_add = lm(mass.pupa ~ year + trt.minT + pop + sex,
-           data = dfs$expt, na.action = na.fail),
   expt_fullint = lm(mass.pupa ~ year*trt.minT*pop*sex,
-               data = dfs$expt, na.action = na.fail)
-  
-  # subsets of the full model are in a later chunk otherwise results r crazy
-)
+               data = dfs$expt, na.action = na.fail),
+    # subsets of the full model are in a later chunk otherwise results r crazy
+  all_fullint = lm(mass.pupa ~ year*trt.type*pop*sex,
+                    data = dfs$all, na.action = na.fail)
+  )
 ```
 
 ```{r pup mass model main results}
 mods_pupmass %>%
   lapply(., GetModelResults)
 
-## dredging. output is long so dont run this
-# mods_pupmass %>%
-#   lapply(., \(x){
-#     x %>% dredge()
-#   })
+# dredging. output is long w/o the subsetting
+# (same subsetting as pup survival)
+# .modfn <- function(x){
+#   x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+# }
+
+mods_pupmass %>% lapply(.modfn)
 ```
+
+```{r write pup mass results, eval=FALSE}
+# (write csv before doing other additional anovas bc mods df gets overwritten)
+
+mods_pupmass %>%
+  lapply(., \(x){
+    x %>% 
+      anova(test = "Chisq") %>%
+      as.data.frame() %>%
+      mutate(vars = rownames(.), .before = 1)
+  }) %>%
+  rbindlist(fill = TRUE, idcol = "subset") %>%
+  WriteModelResultsCsv("pup-mass_anova")
+
+mods_pupmass %>% %>% lapply(., \(x){
+    x %>%
+      .modfn() %>%
+      as.data.frame()
+    }) %>%
+  rbindlist(fill = TRUE, idcol = "subset") %>%
+  WriteModelResultsCsv("pup-mass_dredge")
+```
+
+(more commentary on results)
+
+*exptal:*
 basically, per anovas, `lm(mass.pupa ~ year + minT + pop + sex + year:minT)` seems good...
 
 other results: 
@@ -132,12 +192,13 @@ other results:
 - bc the dredge of the full interactive model (`year*pop*minT*sex`) is crazy, how do the subsets compare?
   - doing `anova(simpler, complex)` per https://www.geeksforgeeks.org/machine-learning/comparing-two-linear-models-with-anova-in-r/ 
 
-
-```{r pup mass model subsets, eval=FALSE}
+```{r expt pup mass model subsets, eval=FALSE}
 # keep separate otherwise console blows up
 
 mods_pupmass <- list_modify(
   mods_pupmass,
+  expt_add = lm(mass.pupa ~ year + trt.minT + pop + sex,
+                data = dfs$expt, na.action = na.fail),
   # subsets of the full model
   expt_2way = lm(mass.pupa ~ (year + trt.minT + pop + sex)^2,
               data = dfs$expt, na.action = na.fail),
@@ -146,6 +207,7 @@ mods_pupmass <- list_modify(
 )
 
 # testing anova(simplermod, complexmod)
+mods_pupmass$expt_add %>% GetModelResults()
 anova(mods_pupmass$expt_add, mods_pupmass$expt_fullint, test = "Chisq")
 anova(mods_pupmass$expt_2way, mods_pupmass$expt_fullint, test = "Chisq")
 anova(mods_pupmass$expt_3way, mods_pupmass$expt_fullint, test = "Chisq")
@@ -155,12 +217,8 @@ anova(mods_pupmass$expt_2way, mods_pupmass$expt_3way, test = "Chisq")
 
 ## time to pup
 
-- 1 ways and `year:minT`, `year:pop` are sig
-
-notes
-- checked that `sex` PROBABLY doesnt matter: bc sex is only determined after pupation anyway... (so omit from mods)
-
-```{r pup time model generation}
+### df prep
+```{r pup time df prep}
 dfs <- dfs_imported %>%
   lapply(., \(x) {
     x %>% 
@@ -168,15 +226,36 @@ dfs <- dfs_imported %>%
       mutate(tt.pupa = jdate.pupa - jdate.hatch,
              devrate.pupa = 1/tt.pupa)
   })
+```
 
+
+```{r pup time model generation}
 mods_puptime <- list(
-  expt_fullint = lm(devrate.pupa ~ year*trt.minT*pop, data = dfs$expt)
+  expt_fullint = lm(devrate.pupa ~ year*trt.minT*pop, data = dfs$expt),
+  all_fullint = lm(devrate.pupa ~ year*trt.type*pop, data = dfs$all)
   )
 ```
+
+- 1 ways and `year:minT`, `year:pop` are sig
+
+notes
+- checked that `sex` PROBABLY doesnt matter: bc sex is only determined after pupation anyway... (so omit from mods)
 
 ```{r pup time model main results}
 mods_puptime %>%
   lapply(., GetModelResults)
+```
+
+```{r write pup time results, eval=FALSE}
+mods_puptime %>%
+  lapply(., \(x){
+    x %>%
+      anova(test = "Chisq") %>%
+      as.data.frame() %>%
+      mutate(vars = rownames(.), .before = 1)
+  }) %>%
+  rbindlist(fill = TRUE, idcol = "subset") %>%
+  WriteModelResultsCsv("pup-time_anova")
 ```
 # # misc
 
@@ -215,6 +294,7 @@ list(
 
 
 ## yr as random eff on pup dev
+(for exptal bugs only)
 
 per 251217 wkly mtg, keep year as a fixed effect in the models (but here is some EDA for reference just in case.)
 

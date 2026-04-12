@@ -4,6 +4,9 @@
 # checks if the object being passed in is a list or not
 # (i.e. list of fitted model objs or single obj -- converts to list if not)
 
+
+# OUTPUT ------------------------------------------------------------------
+
 # simultaneously return model summary and anova results
 GetModelResults <- function(x){
   if(inherits(x, "list") == FALSE){
@@ -15,6 +18,29 @@ GetModelResults <- function(x){
          anova_wchisq = anova(x, test = "Chisq"))
     })
 }
+
+
+# (WIP) write csv of anova results
+## USAGE (WriteModCsv)
+  # writes csvs of outputs for single model objects or for bound lists of multiple models.
+## ARGS
+  # mod: pass in actual model object/just the filename (var names break if using dot)
+  # filename: desired file name as a string
+WriteModelResultsCsv <- function(mod, filename){
+  path <- paste0("_ntw/data/out/", filename, ".csv")
+  
+  if(is.data.frame(mod) == FALSE){
+    res <- anova(mod, test = "Chisq") %>% as.data.frame()
+    write.csv(res, here::here(path))
+  } else if (is.data.frame(mod) == TRUE) { # already bound list
+    write.csv(mod, here::here(path), row.names = FALSE)
+  } else { # if list of dfs to be rbindlisted
+    res <- rbindlist(mod)
+    write.csv(res, here::here(path), row.names = FALSE)
+  }
+}
+
+# DIAGNOSE ----------------------------------------------------------------
 
 # generate fitted vs resid; QQ plot
 ## (need to load ggfortify if not working)
