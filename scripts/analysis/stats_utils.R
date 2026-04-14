@@ -27,7 +27,7 @@ GetModelResults <- function(x){
   # mod: pass in actual model object/just the filename (var names break if using dot)
   # filename: desired file name as a string
 WriteModelResultsCsv <- function(mod, filename){
-  path <- paste0("_ntw/data/out/", filename, ".csv")
+  path <- paste0("_ntw/figs/out/", filename, ".csv")
   
   if(is.data.frame(mod) == FALSE){
     res <- anova(mod, test = "Chisq") %>% as.data.frame()

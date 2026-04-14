@@ -45,21 +45,4 @@ CalcErrHt <- function(y, pct = 0.07){
   max(y) * pct
 }
 
-## one-panel legend fn
-AddLeg_OnePanel <- function(){
-  list(
-    labs(lty = "population", shape = "population",
-         col = "treatment type"),
-    scale_shape_manual(values = c("field.ctrl" = 0, "field.expt" = 1,
-                                  "lab.ctrl" = 15, "lab.expt" = 19), 
-                       breaks = c("field.expt", "lab.expt"),
-                       labels = c("field", "lab")),
-    scale_linetype_manual(values = p_scales$lty_pop),
-    scale_color_manual(values = p_scales$cols_trttype, 
-                       labels = p_scales$labs_trttype),
-    scale_x_discrete(labels = p_scales$labs_minT),
-    guides(color = guide_legend(override.aes = list(shape = c(15, 19))),
-           shape = guide_legend(override.aes = list(linetype = c(4, 1))))
-    )
-}
 

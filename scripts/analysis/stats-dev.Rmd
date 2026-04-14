@@ -97,18 +97,9 @@ mods_pupsurv %>%
 
 mods_pupsurv %>% lapply(., .modfn)
 ```
+
 ```{r write pup surv results, eval=FALSE}
 # save anova + dredge separately
-mods_pupsurv %>%
-  lapply(., \(x){
-    x %>% 
-      anova(test = "Chisq") %>%
-      as.data.frame() %>%
-      mutate(vars = rownames(.), .before = 1)
-  }) %>%
-  rbindlist(fill = TRUE, idcol = "subset") %>%
-  WriteModelResultsCsv("pup-surv_anova")
-
 mods_pupsurv %>%
   lapply(., \(x){
     x %>%
@@ -118,6 +109,15 @@ mods_pupsurv %>%
   #reduce(full_join) %>% View() # same result as rbindlist bc of diff cols
   rbindlist(fill = TRUE, idcol = "subset") %>%
   WriteModelResultsCsv("pup-surv_dredge")
+mods_pupsurv %>%
+  lapply(., \(x){
+    x %>% 
+      anova(test = "Chisq") %>%
+      as.data.frame() %>%
+      mutate(vars = rownames(.), .before = 1)
+  }) %>%
+  rbindlist(fill = TRUE, idcol = "subset") %>% #View()
+  WriteModelResultsCsv("pup-surv_anova")
 ```
 ```
 
@@ -222,17 +222,20 @@ anova(mods_pupmass$expt_2way, mods_pupmass$expt_3way, test = "Chisq")
 dfs <- dfs_imported %>%
   lapply(., \(x) {
     x %>% 
-      filter(!is.na(jdate.pupa)) %>%
+      #filter(!is.na(jdate.pupa)) %>%
       mutate(tt.pupa = jdate.pupa - jdate.hatch,
-             devrate.pupa = 1/tt.pupa)
+             devrate.pupa = 1/tt.pupa) %>%
+      filter(!is.na(tt.pupa))
   })
 ```
 
 
 ```{r pup time model generation}
 mods_puptime <- list(
-  expt_fullint = lm(devrate.pupa ~ year*trt.minT*pop, data = dfs$expt),
-  all_fullint = lm(devrate.pupa ~ year*trt.type*pop, data = dfs$all)
+  expt_fullint = lm(devrate.pupa ~ year*trt.minT*pop, 
+                    data = dfs$expt, na.action = na.fail),
+  all_fullint = lm(devrate.pupa ~ year*trt.type*pop, 
+                   data = dfs$all, na.action = na.fail)
   )
 ```
 
@@ -244,6 +247,13 @@ notes
 ```{r pup time model main results}
 mods_puptime %>%
   lapply(., GetModelResults)
+
+# use same dredge fn as survival
+# .modfn <- function(x){
+#   x %>% dredge() %>% subset(., weight > 0.05, recalc.weights = FALSE)
+# }
+
+mods_puptime %>% lapply(., .modfn)
 ```
 
 ```{r write pup time results, eval=FALSE}
@@ -256,9 +266,48 @@ mods_puptime %>%
   }) %>%
   rbindlist(fill = TRUE, idcol = "subset") %>%
   WriteModelResultsCsv("pup-time_anova")
+
+mods_puptime %>%
+  lapply(., \(x){
+    x %>%
+      .modfn() %>%
+      as.data.frame()
+  }) %>%
+  rbindlist(fill = TRUE, idcol = "subset") %>%
+  WriteModelResultsCsv("pup-time_dredge")
+  
 ```
 # # misc
 
+## sample sizes
+```{r}
+# calc to pups by sex separately cuz needs pivots
+df <- dfs_tidy$widentw %>%
+  FilterOutLabTB() %>%
+  FilterForNTWTrts() %>%
+  filter(pop != "col",
+         is.pup < 2)
+list(
+  df %>%
+    mutate(year = as.character(year)) %>%
+    group_by(year, trt, pop) %>%
+    summarise(n = n(),
+              to.pup = sum(is.pup == 1)),
+  df %>%
+    group_by(trt, pop) %>%
+    summarise(n = n(),
+           to.pup = sum(is.pup == 1),
+           year = "all")
+  ) %>%
+  lapply(., \(x){
+    x %>%
+      pivot_wider(names_from = "trt", values_from = c("n", "to.pup")) %>%
+      pivot_longer(cols = starts_with(c("n", "to.pup")),
+                   names_to = c("count", ".value"),
+                   names_sep = "_")
+  }) %>%
+  reduce(full_join)
+```
 ## age vs instar
 
 looking at dev trajectories: is `age ~ instar` linear?
