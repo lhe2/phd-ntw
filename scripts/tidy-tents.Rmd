@@ -463,5 +463,7 @@ dfs_tidy <- list(
 # # cleanup
 ```{r remove intermediate objects}
 rm(dfs_imported, dfs_filtered, dfs_stdised,
-   dfs_export)
+   dfs_export,
+   .GenerateCageDailyEvents, .GenerateCageMateInfo, .GenerateCageMothCounts,
+   .AppendCageMothEvents)
 ```

@@ -11,6 +11,7 @@ p_scales <- list(
   # values
   cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
   cols_trttype = c("ctrl" = "#6BAED6", "expt" = "#FEB24C"),
+  cols_trtsex = c("both" = "slateblue2", "f" = "maroon2", "m" = "deepskyblue"),
   
   shp_pop = c(`lab` = 19, `field` = 1),
   lty_pop = c(`lab` = "solid", `field` = "dashed"),

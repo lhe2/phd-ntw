@@ -20,7 +20,7 @@ source(here("_ntw/scripts/analysis/filter_utils.R"))
 source(here("_ntw/scripts/analysis/viz_utils.R"))
 ```
 
-```{r load data, message = FALSE, warning=FALSE}
+```{r load data, message=FALSE, warning=FALSE}
 source(here("_ntw/scripts/R/wrangle-tents.R"))
 
 # convert things into factors for ease of graphing
@@ -59,9 +59,9 @@ dfs_tents$n_pertent %>%
 ```
 
 
-# # final
+# # hatch vs laid
 
-## hatch+laid btwn yrs 
+## btwn yrs 
 
 ```{r}
 # both yrs
@@ -76,7 +76,7 @@ dfs_tents$ss_nocol %>%
   # x err bar is too small to notice for 2025
   facet_wrap(mate.type ~ year) +
   #labs(x = "total eggs collected") +
-  scale_color_brewer(palette = "Dark2")
+  scale_color_manual(values = p_scales$cols_trt)
 ```
 
 ```{r}
@@ -98,12 +98,11 @@ dfs_tents$ss_nocol %>%
     geom_text(aes(label = n.f.total),
               hjust = 1.25, vjust = -1.3,
               show.legend = FALSE) + 
-    #scale_color_brewer(palette = "Dark2") +
     labs(col = "treatment",
          shape = "treated sex",
          y = "proportion hatched",
          x = "eggs laid") +
-    scale_color_manual(values = c("#00A3B6", "#4B1D91", "#A71B4B", "#F9A92E")) +
+    scale_color_manual(values = p_scales$cols_trt) +
     facet_wrap(~ mate.type, labeller = as_labeller(c(`within` = "overall trt effects", 
                                                      `between` = "sex-specific effects"))) +
     ylim(c(0, 0.305))
@@ -120,7 +119,7 @@ dfs_tents$ss_nocol %>%
   labs(caption = "2025; N = # females")
 ```
 
-## hatch+laid effect of col bugs in 2025
+## effect of col bugs in 2025
 ```{r}
 ## testing effect of including the col or not for 2025
 .plotfn <- function(x){
@@ -144,7 +143,7 @@ dfs_tents$ss_nocol %>%
                                   pct = 0.025)
                 ) +
   facet_wrap(~mate.type) +
-    scale_color_brewer(palette = "Dark2") +
+    scale_color_manual(values = p_scales$cols_trt) +
     #ylim(c(0, 0.58)) + #### to keep axes same for these plots
     labs(shape = "sex of col bug")
 }
@@ -189,12 +188,10 @@ p3
   ylim(c(0, 0.58)) &
   theme(legend.position = "top", #legend.box = "vertical",
         legend.margin = margin()) &
-  
   plot_annotation(title = "effect of parsing col ctrls") 
-
 ```
 
-## eggs laid
+# # eggs laid
 
 ### facet by year
 ```{r}
@@ -231,8 +228,7 @@ p3
     facet_grid(~year) +
     theme_bw() +
     #scale_shape_manual(values = c(2, 0, 16)) +
-    #scale_color_brewer(palette = "Dark2") +
-    scale_color_manual(values = c("slateblue2", "maroon2", "deepskyblue")) +
+    scale_color_manual(values = p_scales$cols_trtsex) +
     #scale_linetype_manual(values = c(3, 2, 1)) +
     labs(col = "treated sex", lty = "treated sex", shape = "treated sex",
          caption = "mean±se; lab only; N = # F",
@@ -272,16 +268,17 @@ p3
 dfs_tents$ss_nocol %>%
   .plotfn() +
   .plotfn2(FilterForLabEggs(dfs_tents$ss_nocol)) +
-  scale_x_discrete(labels = c(p_labs$temps))
+  scale_x_discrete(labels = c(p_scales$labs_trts))
 
 dfs_tents$ss_nocol %>%
   filter(mate.trt != 260) %>%
   .plotfn() +
-  scale_x_discrete(labels = c(p_labs$temps))
-  
+  scale_x_discrete(labels = c(p_scales$labs_trts))
 ```
 
 ### facet by sex v1
+
+(both sexes trted vs 1 sex trted)
 
 ```{r}
 .plotfn <- function(x){
@@ -309,7 +306,7 @@ dfs_tents$ss_nocol %>%
     # flavor 2
     #     scale_color_discrete(labels = c("within" = "to same trt", "between" = "to ctrl")) +
     # scale_linetype_discrete(labels = c("within" = "to same trt", "between" = "to ctrl")) +
-    scale_x_discrete(labels = c(p_labs$temps))
+    scale_x_discrete(labels = c(p_scales$labs_trt))
 }
 
 # separate ctrl from expt
@@ -320,10 +317,10 @@ dfs_tents$ss_nocol%>%
   # flavor 1
   aes(col = year, lty = year, shape = to.ctrl) +
   labs(shape = "mate type") +
-  scale_shape_manual(values = c(1, 19))
+  scale_shape_manual(values = c(1, 16))
   # flavor 2
   # aes(col = mate.type, lty = mate.type, shape = year) +
-  # scale_shape_manual(values = c(19, 1))
+  # scale_shape_manual(values = c(16, 1))
 
 
 # separate sexes
@@ -334,7 +331,7 @@ dfs_tents$ss_nocol %>%
   # flavor 1
   aes(col = year, lty = year, shape = mate.hs2) +
   labs(shape = "sexes treated?") +
-   scale_shape_manual(values = c(19, 1))
+   scale_shape_manual(values = c(16, 1))
   # flavor 2
   #aes(col = mate.type, lty = mate.type, shape = year)
 ```
@@ -356,14 +353,16 @@ dfs_tents$ss_nocol %>%
     geom_line() +
     geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
                       ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
-                  width = 0.1, lty = "solid", show.legend = FALSE) +
-    scale_shape_manual(values = c(19, 1)) +
-    scale_color_brewer(palette = "Dark2") +
-    scale_x_discrete(labels = p_labs$temps) +
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    scale_shape_manual(values = c(16, 1)) +
+    scale_color_manual(values = p_scales$cols_trttype,
+                       labels = p_scales$labs_trttype) +
+    scale_linetype_discrete(labels = p_scales$labs_trttype) +
+    scale_x_discrete(labels = p_scales$labs_trt) +
     labs(y = "sqrt[eggs laid per f]",
-         x = "experimental trt",
-         lty = "mated to?",
-         col = "mated to?")
+         x = "temperature treatment",
+         lty = "expt matings (*)",
+         col = "expt matings (*)")
 }
 
 p1 <- dfs_tents$ss_nocol %>%
@@ -377,87 +376,29 @@ p2 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
          mate.hs %in% c("f", "both")) %>%
   .plotfn() +
-  facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt F + M")))
+  facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt F + M*"))) +
+  guides(color = guide_legend(order = 1),
+         lty = guide_legend(order = 1),
+         shape = guide_legend(order = 2))
 
 p3 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
          mate.hs %in% c("m", "both")) %>%
   .plotfn() +
-  facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt M + F")))
+  facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt M + F*"))) +
+  guides(color = guide_legend(order = 1),
+         lty = guide_legend(order = 1),
+         shape = guide_legend(order = 2))
 
 (p1 + p2 + p3) +
   plot_layout(guides = "collect", 
               axes = "collect") &
-  ylim(c(0, 18))
-
-```
-### facet by sex v3
-```{r}
-.plotfn <- function(x){
-  x %>%
-    FilterForLabEggs() %>%
-    mutate(mate.type = case_when(mate.type == "within" ~ "to expt",
-                                 TRUE ~ "to ctrl"),
-           facetlab = "label") %>%
-    ggplot(aes(y = avg.sqrt.coll.perf, x = mate.trt,
-               group = interaction(year, mate.type),
-               shape = year,
-               lty = mate.type, col = mate.type)) +
-    geom_point(size = 2) +
-    geom_line() +
-    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
-                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
-                  width = 0.2, lty = "solid", show.legend = FALSE) +
-    # messy to add numbers..
-    # geom_text(aes(label = n.f.total), size = 3.5,
-    #           hjust = -0.5, vjust = -0.7, show.legend = FALSE) +
-    scale_shape_manual(values = c(19, 1)) +
-    scale_color_hue(direction = -1) +
-    scale_x_discrete(labels = p_labs$temps) +
-        #theme(axis.title = element_blank()) +
-    labs(y = "sqrt[eggs laid per f]",
-       x = "temperature treatment",
-       lty = "exptal matings", col = "exptal matings")
-}
-
-p1 <- dfs_tents$ss_nocol %>%
-  filter(mate.trt == 260,
-         mate.hs == "both") %>%
-  mutate(mate.type = "ctrl to ctrl") %>% 
-  .plotfn() +
-  scale_color_manual(values = "#00BFC4") +
-  guides(col = "none", lty = "none", 
-         shape = "none") +
-  facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "ctrl F + ctrl M")), ncol = 1)
-
-p2 <- dfs_tents$ss_nocol %>%
-  filter(mate.trt != 260,
-         mate.hs %in% c("f", "both")) %>%
-  .plotfn() +
-  facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "expt F + ?")), ncol = 1)
-
-p3 <- dfs_tents$ss_nocol %>%
-  filter(mate.trt != 260,
-         mate.hs %in% c("m", "both")) %>%
-  .plotfn() +
-  facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "expt M + ?")), ncol = 1)
- 
-(p1 + p2 + p3) +
-  plot_layout(guides = "collect", axes = "collect",
-              widths = c(1, 2, 2)
-              #design = "ABC"
-              ) &
-  ylim(c(0, 18)) 
-  # labs(y = "sqrt[eggs laid per f]",
-  #      x = "temperature treatment") &
-  #plot_annotation(caption = "'expt' trt = 40-X") # i give up dude i think the facets are breaking it
-
+  ylim(c(0, 18)) &
+  theme_bw()
 ```
 
 
-
-
-## eggs hatched
+# # eggs hatched
 
 ### facet by year (overall)
 
@@ -490,8 +431,8 @@ p3 <- dfs_tents$ss_nocol %>%
     facet_grid(~year) +
     theme_bw() +
     #scale_shape_manual(values = c(2, 0, 16)) +
-    #scale_color_brewer(palette = "Dark2") +
-    scale_color_manual(values = c("slateblue2", "maroon2", "deepskyblue")) +
+    scale_color_manual(values = p_scales$cols_trtsex) +
+    scale_x_discrete(labels = p_scales$labs_trt) +
     #scale_linetype_manual(values = c(3, 2, 1)) +
     labs(col = "treated sex", lty = "treated sex", shape = "treated sex",
          caption = "lab only; overall hatch prop. per mating combination",
@@ -529,13 +470,11 @@ p3 <- dfs_tents$ss_nocol %>%
 
 dfs_tents$ss_nocol %>%
   .plotfn() +
-  .plotfn2(FilterForLabEggs(dfs_tents$ss_nocol)) +
-  scale_x_discrete(labels = c("26-26", "40-19", "40-26", "40-33"))
+  .plotfn2(FilterForLabEggs(dfs_tents$ss_nocol)) 
 
 dfs_tents$ss_nocol %>%
   filter(mate.trt != 260) %>%
-  .plotfn() +
-  scale_x_discrete(labels = c("40-19", "40-26", "40-33"))
+  .plotfn() 
 ```
 ### facet by sex (overall)
 
@@ -558,9 +497,9 @@ dfs_tents$ss_nocol %>%
     # messy to add numbers..
     # geom_text(aes(label = n.f.total), size = 3.5,
     #           hjust = -0.5, vjust = -0.7, show.legend = FALSE) +
-    scale_shape_manual(values = c(19, 1)) +
+    scale_shape_manual(values = c(16, 1)) +
     scale_color_hue(direction = -1) +
-    scale_x_discrete(labels = p_labs$temps) +
+    scale_x_discrete(labels = p_scales$labs_trt) +
         #theme(axis.title = element_blank()) +
     labs(y = "prop. hatch per mate combo",
        x = "temperature treatment",
@@ -599,7 +538,6 @@ p3 <- dfs_tents$ss_nocol %>%
   # labs(y = "sqrt[eggs laid per f]",
   #      x = "temperature treatment") &
   #plot_annotation(caption = "'expt' trt = 40-X") # i give up dude i think the facets are breaking it
-
 ```
 
 
@@ -626,9 +564,9 @@ p3 <- dfs_tents$ss_nocol %>%
     # messy to add numbers..
     geom_text(aes(label = n.cages.total), size = 3.5,
               hjust = -0.5, vjust = -0.7, show.legend = FALSE) +
-    scale_shape_manual(values = c(19, 1)) +
+    scale_shape_manual(values = c(16, 1)) +
     scale_color_hue(direction = -1) +
-    scale_x_discrete(labels = p_labs$temps) +
+    scale_x_discrete(labels = p_scales$labs_trt) +
         #theme(axis.title = element_blank()) +
     labs(y = "prop. hatch per cage",
        x = "temperature treatment",
@@ -666,5 +604,4 @@ p3 <- dfs_tents$ss_nocol %>%
   # labs(y = "sqrt[eggs laid per f]",
   #      x = "temperature treatment") &
   #plot_annotation(caption = "'expt' trt = 40-X") # i give up dude i think the facets are breaking it
-
 ```
