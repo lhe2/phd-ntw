@@ -109,7 +109,14 @@ mods_pupsurv %>%
   #reduce(full_join) %>% View() # same result as rbindlist bc of diff cols
   rbindlist(fill = TRUE, idcol = "subset") %>%
   WriteModelResultsCsv("pup-surv_dredge")
-mods_pupsurv %>%
+
+# update models; dropping unsig terms per initial anova (maybe ?)
+#mods_pupsurv %>% # for pup-surv_anova.csv
+list(
+  expt_final = glm(is.pup ~ (year + pop+ trt.minT)^2, 
+                     family = "binomial", data = dfs_imported$expt),
+  all_final = mods_pupsurv$all_fullint
+) %>%
   lapply(., \(x){
     x %>% 
       anova(test = "Chisq") %>%
@@ -117,7 +124,7 @@ mods_pupsurv %>%
       mutate(vars = rownames(.), .before = 1)
   }) %>%
   rbindlist(fill = TRUE, idcol = "subset") %>% #View()
-  WriteModelResultsCsv("pup-surv_anova")
+  WriteModelResultsCsv("pup-surv_anova-final")
 ```
 ```
 
