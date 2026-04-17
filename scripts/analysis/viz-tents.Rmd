@@ -100,7 +100,7 @@ dfs_tents$n_pertent %>%
 dfs_tents$ss_nocol %>%
   FilterForLabEggs() %>%
   ggplot(aes(y = p.hatch, x = n.total.coll, 
-             col = mate.trt, shape = mate.hs)) +
+             col = mate.trt, shape = mate.istrt)) +
   geom_point() +
   geom_errorbar(aes(ymax = p.hatch + se.hatch,
                     ymin = p.hatch - se.hatch),
@@ -116,11 +116,11 @@ dfs_tents$ss_nocol %>%
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>%
-        mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
-                               mate.hs == "f" ~ "*F + M",
-                               mate.hs == "m" ~ "F + *M")) %>%
+        mutate(mate.istrt = case_when(mate.istrt == "both" ~ "*F + *M",
+                               mate.istrt == "f" ~ "*F + M",
+                               mate.istrt == "m" ~ "F + *M")) %>%
     ggplot(aes(y = p.hatch, x = n.total.coll,
-               col = mate.trt, shape = mate.hs)) +
+               col = mate.trt, shape = mate.istrt)) +
     geom_point(size = 2) +
     geom_errorbar(aes(ymax = p.hatch + se.hatch,
                       ymin = p.hatch - se.hatch),
@@ -225,22 +225,22 @@ p3
 
 # # eggs laid
 
-### facet by year
+### yr x trt
 ```{r}
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>% 
-    # mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
-    #                            mate.hs == "f" ~ "*F + M",
-    #                            mate.hs == "m" ~ "F + *M")) %>%
+    # mutate(mate.istrt = case_when(mate.istrt == "both" ~ "*F + *M",
+    #                            mate.istrt == "f" ~ "*F + M",
+    #                            mate.istrt == "m" ~ "F + *M")) %>%
     ggplot(aes(#y = avg.coll.perf, 
       y = avg.sqrt.coll.perf,
       x = mate.trt,
-      lty = mate.hs, shape = mate.hs,
-      group = mate.hs,
-      col = mate.hs
-      # shape = mate.hs, lty = mate.type,
-      # group = interaction(mate.hs, mate.type)
+      lty = mate.istrt, shape = mate.istrt,
+      group = mate.istrt,
+      col = mate.istrt
+      # shape = mate.istrt, lty = mate.type,
+      # group = interaction(mate.istrt, mate.type)
     )) + 
     # very overwhelming w error bars lol
     # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
@@ -272,23 +272,23 @@ p3
     list(
       geom_line(data = x %>%
                   #FilterForLabEggs(dfs_tents$ss_nocol) %>%
-                  filter(trt.f %in% c(260, 419), mate.hs %in% c("both", "f"),
+                  filter(trt.f %in% c(260, 419), mate.istrt %in% c("both", "f"),
                          trt.m != 419) %>%
                   select(-mate.trt) %>%
-                  rename(mate.trt = trt.f) %>% mutate(mate.hs = "f",
-                                                      #mate.hs = "*F + M"
+                  rename(mate.trt = trt.f) %>% mutate(mate.istrt = "f",
+                                                      #mate.istrt = "*F + M"
                                                       ), #%>% View()
                 #, color = "black"
-                #, aes(group = mate.hs), 
+                #, aes(group = mate.istrt), 
                 show.legend = FALSE
                 ),
         geom_line(data = x %>%
                     #FilterForLabEggs(dfs_tents$ss_nocol) %>%
-                    filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
+                    filter(trt.m %in% c(260, 419), mate.istrt %in% c("both", "m"),
                            trt.f != 419) %>%
                     select(-mate.trt) %>%
-                    rename(mate.trt = trt.m) %>% mutate(mate.hs = "m",
-                                                        #mate.hs = "F + *M"
+                    rename(mate.trt = trt.m) %>% mutate(mate.istrt = "m",
+                                                        #mate.istrt = "F + *M"
                                                         ) #%>% View()
                   ,
                   #aes(group = mate.trt), 
@@ -317,7 +317,7 @@ dfs_tents$ss_nocol %>%
   x %>%
     FilterForLabEggs() %>%
     ggplot(aes(y = avg.sqrt.coll.perf, x = mate.trt,
-               group = interaction(year, mate.hs),
+               group = interaction(year, mate.istrt),
     )) +
     geom_point(#aes(size = n.f.total) # this looks dumb
       size = 2
@@ -328,7 +328,7 @@ dfs_tents$ss_nocol %>%
                   width = 0.25, lty = "solid", show.legend = FALSE) +
     geom_text(aes(label = n.f.total), size = 3.5,
               hjust = -0.5, vjust = -0.7, show.legend = FALSE) +
-    facet_wrap(~mate.hs, scales = "free_x",
+    facet_wrap(~mate.istrt, scales = "free_x",
                labeller = as_labeller(c(`both` = "F + M treated",
                                         `f` = "F treated",
                                         `m` = "M treated"))) +
@@ -357,16 +357,17 @@ dfs_tents$ss_nocol%>%
 
 # separate sexes
 dfs_tents$ss_nocol %>%
-  mutate(mate.hs2 = case_when(mate.hs == "both" ~ "both sexes",
+  mutate(mate.istrt2 = case_when(mate.istrt == "both" ~ "both sexes",
                               TRUE ~ "one sex")) %>%
   .plotfn() +
   # flavor 1
-  aes(col = year, lty = year, shape = mate.hs2) +
+  aes(col = year, lty = year, shape = mate.istrt2) +
   labs(shape = "sexes treated?") +
    scale_shape_manual(values = c(16, 1))
   # flavor 2
   #aes(col = mate.type, lty = mate.type, shape = year)
 ```
+
 ### facet by sex v2
 ```{r}
 .plotfn <- function(x){
@@ -406,7 +407,7 @@ p1 <- dfs_tents$ss_nocol %>%
 
 p2 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
-         mate.hs %in% c("f", "both")) %>%
+         mate.istrt %in% c("f", "both")) %>%
   .plotfn() +
   facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt F + M*"))) +
   guides(color = guide_legend(order = 1),
@@ -415,7 +416,7 @@ p2 <- dfs_tents$ss_nocol %>%
 
 p3 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
-         mate.hs %in% c("m", "both")) %>%
+         mate.istrt %in% c("m", "both")) %>%
   .plotfn() +
   facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt M + F*"))) +
   guides(color = guide_legend(order = 1),
@@ -439,14 +440,14 @@ p3 <- dfs_tents$ss_nocol %>%
   x %>%
     FilterForLabEggs() %>% 
     # check if matches w .plotfn2
-    # mutate(mate.hs = case_when(mate.hs == "both" ~ "*F + *M",
-    #                            mate.hs == "f" ~ "*F + M",
-    #                            mate.hs == "m" ~ "F + *M")) %>%
+    # mutate(mate.istrt = case_when(mate.istrt == "both" ~ "*F + *M",
+    #                            mate.istrt == "f" ~ "*F + M",
+    #                            mate.istrt == "m" ~ "F + *M")) %>%
     ggplot(aes(y = p.hatch,
                x = mate.trt,
-               lty = mate.hs, shape = mate.hs,
-               group = mate.hs,
-               col = mate.hs,)) + 
+               lty = mate.istrt, shape = mate.istrt,
+               group = mate.istrt,
+               col = mate.istrt,)) + 
     geom_errorbar(aes(ymax = p.hatch + se.hatch,
                       ymin = p.hatch - se.hatch,),
                   lty = "solid", width = 0.25, show.legend = FALSE) +
@@ -475,23 +476,23 @@ p3 <- dfs_tents$ss_nocol %>%
       geom_line(data = x %>%
                   #FilterForLabEggs(dfs_tents$ss_nocol) %>%
                   filter(trt.f %in% c(260, 419), 
-                         mate.hs %in% c("both", "f"),
+                         mate.istrt %in% c("both", "f"),
                          trt.m != 419) %>%
                   select(-mate.trt) %>% 
-                  rename(mate.trt = trt.f) %>% mutate(mate.hs = "f",
-                                                      #mate.hs = "*F + M"
+                  rename(mate.trt = trt.f) %>% mutate(mate.istrt = "f",
+                                                      #mate.istrt = "*F + M"
                                                       ) #%>% View()
                 #, color = "black"
-                , #aes(group = mate.hs), 
+                , #aes(group = mate.istrt), 
                 show.legend = FALSE,
                 ),
         geom_line(data = x %>%
                     #FilterForLabEggs(dfs_tents$ss_nocol) %>%
-                    filter(trt.m %in% c(260, 419), mate.hs %in% c("both", "m"),
+                    filter(trt.m %in% c(260, 419), mate.istrt %in% c("both", "m"),
                            trt.f != 419) %>%
                     select(-mate.trt) %>%
-                    rename(mate.trt = trt.m) %>% mutate(mate.hs = "m",
-                                                        #mate.hs = "F + *M"
+                    rename(mate.trt = trt.m) %>% mutate(mate.istrt = "m",
+                                                        #mate.istrt = "F + *M"
                                                         ) #%>% View()
                   ,
                   #aes(group = mate.trt), 
@@ -508,6 +509,7 @@ dfs_tents$ss_nocol %>%
   filter(mate.trt != 260) %>%
   .plotfn() 
 ```
+
 ### facet by sex (overall)
 
 ```{r}
@@ -540,7 +542,7 @@ dfs_tents$ss_nocol %>%
 
 p1 <- dfs_tents$ss_nocol %>%
   filter(mate.trt == 260,
-         mate.hs == "both") %>%
+         mate.istrt == "both") %>%
   mutate(mate.type = "ctrl to ctrl") %>% 
   .plotfn() +
   scale_color_manual(values = "#00BFC4") +
@@ -550,14 +552,14 @@ p1 <- dfs_tents$ss_nocol %>%
 
 p2 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
-         mate.hs %in% c("f", "both")) %>%
+         mate.istrt %in% c("f", "both")) %>%
   .plotfn() +
   guides(size = "none") +
   facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "expt F + ?")), ncol = 1)
 
 p3 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
-         mate.hs %in% c("m", "both")) %>%
+         mate.istrt %in% c("m", "both")) %>%
   .plotfn() +
   facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "expt M + ?")), ncol = 1)
  
@@ -607,7 +609,7 @@ p3 <- dfs_tents$ss_nocol %>%
 
 p1 <- dfs_tents$ss_nocol %>%
   filter(mate.trt == 260,
-         mate.hs == "both") %>% 
+         mate.istrt == "both") %>% 
   mutate(mate.type = "ctrl to ctrl") %>% 
   .plotfn() +
   scale_color_manual(values = "#00BFC4") +
@@ -617,13 +619,13 @@ p1 <- dfs_tents$ss_nocol %>%
 
 p2 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
-         mate.hs %in% c("f", "both")) %>%
+         mate.istrt %in% c("f", "both")) %>%
   .plotfn() +
   facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "expt F + ?")), ncol = 1)
 
 p3 <- dfs_tents$ss_nocol %>%
   filter(mate.trt != 260,
-         mate.hs %in% c("m", "both")) %>%
+         mate.istrt %in% c("m", "both")) %>%
   .plotfn() +
   facet_wrap(~facetlab, labeller = as_labeller(c(`label` = "expt M + ?")), ncol = 1)
  

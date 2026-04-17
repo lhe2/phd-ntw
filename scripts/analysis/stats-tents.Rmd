@@ -52,12 +52,10 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
 
 # subset
 dfs <- list(
-  tents = #imported_tents %>%
-    dfs_tents$n_pertent %>%
+  tents = dfs_tidy$tents %>% 
+    CalcTentCounts() %>%
     FilterForLabEggs() %>% 
-    mutate(mate.ishs = case_when(is.na(mate.ishs) ~ "none",
-                                 TRUE ~ as.character(mate.ishs)),
-           mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")))
+    mutate(mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")))
 )
 
 dfs <- list_modify(
@@ -115,7 +113,7 @@ mods <- list(
   
   # (try the sqrt)
   # bad QQ
-  sqrt_perf = glm(sqrt.coll.perf ~ mate.trt*mate.hs + n.f + year,
+  sqrt_perf = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
              data = dfs$exptal, family = "poisson"),
   
   # QQ not that diff from 'offset'
@@ -166,19 +164,19 @@ trying out different response variables for the egg numbers.
 # trying out difference response variables
 #(<mod>2 = code the trt as a more straightfwd interaction)
 mods <- list(
-  raw = glm(n.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
+  raw = glm(n.coll.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, 
             data = dfs$tents, family = "poisson"),
   raw2 = glm(n.coll.perf ~ mate.trt*mate.ishs + n.f + year, 
             data = dfs$tents, family = "poisson"),
-  sqrt = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
+  sqrt = glm(sqrt.coll.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, 
              data = dfs$tents, family = "poisson"),
   sqrt2 = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year, 
              data = dfs$tents, family = "poisson"),
-  log = glm(log(n.coll.perf + 1) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
+  log = glm(log(n.coll.perf + 1) ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, 
             data = dfs$tents, family = "poisson"),
   log2 = glm(log(n.coll.perf + 1) ~ mate.trt*mate.ishs + n.f + year, 
             data = dfs$tents, family = "poisson"),
-  sqrt_q = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, 
+  sqrt_q = glm(sqrt.coll.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, 
              data = dfs$tents, family = "quasipoisson")
 )
 
@@ -188,9 +186,9 @@ mods %>% DiagnoseModel() # use sqrt -- more balanced
 ```{r eval=FALSE, warning=FALSE}
 # trying out different groupings
 mods <- list(
-  raw = glm(n.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson"),
-  sqrt = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson"),
-  log = glm(log(n.coll.perf + 1) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.f + year, data = dfs$tents, family = "poisson")
+  raw = glm(n.coll.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, data = dfs$tents, family = "poisson"),
+  sqrt = glm(sqrt.coll.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, data = dfs$tents, family = "poisson"),
+  log = glm(log(n.coll.perf + 1) ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.f + year, data = dfs$tents, family = "poisson")
 )
 
 mods %>% DiagnoseModel() # use sqrt -- more balanced
@@ -216,26 +214,26 @@ figuring out which vars to include in the model and what model to use
 # lets give up on tents and look at the interactions instead
 mods <- list(
   # which vars are needed?
-  add = glm(sqrt.coll.perf ~ trt.f + is.hs.f + trt.m + is.hs.m,
+  add = glm(sqrt.coll.perf ~ trt.f + trt.ishs.f + trt.m + trt.ishs.m,
             data = dfs$tents, family = "poisson"),
-  add_nf = glm(sqrt.coll.perf ~ trt.f + is.hs.f + trt.m + is.hs.m + n.f,
+  add_nf = glm(sqrt.coll.perf ~ trt.f + trt.ishs.f + trt.m + trt.ishs.m + n.f,
             data = dfs$tents, family = "poisson"),
-  add_yr = glm(sqrt.coll.perf ~ trt.f + is.hs.f + trt.m + is.hs.m + n.f + year,
+  add_yr = glm(sqrt.coll.perf ~ trt.f + trt.ishs.f + trt.m + trt.ishs.m + n.f + year,
               data = dfs$tents, family = "poisson"),
   
   # testing ints
   ## incl year and n.f
-  int = glm(sqrt.coll.perf ~ trt.f:is.hs.f + trt.m:is.hs.m + n.f + year,
+  int = glm(sqrt.coll.perf ~ trt.f:trt.ishs.f + trt.m:trt.ishs.m + n.f + year,
             data = dfs$tents, family = "poisson"),
   # (this is the "add" model)
-  # int2 = glm(sqrt.coll.perf ~ trt.f*is.hs.f + trt.m*is.hs.m + n.f + year,
+  # int2 = glm(sqrt.coll.perf ~ trt.f*trt.ishs.f + trt.m*trt.ishs.m + n.f + year,
   #                data = dfs$tents, family = "poisson"),
-  int_is = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.m:is.hs.f + n.f + year,
+  int_is = glm(sqrt.coll.perf ~ trt.f + trt.m + trt.ishs.m:trt.ishs.f + n.f + year,
             data = dfs$tents, family = "poisson"),
-  int_trt = glm(sqrt.coll.perf ~ trt.f:trt.m + is.hs.m:is.hs.f + n.f + year,
+  int_trt = glm(sqrt.coll.perf ~ trt.f:trt.m + trt.ishs.m:trt.ishs.f + n.f + year,
             data = dfs$tents, family = "poisson"),
   # (this is same as int_trt?)
-  int_trt2 = glm(sqrt.coll.perf ~ trt.f*trt.m + is.hs.m*is.hs.f + n.f + year,
+  int_trt2 = glm(sqrt.coll.perf ~ trt.f*trt.m + trt.ishs.m*trt.ishs.f + n.f + year,
                  data = dfs$tents, family = "poisson"),
   int3 = glm(sqrt.coll.perf ~ mate.trt*mate.ishs + n.f + year,
              data = dfs$tents, family = "poisson")
@@ -306,12 +304,12 @@ dfs <- list_modify(
 
 mods <- list(
   # diagnosing mods
-  # full = glm(sqrt.coll.perf ~ mate.trt*is.hs.f*is.hs.m + n.f + cage + year,
+  # full = glm(sqrt.coll.perf ~ mate.trt*trt.ishs.f*trt.ishs.m + n.f + cage + year,
   #            data = dfs$tents, family = "poisson"),
-  # cage_fixed = glm(sqrt.coll.perf ~ trt.f + trt.m + is.hs.m + is.hs.f + n.f + cage,
+  # cage_fixed = glm(sqrt.coll.perf ~ trt.f + trt.m + trt.ishs.m + trt.ishs.f + n.f + cage,
   #              data = dfs$mod, na.action = na.omit,
   #              family = "poisson"),
-  # cage_rand = glmer(sqrt.coll.perf ~ trt.f + trt.m + is.hs.m + is.hs.f + n.f + (1|cage),
+  # cage_rand = glmer(sqrt.coll.perf ~ trt.f + trt.m + trt.ishs.m + trt.ishs.f + n.f + (1|cage),
   #            data = dfs$mod, na.action = na.omit,
   #            family = "poisson"),
   test = glm(sqrt.coll.perf ~ trt.f + trt.m,
@@ -385,11 +383,11 @@ glm(n.coll.perf + 1 ~ mate.trt*mate.ishs + n.f + year,
 # i also just think this is bad bc of the preds LOL...
 # regular glms:
 mods <- list(
-   raw = glm(n.hatch.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year, data = dfs$tents, family = "poisson"),
-  # sqrt = glm(sqrt.hatch.perf ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year, data = dfs$tents, family = "poisson"),
-  # cbrt = glm((n.hatch.perf)^(1/3) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year,
+   raw = glm(n.hatch.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.coll.perf + year, data = dfs$tents, family = "poisson"),
+  # sqrt = glm(sqrt.hatch.perf ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.coll.perf + year, data = dfs$tents, family = "poisson"),
+  # cbrt = glm((n.hatch.perf)^(1/3) ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.coll.perf + year,
   #            data = dfs$tents, family = "poisson"),
-  log = glm(log(n.hatch.perf + 1) ~ trt.f + trt.m + is.hs.f + is.hs.m + n.coll.perf + year, data = dfs$tents, family = "poisson")
+  log = glm(log(n.hatch.perf + 1) ~ trt.f + trt.m + trt.ishs.f + trt.ishs.m + n.coll.perf + year, data = dfs$tents, family = "poisson")
 )
 
 mods %>% DiagnoseModel() # they all really suck (cube rt is sorta okay)
@@ -425,9 +423,9 @@ mods <- list(
   # raw_nb2 = zeroinfl(n.hatch ~ mate.trt*mate.ishs + year, data = dfs$tents, dist = "negbin")
   
   # break: probably bc of how the trt info is handled
-  # raw_p = zeroinfl(n.hatch ~ trt.f + trt.m + as.factor(is.hs.f) + as.factor(is.hs.m) + n.coll + year, 
+  # raw_p = zeroinfl(n.hatch ~ trt.f + trt.m + as.factor(trt.ishs.f) + as.factor(trt.ishs.m) + n.coll + year, 
   #                data = dfs$tents),
-  # raw_nb = zeroinfl(n.hatch ~ trt.f + trt.m + as.factor(is.hs.f) + as.factor(is.hs.m) + n.coll + year, 
+  # raw_nb = zeroinfl(n.hatch ~ trt.f + trt.m + as.factor(trt.ishs.f) + as.factor(trt.ishs.m) + n.coll + year, 
   #                data = dfs$tents, dist = "negbin")
 
 )
@@ -471,7 +469,7 @@ mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it ne
   - wonkkkyyy...
 
 ## trying pred vars
-- seems like `trt` of the m/f is more impt? (everything sig except `is.hs`...)
+- seems like `trt` of the m/f is more impt? (everything sig except `trt.ishs`...)
 - but go look at data transforming before continuing more lol
 
 ```{r, eval=FALSE}
@@ -485,21 +483,21 @@ dfs <- list_modify(
 mods <- list(
   # as (# successes, # failures)
   raw_sf = glm(cbind(n.hatch, n.fail) ~
-                 #trt.f + trt.m + is.hs.m + is.hs.f + n.f + year,
-                 #trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+                 #trt.f + trt.m + trt.ishs.m + trt.ishs.f + n.f + year,
+                 #trt.f*trt.m + trt.ishs.f*trt.ishs.m + n.f + year,
                  mate.trt*mate.ishs + n.f + year,
                data = dfs$mods, family = "binomial"),
   
   
   # as a prop
   raw_hc = glm(cbind(n.hatch, n.coll) ~
-                 #trt.f + trt.m + is.hs.m + is.hs.f + n.f + year,
-                 #trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+                 #trt.f + trt.m + trt.ishs.m + trt.ishs.f + n.f + year,
+                 #trt.f*trt.m + trt.ishs.f*trt.ishs.m + n.f + year,
                mate.trt*mate.ishs + n.f + year,
                data = dfs$mods, family = "binomial"),
   
   raw_hprop = glm(n.hatch/n.coll ~ mate.trt*mate.ishs + n.f + year,
-                  #trt.f*trt.m + is.hs.f*is.hs.m + n.f + year,
+                  #trt.f*trt.m + trt.ishs.f*trt.ishs.m + n.f + year,
                data = dfs$mods, family = "quasibinomial") # use qb for non-int binomials
 )
 
