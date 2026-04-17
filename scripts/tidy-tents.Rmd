@@ -83,7 +83,7 @@ note: revisiting fertile eggs
   x %>%
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
                                  trt.f != trt.m ~ "between",
-                                 is.na(trt.m) ~ "virgin f"),
+                                 is.na(trt.m) ~ "virgin"),
            # if both m+f are from col, then mate.pop = "col", otherwise "lab"
            mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
                                 mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
@@ -93,17 +93,17 @@ note: revisiting fertile eggs
            mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
                                 pop.f == "col" & pop.m == "lab" ~ "f",
                                 pop.m == "col" & pop.f == "lab" ~ "m" ),
-           mate.hs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
+           mate.ishs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
                                trt.m > trt.f | is.na(trt.f) ~ "m",
+                               trt.f == trt.m & trt.f == 260 ~ "none",
                                TRUE ~ "both"),
-            ## "NA" if 260+260
-           mate.ishs = case_when(mate.hs == "both" & mate.trt == 260 ~ NA_character_,
-                                TRUE ~ mate.hs),
-           trt.ishs = case_when(mate.trt == 260 ~ "ctrl",
+           mate.istrt = case_when(mate.ishs %in% c("none", "both") ~ "both",
+                                  TRUE ~ as.character(mate.ishs)),
+           trt.type = case_when(mate.trt == 260 ~ "ctrl",
                                 TRUE ~ "expt"),
-           is.hs.f = case_when(trt.f == 260 ~ 0,
+           trt.ishs.f = case_when(trt.f == 260 ~ 0,
                                trt.f > 260 ~ 1),
-           is.hs.m = case_when(trt.m == 260 ~ 0,
+           trt.ishs.m = case_when(trt.m == 260 ~ 0,
                                trt.m > 260 ~ 1))
 } 
 
@@ -150,11 +150,11 @@ note: revisiting fertile eggs
                # fix egg counts: excludes eggs from hatch proportion if no males present
                ## TODO: just kidding not doing this anymore bc females can sequester sperm!
                eggs.exclude = case_when(#f.curr > 0 & m.curr == 0 | # revisit?
-                                          mate.type == "virgin f" ~ 
+                                          mate.type == "virgin" ~ 
                                           as.numeric(eggs.collected + eggs.exclude),
                                         TRUE ~ as.numeric(eggs.exclude)),
                eggs.collected = case_when(#f.curr > 0 & m.curr == 0 | # revisit?
-                                            mate.type == "virgin f" ~ 0,
+                                            mate.type == "virgin" ~ 0,
                                           TRUE ~ as.numeric(eggs.collected)),
                eggs.coll = eggs.collected + eggs.exclude) %>%
         select(-ends_with(c(".removed", ".diff"))) %>%
@@ -256,7 +256,7 @@ dfs_export <- list_modify(
   dfs_export,
   tents25 = dfs_stdised$tents %>% 
     merge(.,
-          dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
+          dfs_stdised$info %>% select(c("cage", starts_with("trt"))),
           all = TRUE) %>%
     mutate(year = 2025)
   )
@@ -322,7 +322,7 @@ dfs_stdised <- list(
     distinct() %>%
     .GenerateCageMateInfo() %>% #View() %>%
     # fixes (NOT solo f tents: 301P, 301U, 107H...)
-    filter(!(mate.type == "virgin f" & !(cage %in% c("107-cage", "301-T"))),
+    filter(!(mate.type == "virgin" & !(cage %in% c("107-cage", "301-T"))),
            !(cage == "301-M" & pop.f == "lab")) ,
   
   events = 
@@ -367,7 +367,7 @@ dfs_export <- list_modify(
   dfs_export,
   tents23 = dfs_stdised$tents %>% 
     merge(.,
-          dfs_stdised$info %>% select(c("cage", starts_with(c("trt", "is")))),
+          dfs_stdised$info %>% select(c("cage", starts_with("trt"))),
           all = TRUE) %>%
     mutate(year = 2023)
 )
@@ -405,18 +405,18 @@ dfs_stdised = list(
     rename(pop.f = pop,
            trt.f = trt,
            id.f = id) %>%
-    mutate(mate.type = "virgin f",
+    mutate(mate.type = "virgin",
            mate.pop = pop.f,
            mate.trt = trt.f,
            mate.col = NA,
-           # mate.hs = case_when(trt.f > 400 ~ "f"), 
+           # mate.ishs = case_when(trt.f > 400 ~ "f"), 
            # mate.ishs = case_when(trt.f == 260 ~ NA_character_,
            #                       TRUE ~ "f"),
-           mate.hs = "f",
            mate.ishs = "f",
-           trt.ishs = case_when(trt.f > 400 ~ "expt",
+           mate.istrt = "f",
+           trt.type = case_when(trt.f > 400 ~ "expt",
                                 TRUE ~ "ctrl"),
-           is.hs.f = case_when(trt.f > 400 ~ 1,
+           trt.ishs.f = case_when(trt.f > 400 ~ 1,
                                TRUE ~ 0),
     ),
   
@@ -443,11 +443,11 @@ dfs_export <- list_modify(
   dfs_export,
   tents24 = dfs_stdised$events %>%
     merge(., dfs_stdised$info %>% 
-            select(c("cage", starts_with(c("trt", "mate", "is")))) %>% distinct(), 
+            select(c("cage", starts_with(c("trt", "mate")))) %>% distinct(), 
           by = c("cage")) %>%
     mutate(year = 2024,
            # missing .m stuff
-           is.hs.m = NA, trt.m = NA,
+           trt.ishs.m = NA, trt.m = NA,
            m.curr = 0, m.added = 0)
 )
 ```
@@ -455,9 +455,10 @@ dfs_export <- list_modify(
 # # prep for final export
 
 ```{r export tent data}
+# specify levels 
 dfs_tidy <- list(
   tents = rbindlist(dfs_export, fill = TRUE)
-)
+  )
 ```
 
 # # cleanup

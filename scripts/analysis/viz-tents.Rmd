@@ -18,19 +18,51 @@ library(patchwork) # for plot_layout
 
 source(here("_ntw/scripts/analysis/filter_utils.R"))
 source(here("_ntw/scripts/analysis/viz_utils.R"))
+source(here("_ntw/scripts/wrangle-tents.R"))
 ```
 
 ```{r load data, message=FALSE, warning=FALSE}
-source(here("_ntw/scripts/R/wrangle-tents.R"))
+source(here("_ntw/scripts/R/tidy-tents.R"))
 
-# convert things into factors for ease of graphing
-dfs_tents <- dfs_tents %>%
-    lapply(., \(x){
+# some default dfs grouped by yr
+df_tents <- list(
+  # count dfs
+  n_pertent = dfs_tidy$tents %>%
+    CalcTentCounts(),
+  
+  # viz dfs
+  ## treat all col like lab expt bugs
+  ss_nocol = dfs_tidy$tents %>%
+    select(-mate.col) %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop))),
+  
+  ## treats col like lab expt bugs, but notes which sex was the col
+  ss_matecol = dfs_tidy$tents %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop)),
+           mate.col = na_if(mate.col, "both")),
+  
+  ## retains all indicators of col status (population + affected sex)
+  ss_allcol = dfs_tidy$tents
+)
+
+df_tents[3:4] <- df_tents[3:4] %>%
+  lapply(., \(x){
+    x %>%
+      CalcTentCounts() %>%
+      group_by(year) %>%
+      CalcTentSS()
+  })
+
+# make into factors for graphing ease
+df_tents <- df_tents %>%
+  lapply(., \(x){
     x %>%
       ungroup() %>%
       mutate(across(c("year", "mate.trt", starts_with("trt")), as.factor),
-             mate.type = factor(mate.type, 
-                                levels = c("within", "between")))
+             mate.type = factor(mate.type, levels = c("within", "between", "virgin"))
+      )
   })
 ```
 

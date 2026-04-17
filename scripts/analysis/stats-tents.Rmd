@@ -34,13 +34,14 @@ conflicts_prefer(
 
 source(here("_ntw/scripts/analysis/filter_utils.R"))
 source(here("_ntw/scripts/analysis/stats_utils.R"))
+source(here("_ntw/scripts/wrangle-tents.R"))
 ```
 
 notes: 
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data, message=FALSE}
-source(here("_ntw/scripts/R/wrangle-tents.R"))
+source(here("_ntw/scripts/R/tidy-tents.R"))
 
 # formatting
 # imported_tents <- 

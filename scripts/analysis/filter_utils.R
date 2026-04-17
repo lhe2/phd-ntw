@@ -19,7 +19,7 @@ FilterOutLabTB <- function(data){
 FilterForLabEggs <- function(data){
   data %>%
     filter(mate.pop != "field",
-           mate.type != "virgin f") 
+           mate.type != "virgin") 
 }
 
 # keeps trts 260, 419, 426, 433 only
