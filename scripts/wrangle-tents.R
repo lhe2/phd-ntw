@@ -45,15 +45,15 @@ CalcTentCounts <- function(raw_df){
 #' USAGE:
 #' grpd_df: need to run CalcTentCounts beforehand and regroup at the `mate` and `trt` level.
 #' 
-CalcTentSS <- function(count_df){
+CalcTentSS <- function(grpd_df){
   
-  count_df %>%
+  grpd_df %>%
     # # troubleshooting: should get 27 rows (w/ yr)
     # dfs_tidy$tents %>%
     # CalcTentCounts() %>% #View() # metrics at individ cage level
     # group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
     
-    group_by(across(starts_with(c("mate", "trt"))), .add = TRUE) %>%
+    #group_by(across(starts_with(c("mate", "trt")))) %>%
     summarise(
       # grand totals
       n.cages.total = n(),
