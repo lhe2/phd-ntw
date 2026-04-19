@@ -70,6 +70,8 @@ dfs_tents <- dfs_tents %>%
   })
 ```
 
+# ### EDA ###
+
 # # diagnostic plots
 
 ## dist eggs laid per f
@@ -94,7 +96,7 @@ dfs_tents$n_pertent %>%
   geom_bar()
 ```
 
-# # EDA: effect of col bugs
+# # effect of col bugs
 
 figuring out how to accomodate...
 
@@ -170,6 +172,93 @@ p3
         legend.margin = margin()) &
   plot_annotation(title = "effect of parsing col ctrls") 
 ```
+
+## laid/hatched across yrs
+```{r}
+.plotfn <- function(x){
+  x %>%
+    # more prep
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ mate.pop),
+           mate.istrt = case_when(mate.istrt == "both" ~ "both trt",
+                                  mate.istrt == "f" ~ "f trt",
+                                  mate.istrt == "m" ~ "m trt")) %>%
+    group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
+    CalcTentSS() %>%
+    mutate(across(contains(c("trt", "year")), as.factor)) %>%
+    
+    # plot
+    filter(mate.pop == "lab",
+           #!is.na(mate.col)
+    ) %>% #View()
+    ggplot(aes(y = avg.coll.perf,
+               x = mate.trt,
+               group = year,
+               col = year)) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_text(aes(label = n.f.total),
+              hjust = -0.5, vjust = -0.5, size = 3.5,
+              show.legend = FALSE)
+}
+
+# trying out a bunch of groupings...
+## too parsed
+dfs_tents$n_pertent %>%
+  mutate(
+    mate.col = case_when(mate.col == "both" ~ "both col",
+                          mate.col == "f" ~ "f col",
+                          mate.col == "m" ~ "m col",
+                          TRUE ~ "both expt"),) %>%
+  .plotfn() +
+  aes(shape = year) +
+  facet_wrap(mate.istrt ~ mate.col, nrow = 2)
+
+## ok.. but sort of unintelligible..
+dfs_tents$n_pertent %>%
+  mutate(
+    mate.col = case_when(mate.col == "both" ~ "both col",
+                          mate.col == "f" ~ "f col",
+                          mate.col == "m" ~ "m col",
+                          trt.f == trt.m ~ "both expt",
+                          as.numeric(trt.f) > as.numeric(trt.m) ~ "m expt",
+                          as.numeric(trt.f) < as.numeric(trt.m) | is.na(trt.m) ~ "f expt")
+    ) %>%
+  .plotfn() +
+  aes(#y = avg.sqrt.hatch.perf,
+    shape = mate.col, 
+    group = interaction(mate.col, year)
+    ) +
+  facet_wrap(~mate.istrt) +
+  scale_shape_manual(values = c("both col" = 16, "expt" = 1, "f col" = 17, "m col" = 15,
+                                "both expt" = 1, "f expt" = 2, "m expt" = 0)) +
+  labs(caption = "N = # females;\n expt = ctrl from expt")
+
+## this is it... (laid/hatched)
+dfs_tents$n_pertent %>%
+  mutate(
+    mate.col = case_when(!is.na(mate.col) ~ "col",
+                          TRUE ~ "expt")
+    ) %>%
+  .plotfn() +
+  aes(#y = avg.sqrt.hatch.perf,
+      x = mate.col,
+      group = interaction(mate.trt, year),
+      shape = year,
+      col = mate.trt
+      ) +
+  # # messy when err bars included, per usual
+  # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
+  #                   ymin = avg.coll.perf - se.coll.perf),
+  #               width = 0.25, lty = "solid", show.legend = FALSE) +
+  # geom_errorbar(aes(ymax = avg.sqrt.hatch.perf + se.sqrt.hatch.perf,
+  #                   ymin = avg.sqrt.hatch.perf - se.sqrt.hatch.perf),
+  #               width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_wrap(~mate.istrt) +
+  scale_color_manual(values = p_scales$cols_trt)
+```
+
+# ### MAIN ###
 
 # # hatch vs laid
 
@@ -316,6 +405,79 @@ dfs_tents$ss_nocol %>%
   scale_x_discrete(labels = c(p_scales$labs_trt))
 ```
 
+### yr x minT
+```{r}
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(
+      y = avg.sqrt.coll.perf,
+      x = trt.minT,
+      lty = mate.istrt, 
+      shape = interaction(mate.type, mate.istrt, trt.type),
+      group = interaction(mate.type, mate.istrt, trt.type),
+      col = mate.istrt
+    )) +
+    geom_point(size=2) + 
+    geom_line() +
+    # geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+    #                   ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+    #               width = 0.25, lty = "solid", show.legend = FALSE) +
+    geom_text(aes(label = n.f.total),
+              vjust = -0.5, hjust = -0.5, position = position_dodge(width = 0.2),
+              show.legend = FALSE) +
+    # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
+    #           vjust = -0.5, hjust = -0.5, #position = "jitter",
+    #           show.legend = FALSE
+    #           ) +
+    scale_shape_manual(values = c("within.both.ctrl" = 4, "within.both.expt" = 16,
+                                  "virgin.f.ctrl" = 3, "virgin.f.expt" = 2,
+                                  "between.f.expt" = 17, "between.m.expt" = 15),
+                       labels = c("within.both.ctrl" = "control M + F",
+                                  "within.both.expt" = "expt M + F",
+                                  "between.f.expt" = "expt F",
+                                  "between.m.expt" = "expt M",
+                                  "virgin.f.ctrl" = "control virgin F",
+                                  "virgin.f.expt" = "expt virgin F"),
+                       breaks = c("within.both.ctrl", "virgin.f.ctrl",
+                                  "within.both.expt", "between.m.expt",
+                                  "between.f.expt", "virgin.f.expt")) +
+    scale_color_manual(values = p_scales$cols_trtsex, breaks = c("both", "f", "m")) +
+    scale_linetype_discrete(breaks = c("both", "f", "m")) +
+    theme_bw() +
+    #ylim(c(2, 18)) +
+    labs(col = "treated sex", lty = "treated sex",
+         shape = "pairing type",
+         caption = "mean±se; lab only; N = # F",
+         y = "sqrt [eggs laid per female]", 
+         x = "minimum temperature (°C)") 
+  # guides(color = guide_legend(override.aes = list(shape = c("both" = 19,
+  #                                                           "f" = 17,
+  #                                                           "m" = 15)))) +
+}
+
+# plots
+## all yrs
+dfs_tents$ss_nocol %>% 
+  #FilterForLabEggs() %>% # drop to incl virgin F
+  filter(mate.pop != "field") %>%
+  .plotfn() +
+  #aes(y = avg.coll.perf)) + 
+  facet_grid(~year)
+
+## all yrs squashed (need to recalc df)
+dfs_tents$n_pertent %>%
+  select(-mate.col) %>% 
+  mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                              TRUE ~ as.character(mate.pop))) %>%
+  group_by(across(starts_with(c("mate", "trt")))) %>%
+  CalcTentSS() %>%
+  .prepfn() %>%
+  filter(mate.pop != "field",
+         mate.type != "virgin") %>% # kinda messy if included
+  .plotfn()
+```
+
+
 ### facet by sex v1
 
 (both sexes trted vs 1 sex trted)
@@ -427,6 +589,70 @@ p3 <- dfs_tents$ss_nocol %>%
          mate.istrt %in% c("m", "both")) %>%
   .plotfn() +
   facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt M + F*"))) +
+  guides(color = guide_legend(order = 1),
+         lty = guide_legend(order = 1),
+         shape = guide_legend(order = 2))
+
+(p1 + p2 + p3) +
+  plot_layout(guides = "collect", 
+              axes = "collect") &
+  ylim(c(0, 18)) &
+  theme_bw()
+```
+
+```{r}
+# diff grouping
+.plotfn <- function(x){
+  x %>%
+    FilterForLabEggs() %>%
+    mutate(
+      mate.type = case_when(mate.type == "between" ~ "expt",
+                                 TRUE ~ "ctrl"),
+           trt.type = case_when(mate.trt == 260 ~ "ctrl",
+                                TRUE ~ "expt")) %>%
+    ggplot(aes(y = avg.sqrt.coll.perf, x = mate.trt,
+               group = interaction(mate.type, year),
+               col = mate.type,
+               shape = mate.type,
+               lty = year)) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    scale_shape_discrete(#values = c("expt" = ),
+                       labels = p_scales$labs_trttype) +
+    scale_color_manual(values = p_scales$cols_trttype,
+                       labels = p_scales$labs_trttype) +
+    scale_x_discrete(labels = p_scales$labs_trt) +
+    labs(y = "sqrt[eggs laid per f]",
+         x = "temperature treatment",
+         shape = "expt matings (*)",
+         col = "expt matings (*)"
+         )
+}
+
+p1 <- dfs_tents$ss_nocol %>%
+  filter(mate.trt == 260) %>%
+  .plotfn() +
+  #scale_shape_manual(values = c(24, 25)) +
+  facet_wrap(~trt.type, labeller = as_labeller(c(`ctrl` = "ctrl F + ctrl M"))) +
+  guides(lty = "none", shape = "none", col = "none")
+
+p2 <- dfs_tents$ss_nocol %>%
+  filter(mate.trt != 260,
+         mate.istrt %in% c("f", "both")) %>%
+  .plotfn() +
+  facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt F + M*"))) 
+  guides(color = guide_legend(order = 1),
+         lty = guide_legend(order = 1),
+         shape = guide_legend(order = 2))
+
+p3 <- dfs_tents$ss_nocol %>%
+  filter(mate.trt != 260,
+         mate.istrt %in% c("m", "both")) %>%
+  .plotfn() +
+  facet_wrap(~trt.type, labeller = as_labeller(c(`expt` = "expt M + F*"))) 
   guides(color = guide_legend(order = 1),
          lty = guide_legend(order = 1),
          shape = guide_legend(order = 2))
