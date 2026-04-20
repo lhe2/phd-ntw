@@ -7,6 +7,7 @@ p_scales <- list(
   labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
   labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
   labs_trttype = c("ctrl" = "control (26-26°C)", "expt" = "nighttime warming\n(40-X°C)"),
+  labs_trtsex = c("f" = "female only", "m" = "male only", "both" = "male + female"),
   
   # values
   cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
@@ -16,6 +17,7 @@ p_scales <- list(
   
   shp_pop = c(`lab` = 19, `field` = 1),
   lty_pop = c(`lab` = "solid", `field` = "dashed"),
+  shp_trtsex = c("both" = 16, "f" = 2, "m" = 0),
   
   # use with facet_*(labeller)
   facs_trtpop = c(`ctrl` = "control (26-26°C)",

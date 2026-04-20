@@ -90,7 +90,7 @@ CalcSurvProps_def <- function(wide_df){
 }
 
 
-## supernumerary proportions
+## supernumerary proportions (same as PrepSurvProps?)
 PrepSupProps <- function(wide_df){
   wide_df %>%
     filter(is.pup != 2, # drop culled

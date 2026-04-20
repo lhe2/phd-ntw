@@ -25,6 +25,7 @@ CalcTentCounts <- function(raw_df){
     group_by(across(c("year", "cage", starts_with(c("mate", "trt"))))) %>%
     summarise(
       n.f = sum(f.added),
+      n.m = sum(m.added),
       #n.viable = sum(eggs.fert), # (dont need until counting fert eggs properly addressed)
       n.coll = sum(eggs.coll),
       n.coll.perf = n.coll/n.f,

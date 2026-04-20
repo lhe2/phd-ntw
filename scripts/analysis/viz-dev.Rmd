@@ -1808,6 +1808,7 @@ dfs$ntw %>% .plotfn()
 # ### adult dev
 
 ## longevity
+### EDA: fridge bugs
 
 ```{r EDA fridge bugs, eval = FALSE}
 # EDA: effect of including fridge bugs?
@@ -1850,8 +1851,10 @@ dfs_tidy$longntw %>%
       lty = if.fridge, shape = if.fridge)
 ```
 
+### main figs
+
 ```{r}
-# patchwork
+# patchwork (multiyr)
 # final: remove the fridge bugs
 .prepfn <- function(x){
   x %>%
@@ -1863,40 +1866,71 @@ dfs_tidy$longntw %>%
 .plotfn <- function(x){
   x %>%
     ggplot(aes(y = avg.tt,
-               col = year, 
-               shape = pop, lty = pop)
-    ) +
+               shape = pop, lty = pop
+               )
+           ) +
     geom_errorbar(aes(ymin = avg.tt - se.tt,
                       ymax = avg.tt + se.tt),
                   width = 0.5, lty = "solid", show.legend = FALSE) +
-    geom_point(size = 2) + geom_line() +
+    geom_point(size = 2) + 
+    geom_line() +
     facet_grid(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
     labs(y = "longevity (days after eclosion)",
          shape = "population", lty = "population") +
     scale_shape_manual(values = p_scales$shp_pop) +
-    scale_linetype_manual(values = p_scales$lty_pop) +
     scale_color_brewer(palette = "Dark2") +
+    scale_linetype_manual(values = p_scales$lty_pop) +
     theme_bw() +
     ylim(c(4, 17.5))
 }
 
-p1 <- dfs_tidy$longntw %>%
+p1 <-  dfs_tidy$longntw %>%
   filter(trt == 260) %>%
   .prepfn() %>%
   .plotfn() +
-  aes(x = pop)
+  aes(x = year,
+      group = pop) +
+  labs(x = "year")
 
 p2 <- dfs_tidy$longntw %>%
   filter(trt != 260) %>%
   .prepfn() %>%
   .plotfn() +
-    aes(x = trt,
-        group = interaction(year, pop)) +
+  aes(x = trt,
+      col = year,
+      group = interaction(year, pop)) +
   scale_x_discrete(labels = p_scales$labs_minT) +
   labs(x = "minimum temperature (°C)")
 
 p1 + p2 +
   plot_layout(widths = c(1,2),
               axes = "collect", guides = "collect")
+```
+
+```{r}
+# one panel
+dfs_tidy$longntw %>%
+  filter(is.na(if.fridge),
+         instar == "long") %>%
+  PrepAdultSS() %>%
+  ungroup(year) %>% 
+  CalcDevSS() %>%
+  ggplot(aes(y = avg.tt,
+             shape = interaction(pop, trt.type),
+             x = trt.minT, 
+             lty = pop,
+             col = trt.type,
+             group = interaction(trt.type, pop)
+             )) +
+  geom_errorbar(aes(ymin = avg.tt - se.tt,
+                    ymax = avg.tt + se.tt),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  geom_point(size = 2) + 
+  geom_line() +
+  AddLeg_OnePanel() +
+  labs(y = "longevity (days after eclosion)",
+       x = "minimum temperature (°C)") +
+  theme_bw() +
+  ylim(c(5.9, 11.2))
 ```
 

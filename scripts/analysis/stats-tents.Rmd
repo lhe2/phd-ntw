@@ -521,3 +521,27 @@ mods <- list(
 mods %>% GetModelResults()
 #anova(mods$raw_sf, mods$raw_hc, test = "Chisq") # breaks bc of cbind?
 ```
+# # misc
+
+## sample sizes
+
+```{r}
+dfs_tidy$tents %>%
+  CalcTentCounts() %>% 
+  filter(!is.na(trt.f),
+         !is.na(trt.m), # drops virgins
+         mate.pop != "col" # drops col ctrl matings
+         ) %>%
+  # treating col as lab bugs ?
+  mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                              TRUE ~ mate.pop)) %>% #View()
+  group_by(across(c("year", "mate.type", "mate.pop",
+                    "trt.f", "trt.m"))) %>%
+  summarise(total.enclosures = n(),
+            total.females = sum(n.f),
+            total.males = sum(n.m),
+            total.eggs = sum(n.coll),
+            total.hatch = sum(n.hatch)
+            )
+```
+

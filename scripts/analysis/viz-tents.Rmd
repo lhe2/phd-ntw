@@ -32,6 +32,13 @@ dfs_tents <- list(
   n_pertent = dfs_tidy$tents %>%
     CalcTentCounts(),
   
+  ## treat col like lab bugs
+  n_nocol = dfs_tidy$tents %>%
+    select(-mate.col) %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop))) %>%
+    CalcTentCounts(),
+  
   # viz dfs
   ## treat all col like lab expt bugs
   ss_nocol = dfs_tidy$tents %>%
@@ -49,7 +56,7 @@ dfs_tents <- list(
   ss_allcol = dfs_tidy$tents
 )
 
-dfs_tents[2:4] <- dfs_tents[2:4] %>%
+dfs_tents[3:5] <- dfs_tents[3:5] %>%
   lapply(., \(x){
     x %>%
       CalcTentCounts() %>%
@@ -92,7 +99,7 @@ hist(dfs_tents$n_pertent$n.hatch)
 # per yr
 dfs_tents$n_pertent %>%
   #filter(year == 2025) %>%
-  ggplot(aes(x = n.hatch, fill = as.factor(year))) +
+  ggplot(aes(x = n.hatch, fill = year)) +
   geom_bar()
 ```
 
@@ -478,7 +485,7 @@ dfs_tents$n_pertent %>%
 ```
 
 
-### facet by sex v1
+### trted sex vs trt
 
 (both sexes trted vs 1 sex trted)
 
@@ -538,8 +545,9 @@ dfs_tents$ss_nocol %>%
   #aes(col = mate.type, lty = mate.type, shape = year)
 ```
 
-### facet by sex v2
+### trted sex vs trt type
 ```{r}
+# emphasise yr
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>%
@@ -601,7 +609,7 @@ p3 <- dfs_tents$ss_nocol %>%
 ```
 
 ```{r}
-# diff grouping
+# emphasise trt type
 .plotfn <- function(x){
   x %>%
     FilterForLabEggs() %>%
@@ -663,6 +671,57 @@ p3 <- dfs_tents$ss_nocol %>%
   ylim(c(0, 18)) &
   theme_bw()
 ```
+## trt type x trted sex
+```{r}
+.plotfn <- function(x){
+  x %>%
+    FilterForLabEggs() %>%
+    ggplot(aes(y = avg.sqrt.coll.perf,
+               x = mate.trt,
+               lty = mate.istrt,
+               col = mate.istrt)) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    facet_grid(~ trt.type, scales = "free_x", space = "free",
+               labeller = labeller(trt.type = p_scales$facs_trttype)) +
+    scale_x_discrete(labels = p_scales$labs_minT) +
+    scale_color_manual(values = p_scales$cols_trtsex,
+                       labels = p_scales$labs_trtsex) +
+    scale_linetype_discrete(labels = p_scales$labs_trtsex) +
+    labs(y = "sqrt[eggs collected] per female",
+         x = "minimum temperature (°C)",
+         col = "treated sex",
+         lty = "treated sex") +
+    theme_bw()
+}
+
+# parse years
+dfs_tents$ss_nocol %>%
+  .plotfn() +
+  aes(shape = year,
+      group = interaction(year, mate.istrt)
+      ) +
+  scale_shape_manual(values = c(16, 1)) +
+  labs(shape = "year")  
+
+
+# squish years
+dfs_tents$n_nocol %>%
+  group_by(across(starts_with(c("mate", "trt")))) %>%
+  CalcTentSS() %>%
+  .plotfn() +
+  aes(shape = mate.istrt,
+      group = mate.istrt
+      ) +
+  scale_shape_manual(values = p_scales$shp_trtsex,
+                     labels = p_scales$labs_trtsex) +
+  labs(shape = "treated sex")  
+ 
+```
+
 
 
 # # eggs hatched
@@ -872,4 +931,60 @@ p3 <- dfs_tents$ss_nocol %>%
   # labs(y = "sqrt[eggs laid per f]",
   #      x = "temperature treatment") &
   #plot_annotation(caption = "'expt' trt = 40-X") # i give up dude i think the facets are breaking it
+```
+
+## trt type x trted sex
+```{r}
+pos <- position_dodge(0.2)
+.plotfn <- function(x){
+  x %>%
+    FilterForLabEggs() %>%
+    ggplot(aes(y = avg.p.hatch.perc,
+               x = mate.trt,
+               lty = mate.istrt,
+               col = mate.istrt)) +
+    geom_point(size = 2,
+               position = pos) +
+    geom_line(position = pos) +
+    geom_errorbar(aes(ymax = avg.p.hatch.perc + se.p.hatch.perc,
+                      ymin = avg.p.hatch.perc - se.p.hatch.perc),
+                  width = 0.3, lty = "solid", position = pos,
+                  show.legend = FALSE) +
+    facet_grid(~ trt.type, scales = "free_x", space = "free",
+               labeller = labeller(trt.type = p_scales$facs_trttype)) +
+    scale_x_discrete(labels = p_scales$labs_minT) +
+    scale_color_manual(values = p_scales$cols_trtsex,
+                       labels = p_scales$labs_trtsex) +
+    scale_linetype_discrete(labels = p_scales$labs_trtsex) +
+    labs(y = "% hatched per enclosure",
+         x = "minimum temperature (°C)",
+         col = "treated sex",
+         lty = "treated sex") +
+    geom_hline(aes(yintercept = 0), lty = "solid", alpha = 0.3,
+               show.legend = FALSE) +
+    theme_bw()
+}
+
+# parse years
+dfs_tents$ss_nocol %>%
+  .plotfn() +
+  aes(shape = year,
+      group = interaction(year, mate.istrt)
+      ) +
+  scale_shape_manual(values = c(16, 1)) +
+  labs(shape = "year")  
+
+
+# squish years
+dfs_tents$n_nocol %>%
+  group_by(across(starts_with(c("mate", "trt")))) %>%
+  CalcTentSS() %>%
+  .plotfn() +
+  aes(shape = mate.istrt,
+      group = mate.istrt
+      ) +
+  scale_shape_manual(values = p_scales$shp_trtsex,
+                     labels = p_scales$labs_trtsex) +
+  labs(shape = "treated sex")  
+ 
 ```
