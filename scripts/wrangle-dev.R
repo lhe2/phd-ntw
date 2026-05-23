@@ -77,8 +77,12 @@ PrepSurvProps <- function(wide_df){
 CalcSurvProps <- function(wide_df){
   wide_df %>%
     summarise(n = n(),
-              prop.pup = sum(is.pup == 1)/n,
-              se.pup = seprop(prop.pup, n)) %>%
+              n.pup = sum(!is.na(jdate.pupa)), # omit LPIs for ec
+              n.ec = sum(is.ec == 1, na.rm = TRUE),
+              prop.pup = sum(is.pup == 1)/n, # any pups
+              se.pup = seprop(prop.pup, n),
+              prop.ec = n.ec/n.pup,
+              se.ec = seprop(prop.ec, n.pup)) %>%
     ungroup()
 }
 

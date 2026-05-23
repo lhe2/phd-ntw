@@ -266,6 +266,8 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
     mutate(is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
                                  fate.dev == "pmd" ~ 0,
                                  fate.dev == "other" ~ 2),
+           is.ec = case_when(fate.dev == "ec" ~ 1,
+                             !is.na(jdate.pupa) & is.na(jdate.LPI) & is.na(jdate.eclose) ~ 0),
            sup = case_when(!is.na(jdate.8th) ~ 8,
                            !is.na(jdate.7th) ~ 7,
                            !is.na(jdate.6th) ~ 6,
@@ -299,14 +301,8 @@ dfs_tidy <- list(
   wide = 
     data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
     filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) # for some field bugs
-    ))
-
-
-  # TODO could drop jdate column after pivot maybe?
-dfs_tidy <- list_modify(
-  dfs_tidy,
-  long = dfs_tidy$wide %>% 
-    mutate(tt.3rd = jdate.3rd - jdate.hatch,
+    ) %>%
+  mutate(tt.3rd = jdate.3rd - jdate.hatch,
            tt.4th = jdate.4th - jdate.hatch,
            tt.5th = jdate.5th - jdate.hatch,
            tt.6th = jdate.6th - jdate.hatch,
@@ -323,7 +319,14 @@ dfs_tidy <- list_modify(
             ## TODO omit tt.fridge? not that useful. could calculate on the fly later
            #tt.exit = jdate.exit - jdate.hatch
             ## NOTE omit: just add this in later or else sorta interferes w PrepLarvalSS
-    ) %>%
+         mass.change = (mass.pupa - mass.eclose)/mass.pupa,
+         mass.prop = mass.pupa/mass.eclose
+    )
+)
+
+dfs_tidy <- list_modify(
+  dfs_tidy,
+  long = dfs_tidy$wide %>% 
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
