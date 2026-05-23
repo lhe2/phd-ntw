@@ -6,25 +6,27 @@ p_scales <- list(
   # labels
   labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
   labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
-  labs_trttype = c("ctrl" = "control (26-26°C)", "expt" = "nighttime warming\n(40-X°C)"),
+  labs_trttype = c("ctrl" = "control (max: 26°C)", "expt" = "nighttime warming\n(max: 40°C)"),
   labs_trtsex = c("f" = "female only", "m" = "male only", "both" = "male + female"),
   
   # values
   cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
-  cols_trttype = c("ctrl" = "#6BAED6", "expt" = "#FEB24C"),
+  cols_trttype = c(#"ctrl" = "#6BAED6", 
+                   "ctrl" = "steelblue1",
+                   "expt" = "#FEB24C"),
   cols_trtsex = c("both" = "slateblue2", "f" = "maroon2", "m" = "deepskyblue",
                   "none" = "slateblue2", "virgin" = "maroon2"),
   
-  shp_pop = c(`lab` = 19, `field` = 1),
+  shp_pop = c(`lab` = 16, `field` = 17),
   lty_pop = c(`lab` = "solid", `field` = "dashed"),
   shp_trtsex = c("both" = 16, "f" = 2, "m" = 0),
   
   # use with facet_*(labeller)
-  facs_trtpop = c(`ctrl` = "control (26-26°C)",
-                  `lab` = "lab (40-X°C)",
-                  `field` = "field (40-X°C)"),
-  facs_trttype = c(`ctrl` = "control (26-26°C)",
-                   `expt` = "nighttime warming (40-X°C)"),
+  facs_trtpop = c(`ctrl` = "control (max: 26°C)",
+                  `lab` = "lab (max: 40°C)",
+                  `field` = "field (max: 40°C)"),
+  facs_trttype = c(`ctrl` = "control (max: 26°C)",
+                   `expt` = "nighttime warming (max: 40°C)"),
   facs_sex = c(`f` = "female", `m` = "male"),
   
   # use with do.call(scale_*_*, args)
