@@ -417,7 +417,7 @@ dfs_stdised = list(
            trt.type = case_when(trt.f > 400 ~ "expt",
                                 TRUE ~ "ctrl"),
            trt.ishs.f = case_when(trt.f > 400 ~ 1,
-                               TRUE ~ 0),
+                               TRUE ~ 0) 
     ),
   
   events = dfs_imported[["coll24"]] %>%
@@ -455,9 +455,18 @@ dfs_export <- list_modify(
 # # prep for final export
 
 ```{r export tent data}
-# specify levels 
+# bind and append any extra columns
 dfs_tidy <- list(
   tents = rbindlist(dfs_export, fill = TRUE)
+  )
+
+dfs_tidy$tents <- dfs_tidy$tents %>%
+  mutate(trt.mate = case_when((trt.f > trt.m) | 
+                                (is.na(trt.m) & trt.f > 400) ~ "f",
+                              (trt.m > trt.f) |
+                                (is.na(trt.f) & trt.m > 400)~ "m",
+                              trt.f == trt.m & trt.f > 400 ~ "both",
+                              TRUE ~ "neither")
   )
 ```
 
