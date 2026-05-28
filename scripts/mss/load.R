@@ -50,6 +50,24 @@ dfs_viz <- list(
       mutate(across(c(starts_with("trt"), "year"), as.factor))
   })
 
+# stats dfs: subset into ctrl+ntw bugs and just ntw bugs (omit col bugs)
+## focus on pop, minT
+dfs_stats <- list(
+  # TODO maybe include just a ctrl bug subset...
+  dev_all = dfs_tidy$wide,
+  dev_expt = dfs_tidy$wide %>% filter(trt != 260)
+) %>%
+  lapply(., \(x) {
+    x %>%
+      FilterOutLabTB() %>%
+      FilterForNTWTrts() %>%
+      filter(pop != "col",
+             is.pup < 2, # drop culled bugs
+             ) %>%
+      # factorise and set reference levels
+      mutate(across(c("year", "trt.minT", "trt.type", "trt"), as.factor),
+             pop = factor(pop, levels = c("lab", "field")))
+  })
 
 
 

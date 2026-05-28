@@ -10,6 +10,9 @@ collated viz + stats results for ntw mss (tbd if split into life stages lol...)
 -   notes on the viz:
     -   main viz = focuses on trt type (NTW/control), minimum temp, population
     -   supp viz = includes year and sex (if applicable)
+-   notes on the stats:
+    -   main stats = focuses on the NTW bugs and population, minimum temp as predictors
+
 
 ```{r pathfinding, message=FALSE}
 here::i_am("_ntw/scripts/mss/final-res.Rmd")
@@ -19,8 +22,21 @@ here::i_am("_ntw/scripts/mss/final-res.Rmd")
 source(here::here("_ntw/scripts/mss/load.R"))
 ```
 
-```{r}
-p <- list() # for plots
+## util fns
+
+```{r utilities}
+# for (main) plots
+p <- list()
+# ps for supp plots...?
+
+# (temp) function to save results
+ResToCsv <- function(res, filename){
+  res <- as.data.frame(res)
+  today <- format(Sys.time(), "%y%m%d")
+  path <- paste0("_ntw/out/mss-stats/", filename, "_", today, ".csv")
+  
+  write.csv(res, here::here(path), row.names = TRUE)
+}
 ```
 
 # ## development
@@ -121,6 +137,24 @@ p <- list_modify(
 p$surv_la
 ```
 
+```{r main stats pup survival}
+mods <- list(
+  m1 = glm(is.pup ~ year*pop*trt.minT,
+           family = "binomial", data = dfs_stats$dev_expt)
+)
+
+anova(mods$m1, test = "Chisq") # can drop the 3-way
+
+mods <- list_modify(
+  mods,
+  m2 = glm(is.pup ~ (year + pop + trt.minT)^2,
+           family = "binomial", data = dfs_stats$dev_expt)
+)
+
+anova(mods$m2, test = "Chisq") #%>% ResToCsv("pup-surv")
+summary(mods$m2)
+```
+
 ### supp
 
 ```{r supp fig pup survival}
@@ -205,6 +239,33 @@ p$mass_pup
 p$mass_pupsex # use this, per stats
 ```
 
+```{r main stats pup mass}
+df <- dfs_stats$dev_expt %>%
+  filter(!is.na(mass.pupa),
+         !is.na(sex),
+         is.na(is.LPI)
+         )
+
+mods <- list(
+  m1 = lm(mass.pupa ~ year*pop*trt.minT*sex,
+           data = df)
+)
+
+anova(mods$m1) # ok to just focus on the 2 ways of trt/pop/year and main effect of sex
+
+mods <- list_modify(
+  mods,
+  m2 = lm(mass.pupa ~ (year + pop + trt.minT + sex)^2,
+           data = df),
+  m3 = lm(mass.pupa ~ (year + pop + trt.minT)^2 + sex,
+           data = df)
+)
+
+AIC(mods$m3, mods$m2, mods$m1)
+anova(mods$m3) #%>% ResToCsv("pup-mass")
+summary(mods$m3)
+```
+
 ### supp
 ```{r supp fig pup mass}
 df <- dfs_viz$long %>%
@@ -285,6 +346,24 @@ p <- list_modify(
 p$dev_la
 ```
 
+```{r main stats pup dev rate}
+mods <- list(
+  m1 = lm(1/tt.pupa ~ year*pop*trt.minT,
+           data = dfs_stats$dev_expt)
+)
+
+anova(mods$m1) # ok to focus on 2ways
+
+mods <- list_modify(
+  mods,
+  m2 = lm(1/tt.pupa ~ (year + pop + trt.minT)^2,
+           dfs_stats$dev_expt)
+)
+
+#AIC(mods$m2, mods$m1)
+anova(mods$m2) #%>% ResToCsv("pup-devrate")
+summary(mods$m2)
+```
 
 ### supp
 

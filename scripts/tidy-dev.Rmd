@@ -266,6 +266,7 @@ dfs_stdised <- lapply(dfs_stdised, \(x){
     mutate(is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
                                  fate.dev == "pmd" ~ 0,
                                  fate.dev == "other" ~ 2),
+           is.LPI = case_when(!is.na(jdate.LPI) ~ 1),
            is.ec = case_when(fate.dev == "ec" ~ 1,
                              !is.na(jdate.pupa) & is.na(jdate.LPI) & is.na(jdate.eclose) ~ 0),
            sup = case_when(!is.na(jdate.8th) ~ 8,

@@ -14,8 +14,9 @@ GetModelResults <- function(x){
   }
   
   x %>% lapply(., \(x){
-    list(model_summary = summary(x),
-         anova_wchisq = anova(x, test = "Chisq"))
+    list(anova_wchisq = anova(x, test = "Chisq"),
+         model_summary = summary(x)
+         )
     })
 }
 

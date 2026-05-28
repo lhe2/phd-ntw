@@ -78,6 +78,8 @@ CalcSurvProps <- function(wide_df){
   wide_df %>%
     summarise(n = n(),
               n.pup = sum(!is.na(jdate.pupa)), # omit LPIs for ec
+              ## NOTE this still doesnt fully remove unviable pups, 
+              ## so still need to filter them out before doing calcs
               n.ec = sum(is.ec == 1, na.rm = TRUE),
               prop.pup = sum(is.pup == 1)/n, # any pups
               se.pup = seprop(prop.pup, n),
