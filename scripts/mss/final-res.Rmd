@@ -17,6 +17,12 @@ here::i_am("_ntw/scripts/mss/final-res.Rmd")
 source(here::here("_ntw/scripts/mss/load.R"))
 ```
 
+```{r}
+p <- list() # for plots
+```
+
+
+# ## development ##
 ## plotting fns
 
 ```{r}
@@ -78,32 +84,39 @@ df <- dfs_viz$wide %>%
   ungroup(year) %>%
   CalcSurvProps()
 
-df %>%
-  filter(trt != 260) %>%
-  ggplot(aes(y = prop.pup, x = trt.minT,
-             shape = interaction(pop, trt.type), 
-             lty = pop,
-             col = trt.type,
-             group = interaction(pop, trt.type))) +
-  geom_point(size = 2) +
-  geom_line(show.legend = TRUE) +
-  geom_errorbar(aes(ymax = prop.pup + se.pup,
-                    ymin = prop.pup - se.pup),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  geom_point(data = filter(df, trt == 260),
-             mapping = aes(),
-             size = 2, position = position_dodge(0.3),
-             ) +
-  geom_errorbar(filter(df, trt == 260),
-                mapping = aes(ymax = prop.pup + se.pup,
-                              ymin = prop.pup - se.pup),
-                width = 0.5, position = position_dodge(0.3),
-                lty = "solid", show.legend = FALSE) +
-  labs(y = "% survived to pupation",
-       x = p_scales$xlab_minT) +
-  AddLeg_OnePanel() +
-  theme_bw() +
-  ylim(c(0, 1))
+p <- list_modify(
+  p,
+  surv_la =
+    df %>%
+    #filter(trt != 260) %>%
+    ggplot(aes(y = prop.pup, x = trt.minT,
+               shape = interaction(pop, trt.type), 
+               lty = pop,
+               col = trt.type,
+               group = interaction(pop, trt.type))) +
+    geom_point(size = 2, position = position_dodge(0.3)) +
+    geom_line(position = position_dodge(0.3), show.legend = TRUE) +
+    geom_errorbar(aes(ymax = prop.pup + se.pup,
+                      ymin = prop.pup - se.pup),
+                  width = 0.25, lty = "solid", show.legend = FALSE,
+                  position = position_dodge(0.3)) +
+    # geom_point(data = filter(df, trt == 260),
+    #            mapping = aes(),
+    #            size = 2, position = position_dodge(0.3),
+    # ) +
+    # geom_errorbar(filter(df, trt == 260),
+    #               mapping = aes(ymax = prop.pup + se.pup,
+    #                             ymin = prop.pup - se.pup),
+    #               width = 0.5, position = position_dodge(0.3),
+    #               lty = "solid", show.legend = FALSE) +
+    labs(y = "% survived to pupation",
+         x = p_scales$xlab_minT) +
+    AddLeg_OnePanel() +
+    theme_bw() +
+    ylim(c(0, 1))
+)
+
+p$surv_la
 ```
 
 
@@ -148,6 +161,8 @@ p1 + p2 +
   ylim(c(0, 1))
 ```
 
+## stats survival to pup
+
 ## viz pupal mass
 ```{r}
 # MAIN by trt type
@@ -171,27 +186,35 @@ p1 + p2 +
     theme_bw()
 }
 
-# sexes combined
-dfs_viz$long %>%
-  filter(!is.na(sex),
-         instar == "pupa") %>%
-  PrepAdultSS() %>%
-  ungroup(year) %>%
-  CalcDevSS() %>%
-  .plotfn() +
-  ylim(c(1, 6.4))
 
-# sexes parsed
-dfs_viz$long %>%
-  filter(!is.na(sex),
-         instar == "pupa") %>%
-  PrepAdultSS() %>%
-  group_by(sex, .add = TRUE) %>%
-  ungroup(year) %>%
-  CalcDevSS() %>%
-  .plotfn() +
-  facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
-  ylim(c(1, 6.8))
+p <- list_modify(
+  p,
+  mass_pup = # sexes combined
+    dfs_viz$long %>%
+    filter(!is.na(sex),
+           instar == "pupa") %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>%
+    CalcDevSS() %>%
+    .plotfn() +
+    ylim(c(1, 6.4)),
+  
+  mass_pupsex = # sexes parsed
+    dfs_viz$long %>%
+    filter(!is.na(sex),
+           instar == "pupa") %>%
+    PrepAdultSS() %>%
+    group_by(sex, .add = TRUE) %>%
+    ungroup(year) %>%
+    CalcDevSS() %>%
+    .plotfn() +
+    facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
+    ylim(c(1, 6.8))
+)
+
+p$mass_pup
+
+p$mass_pupsex
 ```
 
 ```{r}
@@ -238,27 +261,34 @@ dfs_viz$long %>%
 
 
 ## viz development rate
+
 ```{r}
 # MAIN
-dfs_viz$long %>%
+p <- list_modify(
+  p,
+  dev_la =
+    dfs_viz$long %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
     CalcDevSS() %>%
     filter(instar == "pupa") %>%
-  ggplot(aes(y = avg.devrate, x = trt.minT,
-             lty = pop, col = trt.type,
-             shape = interaction(pop, trt.type), 
-             group = interaction(pop, trt.type))) +
-  geom_point(size = 2) +
-  geom_line() +
-  geom_errorbar(aes(ymax = avg.devrate + se.devrate,
-                    ymin = avg.devrate - se.devrate),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  labs(y = "larval development rate (1/days)",
-       x = p_scales$xlab_minT) +
-  AddLeg_OnePanel() +
-  #ylim(c(0.025, 0.05)) +
-  theme_bw()
+    ggplot(aes(y = avg.devrate, x = trt.minT,
+               lty = pop, col = trt.type,
+               shape = interaction(pop, trt.type), 
+               group = interaction(pop, trt.type))) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_errorbar(aes(ymax = avg.devrate + se.devrate,
+                      ymin = avg.devrate - se.devrate),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    labs(y = "larval development rate (1/days)",
+         x = p_scales$xlab_minT) +
+    AddLeg_OnePanel() +
+    #ylim(c(0.025, 0.05)) +
+    theme_bw()
+)
+
+p$dev_la
 ```
 
 
@@ -305,27 +335,35 @@ p1 + p2 +
 # pupal development
 
 ## viz survival to eclosion
+
 ```{r}
 # MAIN by trt type
-dfs_viz$wide %>%
-  PrepSurvProps() %>%
-  ungroup(year) %>%
-  CalcSurvProps() %>%
-  ggplot(aes(y = prop.ec,
-             shape = interaction(pop, trt.type), lty = pop,
-             col = trt.type,
-             group = interaction(pop, trt.type),
-             x = trt.minT)) +
-  geom_point(size = 2) +
-  geom_line(show.legend = TRUE) +
-  geom_errorbar(aes(ymax = prop.ec + se.ec,
-                    ymin = prop.ec - se.ec),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  labs(y = "% pupa eclosed",
-       x = p_scales$xlab_minT) +
-  AddLeg_OnePanel() +
-  ylim(c(0, 1)) +
-  theme_bw()
+p <- list_modify(
+  p,
+  surv_pup = 
+    dfs_viz$wide %>%
+    PrepSurvProps() %>%
+    ungroup(year) %>%
+    CalcSurvProps() %>%
+    ggplot(aes(y = prop.ec,
+               shape = interaction(pop, trt.type), 
+               lty = pop,
+               col = trt.type,
+               group = interaction(pop, trt.type),
+               x = trt.minT)) +
+    geom_point(size = 2) +
+    geom_line(show.legend = TRUE) +
+    geom_errorbar(aes(ymax = prop.ec + se.ec,
+                      ymin = prop.ec - se.ec),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    labs(y = "% pupa eclosed",
+         x = p_scales$xlab_minT) +
+    AddLeg_OnePanel() +
+    ylim(c(0, 1)) +
+    theme_bw()
+)
+
+p$surv_pup
 ```
 
 ## viz mass change
@@ -351,73 +389,94 @@ df <- dfs_viz$long %>%
     theme_bw()  
 }
 
-df %>%
-  filter(instar == "prop") %>%
-  .plotfn() +
-  labs(y = "pupal:eclosion mass")
+p <- list_modify(
+  p,
+  mass_perat =
+    df %>%
+    filter(instar == "prop") %>%
+    .plotfn() +
+    labs(y = "pupal:eclosion mass"),
+  
+  mass_pepct =
+    df %>%
+    mutate(avg.mass = avg.mass * 100,
+           se.mass  = se.mass * 100) %>%
+    filter(instar == "change") %>%
+    .plotfn() +
+    labs(y = "% mass lost\n(pupa to eclosion)")
+)
 
-df %>%
-  mutate(avg.mass = avg.mass * 100,
-         se.mass  = se.mass * 100) %>%
-  filter(instar == "change") %>%
-  .plotfn() +
-  labs(y = "% mass lost\n(pupa to eclosion)")
+p$mass_perat
 
+p$mass_pepct
 ```
 
 
 ## viz pupal duration
+
 ```{r}
 # MAIN by trt type
-dfs_viz$long %>%
+p <- list_modify(
+  p,
+  dev_pup = 
+    dfs_viz$long %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
     CalcDevSS() %>%
     filter(instar == "eclose") %>%
-  ggplot(aes(y = avg.devrate, x = trt.minT,
-             lty = pop, col = trt.type,
-             shape = interaction(pop, trt.type), group = interaction(pop, trt.type))) +
-  geom_point(size = 2) +
-  geom_line() +
-  geom_errorbar(aes(ymax = avg.devrate + se.devrate,
-                    ymin = avg.devrate - se.devrate),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  labs(y = "pupal development rate (1/days)",
-       x = p_scales$xlab_minT) +
-  AddLeg_OnePanel() +
-  #ylim(c(0.025, 0.05)) +
-  theme_bw()
+    ggplot(aes(y = avg.devrate, x = trt.minT,
+               lty = pop, col = trt.type,
+               shape = interaction(pop, trt.type), group = interaction(pop, trt.type))) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_errorbar(aes(ymax = avg.devrate + se.devrate,
+                      ymin = avg.devrate - se.devrate),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    labs(y = "pupal development rate (1/days)",
+         x = p_scales$xlab_minT) +
+    AddLeg_OnePanel() +
+    #ylim(c(0.025, 0.05)) +
+    theme_bw()
+)
+
+p$dev_pup
 ```
 
 
-# adult metrics
+# adult
 
 ## viz longevity
 ```{r}
 # MAIN by trt type
-dfs_viz$long%>%
-  filter(is.na(if.fridge),
-         instar == "long") %>%
-  PrepAdultSS() %>%
-  ungroup(year) %>% 
-  CalcDevSS() %>%
-  ggplot(aes(y = avg.tt,
-             shape = interaction(pop, trt.type),
-             x = trt.minT, 
-             lty = pop,
-             col = trt.type,
-             group = interaction(trt.type, pop)
-             )) +
-  geom_errorbar(aes(ymin = avg.tt - se.tt,
-                    ymax = avg.tt + se.tt),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  geom_point(size = 2) + 
-  geom_line() +
-  AddLeg_OnePanel() +
-  labs(y = "adult longevity (days)",
-       x = p_scales$xlab_minT) +
-  theme_bw() +
-  ylim(c(5.9, 11.2))
+p <- list_modify(
+  p,
+  dev_ad =
+    dfs_viz$long%>%
+    filter(is.na(if.fridge),
+           instar == "long") %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>% 
+    CalcDevSS() %>%
+    ggplot(aes(y = avg.tt,
+               shape = interaction(pop, trt.type),
+               x = trt.minT, 
+               lty = pop,
+               col = trt.type,
+               group = interaction(trt.type, pop)
+    )) +
+    geom_errorbar(aes(ymin = avg.tt - se.tt,
+                      ymax = avg.tt + se.tt),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    geom_point(size = 2) + 
+    geom_line() +
+    AddLeg_OnePanel() +
+    labs(y = "adult longevity (days)",
+         x = p_scales$xlab_minT) +
+    theme_bw() +
+    ylim(c(5.9, 11.2))
+)
+
+p$dev_ad
 ```
 
 
@@ -468,10 +527,9 @@ p1 + p2 +
               axes = "collect", guides = "collect")
 ```
 
+# ## fertility ##
 
-## viz eggs
-
-### plotting fn
+## plotting fn
 ```{r}
 .plotfn <- function(x){
   x %>%
@@ -492,56 +550,102 @@ p1 + p2 +
 ```
 
 
-
-### eggs laid
+### viz eggs laid
 ```{r}
-dfs_viz$eggs %>%
-  .plotfn() +
-  aes(#y = avg.coll.perf, 
-             y = avg.sqrt.coll.perf, 
-  ) + 
-  geom_point(size=2, position = position_dodge(0.2)) + 
-  geom_line(position = position_dodge(0.2), show.legend = TRUE) +
-  # very overwhelming w error bars lol
-  # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
-  #                   ymin = avg.coll.perf - se.coll.perf,),
-  #               lty = "solid", width = 0.25) +
-  geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
-                    ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
-                lty = "solid", width = 0.25, position = position_dodge(0.2),
-                show.legend = FALSE) +
-  # geom_text(aes(label = n.f.total),
-  #           vjust = -0.25, hjust = -0.25, position = "jitter",
-  #           show.legend = FALSE) +
-  # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
-  #           vjust = -0.5, hjust = -0.5, #position = "jitter",
-  #           show.legend = FALSE
-  #           ) +
-  labs(#caption = "mean±se; lab only; N = # F",
-       y = "sqrt [eggs laid per female]", 
-       )
+p <- list_modify(
+  p,
+  eggs_laid = 
+    dfs_viz$eggs %>%
+    .plotfn() +
+    aes(#y = avg.coll.perf, 
+      y = avg.sqrt.coll.perf, 
+    ) + 
+    geom_point(size=2, position = position_dodge(0.2)) + 
+    geom_line(position = position_dodge(0.2), show.legend = TRUE) +
+    # very overwhelming w error bars lol
+    # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
+    #                   ymin = avg.coll.perf - se.coll.perf,),
+    #               lty = "solid", width = 0.25) +
+    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+                  lty = "solid", width = 0.25, position = position_dodge(0.2),
+                  show.legend = FALSE) +
+    # geom_text(aes(label = n.f.total),
+    #           vjust = -0.25, hjust = -0.25, position = "jitter",
+    #           show.legend = FALSE) +
+    # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
+    #           vjust = -0.5, hjust = -0.5, #position = "jitter",
+    #           show.legend = FALSE
+    #           ) +
+    labs(#caption = "mean±se; lab only; N = # F",
+      y = "sqrt [eggs laid per female]", 
+    )
+)
+
+p$eggs_laid
 ```
 
 
-### eggs hatched
+###  viz eggs hatched
 ```{r}
-dfs_viz$eggs %>%
-  .plotfn() +
-  aes(y = p.hatch) +
-  geom_errorbar(aes(ymax = p.hatch + se.hatch,
-                    ymin = p.hatch - se.hatch,),
-                lty = "solid", width = 0.25, show.legend = FALSE) +
-  # geom_text(aes(label = n.total.coll),
-  #           vjust = -0.5, hjust = -0.5, position = "jitter",
-  #           show.legend = FALSE) +
-  # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
-  #       vjust = -0.5, hjust = -0.5, size = 3
-  #       #position = "jitter"
-  #       ) +
-  #geom_point(aes(size=sqrt(n.total.coll))) + # looks dumb
-  geom_point(size = 2) +
-  geom_line() +
-  labs(#caption = "lab only; overall hatch prop. per mating combination",
-    y = "proportion eggs hatched")
+p <- list_modify(
+  p,
+  eggs_hatch = 
+    dfs_viz$eggs %>%
+    .plotfn() +
+    aes(y = p.hatch) +
+    geom_errorbar(aes(ymax = p.hatch + se.hatch,
+                      ymin = p.hatch - se.hatch,),
+                  lty = "solid", width = 0.25, show.legend = FALSE) +
+    # geom_text(aes(label = n.total.coll),
+    #           vjust = -0.5, hjust = -0.5, position = "jitter",
+    #           show.legend = FALSE) +
+    # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
+    #       vjust = -0.5, hjust = -0.5, size = 3
+    #       #position = "jitter"
+    #       ) +
+    #geom_point(aes(size=sqrt(n.total.coll))) + # looks dumb
+    geom_point(size = 2) +
+    geom_line() +
+    labs(#caption = "lab only; overall hatch prop. per mating combination",
+      y = "proportion eggs hatched")
+)
+
+p$eggs_hatch
+```
+
+# ## collated ##
+
+```{r}
+.plotfn <- function(){
+  list(
+    plot_layout(axes = "collect", guides = "collect")
+    #theme(legend.position = "bottom")
+  )
+}
+```
+
+## development viz
+
+response type x life stage
+
+```{r}
+# survival
+p$surv_la + p$surv_pup +
+  .plotfn() 
+
+# dev time
+p$dev_la + p$dev_pup + p$dev_ad +
+  .plotfn()
+
+# mass
+p$mass_pup + p$mass_perat +
+    .plotfn()
+```
+
+## eggs viz
+```{r}
+p$eggs_laid + p$eggs_hatch +
+  .plotfn() 
 ```
 
