@@ -43,6 +43,7 @@ etc/*
 # (**/dir/* for nested dirs)
 **/data/*
 **/figs/*
+**/out/*
 **/etc/*
 **/archive/*
 **/dump/*
