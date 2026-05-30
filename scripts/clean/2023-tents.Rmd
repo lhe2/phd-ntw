@@ -16,10 +16,9 @@ APPEND 2025 FIXES LOL
 # 1. load data & packages
 ```{r message = FALSE}
 library(tidyverse)
-library(googlesheets4)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/import/2023-tents.Rmd")
+here::i_am("_ntw/scripts/clean/2023-tents.Rmd")
 library(here)
 ```
 
@@ -31,11 +30,11 @@ library(here)
   # check column/row alignment + proper sorting
 
 dfs_raw <- list(
-  pairs = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="mating pairs", col_types = "c", na = c("#N/A", "NA", "na", "--", "", "#REF!")),
+  pairs = read.csv(here("_ntw/data/gsheets/2023/tent-pairs.csv"), header = TRUE),
   
-  tents = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="tent stats v2", col_types = "c", range = "A:Q", na = c("#N/A", "NA", "--", "", "#REF!", "unk")),
+  tents = read.csv(here("_ntw/data/gsheets/2023/tents.csv"), header = TRUE),
   
-  hatch = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="hatch stats", col_types = "c", range = "A:F", na = c("#N/A", "NA", "--", "", "#REF!"))
+  hatch = read.csv(here("_ntw/data/gsheets/2023/tent-hatch.csv"), header = TRUE)
 )
 ```
 

@@ -1,0 +1,111 @@
+---
+title: "import gsheets"
+date: "2026-05-30"
+---
+
+for importing stuff from gsheets cuz im so tired of re-doing this every time i mess sth up
+
+# setup
+```{r message = FALSE}
+library(tidyverse)
+library(googlesheets4)
+
+here::i_am("_ntw/scripts/import-gsheets.Rmd")
+library(here)
+
+paths <- list(
+  y23 = here("_ntw/data/gsheets/2023/"),
+  y24 = here("_ntw/data/gsheets/2024/"),
+  y25 = here("_ntw/data/gsheets/2025/")
+)
+```
+
+# import
+## 2023 dev
+```{r}
+# before importing,
+  # run cleaning macros (larva sheets)
+  # check column/row alignment + proper sorting (adult sheets)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet = "june field", col_types = "c") %>%
+  mutate(src = "field") %>%
+  write.csv(file = paste0(paths$y23, "dev-field.csv"), row.names = FALSE)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet="june 2023 lab", col_types = "c") %>%
+  mutate(src = "su") %>%
+  write.csv(file = paste0(paths$y23, "dev-su.csv"), row.names = FALSE)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet="lab F1", col_types = "c") %>%
+  mutate(src = "F1") %>%
+  write.csv(file = paste0(paths$y23, "dev-F1.csv"), row.names = FALSE)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet="consolidated + tidyed", col_types = "c") %>%
+  mutate(src = "sp") %>%
+  write.csv(file = paste0(paths$y23, "dev-sp.csv"), row.names = FALSE)
+```
+
+## 2023 tents
+```{r}
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet= "mating pairs", col_types = "c", 
+           na = c("#N/A", "NA", "na", "--", "", "#REF!")) %>%
+  write.csv(file = paste0(paths$y23, "tent-pairs", ".csv"), row.names = FALSE)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet= "tent stats v2", col_types = "c", range = "A:Q", 
+           na = c("#N/A", "NA", "--", "", "#REF!", "unk")) %>%
+  write.csv(file = paste0(paths$y23, "tents.csv"), row.names = FALSE)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", 
+           sheet= "hatch stats", col_types = "c", range = "A:F", 
+           na = c("#N/A", "NA", "--", "", "#REF!")) %>%
+  write.csv(file = paste0(paths$y23, "tent-hatch.csv"), row.names = FALSE)
+```
+
+## 2024 dev
+```{r}
+read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1256964024", 
+           sheet = "ntw repeat", col_types = "c") %>%
+  write.csv(file = paste0(paths$y24, "dev.csv"), row.names = FALSE)
+```
+
+## 2024 tents
+```{r}
+read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1854350692", 
+           sheet = "tents", range = "A:N", col_types = "c", 
+           na = c("", "n/a")) %>%
+  write.csv(file = paste0(paths$y24, "tents.csv"), row.names = FALSE)
+
+read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", 
+           sheet = "tent stats", range = "A:Q", col_types = "c", 
+           na = c("", "#REF!", "#N/A")) %>%
+  write.csv(file = paste0(paths$y24, "tent-stats.csv"), row.names = FALSE)
+```
+
+## 2025 dev
+```{r}
+read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+           sheet = "ntw aug 2025", col_types = "c",
+           #na = c("#VALUE!")
+           ) %>%
+  drop_na(id) %>%
+  write.csv(file = paste0(paths$y25, "dev.csv"), row.names = FALSE)
+```
+
+## 2025 tents
+```{r}
+read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
+           sheet = "adults", col_types = "c") %>%
+  drop_na(id) %>%
+  write.csv(file = paste0(paths$y25, "tents.csv"), row.names = FALSE)
+```
+
+# cleanup
+```{r}
+rm(paths)
+```
+

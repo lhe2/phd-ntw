@@ -3,7 +3,7 @@ title: "ntw 2025 import"
 date: "2025-11-24"
 ---
 
-for importing + some pre-cleaning of ntw 2025 data from googlesheets
+for some pre-cleaning of ntw 2025 data from googlesheets
 
 re-run sections whenever the gsheets gets updated
 
@@ -11,10 +11,9 @@ re-run sections whenever the gsheets gets updated
 
 ```{r message = FALSE}
 library(tidyverse)
-library(googlesheets4)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/import/2025-dev.Rmd")
+here::i_am("_ntw/scripts/clean/2025-dev.Rmd")
 library(here)
 ```
 
@@ -24,12 +23,7 @@ LAST RUN: 2025-12-14
 ## - import
 
 ```{r}
-raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                  sheet = "ntw aug 2025",
-                  col_types = "c",
-                  #na = c("#VALUE!")
-                  ) %>%
-  drop_na(id)
+raw <- read.csv(here("_ntw/data/gsheets/2025/dev.csv"), header = TRUE)
 
 data <- raw
 ```

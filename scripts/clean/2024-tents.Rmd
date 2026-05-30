@@ -19,9 +19,8 @@ LAST RUN: 2026-03-16 (fixing 2099)
 
 ```{r message = FALSE}
 library(tidyverse)
-library(googlesheets4)
 
-here::i_am("_ntw/scripts/import/2024-tents.Rmd")
+here::i_am("_ntw/scripts/clean/2024-tents.Rmd")
 library(here)
 ```
 
@@ -33,9 +32,9 @@ library(here)
   # check column/row alignment + proper sorting
 
 dfs_raw <- list(
-  tents = read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1854350692", sheet = "tents", range = "A:N", col_types = "c", na = c("", "n/a")),
+  tents = read.csv(here("_ntw/data/gsheets/2024/tents.csv"), header = TRUE),
   
-  tentstats = read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=641809244", sheet = "tent stats", range = "A:Q", col_types = "c", na = c("", "#REF!", "#N/A"))
+  tentstats = read.csv(here("_ntw/data/gsheets/2024/tent-stats.csv"), header = TRUE)
 )
 ```
 

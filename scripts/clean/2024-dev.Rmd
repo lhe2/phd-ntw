@@ -18,18 +18,16 @@ REVISIT
 
 ```{r message = FALSE, eval = FALSE}
 library(tidyverse)
-library(googlesheets4)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/import/2024-dev.Rmd")
+here::i_am("_ntw/scripts/clean/2024-dev.Rmd")
 library(here)
 ```
 
 googlesheets import
 
 ```{r}
-df_import <- read_sheet("https://docs.google.com/spreadsheets/d/1TOUsH7zNT6jF7SltYsD_8pK5tI7yR-Gqx-kDrodmJ00/edit?gid=1256964024", sheet = "ntw repeat", col_types = "c")
-
+df_import <- read.csv(here("_ntw/data/gsheets/2024/dev.csv"), header = TRUE)
 ```
 
 pre-filtering/value fixing

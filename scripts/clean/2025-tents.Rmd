@@ -3,7 +3,7 @@ title: "ntw 2025 import"
 date: "2025-11-24"
 ---
 
-for importing + some pre-cleaning of ntw 2025 data from googlesheets
+for some pre-cleaning of ntw 2025 data from googlesheets
 
 re-run sections whenever the gsheets gets updated
 
@@ -14,24 +14,20 @@ adults and tents done separately here...
 
 ```{r message = FALSE}
 library(tidyverse)
-library(googlesheets4)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/import/2025-tents.Rmd")
+here::i_am("_ntw/scripts/clean/2025-tents.Rmd")
 library(here)
 ```
 
 # adult info
 
-LAST RUN: 2025-12-14
+LAST RUN: 2026-05-29
 
 ## - import
 
 ```{r}
-raw <- read_sheet("https://docs.google.com/spreadsheets/d/1rxZSI-8ubhMkeM2Sh1xNi5IKF0Vt_BDFItAg_Ak476M/edit?gid=1826657546#gid=1826657546", 
-                  sheet = "adults", col_types = "c",
-                  ) %>%
-  drop_na(id)
+raw <- read.csv(here("_ntw/data/gsheets/2025/tents.csv"), header = TRUE)
 
 data <- raw %>%
   select(-c(ends_with("type"), "date.outby", "with.ctrl", "id.tent", "id.cage2")) %>%

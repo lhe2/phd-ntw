@@ -4,7 +4,7 @@ date: "2023-11-07"
 ---
 
 about:
-- imports and cleans ntw 2023 data (larval and tents) from googlesheets
+- cleans ntw 2023 data (larval and tents) from googlesheets
 
 notes:
 - rerun this Rmd in entirety when the gsheets gets updated
@@ -19,10 +19,9 @@ notes:
 ## - packages
 ```{r message = FALSE}
 library(tidyverse)
-library(googlesheets4)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/import/2023-dev.Rmd")
+here::i_am("_ntw/scripts/clean/2023-dev.Rmd")
 library(here)
 ```
 
@@ -31,23 +30,15 @@ library(here)
 note: 2024-07-02 updated gsheet with the field diapausers(?); should be the final update. as of now, has yet to be incorporated into cleaned data used for analyses (should look into "tossing" criteria before deleting this note)
 
 ```{r}
-# before importing,
-  # run cleaning macros (larva sheets)
-  # check column/row alignment + proper sorting (adult sheets)
-
 # larva data
 dfs_raw <- list(
-  field = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet = "june field", col_types = "c") %>%
-    mutate(src = "field"),
+  field = read.csv(here("_ntw/data/gsheets/2023/dev-field.csv"), header = TRUE),
   
-  labsu = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="june 2023 lab", col_types = "c") %>%
-    mutate(src = "su"),
+  labsu = read.csv(here("_ntw/data/gsheets/2023/dev-su.csv"), header = TRUE),
   
-  labF1 = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="lab F1", col_types = "c") %>%
-    mutate(src = "F1"),
+  labF1 = read.csv(here("_ntw/data/gsheets/2023/dev-F1.csv"), header = TRUE),
   
-  labsp = read_sheet("https://docs.google.com/spreadsheets/d/1dRgmeeCW1Ou5ayrtXnEL6NBKLB3Leo9ZHec7Y9AFhm0/edit#gid=188618561", sheet="consolidated + tidyed", col_types = "c") %>%
-    mutate(src = "sp")
+  labsp = read.csv(here("_ntw/data/gsheets/2023/dev-sp.csv"), header = TRUE)
 )
 ```
 
