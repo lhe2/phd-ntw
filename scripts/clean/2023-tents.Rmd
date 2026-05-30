@@ -170,7 +170,11 @@ dfs_cleaned <- list_modify(
                               room == 301 & (tent %in% c("F", "M", "P", "S")) ~ "R2",
                               room == 301 & (tent %in% c("G", "U")) ~ "R3",
                               room == 301 & (tent %in% c("H", "X", "Z")) ~ "R4",
-                              TRUE ~ "107")) %>%
+                              TRUE ~ "107"),
+         mated.f = case_when(is.na(trt.m) ~ 0,
+                            TRUE ~ 1),
+         mated.m = case_when(is.na(trt.f) ~ 0,
+                            TRUE ~ 1)) %>%
     naniar::replace_with_na_all(condition = ~.x %in% c("unk", "na"))
 )
 
@@ -256,7 +260,11 @@ dfs_cleaned[["pairs"]] <- dfs_cleaned[["pairs"]] %>%
          pop = case_when(grepl("col", id) ~ "col",
                          !is.na(ctrl) | as.numeric(id) > 1000 ~ "lab",
                          as.numeric(id) < 1000 ~ "field"),
-         if.fridge = case_when(jdate.paired != jdate.ec ~ "x"))
+         if.fridge = case_when(#jdate.paired != jdate.ec ~ "x",
+                               jdate.paired == jdate.ec ~ 0,
+                               jdate.paired > jdate.ec ~ 1)
+         ) %>%
+  rename(if.mated = mated)
   
 ```
 

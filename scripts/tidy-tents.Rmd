@@ -381,7 +381,8 @@ dfs_export <- list_modify(
 ```{r}
 dfs_imported = list_modify(
   dfs_imported,
-  ad24 = read.csv(here("_ntw/data/clean/2024/tent-matings.csv"), header = TRUE),
+  ad24 = read.csv(here("_ntw/data/clean/2024/tent-matings.csv"), header = TRUE) %>%
+    filter(sex == "f"),
   coll24 = read.csv(here("_ntw/data/clean/2024/tent-events.csv"), header = TRUE)
 )
 ```

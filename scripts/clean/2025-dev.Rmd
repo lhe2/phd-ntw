@@ -32,13 +32,14 @@ data <- raw
 
 todo: filter out bad bugs? sub 1 day dead bugs? (in the wrangle?)
 
+note: use `cage` values from the tent csvs instead
+
 ```{r}
 # standardise column formats
 data <- data %>%
   mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
          across(c("id", starts_with(c("mass", "date"))), as.numeric)) %>% 
   rename_with(~ paste0("j", .x), starts_with("date"))
-
 ```
 
 ```{r}
@@ -55,7 +56,6 @@ data <- data %>%
                                # is.na(jdate.eclose) & !is.na(jdate.pupa) ~
                                #    as.numeric(jdate.15 + 21),
                                !is.na(jdate.pmd) ~ jdate.pmd))
-
 ```
 
 ```{r}
