@@ -19,6 +19,7 @@ library(lme4) # glm, lm, glmer
 #library(pscl) # zeroinfl
 #library(ggfortify) # autoplot (diagnosing)
 
+conflicted::conflicts_prefer(dplyr::select())
 
 # utils ----------------------------------------------------------
 library(here)
@@ -79,22 +80,40 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
 dfs_viz <- list_modify(
   dfs_viz,
   eggs = dfs_tidy$tents %>% # ss_nocol
+    filter(trt.pop != "col") %>% # drop colony-only tents
     select(-mate.col) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>%
     CalcTentCounts() %>%
     group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
+    CalcTentSS(),
+  
+  eggs_noyr = dfs_tidy$tents %>% # ss_nocol
+    filter(trt.pop != "col") %>% # drop colony-only tents
+    select(-mate.col) %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop))) %>%
+    CalcTentCounts() %>%
+    group_by(across(c(starts_with(c("mate", "trt"))))) %>%
     CalcTentSS() %>%
-    FilterForLabEggs() %>%
-    # make factors
-    mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
-                                mate.trt == 433 ~ 33,
-                                TRUE ~ 26),
-           across(c("year", "mate.trt", starts_with("trt")), as.factor),
-           mate.type = factor(mate.type, levels = c("within", "between", "virgin")),
-           trt.mate = factor(trt.mate, levels = c("neither", "both", "f", "m"))
-           )
+    mutate(year = NA)
 )
+
+dfs_viz[c("eggs", "eggs_noyr")] <- dfs_viz[c("eggs", "eggs_noyr")] %>%
+  lapply(.,\(x){
+    x %>%
+      FilterForLabEggs() %>% # drops 2024 stuff here
+      # make factors
+      mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
+                                  mate.trt == 433 ~ 33,
+                                  TRUE ~ 26),
+             across(c("year", "mate.trt", starts_with("trt")), as.factor),
+             mate.type = factor(mate.type, levels = c("within", "between", "virgin")),
+             trt.mate = factor(trt.mate, levels = c("neither", "both", "f", "m"))
+             
+  )}
+  )
+
 
 
 

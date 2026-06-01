@@ -66,7 +66,7 @@ AddLeg_OnePanel <- function(){
     )
 }
 
-## by yr
+## by yr (for supp figs)
 AddLeg_OnePanel2 <- function(){
   list(
     labs(x = "year",
@@ -84,7 +84,6 @@ AddLeg_OnePanel2 <- function(){
 # larval development
 
 ## survival to pup
-
 ```{r main fig pup survival}
 df <- dfs_viz$wide %>%
   PrepSurvProps() %>%
@@ -127,6 +126,7 @@ p <- list_modify(
 p$surv_la
 ```
 
+### stats
 ```{r main stats pup survival}
 mods <- list(
   m1 = glm(is.pup ~ year*pop*trt.minT,
@@ -146,7 +146,6 @@ summary(mods$m2)
 ```
 
 ### supp
-
 ```{r supp fig pup survival}
 dfs_viz$wide %>%
   CalcSurvProps_def() %>%
@@ -229,6 +228,7 @@ p$mass_pup
 p$mass_pupsex # use this, per stats
 ```
 
+### stats
 ```{r main stats pup mass}
 df <- dfs_stats$dev_expt %>%
   filter(!is.na(mass.pupa),
@@ -305,7 +305,6 @@ df %>%
 ```
 
 ## development rate
-
 ```{r main fig pup dev rate}
 p <- list_modify(
   p,
@@ -336,6 +335,7 @@ p <- list_modify(
 p$dev_la
 ```
 
+### stats
 ```{r main stats pup dev rate}
 mods <- list(
   m1 = lm(1/tt.pupa ~ year*pop*trt.minT,
@@ -356,7 +356,6 @@ summary(mods$m2)
 ```
 
 ### supp
-
 ```{r supp fig pup dev rate}
 dfs_viz$long %>%
   CalcDevSS_ad() %>%
@@ -378,15 +377,18 @@ dfs_viz$long %>%
   theme_bw()
 ```
 
-# pupal development
+# [ ] pupal development
+
 
 ## survival to eclosion
-
 ```{r main fig adult survival}
 p <- list_modify(
   p,
   surv_pup = 
     dfs_viz$wide %>%
+    filter(is.na(is.LPI),
+           #!is.na(sex) # can keep?
+           ) %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
     CalcSurvProps() %>%
@@ -412,7 +414,7 @@ p <- list_modify(
 p$surv_pup
 ```
 
-## viz mass change
+## main mass change (WIP)
 ```{r main fig pup mass change}
 df <- dfs_viz$long %>%
   filter(instar %in% c("pupa", "eclose", "change", "prop")) %>%
@@ -462,7 +464,6 @@ p$mass_pepct
 ```
 
 ## main pupal duration
-
 ```{r main fig pup duration}
 p <- list_modify(
   p,
@@ -496,18 +497,11 @@ p$dev_pup
 
 # adult
 
-## main longevity
+## longevity (WIP)
 
 ```{r main fig adult longevity}
-p <- list_modify(
-  p,
-  dev_ad =
-    dfs_viz$long%>%
-    filter(is.na(if.fridge),
-           instar == "long") %>%
-    PrepAdultSS() %>%
-    ungroup(year) %>% 
-    CalcDevSS() %>%
+.plotfn <- function(x){
+  x %>%
     ggplot(aes(y = avg.tt,
                shape = interaction(pop, trt.type),
                x = trt.minT, 
@@ -525,24 +519,109 @@ p <- list_modify(
          y = "duration (days)",
          title = "adult longevity",
          x = p_scales$xlab_minT) +
-    theme_bw() +
-    ylim(c(5.9, 11.2))
+    theme_bw() 
+}
+
+p <- list_modify(
+  p,
+  # w/o parsing of mate status
+  dev_ad1 = dfs_viz$long%>%
+    filter(if.fridge == 0,
+           instar == "long",
+           ) %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>% 
+    CalcDevSS() %>%
+    .plotfn(), 
+  
+  dev_ad2 = dfs_viz$long%>%
+    filter(if.fridge == 0,
+           instar == "long") %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>% 
+    group_by(sex, .add = TRUE) %>%
+    CalcDevSS() %>%
+    .plotfn() +
+    facet_wrap(~sex),
+  
+  # w/ mate status parsing
+  dev_ad3 = dfs_viz$long%>%
+    filter(if.fridge == 0,
+           instar == "long",
+           #year != 2024
+           ) %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>% 
+    group_by(if.mated, .add = TRUE) %>%
+    CalcDevSS() %>%
+    .plotfn() +
+    #geom_point(aes(size = sqrt(n))) +
+    facet_wrap(~if.mated, labeller = as_labeller(c(`0` = "unmated",
+                                                   `1` = "mated")))
 )
 
-p$dev_ad
+p$dev_ad1
+p$dev_ad2
+p$dev_ad3
 ```
 
+### stats (WIP)
 
+```{r main stats adult longevity}
+# TODO:
+# include sex? parse the mating? drop 2024? (same qns as the viz)
+mods <- list(
+  m1 = lm(tt.long ~ year*pop*trt.minT*sex,
+           data = dfs_stats$dev_expt),
+  m2 = lm(tt.long ~ year*pop*trt.minT*sex,
+           data = dfs_stats$dev_expt %>% filter(if.mated == 1))
+)
 
+anova(mods$m1) # can drop if looking at everyone
+anova(mods$m2) # sex matters if looking at mated bugs only...
+```
 
+### results table
+```{r}
+dfs_viz$long %>%
+  filter(if.fridge == 0,
+         instar == "long") %>%
+  # TODO include sex?
+  CalcDevSS_ad() %>% 
+  select(c(year, pop, trt.minT, trt.type, n,
+           ends_with("tt"))) #%>% ResToCsv("longevity")
+```
 
+### supp
+```{r supp fig adult longevity}
+dfs_viz$long %>%
+  filter(if.fridge == 0,
+         instar == "long") %>%
+  CalcDevSS_ad() %>%
+  ggplot(aes(y = avg.tt,
+             shape = pop, lty = pop,
+             x = year,
+             col = trt.type,
+             group = interaction(pop, trt)
+  )) +
+  geom_point(size = 2,
+             #aes(size = sqrt(n)) # looks bad..
+             ) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.tt + se.tt,
+                    ymin = avg.tt - se.tt),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  labs(y = "adult longevity (days)") +
+  AddLeg_OnePanel2() +
+  facet_wrap(~trt.minT) +
+  theme_bw()
 ```
 
 # ## fertility
 
-## plotting fn
-
+## utils
 ```{r}
+# plot fn
 .plotfn <- function(x){
   x %>%
     ggplot(aes(x = trt.minT,
@@ -550,80 +629,122 @@ p$dev_ad
                shape = trt.mate,
                group = trt.mate,
                col = trt.mate)) +
-    facet_grid(~year) +
+    #facet_grid(~year) +
     theme_bw() +
     scale_shape_manual(values = p_scales$shp_trtsex, labels = p_scales$labs_trtmate) +
     scale_color_manual(values = p_scales$cols_trtsex, labels = p_scales$labs_trtmate) +
     scale_linetype_manual(values = p_scales$lty_trtsex, labels = p_scales$labs_trtmate) +
     scale_x_discrete(labels = c(p_scales$labs_trt)) +
     labs(col = "heat-treated sex", lty = "heat-treated sex", shape = "heat-treated sex",
-         x = p_scales$xlab_minT)
+         x = p_scales$xlab_minT) +
+    guides(shape = guide_legend(override.aes = list(linetype = c("blank", "solid",
+                                                                 "3223", "4224"))))
 }
 ```
 
-### viz eggs laid
+## eggs laid
 
 ```{r main fig eggs laid}
+pd = position_dodge(0.35)
+
+.plotfn2 <- function(){
+  list(
+    aes(#y = avg.coll.perf, 
+      y = avg.sqrt.coll.perf, 
+    ),
+    geom_point(size = 2, position = pd),
+    geom_line(position = pd, show.legend = TRUE),
+    # very overwhelming w error bars lol
+    # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
+    #                   ymin = avg.coll.perf - se.coll.perf,),
+    #               lty = "solid", width = 0.25),
+    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+                  lty = "solid", width = 0.5, position = pd,
+                  show.legend = FALSE),
+    # geom_text(aes(label = n.f.total),
+    #           vjust = -0.25, hjust = -0.25, position = "jitter",
+    #           show.legend = FALSE),
+    # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
+    #           vjust = -0.5, hjust = -0.5, #position = "jitter",
+    #           show.legend = FALSE
+    #           ),
+    labs(#caption = "mean±se; lab only; N = # F",
+      y = "sqrt [eggs laid per female]", 
+    )
+  )
+}
+
 p <- list_modify(
   p,
   eggs_laid = 
     dfs_viz$eggs %>%
     .plotfn() +
-    aes(#y = avg.coll.perf, 
-      y = avg.sqrt.coll.perf, 
-    ) + 
-    geom_point(size=2, position = position_dodge(0.2)) + 
-    geom_line(position = position_dodge(0.2), show.legend = TRUE) +
-    # very overwhelming w error bars lol
-    # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
-    #                   ymin = avg.coll.perf - se.coll.perf,),
-    #               lty = "solid", width = 0.25) +
-    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
-                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
-                  lty = "solid", width = 0.25, position = position_dodge(0.2),
-                  show.legend = FALSE) +
-    # geom_text(aes(label = n.f.total),
-    #           vjust = -0.25, hjust = -0.25, position = "jitter",
-    #           show.legend = FALSE) +
-    # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
-    #           vjust = -0.5, hjust = -0.5, #position = "jitter",
-    #           show.legend = FALSE
-    #           ) +
-    labs(#caption = "mean±se; lab only; N = # F",
-      y = "sqrt [eggs laid per female]", 
-    )
+    .plotfn2() +
+    facet_grid(~year),
+  
+  eggs_laidnoyr = dfs_viz$eggs_noyr %>%
+    .plotfn() +
+    .plotfn2()
 )
 
 p$eggs_laid
+p$eggs_laidnoyr
 ```
 
-### viz eggs hatched
+## eggs hatched (stats TBD)
 
 ```{r main fig eggs hatched}
+.plotfn2 <- function(){
+  list(
+    aes(y = p.hatch),
+    geom_errorbar(aes(ymax = p.hatch + se.hatch,
+                      ymin = p.hatch - se.hatch,),
+                  lty = "solid", width = 0.25, show.legend = FALSE),
+    # geom_text(aes(label = n.total.coll),
+    #           vjust = -0.5, hjust = -0.5, position = "jitter",
+    #           show.legend = FALSE),
+    # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
+    #       vjust = -0.5, hjust = -0.5, size = 3
+    #       #position = "jitter"
+    #       ),
+    #geom_point(aes(size=sqrt(n.total.coll))), # looks dumb
+    geom_point(size = 2),
+    geom_line(),
+    labs(#caption = "lab only; overall hatch prop. per mating combination",
+      y = "proportion eggs hatched")
+  )
+}
+
 p <- list_modify(
   p,
   eggs_hatch = 
     dfs_viz$eggs %>%
     .plotfn() +
-    aes(y = p.hatch) +
-    geom_errorbar(aes(ymax = p.hatch + se.hatch,
-                      ymin = p.hatch - se.hatch,),
-                  lty = "solid", width = 0.25, show.legend = FALSE) +
-    # geom_text(aes(label = n.total.coll),
-    #           vjust = -0.5, hjust = -0.5, position = "jitter",
-    #           show.legend = FALSE) +
-    # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
-    #       vjust = -0.5, hjust = -0.5, size = 3
-    #       #position = "jitter"
-    #       ) +
-    #geom_point(aes(size=sqrt(n.total.coll))) + # looks dumb
-    geom_point(size = 2) +
-    geom_line() +
-    labs(#caption = "lab only; overall hatch prop. per mating combination",
-      y = "proportion eggs hatched")
+    .plotfn2() +
+    facet_wrap(~ year),
+  
+    eggs_hatchnoyr = 
+    dfs_viz$eggs_noyr %>%
+    .plotfn() +
+    .plotfn2()
 )
 
 p$eggs_hatch
+p$eggs_hatchnoyr # do not combine years... LOL
+```
+
+## results table
+```{r}
+# TODO drop the colony F + expt M tents (from 2025?) but 
+# this wasnt tracked in 2023...
+dfs_viz$eggs %>%
+  select(c(year, trt.minT, trt.mate, 
+           starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg results")
+
+dfs_viz$eggs_noyr %>%
+  select(c(year, trt.minT, trt.mate, 
+           starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg-results_noyr")
 ```
 
 # ## dump
@@ -641,7 +762,7 @@ p$surv_la + p$surv_pup +
 
 # dev time
 # TODO facet titles need work lol
-p$dev_la + p$dev_pup + p$dev_ad +
+p$dev_la + p$dev_pup + p$dev_ad1 +
   plot_layout(axes = "collect", guides = "collect") &
   theme(plot.title = element_text(hjust = 0.5))
 
