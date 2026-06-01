@@ -27,7 +27,8 @@ LAST RUN: 2026-05-29
 ## - import
 
 ```{r}
-raw <- read.csv(here("_ntw/data/gsheets/2025/tents.csv"), header = TRUE)
+raw <- read.csv(here("_ntw/data/gsheets/2025/tents.csv"), 
+                header = TRUE, check.names = FALSE)
 
 data <- raw %>%
   select(-c(ends_with("type"), "date.outby", "with.ctrl", "id.tent", "id.cage2")) %>%

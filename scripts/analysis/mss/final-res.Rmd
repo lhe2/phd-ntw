@@ -15,14 +15,14 @@ collated viz + stats results for ntw mss (tbd if split into life stages lol...)
 
 
 ```{r pathfinding, message=FALSE}
-here::i_am("_ntw/scripts/mss/final-res.Rmd")
+here::i_am("_ntw/scripts/analysis/mss/final-res.Rmd")
 ```
 
-```{r loading, message=FALSE, warning=FALSE}
-source(here::here("_ntw/scripts/mss/load.R"))
-```
+## loading
 
-## util fns
+```{r data, message=FALSE, warning=FALSE}
+source(here::here("_ntw/scripts/analysis/mss/load.R"))
+```
 
 ```{r utilities}
 # for (main) plots
@@ -77,16 +77,6 @@ AddLeg_OnePanel2 <- function(){
                          labels = p_scales$labs_trttype),
       scale_linetype_manual(values = p_scales$lty_pop),
       guides(shape = guide_legend(override.aes = list(linetype = c("255F", "solid"))))
-  )
-}
-
-# patchwork plots (trt.type/yr)
-AddLeg_Patchwork <- function(){
-  list(
-    labs(lty = "population", shape = "population"),
-    scale_shape_manual(values = p_scales$shp_pop),
-    scale_linetype_manual(values = p_scales$lty_pop),
-    guides(shape = guide_legend(override.aes = list(linetype = c("255F", "solid"))))
   )
 }
 ```
@@ -542,50 +532,10 @@ p <- list_modify(
 p$dev_ad
 ```
 
-```{r supp fig adult longevity}
-df <- dfs_viz$long %>%
-    filter(is.na(if.fridge),
-           instar == "long") %>%
-    CalcDevSS_ad()
 
-.plotfn <- function(x){
-  x %>%
-    ggplot(aes(y = avg.tt,
-               shape = pop, lty = pop
-               )
-           ) +
-    geom_errorbar(aes(ymin = avg.tt - se.tt,
-                      ymax = avg.tt + se.tt),
-                  width = 0.5, lty = "solid", show.legend = FALSE) +
-    geom_point(size = 2) + 
-    geom_line() +
-    facet_grid(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
-    labs(y = "adult longevity (days)",) +
-    theme_bw() +
-    AddLeg_Patchwork() +
-    ylim(c(4, 17.5))
-}
 
-p1 <-  df %>%
-  filter(trt == 260) %>%
-  .plotfn() +
-  aes(x = year,
-      group = pop) +
-  labs(x = "year")
 
-p2 <- df %>%
-  filter(trt != 260) %>%
-  .plotfn() +
-  aes(x = trt,
-      col = year,
-      group = interaction(year, pop)) +
-  scale_x_discrete(labels = p_scales$labs_minT) +
-  scale_color_brewer(palette = "Dark2") +
-  labs(x = p_scales$xlab_minT)
 
-p1 + p2 +
-  plot_layout(widths = c(1,2),
-              axes = "collect", guides = "collect")
 ```
 
 # ## fertility
@@ -705,10 +655,22 @@ eggs figs
 
 ```{r collated eggs viz}
 p$eggs_laid + p$eggs_hatch +
-  .plotfn() 
+  plot_layout(axes = "collect", guides = "collect")
 ```
 
-## supp larval dev patchwork figs
+## supp dev patchwork figs
+
+```{r}
+# legend fn for patchwork plots (trt.type/yr)
+AddLeg_Patchwork <- function(){
+  list(
+    labs(lty = "population", shape = "population"),
+    scale_shape_manual(values = p_scales$shp_pop),
+    scale_linetype_manual(values = p_scales$lty_pop),
+    guides(shape = guide_legend(override.aes = list(linetype = c("255F", "solid"))))
+  )
+}
+```
 
 ```{r supp fig pup survival patchwork, eval = FALSE}
 .plotfn <- function(x){
@@ -787,4 +749,50 @@ p1 + p2 +
   plot_layout(widths = c(1, 2),
               guides = "collect", axes = "collect") &
   ylim(c(0.029, 0.054))
+```
+
+```{r supp fig adult longevity patchwork, eval = FALSE}
+df <- dfs_viz$long %>%
+    filter(if.fridge == 0,
+           instar == "long") %>%
+    CalcDevSS_ad()
+
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(y = avg.tt,
+               shape = pop, lty = pop
+               )
+           ) +
+    geom_errorbar(aes(ymin = avg.tt - se.tt,
+                      ymax = avg.tt + se.tt),
+                  width = 0.5, lty = "solid", show.legend = FALSE) +
+    geom_point(size = 2) + 
+    geom_line() +
+    facet_grid(~ trt.facet, labeller = as_labeller(p_scales$facs_trtpop)) +
+    labs(y = "adult longevity (days)",) +
+    theme_bw() +
+    AddLeg_Patchwork() +
+    ylim(c(4, 17.5))
+}
+
+p1 <-  df %>%
+  filter(trt == 260) %>%
+  .plotfn() +
+  aes(x = year,
+      group = pop) +
+  labs(x = "year")
+
+p2 <- df %>%
+  filter(trt != 260) %>%
+  .plotfn() +
+  aes(x = trt,
+      col = year,
+      group = interaction(year, pop)) +
+  scale_x_discrete(labels = p_scales$labs_minT) +
+  scale_color_brewer(palette = "Dark2") +
+  labs(x = p_scales$xlab_minT)
+
+p1 + p2 +
+  plot_layout(widths = c(1,2),
+              axes = "collect", guides = "collect")
 ```

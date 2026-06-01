@@ -30,11 +30,14 @@ library(here)
   # check column/row alignment + proper sorting
 
 dfs_raw <- list(
-  pairs = read.csv(here("_ntw/data/gsheets/2023/tent-pairs.csv"), header = TRUE),
+  pairs = read.csv(here("_ntw/data/gsheets/2023/tent-pairs.csv"), 
+                   header = TRUE, check.names = FALSE),
   
-  tents = read.csv(here("_ntw/data/gsheets/2023/tents.csv"), header = TRUE),
+  tents = read.csv(here("_ntw/data/gsheets/2023/tents.csv"), 
+                   header = TRUE, check.names = FALSE),
   
-  hatch = read.csv(here("_ntw/data/gsheets/2023/tent-hatch.csv"), header = TRUE)
+  hatch = read.csv(here("_ntw/data/gsheets/2023/tent-hatch.csv"), 
+                   header = TRUE, check.names = FALSE)
 )
 ```
 

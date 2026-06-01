@@ -34,7 +34,8 @@ library(here)
 dfs_raw <- list(
   tents = read.csv(here("_ntw/data/gsheets/2024/tents.csv"), header = TRUE),
   
-  tentstats = read.csv(here("_ntw/data/gsheets/2024/tent-stats.csv"), header = TRUE)
+  tentstats = read.csv(here("_ntw/data/gsheets/2024/tent-stats.csv"), 
+                       header = TRUE, check.names = FALSE)
 )
 ```
 
