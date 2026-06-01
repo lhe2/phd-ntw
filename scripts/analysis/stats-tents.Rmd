@@ -13,9 +13,10 @@ library(here)
 
 library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
+## lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 #library(MuMIn) # dredge (nested model comparisons)
 library(pscl) # zeroinfl
-#library(MASS) # glm.nb
+library(MASS) # glm.nb
 
 library(ggfortify) # autoplot (diagnosing)
 library(tidyverse)
@@ -23,9 +24,9 @@ library(tidyverse)
 library(conflicted)
 conflicts_prefer( 
   #lmerTest::lmer, # dont rlly need..
-  dplyr::filter
+  dplyr::filter,
+  #dplyr::select
 )
-# lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 
 
 # library(survival) # for fitting 
@@ -52,6 +53,7 @@ source(here("_ntw/scripts/R/tidy-tents.R"))
 
 # subset (all lab bugs only)
 dfs <- list(
+
   # incl virgins; can use for laying but not hatching
   all = dfs_tidy$tents %>%
     filter(mate.pop != "field"),
@@ -81,15 +83,135 @@ dfs <- dfs %>%
 # make easier to interpret...
 dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
       recode_factor(`419` = "19", `426` = "26", `433` = "33")
+```
+
+# ### exptal only ###
+- eggs/F: if the distribution is skewed right with mean greater than 1-3,  then round values to the nearest integer and use poisson
+
+# # Z: eggs laid (try 2)
+
+## model type + Z
+
+- 2026-05-31:
+ - trying out better model diagnosing first lol (for ntw mss final stats)
+ - testing response variable transform + model type
+ 
+```{r warning = FALSE}
+# try basic poisson glm and check assumptions
+
+mods <- list(
+  poi = glm(n.coll.perf ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "poisson"),
+  poi_sqrt = glm(sqrt.coll.perf ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "poisson"),
+  poi_log = glm(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "poisson"),
+  poi_round = glm(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "poisson"),
+  poi_rsqrt = glm(round(sqrt.coll.perf) ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "poisson")
+)
+
+# check residuals
+mods %>% DiagnoseModel()
+## sqrt and log+1 fix the resids 
+## log is better than sqrt, tho some more outlier resids
+## right-skewed
+
+# check overdispersion
+
+## refit to glm neg bin to use pscl::odTest
+mods <- list_modify(
+  mods,
+  nb = glm.nb(n.coll.perf ~ n.f + mate.trt*mate.ishs + year,
+              data = dfs$matedexptl),
+  nb_sqrt = glm.nb(sqrt.coll.perf ~ n.f + mate.trt*mate.ishs + year,
+                   data = dfs$matedexptl),
+  nb_log = glm.nb(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs + year,
+                  data = dfs$matedexptl)
+)
+
+mods$nb %>% DiagnoseModel()
+mods$nb_sqrt %>% DiagnoseModel()
+mods$nb_log %>% DiagnoseModel()
+## nb and sqrt diagnostic plots look about the same, so just use mods$nb
+## log has best resids of the three
+
+pscl::odTest(mods$nb)
+## so use a neg bin dist...
+
+# fit a zero-inflation model and compare to glmnb with AIC
+## (dont need to transform response var for this...)
+# TODO: try transforming response var and other dists
+mods <- list_modify(
+  mods,
+  zip_nb = zeroinfl(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year | 1,
+                    data = dfs$matedexptl, dist = "negbin")
+)
+
+mods$zip_nb %>% DiagnoseModel2() 
+## beautiful resids and QQ!!
+
+# try some other dists before testing AICs
+mods <- list_modify(
+  mods,
+  gau = glm(n.coll.perf ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "gaussian"),
+  # Gamma is bad bc there are 0s
+  # gam = glm(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year,
+  #           data = dfs$matedexptl, family = "Gamma"),
+  qpoi = glm(n.coll.perf ~ n.f + mate.trt*mate.ishs + year,
+            data = dfs$matedexptl, family = "quasipoisson")
+)
+
+# compare AICs
+AIC(mods$poi_sqrt, mods$poi_log, # dont work bc non-integer Z
+    mods$gau, mods$qpoi, #mods$gam, # cant get LL for qpoi
+    mods$poi_round, mods$poi_rsqrt,
+    mods$nb, mods$nb_log, 
+    mods$zip_nb)
+## so lowkey just the negbin with log transform?
+
+mods$nb_log %>% GetModelResults()
+## nothin matters!!!!
 
 ```
 
-# ### exptal only
-- eggs/F: if the distribution is skewed right with mean greater than 1-3,  then round values to the nearest integer and use poisson
+## sep yrs?
+```{r warning = FALSE}
+# try doing stats per yr using the negbin(log+1)
 
-# # Z: eggs laid
+mods <- list(
+  all = glm.nb(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs + year,
+                  data = dfs$matedexptl),
+  all_noyr = glm.nb(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs,
+                  data = dfs$matedexptl),
+  y23 = glm.nb(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs,
+                  data = dfs$matedexptl %>% filter(year == 2023)),
+  y25 = glm.nb(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs,
+                  data = dfs$matedexptl %>% filter(year == 2025))
+)
 
-## diagnosing
+# diagnose
+mods %>% DiagnoseModel()
+## all comparable to e/o. y25 on its own has the smallest resids
+
+AIC(mods$all, mods$all_noyr, mods$y23, mods$y25) 
+## model w/ all data is better if drop yr...
+## smaller AICs in models w data subsets
+
+mods %>% GetModelResults()
+## nothin matters!!!
+```
+
+ 
+
+
+# # Z: eggs laid (try 1)
+
+2026-05-31: archived trying out modeling eggs laid, focusing on just the expt bugs
+
+## diagnosing Z
 
 - tldr
   - offset... sometimes helps
@@ -154,7 +276,20 @@ mods %>% GetModelResults()
 mods %>% lapply(., AIC)
 ```
 
-# ### all bugs (ref only)
+## testing different pred vars
+- using the mod: `glm(round(n.coll.perf) ~ mate.trt*mate.ishs + n.f + year, family = "poisson")` as the base
+
+```{r eval = FALSE}
+mods <- list(
+  roundperf = glm(round(n.coll.perf) ~ mate.trt*mate.ishs + n.f + year, 
+                  data = dfs$matedexptl, family = "poisson")
+)
+
+# NOTE: left incomplete... see try 2 instead
+```
+
+
+# ### all bugs (ref only) ###
 
 - 2026-02-10 after wkly mtg, just for ref only. but TLDR:
   - `n.f` and `year` should be inluded in the eggs laid mods
