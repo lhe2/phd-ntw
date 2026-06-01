@@ -54,6 +54,7 @@ preamble:
 - bc my method of tracking the daily egg/moth #s is very convoluted, need to split + wrangle the dfs in a certain order before finally collating into the final df that can be used in `summarise()` for data analysis
   - note that 2023 data is also formatted a little differently than 2025 data (i.e. pairing was more deliberate), so it needs some additional pre-wrangling
 - see also some random TODOs left thruout this section,,,
+- final data is exported at the cage level (i.e. not individual adults)
 
 roadmap:
 1. create stdised `info` (about mating pairs) and `events` dfs (these dfs will get recycled)
@@ -83,16 +84,23 @@ note: revisiting fertile eggs
   x %>%
     mutate(mate.type = case_when(trt.f == trt.m ~ "within",
                                  trt.f != trt.m ~ "between",
-                                 is.na(trt.m) ~ "virgin"),
+                                 is.na(trt.m) | is.na(trt.f) ~ "virgin"),
            # if both m+f are from col, then mate.pop = "col", otherwise "lab"
-           mate.pop = case_when(mate.type == "within" | is.na(pop.m) ~ pop.f,
-                                mate.type == "between" & !(pop.f == "field" | pop.m == "field") ~ "lab"), 
-           mate.trt = case_when(mate.type == "within" | is.na(trt.m) ~ trt.f,
-                                mate.type == "between" & trt.f > trt.m ~ trt.f,
-                                mate.type == "between" & trt.m > trt.f ~ trt.m),
+           mate.pop = case_when(mate.type == "within" ~ pop.f,
+                                mate.type == "between" & 
+                                  !(pop.f == "field" | pop.m == "field") ~ "lab",
+                                is.na(pop.m) ~ pop.f,
+                                is.na(pop.f) ~ pop.m), 
+           mate.trt = case_when(mate.type == "within" ~ trt.f,
+                                mate.type == "between" & trt.f > trt.m |
+                                  is.na(trt.m) ~ trt.f,
+                                mate.type == "between" & trt.m > trt.f |
+                                  is.na(trt.f) ~ trt.m),
            mate.col = case_when(pop.f == "col" & pop.m == "col" ~ "both",
-                                pop.f == "col" & pop.m == "lab" ~ "f",
-                                pop.m == "col" & pop.f == "lab" ~ "m" ),
+                                pop.f == "col" & 
+                                  (pop.m == "lab" | is.na(pop.m)) ~ "f",
+                                pop.m == "col" & 
+                                  (pop.f == "lab" | is.na(pop.f)) ~ "m"),
            mate.ishs = case_when(trt.f > trt.m | is.na(trt.m) ~ "f",
                                trt.m > trt.f | is.na(trt.f) ~ "m",
                                trt.f == trt.m & trt.f == 260 ~ "none",
@@ -462,12 +470,17 @@ dfs_tidy <- list(
   )
 
 dfs_tidy$tents <- dfs_tidy$tents %>%
-  mutate(trt.mate = case_when((trt.f > trt.m) | 
+  mutate(# which sex was hs'd?
+         trt.mate = case_when((trt.f > trt.m) | 
                                 (is.na(trt.m) & trt.f > 400) ~ "f",
                               (trt.m > trt.f) |
-                                (is.na(trt.f) & trt.m > 400)~ "m",
+                                (is.na(trt.f) & trt.m > 400) ~ "m",
                               trt.f == trt.m & trt.f > 400 ~ "both",
-                              TRUE ~ "neither")
+                              TRUE ~ "neither"),
+         # is the pairing overall colony (both are col), field, or lab?
+         trt.pop = case_when(mate.pop == "field" ~ "field", 
+                             mate.pop == "col" & mate.col == "both" ~ "col",
+                             !is.na(mate.pop) ~ "lab")
   )
 ```
 
