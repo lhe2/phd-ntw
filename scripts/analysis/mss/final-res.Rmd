@@ -69,9 +69,9 @@ AddLeg_OnePanel <- function(){
 ## by yr (for supp figs)
 AddLeg_OnePanel2 <- function(){
   list(
-    labs(x = "year",
+    labs(x = p_scales$xlab_minT,
          lty = "population", shape = "population",
-         col = "temperature treatment"),
+         col = "larval temperature\ntreatment"),
       scale_shape_manual(values = p_scales$shp_pop),
       scale_color_manual(values = p_scales$cols_trttype, 
                          labels = p_scales$labs_trttype),
@@ -147,22 +147,25 @@ summary(mods$m2)
 
 ### supp
 ```{r supp fig pup survival}
+pd = position_dodge(0.3)
+
 dfs_viz$wide %>%
   CalcSurvProps_def() %>%
   ggplot(aes(y = prop.pup,
              shape = pop, lty = pop,
-             x = year,
+             x = trt.minT,
              col = trt.type,
-             group = interaction(pop, trt)
-  )) +
-  geom_point(size = 2) +
-  geom_line() +
+             group = interaction(pop, trt.type))
+         ) +
+  geom_point(size = 2, position = pd) +
+  geom_line(position = pd) +
     geom_errorbar(aes(ymax = prop.pup + se.pup,
                       ymin = prop.pup - se.pup),
-                  width = 0.25, lty = "solid", show.legend = FALSE) +
+                  position = pd, width = 0.75, 
+                  lty = "solid", show.legend = FALSE) +
   labs(y = "% survival to pupation") +
   AddLeg_OnePanel2() +
-  facet_wrap(~trt.minT) +
+  facet_wrap(~year) +
   theme_bw()
 ```
 
@@ -266,7 +269,7 @@ df <- dfs_viz$long %>%
 
 .plotfn <- function(x) {
   x %>%
-    ggplot(aes(x = year, y = avg.mass,
+    ggplot(aes(x = trt.minT, y = avg.mass,
                lty = pop, shape = pop,
                col = trt.type,
                group = interaction(pop, trt.type))) +
@@ -289,7 +292,7 @@ df %>%
   group_by(trt.type, trt.minT, .add = TRUE) %>%
   CalcDevSS() %>% #View()
   .plotfn() +
-  facet_wrap(~ trt.minT)
+  facet_wrap(~ year)
   #ylim(c(1.8, 6.7))
 
 # sexes parsed (use this one)
@@ -299,7 +302,7 @@ df %>%
   group_by(trt.type, trt.minT, sex, .add = TRUE) %>%
   CalcDevSS() %>%
   .plotfn() +
-  facet_grid(trt.minT ~ sex, labeller = labeller(sex = c(p_scales$facs_sex)),
+  facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
              scales = "free") 
   #ylim(c(1.8, 7.2))
 ```
@@ -361,19 +364,19 @@ dfs_viz$long %>%
   CalcDevSS_ad() %>%
   filter(instar == "pupa") %>%
   ggplot(aes(y = avg.devrate,
-               shape = pop, lty = pop,
-             x = year,
+             shape = pop, lty = pop,
+             x = trt.minT,
              col = trt.type,
-             group = interaction(pop, trt)
-               )) +
-    geom_point(size = 2) +
-    geom_line() +
-    geom_errorbar(aes(ymax = avg.devrate + se.devrate,
-                      ymin = avg.devrate - se.devrate),
-                  width = 0.25, lty = "solid", show.legend = FALSE) +
-    labs(y = "larval development rate (1/days)") +
+             group = interaction(pop, trt.type)
+  )) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.devrate + se.devrate,
+                    ymin = avg.devrate - se.devrate),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  labs(y = "larval development rate (1/days)") +
   AddLeg_OnePanel2() +
-  facet_wrap(~trt.minT) +
+  facet_wrap(~ year) +
   theme_bw()
 ```
 
@@ -600,9 +603,9 @@ dfs_viz$long %>%
   CalcDevSS_ad() %>%
   ggplot(aes(y = avg.tt,
              shape = pop, lty = pop,
-             x = year,
+             x = trt.minT,
              col = trt.type,
-             group = interaction(pop, trt)
+             group = interaction(pop, trt.type)
   )) +
   geom_point(size = 2,
              #aes(size = sqrt(n)) # looks bad..
@@ -613,7 +616,7 @@ dfs_viz$long %>%
                 width = 0.25, lty = "solid", show.legend = FALSE) +
   labs(y = "adult longevity (days)") +
   AddLeg_OnePanel2() +
-  facet_wrap(~trt.minT) +
+  facet_wrap(~ year) +
   theme_bw()
 ```
 
