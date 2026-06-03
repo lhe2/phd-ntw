@@ -5,25 +5,35 @@ date: "2026-05-24"
 
 # preamble and setup
 
-collated viz + stats results for ntw mss (tbd if split into life stages lol...)
-
--   notes on the viz:
-    -   main viz = focuses on trt type (NTW/control), minimum temp, population
-    -   supp viz = includes year and sex (if applicable)
--   notes on the stats:
-    -   main stats = focuses on the NTW bugs and population, minimum temp as predictors
-
-
 ```{r pathfinding, message=FALSE}
 here::i_am("_ntw/scripts/analysis/mss/final-res.Rmd")
 ```
 
-## loading
+for collated viz + stats results for ntw mss
+
+-   notes on the viz:
+    -   main viz = focuses on trt type (NTW vs control), minimum temp, population
+    -   supp viz = includes year and sex (if applicable)
+-   notes on the stats:
+    -   main stats = focuses on the NTW bugs and population, minimum temp as predictors
+    
+main results/figs:
+
+1. survival: hatch to pupation; hatch to eclosion
+2. mass: pupal mass; eclosion mass
+3. time: time to pupation; pupal duration
+4. adult longevity
+5. adult fitness
+
+
+
+# loading
 
 ```{r data, message=FALSE, warning=FALSE}
 source(here::here("_ntw/scripts/analysis/mss/load.R"))
 ```
 
+## utils
 ```{r utilities}
 # for (main) plots
 p <- list()
@@ -39,14 +49,14 @@ ResToCsv <- function(res, filename){
 }
 ```
 
+
 # ## development
 
-## plotting fns
-
+## legend fns
 ```{r}
 
-# one-panel legend fns (pop/trt.type)
-## by minT
+# legend for development performance plots (pop vs trt.type by minT)
+## main figs
 AddLeg_OnePanel <- function(){
   list(
     labs(lty = "population", shape = "population",
@@ -66,7 +76,7 @@ AddLeg_OnePanel <- function(){
     )
 }
 
-## by yr (for supp figs)
+## supp figs (add facet by year)
 AddLeg_OnePanel2 <- function(){
   list(
     labs(x = p_scales$xlab_minT,
@@ -81,7 +91,7 @@ AddLeg_OnePanel2 <- function(){
 }
 ```
 
-# larval development
+# (1) survival
 
 ## survival to pup
 ```{r main fig pup survival}
@@ -168,6 +178,53 @@ dfs_viz$wide %>%
   facet_wrap(~year) +
   theme_bw()
 ```
+
+## survival to eclosion
+```{r main fig adult survival}
+# TODO include sample size?
+p <- list_modify(
+  p,
+  surv_pup = 
+    dfs_viz$wide %>%
+    filter(is.na(is.LPI),
+           #!is.na(sex) # can keep?
+           ) %>%
+    PrepSurvProps() %>%
+    ungroup(year) %>%
+    CalcSurvProps() %>%
+    ggplot(aes(y = prop.ec,
+               shape = interaction(pop, trt.type), 
+               lty = pop,
+               col = trt.type,
+               group = interaction(pop, trt.type),
+               x = trt.minT)) +
+    geom_point(size = 2) +
+    geom_line(show.legend = TRUE) +
+    geom_errorbar(aes(ymax = prop.ec + se.ec,
+                      ymin = prop.ec - se.ec),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    labs(#y = "% pupa eclosed",
+         title = "pupa to eclosion",
+         x = p_scales$xlab_minT) +
+    AddLeg_OnePanel() +
+    ylim(c(0, 1)) +
+    theme_bw()
+)
+
+p$surv_pup
+```
+
+## collated fig
+
+```{r}
+p$surv_la + p$surv_pup +
+  plot_layout(axes = "collect", guides = "collect") &
+  labs(y = "% survival") &
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+# (2) mass 
 
 ## pupal mass
 
@@ -313,7 +370,69 @@ df %>%
   #ylim(c(1.8, 7.2))
 ```
 
-## development rate
+## eclosion mass (WIP)
+
+```{r main fig pup mass change}
+df <- dfs_viz$long %>%
+  filter(instar %in% c("pupa", "eclose", "change", "prop")) %>%
+  group_by(across(c(pop, diet, starts_with("trt"), instar))) %>%
+  CalcDevSS()
+
+.plotfn <- function(x){
+  x %>%
+    ggplot(aes(y = avg.mass, x = trt.minT,
+               lty = pop, col = trt.type,
+               shape = interaction(pop, trt.type), 
+               group = interaction(pop, trt.type))) +
+    geom_point(size = 2) +
+    geom_line() +
+    geom_errorbar(aes(ymax = avg.mass + se.mass,
+                      ymin = avg.mass - se.mass),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    labs(x = p_scales$xlab_minT) +
+    AddLeg_OnePanel() +
+    theme_bw()  
+}
+
+p <- list_modify(
+  p,
+  mass_perat =
+    df %>%
+    filter(instar == "prop") %>%
+    .plotfn() +
+    labs(#y = "pupal:eclosion mass",
+         #y = "mass ratio",
+         title = "pupa:eclosion mass"),
+  
+  mass_pepct =
+    df %>%
+    mutate(avg.mass = avg.mass * 100,
+           se.mass  = se.mass * 100) %>%
+    filter(instar == "change") %>%
+    .plotfn() +
+    labs(#y = "% mass lost\n(pupa to eclosion)",
+         #y = "% mass lost",
+         title = "pupa to eclosion\n(% mass lost)")
+)
+
+p$mass_perat
+
+p$mass_pepct
+```
+## collated fig
+
+```{r}
+# TODO finalise pup:ec metric to use
+p$mass_pup + p$mass_perat + p$mass_pepct +
+    plot_layout(axes = "collect", guides = "collect") &
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank() # TODO remove once decided on P:E
+        )
+```
+
+# (3) development time
+
+## time to pupation
 ```{r main fig pup dev rate}
 p <- list_modify(
   p,
@@ -386,93 +505,8 @@ dfs_viz$long %>%
   theme_bw()
 ```
 
-# [ ] pupal development
 
-
-## survival to eclosion
-```{r main fig adult survival}
-p <- list_modify(
-  p,
-  surv_pup = 
-    dfs_viz$wide %>%
-    filter(is.na(is.LPI),
-           #!is.na(sex) # can keep?
-           ) %>%
-    PrepSurvProps() %>%
-    ungroup(year) %>%
-    CalcSurvProps() %>%
-    ggplot(aes(y = prop.ec,
-               shape = interaction(pop, trt.type), 
-               lty = pop,
-               col = trt.type,
-               group = interaction(pop, trt.type),
-               x = trt.minT)) +
-    geom_point(size = 2) +
-    geom_line(show.legend = TRUE) +
-    geom_errorbar(aes(ymax = prop.ec + se.ec,
-                      ymin = prop.ec - se.ec),
-                  width = 0.25, lty = "solid", show.legend = FALSE) +
-    labs(#y = "% pupa eclosed",
-         title = "pupa to eclosion",
-         x = p_scales$xlab_minT) +
-    AddLeg_OnePanel() +
-    ylim(c(0, 1)) +
-    theme_bw()
-)
-
-p$surv_pup
-```
-
-## main mass change (WIP)
-```{r main fig pup mass change}
-df <- dfs_viz$long %>%
-  filter(instar %in% c("pupa", "eclose", "change", "prop")) %>%
-  group_by(across(c(pop, diet, starts_with("trt"), instar))) %>%
-  CalcDevSS()
-
-.plotfn <- function(x){
-  x %>%
-    ggplot(aes(y = avg.mass, x = trt.minT,
-               lty = pop, col = trt.type,
-               shape = interaction(pop, trt.type), 
-               group = interaction(pop, trt.type))) +
-    geom_point(size = 2) +
-    geom_line() +
-    geom_errorbar(aes(ymax = avg.mass + se.mass,
-                      ymin = avg.mass - se.mass),
-                  width = 0.25, lty = "solid", show.legend = FALSE) +
-    labs(x = p_scales$xlab_minT) +
-    AddLeg_OnePanel() +
-    theme_bw()  
-}
-
-p <- list_modify(
-  p,
-  mass_perat =
-    df %>%
-    filter(instar == "prop") %>%
-    .plotfn() +
-    labs(#y = "pupal:eclosion mass",
-         #y = "mass ratio",
-         title = "pupa:eclosion mass"),
-  
-  mass_pepct =
-    df %>%
-    mutate(avg.mass = avg.mass * 100,
-           se.mass  = se.mass * 100) %>%
-    filter(instar == "change") %>%
-    .plotfn() +
-    labs(#y = "% mass lost\n(pupa to eclosion)",
-         #y = "% mass lost",
-         title = "pupa to eclosion\n(% mass lost)")
-)
-
-p$mass_perat
-
-p$mass_pepct
-```
-
-## main pupal duration
+## pupal duration
 ```{r main fig pup duration}
 p <- list_modify(
   p,
@@ -504,9 +538,18 @@ p <- list_modify(
 p$dev_pup
 ```
 
-# adult
+## collated fig
 
-## longevity (WIP)
+```{r}
+p$dev_la + p$dev_pup + p$dev_ad1 +
+  plot_layout(axes = "collect", guides = "collect") &
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+# (4) longevity (WIP)
+
+## longevity
 
 ```{r main fig adult longevity}
 .plotfn <- function(x){
@@ -626,9 +669,9 @@ dfs_viz$long %>%
   theme_bw()
 ```
 
-# ## fertility
+# ## (5) fitness 
 
-## utils
+## legend fn
 ```{r}
 # plot fn
 .plotfn <- function(x){
@@ -651,7 +694,7 @@ dfs_viz$long %>%
 }
 ```
 
-## eggs laid
+## # eggs laid
 
 ```{r main fig eggs laid}
 pd = position_dodge(0.35)
@@ -702,7 +745,7 @@ p$eggs_laid
 p$eggs_laidnoyr
 ```
 
-## eggs hatched (stats TBD)
+## # eggs hatched
 
 ```{r main fig eggs hatched}
 .plotfn2 <- function(){
@@ -758,37 +801,7 @@ dfs_viz$eggs_noyr %>%
            starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg-results_noyr")
 ```
 
-
-# ## collated figs
-
-## dev figs
-
-response type x life stage
-
-```{r collated dev figs}
-# survival
-p$surv_la + p$surv_pup +
-  plot_layout(axes = "collect", guides = "collect") &
-  labs(y = "% survival") &
-  theme(plot.title = element_text(hjust = 0.5))
-
-# dev time
-# TODO facet titles need work lol
-p$dev_la + p$dev_pup + p$dev_ad1 +
-  plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5))
-
-# mass
-# TODO finalise pup:ec metric to use
-p$mass_pup + p$mass_perat + p$mass_pepct +
-    plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.title.y = element_blank() # TODO remove once decided on P:E
-        )
-```
-
-## eggs figs
-
+## collated fig
 ```{r collated eggs viz}
 # yrs faceted
 p$eggs_laid + p$eggs_hatch +
@@ -805,9 +818,12 @@ p$eggs_laidnoyr + p$eggs_hatchnoyr +
         axis.title.y = element_blank(),
         legend.position = "bottom")
 ```
-# dump
 
-## supp dev patchwork figs
+
+# ## dump
+
+## (ref) supp dev patchwork figs
+
 
 ```{r eval = FALSE}
 # legend fn for patchwork plots (trt.type/yr)
