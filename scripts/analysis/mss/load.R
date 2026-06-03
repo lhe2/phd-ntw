@@ -47,10 +47,8 @@ dfs_viz <- list(
     df %>%
       FilterForNTWBugs() %>% 
       filter(pop != "col") %>%
-      mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
-                                   pop == "lab" ~ "lab",
-                                   pop == "field" ~ "field")) %>%
-      mutate(across(c(starts_with("trt"), "year"), as.factor))
+      mutate(across(c(starts_with("trt"), "year"), as.factor)
+      )
   })
 
 # stats dfs: subset into ctrl+ntw bugs and just ntw bugs (omit col bugs)
