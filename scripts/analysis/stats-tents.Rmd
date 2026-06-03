@@ -22,12 +22,14 @@ library(ggfortify) # autoplot (diagnosing)
 library(tidyverse)
 
 library(conflicted)
-conflicts_prefer( 
+conflicts_prefer(
   #lmerTest::lmer, # dont rlly need..
-  dplyr::filter,
-  #dplyr::select
+  dplyr::filter(),
+  dplyr::select()
 )
 
+# select <- dplyr::select
+  ## if MASS:select is misbehaving
 
 # library(survival) # for fitting 
 # library(survminer) # for plotting
@@ -97,8 +99,11 @@ dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
  - testing response variable transform + model type
  
 ```{r warning = FALSE}
-# try basic poisson glm and check assumptions
+# look at overall distribution
+hist(dfs$matedexptl$n.coll.perf, breaks = 25)
+## right-skewed
 
+# try basic poisson glm and check assumptions
 mods <- list(
   poi = glm(n.coll.perf ~ n.f + mate.trt*mate.ishs + year,
             data = dfs$matedexptl, family = "poisson"),
@@ -116,9 +121,14 @@ mods <- list(
 mods %>% DiagnoseModel()
 ## sqrt and log+1 fix the resids 
 ## log is better than sqrt, tho some more outlier resids
-## right-skewed
+
+
+# check for zero inflation (try the log+1)
+## see: https://r-statistics.co/Zero-Inflated-Models-in-R.html
+#obs_zeros = sum(dfs$matedexptl$n.coll.perf == 0)
 
 # check overdispersion
+## TODO: try performance::check_overdispersion? https://rdrr.io/cran/performance/f/README.md 
 
 ## refit to glm neg bin to use pscl::odTest
 mods <- list_modify(
@@ -127,30 +137,43 @@ mods <- list_modify(
               data = dfs$matedexptl),
   nb_sqrt = glm.nb(sqrt.coll.perf ~ n.f + mate.trt*mate.ishs + year,
                    data = dfs$matedexptl),
+  # nb_rsqrt = glm.nb(round(sqrt.coll.perf) ~ n.f + mate.trt*mate.ishs + year,
+  #                   data = dfs$matedexptl),
   nb_log = glm.nb(log(n.coll.perf + 1) ~ n.f + mate.trt*mate.ishs + year,
                   data = dfs$matedexptl)
 )
 
 mods$nb %>% DiagnoseModel()
 mods$nb_sqrt %>% DiagnoseModel()
+# mods$nb_rsqrt %>% DiagnoseModel()
 mods$nb_log %>% DiagnoseModel()
-## nb and sqrt diagnostic plots look about the same, so just use mods$nb
+## nb, sqrt, rsqrt diagnostic plots look about the same, so just use mods$nb
 ## log has best resids of the three
 
 pscl::odTest(mods$nb)
 ## so use a neg bin dist...
 
-# fit a zero-inflation model and compare to glmnb with AIC
-## (dont need to transform response var for this...)
-# TODO: try transforming response var and other dists
-mods <- list_modify(
-  mods,
-  zip_nb = zeroinfl(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year | 1,
-                    data = dfs$matedexptl, dist = "negbin")
-)
-
-mods$zip_nb %>% DiagnoseModel2() 
-## beautiful resids and QQ!!
+# #################
+# ### JKKKK ITS HATCH STUFF SHOULD BE ZERO INFLATED LOL not the eggs collected omg)
+# 
+# 
+# # fit a zero-inflation model and compare to glmnb with AIC
+# ## (dont need to transform response var for this...)
+# # TODO: try transforming response var and other dists
+# mods <- list_modify(
+#   mods,
+#   zip_nb = zeroinfl(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year | 1,
+#                     data = dfs$matedexptl, dist = "negbin"),
+#   zip_poi = zeroinfl(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year | 1,
+#                     data = dfs$matedexptl, dist = "poisson"),
+#   zip_nb2 = zeroinfl(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + year,
+#                     data = dfs$matedexptl, dist = "negbin"),
+# )
+# 
+# mods$zip_nb %>% DiagnoseModel2() 
+# ## beautiful resids and QQ!!
+# mods$zip_poi %>% DiagnoseModel2() 
+# ## worse resids
 
 # try some other dists before testing AICs
 mods <- list_modify(
@@ -165,15 +188,17 @@ mods <- list_modify(
 )
 
 # compare AICs
-AIC(mods$poi_sqrt, mods$poi_log, # dont work bc non-integer Z
-    mods$gau, mods$qpoi, #mods$gam, # cant get LL for qpoi
+AIC(mods$gau, mods$qpoi, #mods$gam, # cant get LL for qpoi
+    mods$poi_sqrt, mods$poi_log, # dont work bc non-integer Z
     mods$poi_round, mods$poi_rsqrt,
-    mods$nb, mods$nb_log, 
-    mods$zip_nb)
+    mods$nb, mods$nb_sqrt, mods$nb_log  #mods$nb_rsqrt, # very similar to nb_sqrt
+    #mods$zip_nb, mods$zip_poi # WHOOPS!
+    )
 ## so lowkey just the negbin with log transform?
 
 mods$nb_log %>% GetModelResults()
 ## nothin matters!!!!
+```
 
 ```
 

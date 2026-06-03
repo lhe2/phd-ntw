@@ -41,10 +41,11 @@ knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
 library(data.table) # rbindlist
 library(tidyverse)
 library(here)
+library(conflicted)
 
 conflicted::conflicts_prefer(
-  dplyr::select,
-  dplyr::filter) 
+  dplyr::select(),
+  dplyr::filter()) 
 ```
 
 ## roadmap

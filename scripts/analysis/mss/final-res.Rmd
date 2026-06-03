@@ -180,6 +180,8 @@ df <- dfs_viz$long %>%
          is.na(is.LPI)
          )
 
+pd <- position_dodge(0.1)
+
 .plotfn <- function(x) {
   x %>%
     ggplot(aes(x = trt.minT, y = avg.mass,
@@ -187,16 +189,16 @@ df <- dfs_viz$long %>%
                lty = pop, col = trt.type,
                group = interaction(pop, trt.type))) +
     geom_point(size = 2,
-               position = position_dodge(0.1)) +
+               position = pd) +
     geom_line(show.legend = TRUE) +
     geom_errorbar(aes(ymax = avg.mass + se.mass,
                       ymin = avg.mass - se.mass),
-                  width = 0.25, lty = "solid", show.legend = FALSE,
-                  position = position_dodge(0.1)
+                  position = pd, width = 0.5, 
+                  lty = "solid", show.legend = FALSE,
                   ) +
     labs(#y = "pupal mass (g)",
-         y = "mass (g)",
-         title = "pupal mass", 
+         #y = "mass (g)",
+         title = "pupal mass (g)", 
          x = p_scales$xlab_minT) +
     AddLeg_OnePanel() +
     theme_bw()
@@ -254,7 +256,11 @@ mods <- list_modify(
            data = df)
 )
 
+anova(mods$m3, mods$m2, mods$m1)
+## adding model complexity doesnt do much
 AIC(mods$m3, mods$m2, mods$m1)
+## m3 = lowest AIC
+
 anova(mods$m3) #%>% ResToCsv("pup-mass")
 summary(mods$m3)
 ```
@@ -447,8 +453,8 @@ p <- list_modify(
     filter(instar == "prop") %>%
     .plotfn() +
     labs(#y = "pupal:eclosion mass",
-         y = "mass ratio",
-         title = "pupa:eclosion"),
+         #y = "mass ratio",
+         title = "pupa:eclosion mass"),
   
   mass_pepct =
     df %>%
@@ -457,8 +463,8 @@ p <- list_modify(
     filter(instar == "change") %>%
     .plotfn() +
     labs(#y = "% mass lost\n(pupa to eclosion)",
-         y = "% mass lost",
-         title = "pupa to eclosion")
+         #y = "% mass lost",
+         title = "pupa to eclosion\n(% mass lost)")
 )
 
 p$mass_perat
@@ -673,7 +679,8 @@ pd = position_dodge(0.35)
     #           show.legend = FALSE
     #           ),
     labs(#caption = "mean±se; lab only; N = # F",
-      y = "sqrt [eggs laid per female]", 
+      #y = "sqrt [eggs laid per female]", 
+      title = "sqrt [eggs laid per female]"
     )
   )
 }
@@ -715,7 +722,8 @@ p$eggs_laidnoyr
     geom_point(size = 2),
     geom_line(),
     labs(#caption = "lab only; overall hatch prop. per mating combination",
-      y = "proportion eggs hatched")
+      #y = "proportion eggs hatched",
+      title = "proportion eggs hatched")
   )
 }
 
@@ -750,11 +758,12 @@ dfs_viz$eggs_noyr %>%
            starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg-results_noyr")
 ```
 
-# ## dump
 
-## collated figs
+# ## collated figs
 
-dev figs: response type x life stage
+## dev figs
+
+response type x life stage
 
 ```{r collated dev figs}
 # survival
@@ -770,21 +779,37 @@ p$dev_la + p$dev_pup + p$dev_ad1 +
   theme(plot.title = element_text(hjust = 0.5))
 
 # mass
-p$mass_pup + p$mass_perat +
+# TODO finalise pup:ec metric to use
+p$mass_pup + p$mass_perat + p$mass_pepct +
     plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank() # TODO remove once decided on P:E
+        )
 ```
 
-eggs figs
+## eggs figs
 
 ```{r collated eggs viz}
+# yrs faceted
 p$eggs_laid + p$eggs_hatch +
-  plot_layout(axes = "collect", guides = "collect")
+  plot_layout(axes = "collect", guides = "collect") &
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank(),
+        legend.position = "bottom")
+
+# years combined
+p$eggs_laidnoyr + p$eggs_hatchnoyr +
+  labs(caption = "years combined") +
+  plot_layout(axes = "collect", guides = "collect") &
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank(),
+        legend.position = "bottom")
 ```
+# dump
 
 ## supp dev patchwork figs
 
-```{r}
+```{r eval = FALSE}
 # legend fn for patchwork plots (trt.type/yr)
 AddLeg_Patchwork <- function(){
   list(

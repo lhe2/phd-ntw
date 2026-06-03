@@ -19,7 +19,9 @@ library(lme4) # glm, lm, glmer
 #library(pscl) # zeroinfl
 #library(ggfortify) # autoplot (diagnosing)
 
-conflicted::conflicts_prefer(dplyr::select())
+conflicted::conflicts_prefer(
+  dplyr::select(),
+  dplyr::filter())
 
 # utils ----------------------------------------------------------
 library(here)
