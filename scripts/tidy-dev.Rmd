@@ -11,14 +11,14 @@ final code is purled to a `.R` script, rerun `purl` step as needed to update the
 
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
-here::i_am("_ntw/scripts/tidy-dev.Rmd")
+here::i_am("scripts/tidy-dev.Rmd")
 ```
 
 ```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
 # rerun this chunk if purled .R script needs to be updated.
 # save and apply updates to current .Rmd before purling!
 
-knitr::purl("tidy-dev.Rmd", here::here("_ntw/scripts/R/tidy-dev.R"))
+knitr::purl("tidy-dev.Rmd", here::here("scripts/R/tidy-dev.R"))
 
 # creates an archive
 # knitr::purl("data-tidying.Rmd", 
@@ -48,7 +48,7 @@ library(here)
 ## loading
 ```{r load data}
 dfs_imported <- list(
-  y23 = read.csv(here("_ntw/data/clean/2023/dev.csv"), header = TRUE) %>%
+  y23 = read.csv(here("data/clean/2023/dev.csv"), header = TRUE) %>%
     # dealing w dup ids
     mutate(id = case_when(id == "1379" & !is.na(jdate.pmd) ~ "1379a",
                           expt.group == "A" ~ paste0(id, "a"),
@@ -57,16 +57,16 @@ dfs_imported <- list(
            trt = case_when(trt == 337 ~ 426,
                            TRUE ~ as.numeric(trt))),
     #mutate(id = sprintf("%.1f", id)),
-  y24 = read.csv(here("_ntw/data/clean/2024/dev.csv"), header = TRUE),
-  y25 = read.csv(here("_ntw/data/clean/2025/dev.csv"), header = TRUE),
-  a23 = read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
+  y24 = read.csv(here("data/clean/2024/dev.csv"), header = TRUE),
+  y25 = read.csv(here("data/clean/2025/dev.csv"), header = TRUE),
+  a23 = read.csv(here("data/clean/2023/tent-matings.csv"), header = TRUE) %>%
     select(c("id", "trt", "sex", "pop", "id.tent",
              "jdate.ec", "jdate.paired", "jdate.died", "ctrl", "if.mated", "if.fridge")) %>%
         filter(!(id %in% c(282, 284))), # bad bugs
-  a24 = read.csv(here("_ntw/data/clean/2024/tent-matings.csv"), header = TRUE) %>%
+  a24 = read.csv(here("data/clean/2024/tent-matings.csv"), header = TRUE) %>%
     select(c("id", "trt", "pop", "sex", "cage", 
              "jdate.tent", "if.mated", "if.fridge")),
-  a25 = read.csv(here("_ntw/data/clean/2025/tent-matings.csv"), header = TRUE) %>%
+  a25 = read.csv(here("data/clean/2025/tent-matings.csv"), header = TRUE) %>%
     select(c("id", "trt", "sex", "pop", "cage",
              "jdate.eclosed", "jdate.added", "jdate.removed", 
              "if.fridge", "if.def", "if.culled", "if.mated")) %>%

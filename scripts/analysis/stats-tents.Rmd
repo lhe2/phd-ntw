@@ -8,7 +8,7 @@ date: "2025-12-02"
 stats analyses for ntw 2025
 
 ```{r load libraries and utils}
-here::i_am("_ntw/scripts/analysis/stats-tents.Rmd")
+here::i_am("scripts/analysis/stats-tents.Rmd")
 library(here)
 
 library(lme4) # glm, lm, glmer
@@ -35,16 +35,16 @@ conflicts_prefer(
 # library(survminer) # for plotting
 # library(coxme) # mixed effects coxphs (but also frailty() might be enough...)
 
-source(here("_ntw/scripts/analysis/filter_utils.R"))
-source(here("_ntw/scripts/analysis/stats_utils.R"))
-source(here("_ntw/scripts/wrangle-tents.R"))
+source(here("scripts/analysis/filter_utils.R"))
+source(here("scripts/analysis/stats_utils.R"))
+source(here("scripts/wrangle-tents.R"))
 ```
 
 notes: 
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data, message=FALSE}
-source(here("_ntw/scripts/R/tidy-tents.R"))
+source(here("scripts/R/tidy-tents.R"))
 
 # formatting
 # imported_tents <- 

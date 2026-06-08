@@ -26,17 +26,17 @@ conflicted::conflicts_prefer(
 # utils ----------------------------------------------------------
 library(here)
 
-source(here("_ntw/scripts/wrangle-dev.R"))
-source(here("_ntw/scripts/wrangle-tents.R"))
+source(here("scripts/wrangle-dev.R"))
+source(here("scripts/wrangle-tents.R"))
 
-source(here("_ntw/scripts/analysis/filter_utils.R"))
-source(here("_ntw/scripts/analysis/viz_utils.R"))
-source(here("_ntw/scripts/analysis/stats_utils.R"))
+source(here("scripts/analysis/filter_utils.R"))
+source(here("scripts/analysis/viz_utils.R"))
+source(here("scripts/analysis/stats_utils.R"))
 
 # development data --------------------------------------------------------
 
 ## development data
-source(here("_ntw/scripts/R/tidy-dev.R"))
+source(here("scripts/R/tidy-dev.R"))
 
 # viz dfs: drop colony bugs + factorised for graphing
 dfs_viz <- list(
@@ -75,7 +75,7 @@ dfs_stats <- list(
 # egg data ----------------------------------------------------------------
 
 ## viz dfs: 
-source(here("_ntw/scripts/R/tidy-tents.R"))
+source(here("scripts/R/tidy-tents.R"))
 
 dfs_viz <- list_modify(
   dfs_viz,

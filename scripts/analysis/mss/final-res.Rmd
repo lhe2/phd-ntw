@@ -6,7 +6,7 @@ date: "2026-05-24"
 # preamble and setup
 
 ```{r pathfinding, message=FALSE}
-here::i_am("_ntw/scripts/analysis/mss/final-res.Rmd")
+here::i_am("scripts/analysis/mss/final-res.Rmd")
 ```
 
 for collated viz + stats results for ntw mss
@@ -30,7 +30,7 @@ main results/figs:
 # loading
 
 ```{r data, message=FALSE, warning=FALSE}
-source(here::here("_ntw/scripts/analysis/mss/load.R"))
+source(here::here("scripts/analysis/mss/load.R"))
 ```
 
 ## utils
@@ -43,7 +43,7 @@ p <- list()
 ResToCsv <- function(res, filename){
   res <- as.data.frame(res)
   today <- format(Sys.time(), "%y%m%d")
-  path <- paste0("_ntw/out/mss-stats/", filename, "_", today, ".csv")
+  path <- paste0("out/mss-stats/", filename, "_", today, ".csv")
   
   write.csv(res, here::here(path), row.names = TRUE)
 }

@@ -11,14 +11,14 @@ final code is purled to a `.R` script, rerun `purl` step as needed to update the
 
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
-here::i_am("_ntw/scripts/tidy-tents.Rmd")
+here::i_am("scripts/tidy-tents.Rmd")
 ```
 
 ```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
 # rerun this chunk if purled .R script needs to be updated.
 # save and apply updates to current .Rmd before purling!
 
-knitr::purl("tidy-tents.Rmd", here::here("_ntw/scripts/R/tidy-tents.R"))
+knitr::purl("tidy-tents.Rmd", here::here("scripts/R/tidy-tents.R"))
 
 # creates an archive
 # knitr::purl("data-tidying.Rmd", 
@@ -185,9 +185,9 @@ sapply(c("dfs_imported", "dfs_export"),
 ```{r load 2025 tents data}
 dfs_imported <- list_modify(
   dfs_imported,
-  ad25 = read.csv(here("_ntw/data/clean/2025/tent-matings.csv"), header = TRUE),
-  coll25 = read.csv(here("_ntw/data/clean/2025/tent-eggs.csv"), header = TRUE),
-  hatch25 = read.csv(here("_ntw/data/clean/2025/tent-events.csv"), header = TRUE)
+  ad25 = read.csv(here("data/clean/2025/tent-matings.csv"), header = TRUE),
+  coll25 = read.csv(here("data/clean/2025/tent-eggs.csv"), header = TRUE),
+  hatch25 = read.csv(here("data/clean/2025/tent-events.csv"), header = TRUE)
 )
 ```
 
@@ -279,18 +279,18 @@ dfs_export <- list_modify(
 dfs_imported <- list_modify(
   dfs_imported,
   ad23 = 
-    read.csv(here("_ntw/data/clean/2023/tent-matings.csv"), header = TRUE) %>%
+    read.csv(here("data/clean/2023/tent-matings.csv"), header = TRUE) %>%
     # drop solo m/f's
         mutate(id.tent = case_when(id.tent == "107-cage" & sex == "f" ~ NA_character_,
                                TRUE ~ as.character(id.tent))) %>%
     filter(!(id %in% c(282, 284))), 
   
   coll23 = 
-    read.csv(here("_ntw/data/clean/2023/tent-events.csv"), header = TRUE) %>%
+    read.csv(here("data/clean/2023/tent-events.csv"), header = TRUE) %>%
     filter(id.tent != "107-I"),
   
   hatch23 = 
-    read.csv(here("_ntw/data/clean/2023/tent-eggs.csv"), header = TRUE)
+    read.csv(here("data/clean/2023/tent-eggs.csv"), header = TRUE)
   )
   
 dfs_imported[4:6] <- dfs_imported[4:6] %>%
@@ -390,9 +390,9 @@ dfs_export <- list_modify(
 ```{r}
 dfs_imported = list_modify(
   dfs_imported,
-  ad24 = read.csv(here("_ntw/data/clean/2024/tent-matings.csv"), header = TRUE) %>%
+  ad24 = read.csv(here("data/clean/2024/tent-matings.csv"), header = TRUE) %>%
     filter(sex == "f"),
-  coll24 = read.csv(here("_ntw/data/clean/2024/tent-events.csv"), header = TRUE)
+  coll24 = read.csv(here("data/clean/2024/tent-events.csv"), header = TRUE)
 )
 ```
 

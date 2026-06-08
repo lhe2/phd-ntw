@@ -10,13 +10,13 @@ for importing stuff from gsheets cuz im so tired of re-doing this every time i m
 library(tidyverse)
 library(googlesheets4)
 
-here::i_am("_ntw/scripts/import-gsheets.Rmd")
+here::i_am("scripts/import-gsheets.Rmd")
 library(here)
 
 paths <- list(
-  y23 = here("_ntw/data/gsheets/2023/"),
-  y24 = here("_ntw/data/gsheets/2024/"),
-  y25 = here("_ntw/data/gsheets/2025/")
+  y23 = here("data/gsheets/2023/"),
+  y24 = here("data/gsheets/2024/"),
+  y25 = here("data/gsheets/2025/")
 )
 ```
 

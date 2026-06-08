@@ -8,7 +8,7 @@ date: "2025-12-01"
 data viz for ntw 2025
 
 ```{r load libraries and utils}
-here::i_am("_ntw/scripts/analysis/viz-tents.Rmd")
+here::i_am("scripts/analysis/viz-tents.Rmd")
 library(here)
 
 library(tidyverse)
@@ -16,15 +16,15 @@ library(patchwork) # for plot_layout
 # library(survival) # for fitting surv
 # library(survminer) # for plotting surv
 
-source(here("_ntw/scripts/analysis/filter_utils.R"))
-source(here("_ntw/scripts/analysis/viz_utils.R"))
-source(here("_ntw/scripts/wrangle-tents.R"))
+source(here("scripts/analysis/filter_utils.R"))
+source(here("scripts/analysis/viz_utils.R"))
+source(here("scripts/wrangle-tents.R"))
 ```
 
 ## df prep
 
 ```{r load data, message=FALSE, warning=FALSE}
-source(here("_ntw/scripts/R/tidy-tents.R"))
+source(here("scripts/R/tidy-tents.R"))
 
 # some default dfs grouped by yr
 dfs_tents <- list(
