@@ -20,7 +20,7 @@ LAST RUN: 2026-05-29 (adding `if.mated` col)
 ```{r message = FALSE}
 library(tidyverse)
 
-here::i_am("_ntw/scripts/clean/2024-tents.Rmd")
+here::i_am("scripts/clean/2024-tents.Rmd")
 library(here)
 ```
 
@@ -32,9 +32,9 @@ library(here)
   # check column/row alignment + proper sorting
 
 dfs_raw <- list(
-  tents = read.csv(here("_ntw/data/gsheets/2024/tents.csv"), header = TRUE),
+  tents = read.csv(here("data/gsheets/2024/tents.csv"), header = TRUE),
   
-  tentstats = read.csv(here("_ntw/data/gsheets/2024/tent-stats.csv"), 
+  tentstats = read.csv(here("data/gsheets/2024/tent-stats.csv"), 
                        header = TRUE, check.names = FALSE)
 )
 ```
@@ -112,10 +112,10 @@ dfs_cleaned[["tents"]] <- dfs_cleaned[["tents"]] %>%
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
 write.csv(dfs_raw$tents, 
-          file = paste0(here("_ntw/data/raw/2024/"), "tent-matings_", today, ".csv"),
+          file = paste0(here("data/raw/2024/"), "tent-matings_", today, ".csv"),
           row.names = FALSE)
 write.csv(dfs_raw$tentstats, 
-          file = paste0(here("_ntw/data/raw/2024/"), "tent-events_", today, ".csv"),
+          file = paste0(here("data/raw/2024/"), "tent-events_", today, ".csv"),
           row.names = FALSE)
 
 # cleaned
@@ -124,9 +124,9 @@ export <- dfs_cleaned %>%
     x %>% select(-"notes")
   })
 
-write.csv(export$tents, file = paste0(here("_ntw/data/clean/2024/"),
+write.csv(export$tents, file = paste0(here("data/clean/2024/"),
                                       "tent-matings.csv"), row.names = FALSE)
-write.csv(export$events, file = paste0(here("_ntw/data/clean/2024/"),
+write.csv(export$events, file = paste0(here("data/clean/2024/"),
                                        "tent-events.csv"), row.names = FALSE)
 ```
 

@@ -16,7 +16,7 @@ adults and tents done separately here...
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/clean/2025-tents.Rmd")
+here::i_am("scripts/clean/2025-tents.Rmd")
 library(here)
 ```
 
@@ -27,7 +27,7 @@ LAST RUN: 2026-05-29
 ## - import
 
 ```{r}
-raw <- read.csv(here("_ntw/data/gsheets/2025/tents.csv"), 
+raw <- read.csv(here("data/gsheets/2025/tents.csv"), 
                 header = TRUE, check.names = FALSE)
 
 data <- raw %>%
@@ -97,8 +97,8 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 # trim
 export <- data %>% select(-c(starts_with("date"), "jdate.culled", "notes"))
 
-write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "tent-matings_", today, ".csv"), row.names = FALSE) # "adults"
-write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-matings.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("data/raw/2025/"), "tent-matings_", today, ".csv"), row.names = FALSE) # "adults"
+write.csv(export, file = paste0(here("data/clean/2025/"), "tent-matings.csv"), row.names = FALSE)
 ```
 
 # eggs
@@ -144,15 +144,15 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # raw data
 raw <- raw %>% reduce(left_join, by = c("date.collected", "id.cage"))
-write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "eggs_", today, ".csv"), row.names = FALSE) # "hatching"
+write.csv(raw, file = paste0(here("data/raw/2025/"), "eggs_", today, ".csv"), row.names = FALSE) # "hatching"
 
 # collected
 export <- data$coll %>% select(-c(starts_with("date"), "notes"))
-write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-eggs.csv"), row.names = FALSE)  # "coll"
+write.csv(export, file = paste0(here("data/clean/2025/"), "tent-eggs.csv"), row.names = FALSE)  # "coll"
 
 # hatched
 export <- merge(data$coll, data$hatch, all = TRUE) %>% select(-c(starts_with("date"), "notes")) 
-write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "tent-events.csv"), row.names = FALSE) # "hatch"
+write.csv(export, file = paste0(here("data/clean/2025/"), "tent-events.csv"), row.names = FALSE) # "hatch"
 ```
 
 

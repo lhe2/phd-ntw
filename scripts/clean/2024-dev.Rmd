@@ -20,14 +20,14 @@ REVISIT
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/clean/2024-dev.Rmd")
+here::i_am("scripts/clean/2024-dev.Rmd")
 library(here)
 ```
 
 googlesheets import
 
 ```{r}
-df_import <- read.csv(here("_ntw/data/gsheets/2024/dev.csv"), header = TRUE)
+df_import <- read.csv(here("data/gsheets/2024/dev.csv"), header = TRUE)
 ```
 
 pre-filtering/value fixing
@@ -180,16 +180,14 @@ today <- format(Sys.time(), "%y%m%d-%H%M")
 #            )) #%>% View()
 # 
 # write.csv(notes, file = "~/Documents/repos/ntw/2024/data/ntw-notes.csv", row.names = FALSE)
-# write.csv(notes, file = paste0("~/Documents/repos/ntw/2024/data/archive/", today, "_ntw-notes.csv" ), row.names = FALSE)
 
 # raw data
-write_csv(df_raw, file = paste0(here("_ntw/data/raw/2024/"), "dev_", today, ".csv"))
+write_csv(df_raw, file = paste0(here("data/raw/2024/"), "dev_", today, ".csv"))
   
 # MQs only
 # export <- df_cleaned %>% filter(species == "MQ")
 # 
-# write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev-MQ.csv"), row.names = FALSE)
-# write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-MQ_", today, ".csv"), row.names = FALSE)
+# write.csv(export, file = paste0(here("data/clean/2024/"), "dev-MQ.csv"), row.names = FALSE)
 
   
 # useful columns only
@@ -203,8 +201,7 @@ export <- df_cleaned %>%
            "sup", "surv.outcome"
           )) #%>% View()
 
-write.csv(export, file = paste0(here("_ntw/data/clean/2024/"), "dev.csv"), row.names = FALSE)
-#write.csv(export, file = paste0(here("_ntw/data/archive/2024/"), "dev-sexta_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("data/clean/2024/"), "dev.csv"), row.names = FALSE)
 
 ```
 

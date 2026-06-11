@@ -13,7 +13,7 @@ re-run sections whenever the gsheets gets updated
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/clean/2025-dev.Rmd")
+here::i_am("scripts/clean/2025-dev.Rmd")
 library(here)
 ```
 
@@ -23,7 +23,7 @@ LAST RUN: 2025-12-14
 ## - import
 
 ```{r}
-raw <- read.csv(here("_ntw/data/gsheets/2025/dev.csv"), header = TRUE)
+raw <- read.csv(here("data/gsheets/2025/dev.csv"), header = TRUE)
 
 data <- raw
 ```
@@ -93,8 +93,8 @@ export <- data %>%
 # export
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
-write.csv(raw, file = paste0(here("_ntw/data/raw/2025/"), "dev_", today, ".csv"), row.names = FALSE)
-write.csv(export, file = paste0(here("_ntw/data/clean/2025/"), "dev.csv"), row.names = FALSE)
+write.csv(raw, file = paste0(here("data/raw/2025/"), "dev_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("data/clean/2025/"), "dev.csv"), row.names = FALSE)
 ```
 
 

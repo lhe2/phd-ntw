@@ -18,7 +18,7 @@ APPEND 2025 FIXES LOL
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/clean/2023-tents.Rmd")
+here::i_am("scripts/clean/2023-tents.Rmd")
 library(here)
 ```
 
@@ -30,13 +30,13 @@ library(here)
   # check column/row alignment + proper sorting
 
 dfs_raw <- list(
-  pairs = read.csv(here("_ntw/data/gsheets/2023/tent-pairs.csv"), 
+  pairs = read.csv(here("data/gsheets/2023/tent-pairs.csv"), 
                    header = TRUE, check.names = FALSE),
   
-  tents = read.csv(here("_ntw/data/gsheets/2023/tents.csv"), 
+  tents = read.csv(here("data/gsheets/2023/tents.csv"), 
                    header = TRUE, check.names = FALSE),
   
-  hatch = read.csv(here("_ntw/data/gsheets/2023/tent-hatch.csv"), 
+  hatch = read.csv(here("data/gsheets/2023/tent-hatch.csv"), 
                    header = TRUE, check.names = FALSE)
 )
 ```
@@ -260,7 +260,7 @@ dfs_cleaned[["pairs"]] <- dfs_cleaned[["pairs"]] %>%
 # add in more trt info
   mutate(ctrl = case_when(grepl("col", id) ~ "col",
                           grepl("ctrl", id) ~ "diurnal"), 
-         pop = case_when(grepl("col", id) ~ "col",
+         pop = case_when(grepl("col|ctrl", id) ~ "col",
                          !is.na(ctrl) | as.numeric(id) > 1000 ~ "lab",
                          as.numeric(id) < 1000 ~ "field"),
          if.fridge = case_when(#jdate.paired != jdate.ec ~ "x",
@@ -277,19 +277,17 @@ dfs_cleaned[["pairs"]] <- dfs_cleaned[["pairs"]] %>%
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # raw
-write_csv(dfs_raw[["pairs"]], file = paste0(here("_ntw/data/raw/2023/"), "tent-matings_", today, ".csv")) # "tentpairs"
-write_csv(dfs_raw[["tents"]], file = paste0(here("_ntw/data/raw/2023/"), "tent-events_", today, ".csv")) # "tentstats"
-write_csv(dfs_raw[["hatch"]], file = paste0(here("_ntw/data/raw/2023/"), "eggs_", today, ".csv")) # "hatching"
+write_csv(dfs_raw[["pairs"]], file = paste0(here("data/raw/2023/"), "tent-matings_", today, ".csv")) # "tentpairs"
+write_csv(dfs_raw[["tents"]], file = paste0(here("data/raw/2023/"), "tent-events_", today, ".csv")) # "tentstats"
+write_csv(dfs_raw[["hatch"]], file = paste0(here("data/raw/2023/"), "eggs_", today, ".csv")) # "hatching"
 
 # save notes elsewhere
 # notes_pairs <- select(data_pairs, c(trt.pair, id.tent, id.pair, date.paired, id.f, id.m, notes))
 # notes_tents <- select(data_tents, date, id.tent, room, tent, tent.loc, notes.tents)
 # 
 # write.csv(notes_pairs, "~/Documents/repos/ntw/2023/data/notes_tentpairs.csv", row.names = FALSE)
-# write.csv(notes_pairs, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentpairs.csv"), row.names = FALSE)
 # 
 # write.csv(notes_tents, "~/Documents/repos/ntw/2023/data/notes_tentstats.csv", row.names = FALSE)
-# write.csv(notes_tents, paste0("~/Documents/repos/ntw/2023/data/archive/", today, "_notes_tentstats.csv"), row.names = FALSE)
 
 # save cleaned dfs
 dfs_cleaned <- dfs_cleaned %>%
@@ -299,17 +297,14 @@ dfs_cleaned <- dfs_cleaned %>%
   })
 
 export <- dfs_cleaned[["tents"]] %>% select(-if.ignore) ## tent-info
-write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-events.csv"), row.names = FALSE)
-#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "tents_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("data/clean/2023/"), "tent-events.csv"), row.names = FALSE)
 
 
 export <- dfs_cleaned[["pairs"]] ## tent-pairs
-write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-matings.csv"), row.names = FALSE)
-#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "pairs_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("data/clean/2023/"), "tent-matings.csv"), row.names = FALSE)
 
 export <- dfs_cleaned[["hatch"]] ## tent-hatch
-write.csv(export, file = paste0(here("_ntw/data/clean/2023/"), "tent-eggs.csv"), row.names = FALSE)
-#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "hatch_", today, ".csv"), row.names = FALSE)
+write.csv(export, file = paste0(here("data/clean/2023/"), "tent-eggs.csv"), row.names = FALSE)
 ```
 
 ```{r}

@@ -21,7 +21,7 @@ notes:
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("_ntw/scripts/clean/2023-dev.Rmd")
+here::i_am("scripts/clean/2023-dev.Rmd")
 library(here)
 ```
 
@@ -32,13 +32,13 @@ note: 2024-07-02 updated gsheet with the field diapausers(?); should be the fina
 ```{r}
 # larva data
 dfs_raw <- list(
-  field = read.csv(here("_ntw/data/gsheets/2023/dev-field.csv"), header = TRUE),
+  field = read.csv(here("data/gsheets/2023/dev-field.csv"), header = TRUE),
   
-  labsu = read.csv(here("_ntw/data/gsheets/2023/dev-su.csv"), header = TRUE),
+  labsu = read.csv(here("data/gsheets/2023/dev-su.csv"), header = TRUE),
   
-  labF1 = read.csv(here("_ntw/data/gsheets/2023/dev-F1.csv"), header = TRUE),
+  labF1 = read.csv(here("data/gsheets/2023/dev-F1.csv"), header = TRUE),
   
-  labsp = read.csv(here("_ntw/data/gsheets/2023/dev-sp.csv"), header = TRUE)
+  labsp = read.csv(here("data/gsheets/2023/dev-sp.csv"), header = TRUE)
 )
 ```
 
@@ -178,30 +178,27 @@ df_cleaned <- df_cleaned %>%
 today <- format(Sys.time(), "%y%m%d-%H%M")
 
 # raw data
-write.csv(df_all, file = paste0(here("_ntw/data/raw/2023/"), "dev_", today, ".csv"), row.names = FALSE) 
+write.csv(df_all, file = paste0(here("data/raw/2023/"), "dev_", today, ".csv"), row.names = FALSE) 
 
 # MQs only
 # export <- df_cleaned %>% 
 #   filter(species == "MQ") %>%
 #   select(-c("species", "from.E", "location", starts_with(c("date", "h.")), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
 # 
-# write.csv(export, file = here("_ntw/data/clean/2023/MQs.csv"), row.names = FALSE)
-# write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "dev-MQ_", today, ".csv" ), row.names = FALSE)
+# write.csv(export, file = here("data/clean/2023/MQs.csv"), row.names = FALSE)
 
 
 # wordier notes
 # export <- df_cleaned %>% select(c("trt", "id", "expt.group", "location", "date.collected", "date.stuck", "time.in.approx", "dv", "mass.died", "pupa.deformities", "notes", "reason.pmd", "reason.ignore", ends_with(".stuck"), ends_with(".culled")))
 # 
-# write.csv(export, file = here("_ntw/data/clean/2023-ntw-notes.csv"), row.names = FALSE)
-# write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "ntw-notes_", today, ".csv" ), row.names = FALSE)
+# write.csv(export, file = here("data/clean/2023-ntw-notes.csv"), row.names = FALSE)
   
 # cleaned up sexta
 export <- df_cleaned %>%
   #filter(is.na(species)) %>% 
   select(-c("from.E", "location", starts_with("h."), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
 
-write.csv(export, file = here("_ntw/data/clean/2023/dev.csv"), row.names = FALSE)
-#write.csv(export, file = paste0(here("_ntw/data/archive/2023/"), "dev-sexta_", today, ".csv" ), row.names = FALSE)
+write.csv(export, file = here("data/clean/2023/dev.csv"), row.names = FALSE)
 ```
 
 ## - cleanup
