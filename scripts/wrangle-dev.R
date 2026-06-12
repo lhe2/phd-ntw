@@ -16,31 +16,30 @@ source(here("scripts/math_utils.R"))
 PrepLarvalSS <- function(long_df){
   long_df %>%
     filter(pop != "col",
-           !is.na(diet), # some random bugs...
            !instar %in% c("eclose", "long"
                           #"exit", # NOTE breaks groups. too many unique exit dates
                           #"fridge", # NOTE omit for now. not that useful
-                          )) %>%
-    group_by(across(c(year, pop, diet, starts_with("trt"), instar))) # default groupings
+           )) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar)), .add = TRUE) # default groupings
 }
 
 PrepAdultSS <- function(long_df){
   long_df %>%
+    # optionally remove colony bugs later (bc longevity)
     filter(instar %in% c("pupa", "eclose", "long"
                          #"fridge"
-                         )) %>%
-    group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
-    mutate(mass = mass/1000)
+    )) %>%
+    group_by(across(c(year, pop, diet, starts_with("trt"), instar)), .add = TRUE) %>%
+    mutate(mass = mass/1000) # mass in g
 }
 
 # development summary stats
 CalcDevSS <- function(long_df){
   long_df %>%
     mutate(logmass = log(mass),
-           #mass_g = mass/1000, # only want to do this for adults tho lol..
            devrate = 1/tt) %>%
     summarise(n = n(),
-              across(.cols = c(mass, logmass, #mass_g, 
+              across(.cols = c(mass, logmass,
                                tt, devrate),
                      .fns = list(avg = ~ mean(.x, na.rm = TRUE),
                                  se = se),
@@ -68,21 +67,20 @@ CalcDevSS_la <- function(long_df){
 ## survival proportions
 PrepSurvProps <- function(wide_df){
   wide_df %>% 
-    filter(is.pup != 2, # drop culled
-           pop != "col",
-           !is.na(diet)) %>% 
-    group_by(across(c(year, pop, diet, starts_with("trt"))))
+    filter(pop != "col",
+           !is.na(is.pup), # drop culled
+           ) %>% 
+    group_by(across(c(year, pop, diet, starts_with("trt"))), .add = TRUE)
 }
 
 CalcSurvProps <- function(wide_df){
   wide_df %>%
     summarise(n = n(),
-              n.pup = sum(!is.na(jdate.pupa)), # omit LPIs for ec
-              ## NOTE this still doesnt fully remove unviable pups, 
-              ## so still need to filter them out before doing calcs
-              n.ec = sum(is.ec == 1, na.rm = TRUE),
-              prop.pup = sum(is.pup == 1)/n, # any pups
+              prop.pup = sum(is.pup >= 1)/n, # any pups
               se.pup = seprop(prop.pup, n),
+              
+              n.pup = sum(is.pup == 1), # omit LPIs for ec
+              n.ec = sum(is.ec == 1, na.rm = TRUE),
               prop.ec = n.ec/n.pup,
               se.ec = seprop(prop.ec, n.pup)) %>%
     ungroup()
@@ -99,20 +97,20 @@ CalcSurvProps_def <- function(wide_df){
 ## supernumerary proportions (same as PrepSurvProps?)
 PrepSupProps <- function(wide_df){
   wide_df %>%
-    filter(is.pup != 2, # drop culled
-           pop != "col",
-           !is.na(diet)) %>% 
-    group_by(across(c(year, pop, diet, starts_with("trt"))))
+    filter(!is.na(pup), # drop culled
+           pop != "col") %>% 
+    # TODO add group by sup so that math is less work below LOL?
+    group_by(across(c(year, pop, diet, starts_with("trt"))), .add = TRUE) 
 }
 
 CalcSupProps <- function(wide_df){
   wide_df %>%
     summarise(N = n(),
-              surv_tot = sum(is.pup == 1),
-              surv_0th = sum(is.pup == 1 & is.na(sup)),
-              surv_6th = sum(is.pup == 1 & sup == 6, na.rm = TRUE),
-              surv_7th = sum(is.pup == 1 & sup == 7, na.rm = TRUE),
-              surv_8th = sum(is.pup == 1 & sup == 8, na.rm = TRUE),
+              surv_tot = sum(is.pup >= 1),
+              surv_0th = sum(is.pup >= 1 & is.na(sup)),
+              surv_6th = sum(is.pup >= 1 & sup == 6, na.rm = TRUE),
+              surv_7th = sum(is.pup >= 1 & sup == 7, na.rm = TRUE),
+              surv_8th = sum(is.pup >= 1 & sup == 8, na.rm = TRUE),
               died_tot = sum(is.pup == 0),
               died_0th = sum(is.pup == 0 & is.na(sup)),
               died_6th = sum(is.pup == 0 & sup == 6, na.rm = TRUE),
@@ -132,7 +130,7 @@ CalcSupProps <- function(wide_df){
            sup = case_when(sup == "not" & status == "surv" ~ "died",
                            sup == "not" & status == "died" ~ "survived",
                            TRUE ~ as.character(sup))
-           ) %>%
+    ) %>%
     ungroup()
 }
 
