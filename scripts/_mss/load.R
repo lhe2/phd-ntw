@@ -45,10 +45,10 @@ dfs_viz <- list(
 ) %>%
   lapply(., \(df) {
     df %>%
-      FilterForNTWBugs() %>% 
-      filter(pop != "col") %>%
-      mutate(across(c(starts_with("trt"), "year"), as.factor)
-      )
+      #FilterForNTWBugs() %>%
+      filter(!(pop == "lab" & diet == "TB"),
+             pop != "col") %>%
+      mutate(across(c(starts_with("trt"), "year"), as.factor))
   })
 
 # stats dfs: subset into ctrl+ntw bugs and just ntw bugs (omit col bugs)
@@ -60,17 +60,18 @@ dfs_stats <- list(
 ) %>%
   lapply(., \(x) {
     x %>%
-      FilterOutLabTB() %>%
-      FilterForNTWTrts() %>%
-      filter(pop != "col",
-             is.pup < 2, # drop culled bugs
-             ) %>%
+      # FilterOutLabTB() %>%
+      # FilterForNTWTrts() %>%
+      # convert LPIs to 1's
+      mutate(is.pup = case_when(!is.na(jdate.LPI) ~ 1,
+                                TRUE ~ is.pup)) %>%
+      filter(#pop != "col",
+             !is.na(is.pup), # drop culled bugs
+      ) %>%
       # factorise and set reference levels
       mutate(across(c("year", "trt.minT", "trt.type", "trt"), as.factor),
              pop = factor(pop, levels = c("lab", "field")))
   })
-
-
 
 # egg data ----------------------------------------------------------------
 
@@ -111,7 +112,7 @@ dfs_viz[c("eggs", "eggs_noyr")] <- dfs_viz[c("eggs", "eggs_noyr")] %>%
              mate.type = factor(mate.type, levels = c("within", "between", "virgin")),
              trt.mate = factor(trt.mate, levels = c("neither", "both", "f", "m"))
              
-  )}
+      )}
   )
 
 

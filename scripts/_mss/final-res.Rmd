@@ -210,7 +210,7 @@ drop LPIs bc mass isnt accurate
 df <- dfs_viz$long %>%
   filter(!is.na(sex),
          instar == "pupa",
-         is.na(is.LPI)
+         #is.na(is.LPI)
          )
 
 .plotfn <- function(x) {

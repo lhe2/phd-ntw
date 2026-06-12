@@ -11,11 +11,13 @@
 
 
 ### FILTERS ###
+# exclude lab bugs reared on TB
 FilterOutLabTB <- function(data){
   data %>%
     filter(!(pop == "lab" & diet == "TB"))
 }
 
+# keep only mated lab and col moths
 FilterForLabEggs <- function(data){
   data %>%
     filter(mate.pop != "field",
@@ -23,6 +25,7 @@ FilterForLabEggs <- function(data){
 }
 
 # keeps trts 260, 419, 426, 433 only
+# (drops other 2023 trts)
 FilterForNTWTrts <- function(data){
   if(rlang::has_name(data, "is.ntw")){
     filter(data, is.ntw > 0)
@@ -41,8 +44,3 @@ FilterForNTWMoths <- function(data){
   data %>% 
     FilterForLabEggs() %>% FilterForNTWTrts()
 }
-
-
-
-
-
