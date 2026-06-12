@@ -19,11 +19,6 @@ here::i_am("scripts/tidy-dev.Rmd")
 # save and apply updates to current .Rmd before purling!
 
 knitr::purl("tidy-dev.Rmd", here::here("scripts/R/tidy-dev.R"))
-
-# creates an archive
-# knitr::purl("data-tidying.Rmd", 
-#             paste0(here::here(bin_paths$y25$ntw), "/archive/cleaning/", 
-#                    format(Sys.time(), "%y%m%d-%H%M"), "_tidy-data.R"))
 ```
 
 # load libs & pkgs
@@ -50,9 +45,11 @@ library(here)
 dfs_imported <- list(
   y23 = read.csv(here("data/clean/2023/dev.csv"), header = TRUE) %>%
     # dealing w dup ids
-    mutate(id = case_when(id == "1379" & !is.na(jdate.pmd) ~ "1379a",
-                          expt.group == "A" ~ paste0(id, "a"),
-                          TRUE ~ as.character(id)),
+    mutate(id = as.numeric(id), 
+           id = case_when(id == 1379 & !is.na(jdate.pmd) ~ 1379.1,
+                          #expt.group == "A" ~ paste0(id, "a"),
+                          expt.group == "A" ~ id + 0.1,
+                          TRUE ~ id),
            # handle this way earlier
            trt = case_when(trt == 337 ~ 426,
                            TRUE ~ as.numeric(trt))),
@@ -87,8 +84,8 @@ dfs_filtered <- list(
   ## preremove all MQs
   y23 = dfs_imported[["y23"]] %>%
     filter(is.na(species),
-           instar.enter == "hatch" | 
-             pop == "field" & instar.enter %in% c("1st", "2nd"),
+           # instar.enter == "hatch" | 
+           #   pop == "field" & instar.enter %in% c("1st", "2nd"),
            pop %in% c("field", "lab"),
            #!(trt %in% c("ctrl", "267", "330")),
            reason.ignore != "lost" | is.na(reason.ignore),
@@ -99,7 +96,8 @@ dfs_filtered <- list(
            cohort = expt.group,
            jdate.long = jdate.surv) %>%
     select(-c(starts_with(c("h.", "if.")), ends_with("2nd"), 
-              "instar.enter",  "jdate.collected", "jdate.enter", 
+              #"instar.enter",  
+              "jdate.collected", "jdate.enter", 
               "jdate.stuck", "jdate.15", "jdate.died",
               "parent.tent", "src", "trt.stage", "grp.trt")),
 
@@ -107,7 +105,8 @@ dfs_filtered <- list(
     filter(is.na(species),
            instar.enter == "hatch") %>%
     rename(jdate.long = jdate.surv) %>%
-    select(-c(ends_with("2nd"), "jdate.enter", "instar.enter", "trt.type")),
+    select(-c(ends_with("2nd"), "jdate.enter", #"instar.enter", 
+              "trt.type")),
   
   y25 = dfs_imported[["y25"]] %>%
     filter(is.na(species),
@@ -116,7 +115,8 @@ dfs_filtered <- list(
            jdate.long = jdate.surv,
            cage = id.cage) %>%
     mutate(cage = NA) %>% # cage ids are different in adults
-    select(-c("species", "jdate.enter", "instar.enter", ends_with("2nd"))),
+    select(-c("species", "jdate.enter", #"instar.enter", 
+              ends_with("2nd"))),
   
   # adults
   a23 = dfs_imported[["a23"]] %>%
@@ -135,6 +135,17 @@ dfs_filtered <- list(
            jdate.eclose = jdate.eclosed,
            jdate.long = jdate.removed)
 )
+
+# fix ids of supplemental mating bugs
+dfs_filtered[c("a23", "a25")] <- dfs_filtered[c("a23", "a25")] %>%
+  lapply(., \(x){
+    x %>%
+      mutate(id = case_when(
+        grepl("-m", id) ~ 3100 + as.numeric(str_sub(id, start = -2)),
+        grepl("-f", id) ~ 3200 + as.numeric(str_sub(id, start = -2)),
+        TRUE ~ as.numeric(id)),
+      )
+  })
 ```
 
 ### merge adult/larval dev data
@@ -142,7 +153,6 @@ dfs_filtered <- list(
 do in two steps (bc the col ctrls break `coalesce()` bc "missingness is uneven"):
 1. `left_join` larval dev onto existing adult dev
 2. `merge` remaining col adults into the dev data
-3. fix ID stringiness (for duplicated ID #s, col bugs)
 ```{r merging dfs by yr}
 # merge adult + larval data
 dfs_stdised <- list(
@@ -177,14 +187,10 @@ dfs_stdised <- list(
     mutate(year = 2025)
   
 ) %>% lapply(., \(x){
-  # stdise column types; fix id #s if text
+  # stdise column types
   x %>%
-    mutate(id = case_when(grepl("a$", id) ~ as.numeric(gsub("a", ".1", id)),
-                          grepl("-m", id) ~ 3100 + as.numeric(str_sub(id, start = -2)),
-                          grepl("-f", id) ~ 3200 + as.numeric(str_sub(id, start = -2)),
-                          TRUE ~ as.numeric(id)),
-           across(c("id", "trt", starts_with("jdate"), ends_with("T", ignore.case = FALSE)),
-                  as.numeric))
+    mutate(across(c("id", "trt", starts_with("jdate"), ends_with("T", ignore.case = FALSE)),
+           as.numeric))
 })
 ```
 
@@ -222,7 +228,10 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
                               reason.ignore %in% c("wet diet", "accidental", "hot larva", "cut") | 
                                 final.fate %in% c("accidental", "culled") ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
-         jdate.culled = case_when(final.fate %in% c("accidental", "culled") & fate.dev != "pup" ~ as.numeric(jdate.exit)),
+         jdate.culled = case_when(final.fate %in% c("accidental", "culled") & 
+                                    fate.dev != "pup" ~ as.numeric(jdate.exit)),
+         jdate.pmd = case_when(!is.na(jdate.culled) ~ NA_real_,
+                               TRUE ~ jdate.pmd), 
          is.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal")
          ) %>%
   select(-c("final.fate", "reason.ignore"))
@@ -266,51 +275,68 @@ simultaneous standardising:
 - `jdate.exit` (bc all the dates should be standard now lol.)
 
 ```{r standardisng values for all}
-# redo: survival, sup coding (counts after reaching 5th)
-# fix: exit dates
+# combine dfs; remove some short-lived larvae; more standardising:
+# redo: survival, pup/ec/sup coding (counts after reaching 5th)
+# fix: exit dates; LPI info
 # add parsing: non-ntw trts, expt vs control temp trts
-dfs_stdised <- lapply(dfs_stdised, \(x){
-  x %>%
-    mutate(is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
-                                 fate.dev == "pmd" ~ 0,
-                                 fate.dev == "other" ~ 2),
-           is.LPI = case_when(!is.na(jdate.LPI) ~ 1),
-           is.ec = case_when(fate.dev == "ec" ~ 1,
-                             !is.na(jdate.pupa) & is.na(jdate.LPI) & is.na(jdate.eclose) ~ 0),
-           sup = case_when(!is.na(jdate.8th) ~ 8,
-                           !is.na(jdate.7th) ~ 7,
-                           !is.na(jdate.6th) ~ 6,
-                           #!is.na(jdate.5th) ~ 5,
-                           #FALSE ~ as.numeric(sup)
-                            ),
-           is.sup = case_when(!is.na(sup) ~ 1,
-                              !is.na(jdate.wander) & is.na(sup) ~ 0),
-           jdate.exit = case_when(!is.na(jdate.long) ~ as.numeric(jdate.long),
-                                  !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
-                                  !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),
-                                  !is.na(jdate.pupa) & is.na(jdate.eclose) ~
-                                    as.numeric(jdate.pupa + 36), # 15d + 3 wks
-                                  !is.na(jdate.culled) ~ as.numeric(jdate.culled),
-                                  !is.na(jdate.pmd) ~ as.numeric(jdate.pmd)),
-           is.ntw = case_when(trt %in% c(419, 433) ~ 1,
-                              trt %in% c(260, 426) ~ 2,
-                              TRUE ~ 0),
-           trt.type = case_when(trt.maxT == 40 ~ "expt",
-                                TRUE ~ "ctrl")
-    )
-}) #%>% data.table::rbindlist(., fill = TRUE) %>% View()
-
+dfs_subsets <- list(
+  all = data.table::rbindlist(dfs_stdised, fill = TRUE) %>% 
+    mutate(
+      # survival/pup/sup/ec status fixes
+      # is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
+      #                            fate.dev == "pmd" ~ 0,
+      #                            fate.dev == "other" ~ 2),
+      is.pup = case_when(!is.na(jdate.pmd) ~ 0,
+                         !is.na(jdate.pupa) ~ 1,
+                         !is.na(jdate.LPI) ~ 2),
+      is.LPI = case_when(!is.na(jdate.LPI) ~ 1),
+      # is.ec = case_when(fate.dev == "ec" ~ 1,
+      #                   !is.na(jdate.pupa) & is.na(jdate.LPI) & 
+      #                     is.na(jdate.eclose) ~ 0),
+      ## only count expt bugs for eclosions
+      is.ec = case_when(!is.na(instar.enter) & !is.na(jdate.pupa) & is.na(jdate.eclose) ~ 0,
+                        !is.na(instar.enter) & !is.na(jdate.eclose) ~ 1
+                        ),
+      sup = case_when(!is.na(jdate.8th) ~ 8,
+                      !is.na(jdate.7th) ~ 7,
+                      !is.na(jdate.6th) ~ 6,
+                      #!is.na(jdate.5th) ~ 5,
+                      #FALSE ~ as.numeric(sup)
+                      ),
+      is.sup = case_when(!is.na(sup) ~ 1,
+                         !is.na(jdate.wander) & is.na(sup) ~ 0),
+      # LPI info fixing
+      sex = case_when(!is.na(jdate.LPI) ~ NA_character_,
+                      TRUE ~ sex),
+      mass.pupa = case_when(!is.na(jdate.LPI) ~ NA_real_,
+                            TRUE ~ mass.pupa),
+      # exit date fixes
+      jdate.exit = case_when(!is.na(jdate.long) ~ as.numeric(jdate.long),
+                             !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
+                             !is.na(jdate.LPI) ~ as.numeric(jdate.LPI),
+                             # !is.na(jdate.pupa) & is.na(jdate.eclose) ~
+                             #   as.numeric(jdate.pupa + 36), # 15d + 3 wks
+                             !is.na(jdate.culled) ~ as.numeric(jdate.culled),
+                             !is.na(jdate.pmd) ~ as.numeric(jdate.pmd)
+                             ),
+      # more trt binaries
+      # is.ntw = case_when(trt %in% c(419, 433) ~ 1,
+      #                    trt %in% c(260, 426) ~ 2,
+      #                    TRUE ~ 0),
+      trt.type = case_when(trt.maxT == 40 ~ "expt",
+                           TRUE ~ "ctrl")
+      ) %>%
+    filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) | is.na(jdate.exit)) # for some field bugs 
+  ) 
 ```
 
 ## prep for final export
 
 ```{r prep dev data for export}
-# combine dfs and remove short-lived larvae
-dfs_tidy <- list(
-  wide = 
-    data.table::rbindlist(dfs_stdised, fill = TRUE) %>%
-    filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) # for some field bugs
-    ) %>%
+# pre-subset for analyses/expts (mostly want the NTW one tho)
+
+dfs_subsets$all <- dfs_subsets$all %>%
+    ## calc dev times for pivot
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
            tt.4th = jdate.4th - jdate.hatch,
            tt.5th = jdate.5th - jdate.hatch,
@@ -318,7 +344,8 @@ dfs_tidy <- list(
            tt.7th = jdate.7th - jdate.hatch,
            tt.8th = jdate.8th - jdate.hatch,
            tt.wander = jdate.wander - jdate.hatch,
-           tt.pupa = jdate.pupa - jdate.hatch,
+           tt.pupa = case_when(!is.na(jdate.pupa) ~ jdate.pupa - jdate.hatch,
+                               !is.na(jdate.LPI) ~ jdate.LPI - jdate.hatch),
            tt.eclose = jdate.eclose - jdate.pupa,
            #tt.long = case_when(is.na(if.fridge) ~ jdate.long - jdate.eclose),
            tt.long = jdate.long - jdate.eclose,
@@ -332,21 +359,41 @@ dfs_tidy <- list(
          mass.prop = mass.pupa/mass.eclose
     ) %>%
     select(-species)
-)
 
-dfs_tidy <- list_modify(
-  dfs_tidy,
-  long = dfs_tidy$wide %>% 
+dfs_subsets <- list_modify(
+  dfs_subsets,
+  ntw = dfs_subsets$all %>%
+    filter(year == 2023 & (instar.enter == "hatch" |
+                             pop == "col" |
+                             (pop == "field" & instar.enter %in% c("1st", "2nd"))) |
+             year %in% c(2024, 2025),
+           trt %in% c(260, 419, 426, 433)
+           ) %>%
+    select(-instar.enter),
+  y23_temps = dfs_subsets$all %>%
+    filter(year == 2023 & pop == "lab" & instar.enter == "hatch" &
+             trt %in% c(260, 267, 330, 426)),
+  y23_acc = dfs_subsets$all %>%
+    filter(year == 2023 & pop == "lab" &
+             trt %in% c(260, 426))
+)
+```
+
+```{r}
+# for now, just exporting NTW stuff...
+dfs_tidy <- list(
+  wide = dfs_subsets$ntw,
+  long = dfs_subsets$ntw %>% 
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
                  names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
     
-    # drop empty dev times but keep masses
-    mutate(tt = case_when(is.na(tt) & !is.na(mass) ~ 999,
-                          TRUE ~ as.numeric(tt))) %>%
-    drop_na(tt) %>%
-    mutate(tt = na_if(tt, 999)) %>%
+    # # drop empty dev times but keep masses
+    # mutate(tt = case_when(is.na(tt) & !is.na(mass) ~ 999,
+    #                       TRUE ~ as.numeric(tt))) %>%
+    # drop_na(tt) %>%
+    # mutate(tt = na_if(tt, 999)) %>%
     # remove short-lived eclosed bugs/culled on eclosion
     filter(!(instar == "long" & tt == 0))
 ) 
@@ -354,6 +401,6 @@ dfs_tidy <- list_modify(
 
 # # cleanup
 ```{r remove intermediate objects}
-rm(dfs_imported, dfs_filtered, dfs_stdised)
+rm(dfs_imported, dfs_filtered, dfs_stdised, dfs_subsets)
 ```
 

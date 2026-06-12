@@ -72,6 +72,7 @@ dfs_filtered <- list(
          trt.m = trt_M,
          date.m.ec = eclose_M,
          track.m = purpose_B) %>%
+    filter(!(id.f == 244 & is.na(id.m))) %>% # started solo but later paired
     drop_na(id.tent),
   
   tents = dfs_raw[["tents"]] %>% 
