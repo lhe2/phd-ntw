@@ -29,9 +29,9 @@ library(here)
 source(here("scripts/wrangle-dev.R"))
 source(here("scripts/wrangle-tents.R"))
 
-source(here("scripts/analysis/filter_utils.R"))
-source(here("scripts/analysis/viz_utils.R"))
-source(here("scripts/analysis/stats_utils.R"))
+source(here("scripts/analysis/utils/filters.R"))
+source(here("scripts/analysis/utils/viz.R"))
+source(here("scripts/analysis/utils/stats.R"))
 
 # development data --------------------------------------------------------
 

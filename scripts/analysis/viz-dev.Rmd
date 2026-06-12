@@ -20,8 +20,8 @@ library(patchwork) # for plot_layout
 
 # utils
 source(here("scripts/wrangle-dev.R"))
-source(here("scripts/analysis/filter_utils.R"))
-source(here("scripts/analysis/viz_utils.R"))
+source(here("scripts/analysis/utils/filters.R"))
+source(here("scripts/analysis/utils/viz.R"))
 ```
 
 ```{r load data, message=FALSE, warning=FALSE}
