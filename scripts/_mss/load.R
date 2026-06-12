@@ -36,7 +36,7 @@ source(here("scripts/analysis/stats_utils.R"))
 # development data --------------------------------------------------------
 
 ## development data
-source(here("scripts/R/tidy-dev.R"))
+source(here("scripts/analysis/load-dev.R"))
 
 # viz dfs: drop colony bugs + factorised for graphing
 dfs_viz <- list(
@@ -45,7 +45,6 @@ dfs_viz <- list(
 ) %>%
   lapply(., \(df) {
     df %>%
-      #FilterForNTWBugs() %>%
       filter(!(pop == "lab" & diet == "TB"),
              pop != "col") %>%
       mutate(across(c(starts_with("trt"), "year"), as.factor))

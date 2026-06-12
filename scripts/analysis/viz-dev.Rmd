@@ -25,20 +25,14 @@ source(here("scripts/analysis/viz_utils.R"))
 ```
 
 ```{r load data, message=FALSE, warning=FALSE}
-source(here("scripts/R/tidy-dev.R"))
+source(here("scripts/analysis/load-dev.R"))
 
-# add pre-filtered ntw dfs
-dfs_tidy <- list_modify(
-  dfs_tidy,
-  widentw = dfs_tidy$wide %>% 
-    FilterForNTWBugs() %>% filter(pop != "col"),
-  longntw = dfs_tidy$long %>% 
-    FilterForNTWBugs() %>% filter(pop != "col")
-) %>%
-  
-  # make some factors for graphing ease
+# make some factors for graphing ease
+dfs_tidy <- dfs_tidy %>%
   lapply(., \(df) {
     df %>%
+      filter(!(pop == "lab" & diet == "TB"),
+             pop != "col")
       mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
                                    pop == "lab" ~ "lab",
                                    pop == "field" ~ "field")) %>%
@@ -126,14 +120,13 @@ AddLeg_Patchwork <- function(){
 }
 
 # all trts
-dfs_tidy$widentw %>%
+dfs_tidy$wide %>%
   CalcSurvProps_def() %>%
-  filter(!is.na(diet)) %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
 # expt trts only by minT
-dfs_tidy$widentw %>%
+dfs_tidy$wide %>%
   CalcSurvProps_def() %>%
   filter(trt != 260) %>% 
   .plotfn() +
@@ -142,7 +135,7 @@ dfs_tidy$widentw %>%
 
 # ctrls vs expt
   # ctrls are too stacked bc of the x axis
-dfs_tidy$widentw %>%
+dfs_tidy$wide %>%
   CalcSurvProps_def() %>%
   .plotfn() +
   facet_wrap(~trt.facet, scales = "free_x") +
@@ -168,14 +161,14 @@ dfs_tidy$widentw %>%
     theme_bw()
 }
 
-p1 <- dfs_tidy$widentw %>%
+p1 <- dfs_tidy$wide %>%
   filter(trt == 260) %>%
   CalcSurvProps_def() %>%
   .plotfn() +
   aes(x = year, 
       group = pop)
 
-p2 <- dfs_tidy$widentw %>%
+p2 <- dfs_tidy$wide %>%
   filter(trt != 260) %>%
   CalcSurvProps_def() %>%
   .plotfn() +
@@ -195,7 +188,7 @@ p1 + p2 +
 # MAIN one panel 
 
 # yrs combined
-df <- dfs_tidy$widentw %>%
+df <- dfs_tidy$wide %>%
   PrepSurvProps() %>%
   ungroup(year) %>%
   CalcSurvProps()
@@ -228,7 +221,7 @@ df %>%
   ylim(c(0, 1))
 
 # ctrl vs expt (by trt type)
-dfs_tidy$widentw %>%
+dfs_tidy$wide %>%
   PrepSurvProps() %>%
   ungroup(starts_with("trt")) %>% 
   group_by(trt.type, .add = TRUE) %>%
@@ -252,10 +245,10 @@ dfs_tidy$widentw %>%
 ```{r eval = FALSE}
 # yrs combined with points for individual yrs patchwork
 dfs <- list(
-  allyrs = dfs_tidy$widentw %>%
+  allyrs = dfs_tidy$wide %>%
     CalcSurvProps_def(),
   
-  noyr = dfs_tidy$widentw %>%
+  noyr = dfs_tidy$wide %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
     CalcSurvProps()
@@ -355,14 +348,14 @@ p1 + p2 +
   theme_bw()
 }
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   #CalcDevSS2(type = "adult", steps = "all") %>% 
   #filter(instar == "pupa") %>% 
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -395,13 +388,13 @@ dfs_tidy$longntw %>%
     theme_bw()
 }
 
-p1 <- dfs_tidy$longntw %>%
+p1 <- dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt == 260) %>%
   .plotfn() +
   aes(x = year, group = pop)
 
-p2 <- dfs_tidy$longntw %>%
+p2 <- dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -451,12 +444,12 @@ p1 + p2 +
     theme_bw()
 }
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260,
          #sex == "m"
@@ -492,19 +485,19 @@ dfs_tidy$longntw %>%
   theme_bw()
 }
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
 # try grouping by trt type..
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   ggplot(aes(x = trt, y = avg.mass, col = year,
              lty = interaction(pop, trt.type),
@@ -568,12 +561,12 @@ dfs_tidy$longntw %>%
   theme_bw()
 }
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -600,7 +593,7 @@ dfs_tidy$longntw %>%
 }
 
 # sexes combined
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(!is.na(sex),
          instar == "pupa") %>%
   PrepAdultSS() %>%
@@ -611,7 +604,7 @@ dfs_tidy$longntw %>%
   ylim(c(1.8, 6.7))
 
 # sexes parsed
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(!is.na(sex),
          instar == "pupa") %>%
   PrepAdultSS() %>%
@@ -646,7 +639,7 @@ dfs_tidy$longntw %>%
 }
 
 # sexes combined
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(!is.na(sex),
          instar == "pupa") %>%
   PrepAdultSS() %>%
@@ -656,7 +649,7 @@ dfs_tidy$longntw %>%
   ylim(c(1, 6.4))
 
 # sexes parsed
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(!is.na(sex),
          instar == "pupa") %>%
   PrepAdultSS() %>%
@@ -702,13 +695,13 @@ dfs_tidy$longntw %>%
          title = "time to pupation")
 }
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 # LOL the 260 lab every yr ...  i think its bc they take so long from 5 to wander
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -747,12 +740,12 @@ dfs_tidy$longntw %>%
          title = "time to pupation")
 }
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   .plotfn() +
   scale_x_discrete(labels = p_scales$labs_trt)
 
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   filter(trt != 260) %>%
   .plotfn() +
@@ -783,13 +776,13 @@ dfs_tidy$longntw %>%
     theme_bw()
 }
 
-p1 <- dfs_tidy$longntw %>%
+p1 <- dfs_tidy$long %>%
   .prepfn() %>% 
   filter(trt == 260) %>%
   .plotfn() +
   aes(x = year, group = pop)
 
-p2 <- dfs_tidy$longntw %>%
+p2 <- dfs_tidy$long %>%
   .prepfn() %>% 
   filter(trt != 260) %>%
   .plotfn() +
@@ -807,7 +800,7 @@ p1 + p2 +
 # MAIN one-panels
 
 # yrs combined
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
     CalcDevSS() %>%
@@ -828,7 +821,7 @@ dfs_tidy$longntw %>%
 
 
 # ctrl vs expt (by trt type)
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(instar == "pupa") %>%
   PrepAdultSS() %>%
   ungroup(starts_with("trt")) %>% 
@@ -1549,7 +1542,7 @@ dfs <- list(
     filter(is.sup == 0,
            is.pup == 0, # TOFIX some things DO pup but die as pup
            instar == "pmd", # TOFIX should be pmd per instar, not across whole dev time
-           !is.na(diet)) %>%
+           ) %>%
     group_by(across(c(year, pop, diet, starts_with("trt"), instar, is.pup))) %>%
     CalcDevSS() %>%
     mutate(across(starts_with("is"), as.factor))
@@ -1583,7 +1576,7 @@ ggplot(dfs$pup %>% filter(trt == 433),
 ## supernumerary props
 
 ```{r}
-dfs_tidy$widentw %>%
+dfs_tidy$wide %>%
   CalcSupProps_def() %>%
   filter(status == "surv") %>%
   ggplot(aes(y = p,
@@ -1614,7 +1607,7 @@ per KS 2021: Responses of MS to HW
 
 ```{r}
 # df prep
-df <- dfs_tidy$widentw %>%
+df <- dfs_tidy$wide %>%
   mutate(mass.last = case_when(!is.na(mass.8th) ~ mass.8th,
                                !is.na(mass.7th) ~ mass.7th,
                                !is.na(mass.6th) ~ mass.6th,
@@ -1741,6 +1734,9 @@ df %>%
 
 ### df prep  
 ```{r}
+# load 2x2 data separately
+source(here("scripts/analysis/2023/load-2x2.R"))
+
 # making some dfs to test
 .prepfn <- function(x){
   x %>%
@@ -1749,14 +1745,15 @@ df %>%
 }
 
 dfs <- list(
-  twobytwo = dfs_tidy$long %>%
-    FilterOutLabTB() %>% 
-    #filter(trt %in% c(260, 330, 419, 426, 433)) %>% # drops 267...
+  twobytwo = dfs_temps$long %>%
+    filter(!(pop == "lab" & diet == "TB")) %>%
     .prepfn(),
   
-  ntw = dfs_tidy$longntw %>%
+  ntw = dfs_tidy$long %>%
     .prepfn()
 )
+
+rm(dfs_temps) # dont wanna deal w this df forever lol
 ```
 
 ```{r}
@@ -1807,7 +1804,7 @@ dfs$ntw %>% .plotfn()
 ##  survival to ec
 
 ```{r MAIN pups surv to ec}
-df <- dfs_tidy$widentw %>%
+df <- dfs_tidy$wide %>%
   PrepSurvProps() %>%
   ungroup(year) %>%
   CalcSurvProps()
@@ -1844,7 +1841,7 @@ df %>%
 ## pupal duration
 
 ```{r MAIN pup duration}
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
     CalcDevSS() %>%
@@ -1868,7 +1865,7 @@ dfs_tidy$longntw %>%
 ## mass loss
 
 ```{r MAIN mass loss}
-df <- dfs_tidy$longntw %>%
+df <- dfs_tidy$long %>%
   # PrepAdultSS() %>%
   filter(instar %in% c("pupa", "eclose", "change", "prop")) %>%
   group_by(across(c(pop, diet, starts_with("trt"), instar))) %>%
@@ -1936,14 +1933,14 @@ df %>%
 }
 
 # EDA: keep fridge bugs in the count
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   .prepfn() %>%
   CalcDevSS() %>%
   .plotfn() +
   aes(group = interaction(pop))
 
 # EDA: parse out the fridge bugs
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   mutate(if.fridge = case_when(is.na(if.fridge) ~ "no",
                                TRUE ~ "yes")) %>%
   .prepfn() %>%
@@ -1985,7 +1982,7 @@ dfs_tidy$longntw %>%
     ylim(c(4, 17.5))
 }
 
-p1 <-  dfs_tidy$longntw %>%
+p1 <-  dfs_tidy$long %>%
   filter(trt == 260) %>%
   .prepfn() %>%
   .plotfn() +
@@ -1993,7 +1990,7 @@ p1 <-  dfs_tidy$longntw %>%
       group = pop) +
   labs(x = "year")
 
-p2 <- dfs_tidy$longntw %>%
+p2 <- dfs_tidy$long %>%
   filter(trt != 260) %>%
   .prepfn() %>%
   .plotfn() +
@@ -2010,7 +2007,7 @@ p1 + p2 +
 
 ```{r MAIN adult longevity}
 # one panel
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(is.na(if.fridge),
          instar == "long") %>%
   PrepAdultSS() %>%
@@ -2039,7 +2036,7 @@ dfs_tidy$longntw %>%
 
 ```{r}
 # one panel
-dfs_tidy$longntw %>%
+dfs_tidy$long %>%
   filter(instar == "eclose") %>%
   PrepAdultSS() %>%
   ungroup(year) %>% 

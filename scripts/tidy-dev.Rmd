@@ -1,13 +1,14 @@
 ---
-title: "2025 ntw dev tidying"
+title: "ntw dev data tidying"
 date: "2025-11-26"
 ---
 
 # # preamble
 
-prepping ntw data for 2025 wrangling
+tidy data from all ntw-related expts for wrangling/analyses.
 
-final code is purled to a `.R` script, rerun `purl` step as needed to update the wrangling for analyses
+final code from this `.Rmd` is purled to a `.R` script; rerun `purl` step as needed to update the wrangling for analyses. outputs data from all expts to keep it all standard, but load each data subset into its analysis script with the corresponding `load_*.R` script.
+
 
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
@@ -279,8 +280,8 @@ simultaneous standardising:
 # redo: survival, pup/ec/sup coding (counts after reaching 5th)
 # fix: exit dates; LPI info
 # add parsing: non-ntw trts, expt vs control temp trts
-dfs_subsets <- list(
-  all = data.table::rbindlist(dfs_stdised, fill = TRUE) %>% 
+df_wide <- 
+  data.table::rbindlist(dfs_stdised, fill = TRUE) %>% 
     mutate(
       # survival/pup/sup/ec status fixes
       # is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
@@ -327,16 +328,12 @@ dfs_subsets <- list(
                            TRUE ~ "ctrl")
       ) %>%
     filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) | is.na(jdate.exit)) # for some field bugs 
-  ) 
 ```
 
-## prep for final export
+# # prep for final export
 
-```{r prep dev data for export}
-# pre-subset for analyses/expts (mostly want the NTW one tho)
-
-dfs_subsets$all <- dfs_subsets$all %>%
-    ## calc dev times for pivot
+```{r add calcs for pivot}
+df_wide <- df_wide %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
            tt.4th = jdate.4th - jdate.hatch,
            tt.5th = jdate.5th - jdate.hatch,
@@ -360,31 +357,8 @@ dfs_subsets$all <- dfs_subsets$all %>%
     ) %>%
     select(-species)
 
-dfs_subsets <- list_modify(
-  dfs_subsets,
-  ntw = dfs_subsets$all %>%
-    filter(year == 2023 & (instar.enter == "hatch" |
-                             pop == "col" |
-                             (pop == "field" & instar.enter %in% c("1st", "2nd"))) |
-             year %in% c(2024, 2025),
-           trt %in% c(260, 419, 426, 433)
-           ) %>%
-    select(-instar.enter),
-  y23_temps = dfs_subsets$all %>%
-    filter(year == 2023 & pop == "lab" & instar.enter == "hatch" &
-             trt %in% c(260, 267, 330, 426)),
-  y23_acc = dfs_subsets$all %>%
-    filter(year == 2023 & pop == "lab" &
-             trt %in% c(260, 426))
-)
-```
-
-```{r}
-# for now, just exporting NTW stuff...
-dfs_tidy <- list(
-  wide = dfs_subsets$ntw,
-  long = dfs_subsets$ntw %>% 
-    pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+df_long <- df_wide %>%
+  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
                  names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
@@ -396,11 +370,11 @@ dfs_tidy <- list(
     # mutate(tt = na_if(tt, 999)) %>%
     # remove short-lived eclosed bugs/culled on eclosion
     filter(!(instar == "long" & tt == 0))
-) 
 ```
+
 
 # # cleanup
 ```{r remove intermediate objects}
-rm(dfs_imported, dfs_filtered, dfs_stdised, dfs_subsets)
+rm(dfs_imported, dfs_filtered, dfs_stdised)
 ```
 

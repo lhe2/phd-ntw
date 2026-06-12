@@ -37,7 +37,7 @@ notes
 - `lmerTest` docs: https://www.jstatsoft.org/article/view/v082i13
 
 ```{r load data, warning=FALSE}
-source(here("scripts/R/tidy-dev.R"))
+source(here("scripts/analysis/load-dev.R"))
 ```
 
 ## TODO
@@ -59,12 +59,13 @@ dfs_imported <- list(
 ) %>%
   lapply(., \(x) {
     x %>%
-      FilterOutLabTB() %>%
-      FilterForNTWTrts() %>%
-      filter(pop != "col",
-             is.pup < 2, # drop culled bugs here
+      filter(!(pop == "lab" & diet == "TB"),
+             pop != "col",
+             !is.na(is.pup), # drop culled bugs here
              ) %>%
-      mutate(across(c("year", "trt.minT", "trt.type", "trt"), as.factor))
+      mutate(is.pup = case_when(is.pup == 2 ~ 1,
+                                TRUE ~ is.pup), # treat LPI as pup
+             across(c("year", "trt.minT", "trt.type", "trt"), as.factor))
   })
 ```
 
@@ -289,18 +290,14 @@ mods_puptime %>%
 ## sample sizes
 ```{r}
 # calc to pups by sex separately cuz needs pivots
-df <- dfs_tidy$widentw %>%
-  FilterOutLabTB() %>%
-  FilterForNTWTrts() %>%
-  filter(pop != "col",
-         is.pup < 2)
 list(
-  df %>%
+  dfs_imported$all %>%
     mutate(year = as.character(year)) %>%
     group_by(year, trt, pop) %>%
     summarise(n = n(),
               to.pup = sum(is.pup == 1)),
-  df %>%
+  
+  dfs_imported$all %>%
     group_by(trt, pop) %>%
     summarise(n = n(),
            to.pup = sum(is.pup == 1),
@@ -315,6 +312,8 @@ list(
   }) %>%
   reduce(full_join)
 ```
+
+
 ## age vs instar
 
 looking at dev trajectories: is `age ~ instar` linear?
@@ -322,8 +321,6 @@ looking at dev trajectories: is `age ~ instar` linear?
 ```{r}
 # df prep
 dfs <- dfs_tidy$long %>%
-  FilterOutLabTB() %>% 
-  FilterForNTWTrts() %>%
   # pick out from 3rd-wander bc all have same trts
   filter(instar %in% c("3rd", "4th", "5th", 
                        "6th", "7th", "8th", 
