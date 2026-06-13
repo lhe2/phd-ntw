@@ -4,20 +4,20 @@
 ### SCALE VALUES ###
 p_scales <- list(
   # axes labels
-  xlab_minT = "minimum temperature (°C)",  # TODO or "minimum larval temp"
+  xlab_minT = "minimum larval temperature (°C)",
   
   # labels
   labs_trt = c("260" = "26-26", "419" = "40-19", "426" = "40-26", "433" = "40-33"),
   labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
-  labs_trttype = c("ctrl" = "control (max: 26°C)", "expt" = "nighttime warming\n(max: 40°C)"),
+  labs_trttype = c("ctrl" = "26°C (control)", "expt" = "40°C (nighttime\nwarming)"),
   labs_trtsex = c("f" = "female only", "m" = "male only", "both" = "male + female"),
   labs_trtmate = c("both" = "both", "f" = "female", "m" = "male", "neither" = "neither (control)"),
   
   # values
   cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
   cols_trttype = c(#"ctrl" = "#6BAED6", 
-                   "ctrl" = "steelblue1",
-                   "expt" = "#FEB24C"),
+    "ctrl" = "steelblue1",
+    "expt" = "#FEB24C"),
   cols_trtsex = c("both" = "slateblue2", "f" = "maroon2", "m" = "deepskyblue", 
                   "neither" = "slateblue4",
                   "none" = "slateblue2", "virgin" = "maroon2"),
@@ -25,7 +25,7 @@ p_scales <- list(
   shp_pop = c(`lab` = 16, `field` = 17),
   lty_pop = c(`lab` = "solid", `field` = "dashed"),
   shp_trtsex = c(#"both" = 16, "f" = 2, "m" = 0, "neither" = 4, # hard to see...
-                 "both" = 16, "f" = 17, "m" = 15, "neither" = 1),
+    "both" = 16, "f" = 17, "m" = 15, "neither" = 1),
   lty_trtsex = c("both" = "solid", "f" = "dashed", "m" = "dotdash", "neither" = "blank"),
   
   # use with facet_*(labeller)
@@ -40,7 +40,7 @@ p_scales <- list(
   lty_ispup = list(labels = c(`1` = "survived", `0` = "died"),
                    values = c(`1` = "solid", `0` = "dashed"),
                    limits = c("1", "0"))
-  )
+)
 
 ### PLOTTING ###
 ## adding error bars 

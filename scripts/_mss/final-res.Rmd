@@ -21,15 +21,15 @@ main results/figs:
 
 1. survival: hatch to pupation; hatch to eclosion
 2. mass: pupal mass; eclosion mass
-3. time: time to pupation; pupal duration
 4. adult longevity
 5. adult fitness
 
+3. development time: hatch to pupation, pupation to eclosion
 
 
 # loading
 
-```{r data, message=FALSE, warning=FALSE}
+```{r data, message=FALSE}
 source(here::here("scripts/_mss/load.R"))
 ```
 
@@ -62,15 +62,16 @@ Plot_Dev <- function(df){
                          group = interaction(pop, trt.type)
            )) +
     labs(lty = "population", shape = "population",
-         col = "larval temperature\ntreatment",
+         col = "maximum larval\ntemperature",
          x = p_scales$xlab_minT
-    ) +
-    scale_shape_manual(values = p_scales$shp_pop) +
-    scale_linetype_manual(values = p_scales$lty_pop) +
+         ) +
     scale_color_manual(values = p_scales$cols_trttype,  
                        labels = p_scales$labs_trttype) +
+    scale_shape_manual(values = p_scales$shp_pop) +
+    scale_linetype_manual(values = p_scales$lty_pop) +
     scale_x_discrete(labels = p_scales$labs_minT) +
-    guides(shape = guide_legend(override.aes = list(linetype = c("255F", "solid")))) +
+    guides(shape = guide_legend(override.aes = list(linetype = c("solid", "255F"))),
+           color = guide_legend(order = 1)) +
     theme_bw()
 }
 
@@ -134,7 +135,6 @@ p$surv_la
 
 ### supp
 ```{r supp fig pup survival}
-# supp
 dfs_viz$wide %>%
   CalcSurvProps_def() %>%
   .plotfn() +
@@ -202,17 +202,7 @@ p$surv_la + p$surv_pup +
 
 # (2) mass 
 
-## pupal mass
-
-drop LPIs bc mass isnt accurate
-
-```{r plot prep pup mass}
-df <- dfs_viz$long %>%
-  filter(!is.na(sex),
-         instar == "pupa",
-         #is.na(is.LPI)
-         )
-
+```{r plot fn mass}
 .plotfn <- function(x) {
   x %>%
     Plot_Dev() +
@@ -223,11 +213,18 @@ df <- dfs_viz$long %>%
                       ymin = avg.mass - se.mass),
                   width = 0.5, lty = "solid", show.legend = FALSE,
                   ) +
-    labs(#y = "pupal mass (g)",
-         #y = "mass (g)",
-         title = "pupal mass (g)"
-         ) 
+    labs(y = "mass (g)")
 }
+```
+
+## pupal mass
+
+drop LPIs bc mass isnt accurate
+
+```{r df prep pup mass}
+df <- dfs_viz$long %>%
+  filter(!is.na(sex),
+         instar == "pupa")
 ```
 
 ```{r main figs pup mass}
@@ -239,7 +236,7 @@ p <- list_modify(
     ungroup(year) %>%
     CalcDevSS() %>%
     .plotfn() +
-    ylim(c(1, 6.4)),
+    labs(title = "pupa"),
   
   mass_pupsex = # sexes parsed
     df %>%
@@ -249,11 +246,10 @@ p <- list_modify(
     CalcDevSS() %>%
     .plotfn() +
     facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
-    ylim(c(1, 6.8))
+    labs(title = "pupa") 
 )
 
 p$mass_pup
-
 p$mass_pupsex # use this, per stats
 ```
 
@@ -268,7 +264,6 @@ df %>%
   CalcDevSS() %>% #View()
   .plotfn() +
   facet_wrap(~ year)
-  #ylim(c(1.8, 6.7))
 
 # sexes parsed (use this one)
 df %>%
@@ -279,7 +274,6 @@ df %>%
   .plotfn() +
   facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
              scales = "free") 
-  #ylim(c(1.8, 7.2))
 ```
 
 
@@ -316,83 +310,93 @@ summary(mods$m3)
 ```
 
 
-## eclosion mass (WIP)
+## eclosion mass
 
-```{r plot prep eclosion mass}
+```{r df prep eclosion mass}
 df <- dfs_viz$long %>%
-  filter(instar %in% c("pupa", "eclose", "change", "prop")) %>%
-  group_by(across(c(pop, diet, starts_with("trt"), instar))) %>%
-  CalcDevSS()
-
-.plotfn <- function(x){
-  x %>%
-    Plot_Dev() +
-    aes(y = avg.mass) +
-    geom_point(size = 2) +
-    geom_line() +
-    geom_errorbar(aes(ymax = avg.mass + se.mass,
-                      ymin = avg.mass - se.mass),
-                  width = 0.25, lty = "solid", show.legend = FALSE)
-}
+  filter(!is.na(sex),
+         instar == "eclose")
 ```
 
-```{r main fig pup mass change}
-
+```{r main fig eclosion mass}
 p <- list_modify(
   p,
-  mass_perat =
+  mass_ec = # sexes combined
     df %>%
-    filter(instar == "prop") %>%
+    PrepAdultSS() %>%
+    ungroup(year) %>%
+    CalcDevSS() %>%
     .plotfn() +
-    labs(#y = "pupal:eclosion mass",
-         #y = "mass ratio",
-         title = "pupa:eclosion mass"),
+    labs(title = "adult"),
   
-  mass_pepct =
+  mass_ecsex = # sexes parsed
     df %>%
-    mutate(avg.mass = avg.mass * 100,
-           se.mass  = se.mass * 100) %>%
-    filter(instar == "change") %>%
+    PrepAdultSS() %>%
+    group_by(sex, .add = TRUE) %>%
+    ungroup(year) %>%
+    CalcDevSS() %>%
     .plotfn() +
-    labs(#y = "% mass lost\n(pupa to eclosion)",
-         #y = "% mass lost",
-         title = "pupa to eclosion\n(% mass lost)")
+    facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
+    labs(title = "adult")
 )
 
-p$mass_perat
+p$mass_ec
+p$mass_ecsex
+```
 
-p$mass_pepct
+### supp
+
+```{r supp figs eclosion mass}
+
+# sexes combined
+df %>%
+  PrepAdultSS() %>%
+  ungroup(starts_with("trt")) %>% 
+  group_by(trt, trt.type, trt.minT, .add = TRUE) %>%
+  CalcDevSS() %>%
+  .plotfn() +
+  facet_wrap(~ year)
+
+# sexes parsed 
+df %>%
+  PrepAdultSS() %>%
+  ungroup(starts_with("trt")) %>% 
+  group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
+  CalcDevSS() %>%
+  .plotfn() +
+  facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
+             scales = "free") 
 ```
 
 ## collated main fig
 
 ```{r}
-# TODO finalise pup:ec metric to use
-p$mass_pup + p$mass_perat + p$mass_pepct +
-    plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.title.y = element_blank() # TODO remove once decided on P:E
-        )
+
+p$mass_pupsex + theme(legend.position = "none") +
+  p$mass_ecsex +
+  plot_layout(axes = "collect", #guides = "collect"
+              widths = c(0.9, 1)) &
+  labs(x = p_scales$xlab_minT) &
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 # (3) development time
 
-## time to pupation
-### figs main + supp
-```{r plot prep time to pup}
+```{r plot prep dev time}
 .plotfn <- function(x){
   x %>%
     Plot_Dev() +
-    aes(y = avg.devrate) +
+    aes(y = avg.tt) +
     geom_point(size = 2) +
     geom_line() +
-    geom_errorbar(aes(ymax = avg.devrate + se.devrate,
-                      ymin = avg.devrate - se.devrate),
+    geom_errorbar(aes(ymax = avg.tt + se.tt,
+                      ymin = avg.tt - se.tt),
                   width = 0.25, lty = "solid", show.legend = FALSE) +
-    labs(y = "development rate (1/days)")
+    labs(y = "duration (days)")
 }
 ```
 
+## time to pupation
 ```{r main fig time to pup}
 p <- list_modify(
   p,
@@ -404,13 +408,13 @@ p <- list_modify(
     filter(instar == "pupa") %>%
     .plotfn() +
     labs(title = "hatch to pupation",
-         ) #+
-    #ylim(c(0.025, 0.05))
+         )
 )
 
 p$dev_la
 ```
 
+### supp
 ```{r supp fig time to pup}
 dfs_viz$long %>%
   CalcDevSS_ad() %>%
@@ -454,18 +458,9 @@ p <- list_modify(
     filter(instar == "eclose") %>%
     # mutate(avg.tt = avg.tt - 15,
     #        se.tt = se.tt - 15) %>%
-    Plot_Dev() +
-    aes(y = avg.tt) +
-    geom_point(size = 2) +
-    geom_line() +
-    geom_errorbar(aes(ymax = avg.tt + se.tt,
-                      ymin = avg.tt - se.tt),
-                  width = 0.25, lty = "solid", show.legend = FALSE) +
-    labs(#y = "pupal development rate (1/days)",
-         y = "duration (days)",
-         title = "pupal duration",
-         ) #+
-    #ylim(c(0.025, 0.05))
+    .plotfn() +
+    labs(title = "pupation to eclosion",
+         )
 )
 
 p$dev_pup
@@ -474,7 +469,7 @@ p$dev_pup
 ## collated main fig
 
 ```{r}
-p$dev_la + p$dev_pup + p$dev_ad1 +
+p$dev_la + p$dev_pup +
   plot_layout(axes = "collect", guides = "collect") &
   theme(plot.title = element_text(hjust = 0.5))
 ```
@@ -715,9 +710,9 @@ p$eggs_laidnoyr + p$eggs_hatchnoyr +
 ```
 
 
-# ## dump
+# ## dump (ref only)
 
-## (ref) supp dev patchwork figs
+post-mortem: will use variable/aesthetic pairings that match what's being done in the main figs instead!
 
 
 ```{r eval = FALSE}

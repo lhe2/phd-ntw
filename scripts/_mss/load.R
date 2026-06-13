@@ -47,7 +47,8 @@ dfs_viz <- list(
     df %>%
       filter(!(pop == "lab" & diet == "TB"),
              pop != "col") %>%
-      mutate(across(c(starts_with("trt"), "year"), as.factor))
+      mutate(across(c(starts_with("trt"), "year"), as.factor),
+             pop = factor(pop, levels = c("lab", "field")))
   })
 
 # stats dfs: subset into ctrl+ntw bugs and just ntw bugs (omit col bugs)
