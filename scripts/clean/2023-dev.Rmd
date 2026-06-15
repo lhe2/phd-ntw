@@ -32,13 +32,13 @@ note: 2024-07-02 updated gsheet with the field diapausers(?); should be the fina
 ```{r}
 # larva data
 dfs_raw <- list(
-  field = read.csv(here("data/gsheets/2023/dev-field.csv"), header = TRUE),
+  field = read.csv(here("data/gsheets/2023/dev-field.csv"), header = TRUE, check.names = FALSE),
   
-  labsu = read.csv(here("data/gsheets/2023/dev-su.csv"), header = TRUE),
+  labsu = read.csv(here("data/gsheets/2023/dev-su.csv"), header = TRUE, check.names = FALSE),
   
-  labF1 = read.csv(here("data/gsheets/2023/dev-F1.csv"), header = TRUE),
+  labF1 = read.csv(here("data/gsheets/2023/dev-F1.csv"), header = TRUE, check.names = FALSE),
   
-  labsp = read.csv(here("data/gsheets/2023/dev-sp.csv"), header = TRUE)
+  labsp = read.csv(here("data/gsheets/2023/dev-sp.csv"), header = TRUE, check.names = FALSE)
 )
 ```
 
@@ -93,10 +93,16 @@ df_cleaned$final.fate[df_cleaned$final.fate == "LP"] <- "LPI"
 # add instar.enter levels
 #df_cleaned$instar.enter <- factor(df_cleaned$instar.enter, levels = c("hatch", "1st", "3rd", "4th"))
 
-# add in late dead pupa
+# other fixes
 df_cleaned <- df_cleaned %>%
-  mutate(final.fate = case_when(!is.na(jdate.exit) & is.na(final.fate) ~ "pupa",
-                                TRUE ~ as.character(final.fate)))
+  mutate(
+    # add in late dead pupa
+    final.fate = case_when(!is.na(jdate.exit) & is.na(final.fate) ~ "pupa",
+                                TRUE ~ as.character(final.fate)),
+    # fix dead pupa/late culls
+    jdate.pmd = case_when(!is.na(jdate.pupa) | !is.na(jdate.LPI) ~ NA_real_,
+                          TRUE ~ jdate.pmd)
+    )
 ```
 
 # column creation
@@ -196,7 +202,7 @@ write.csv(df_all, file = paste0(here("data/raw/2023/"), "dev_", today, ".csv"), 
 # cleaned up sexta
 export <- df_cleaned %>%
   #filter(is.na(species)) %>% 
-  select(-c("from.E", "location", starts_with("h."), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", ends_with(".culled"), "eclose-3"))
+  select(-c("from.E", "location", starts_with("h."), "time.in.approx", "dv", "pupa.deformities", "mass.died", "toss.if", "old.date.pmd", "reason.pmd", "fate.code", "notes", "mass.stuck", "instar.culled", "time.culled", "mass.culled", "eclose-3"))
 
 write.csv(export, file = here("data/clean/2023/dev.csv"), row.names = FALSE)
 ```

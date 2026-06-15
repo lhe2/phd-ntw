@@ -7,8 +7,12 @@ date: "2025-11-26"
 
 tidy data from all ntw-related expts for wrangling/analyses.
 
+(data pre-cleaning is somewhat inconsistent across the years, so just standardise everything here)
+
 final code from this `.Rmd` is purled to a `.R` script; rerun `purl` step as needed to update the wrangling for analyses. outputs data from all expts to keep it all standard, but load each data subset into its analysis script with the corresponding `load_*.R` script.
 
+
+*NOTE:* missing F1 dev data tidying!
 
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
@@ -85,11 +89,13 @@ dfs_filtered <- list(
   ## preremove all MQs
   y23 = dfs_imported[["y23"]] %>%
     filter(is.na(species),
+           !is.na(instar.enter), # drop non-expt bugs
            # instar.enter == "hatch" | 
            #   pop == "field" & instar.enter %in% c("1st", "2nd"),
            pop %in% c("field", "lab"),
            #!(trt %in% c("ctrl", "267", "330")),
-           reason.ignore != "lost" | is.na(reason.ignore),
+           !(reason.ignore %in% c("lost", "early field")) |
+             is.na(reason.ignore),
            ) %>%
     rename(#id = ID,
            #jdate.LPI = jdate.LP,
@@ -211,6 +217,7 @@ individual standardising of cols:
 ```{r standardising values by yr}
 # individual fixes: recoding values + adding missing columns
 # stdising date meanings:
+  # pmd = died before pup/LPI -> finalise in next section
   # cull = non-pmd larval death
   # surv = death after eclosion
 
@@ -229,12 +236,14 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
                               reason.ignore %in% c("wet diet", "accidental", "hot larva", "cut") | 
                                 final.fate %in% c("accidental", "culled") ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
-         jdate.culled = case_when(final.fate %in% c("accidental", "culled") & 
-                                    fate.dev != "pup" ~ as.numeric(jdate.exit)),
+         # jdate.culled = case_when(final.fate %in% c("accidental", "culled") & 
+         #                            fate.dev != "pup" ~ as.numeric(jdate.exit)),
+         jdate.culled = case_when(fate.dev == "other" ~ as.numeric(jdate.exit),
+                                  TRUE ~ NA_real_),
          jdate.pmd = case_when(!is.na(jdate.culled) ~ NA_real_,
                                TRUE ~ jdate.pmd), 
          is.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal")
-         ) %>%
+         ) %>% 
   select(-c("final.fate", "reason.ignore"))
 
 # 2024: redo survival coding, trt group
@@ -261,8 +270,11 @@ dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>%
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
                               !is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
-         jdate.culled = case_when(fate.dev == "other" ~ as.numeric(jdate.culled),
-                                  FALSE ~ NA_real_),
+         jdate.culled = case_when(fate.dev == "other" ~ as.numeric(jdate.pmd),
+                                  !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ NA_real_,
+                                  TRUE ~ jdate.culled),
+         jdate.pmd = case_when(!is.na(jdate.culled) ~ NA_real_,
+                               TRUE ~ jdate.pmd), 
          is.ctrl = case_when(pop == "col" ~ "col")) %>% 
   filter(!is.na(status) | id > 3000) %>%
   select(-c(starts_with("notes"), "status"))
@@ -277,8 +289,8 @@ simultaneous standardising:
 
 ```{r standardisng values for all}
 # combine dfs; remove some short-lived larvae; more standardising:
-# redo: survival, pup/ec/sup coding (counts after reaching 5th)
-# fix: exit dates; LPI info
+# fix: exit/pmd dates; LPI info
+# redo: survival, pmd/pup/ec/sup coding (counts after reaching 5th)
 # add parsing: non-ntw trts, expt vs control temp trts
 df_wide <- 
   data.table::rbindlist(dfs_stdised, fill = TRUE) %>% 
@@ -287,6 +299,8 @@ df_wide <-
       # is.pup = case_when(fate.dev %in% c("ec", "pup") ~ 1,
       #                            fate.dev == "pmd" ~ 0,
       #                            fate.dev == "other" ~ 2),
+      jdate.pmd = case_when(!is.na(jdate.pupa) | !is.na(jdate.LPI) ~ NA_real_,
+                            TRUE ~ jdate.pmd),
       is.pup = case_when(!is.na(jdate.pmd) ~ 0,
                          !is.na(jdate.pupa) ~ 1,
                          !is.na(jdate.LPI) ~ 2),
