@@ -16,8 +16,8 @@ library(patchwork) # plot_layout
 
 # stats
 library(lme4) # glm, lm, glmer
+library(ggfortify) # autoplot (diagnosing)
 #library(pscl) # zeroinfl
-#library(ggfortify) # autoplot (diagnosing)
 
 conflicted::conflicts_prefer(
   dplyr::select(),
@@ -62,12 +62,13 @@ dfs_stats <- list(
     x %>%
       # FilterOutLabTB() %>%
       # FilterForNTWTrts() %>%
+      filter(!(pop == "lab" & diet == "TB"),
+             pop != "col",
+             !is.na(is.pup), # drop culled bugs
+      ) %>%
       # convert LPIs to 1's
       mutate(is.pup = case_when(!is.na(jdate.LPI) ~ 1,
                                 TRUE ~ is.pup)) %>%
-      filter(#pop != "col",
-             !is.na(is.pup), # drop culled bugs
-      ) %>%
       # factorise and set reference levels
       mutate(across(c("year", "trt.minT", "trt.type", "trt"), as.factor),
              pop = factor(pop, levels = c("lab", "field")))

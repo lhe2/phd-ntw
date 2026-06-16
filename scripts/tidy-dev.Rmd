@@ -289,9 +289,9 @@ simultaneous standardising:
 
 ```{r standardisng values for all}
 # combine dfs; remove some short-lived larvae; more standardising:
-# fix: exit/pmd dates; LPI info
-# redo: survival, pmd/pup/ec/sup coding (counts after reaching 5th)
-# add parsing: non-ntw trts, expt vs control temp trts
+## fix: exit/pmd dates; LPI info; late eclosions
+## redo: survival, pmd/pup/ec/sup coding (counts after reaching 5th)
+## add parsing: non-ntw trts, expt vs control temp trts
 df_wide <- 
   data.table::rbindlist(dfs_stdised, fill = TRUE) %>% 
     mutate(
@@ -325,6 +325,12 @@ df_wide <-
                       TRUE ~ sex),
       mass.pupa = case_when(!is.na(jdate.LPI) ~ NA_real_,
                             TRUE ~ mass.pupa),
+      # late eclosion fixes (dates/masses are inaccurate)
+      ## (based off the longest tt.eclose with longevity data/checking spreadsheet)
+      jdate.eclose = case_when(jdate.eclose - jdate.pupa > 70 ~ NA_real_,
+                               TRUE ~ jdate.eclose),
+      mass.eclose = case_when(is.na(jdate.eclose) ~ NA_real_,
+                              TRUE ~ mass.eclose), 
       # exit date fixes
       jdate.exit = case_when(!is.na(jdate.long) ~ as.numeric(jdate.long),
                              !is.na(jdate.eclose) ~ as.numeric(jdate.eclose),
@@ -341,13 +347,15 @@ df_wide <-
       trt.type = case_when(trt.maxT == 40 ~ "expt",
                            TRUE ~ "ctrl")
       ) %>%
-    filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) | is.na(jdate.exit)) # for some field bugs 
+    # drop field bugs that die within 1 day
+    filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) | is.na(jdate.exit))
 ```
 
 # # prep for final export
 
 ```{r add calcs for pivot}
 df_wide <- df_wide %>%
+  select(-species) %>%
   mutate(tt.3rd = jdate.3rd - jdate.hatch,
            tt.4th = jdate.4th - jdate.hatch,
            tt.5th = jdate.5th - jdate.hatch,
@@ -368,8 +376,7 @@ df_wide <- df_wide %>%
             ## NOTE omit: just add this in later or else sorta interferes w PrepLarvalSS
          mass.change = (mass.pupa - mass.eclose)/mass.pupa,
          mass.prop = mass.pupa/mass.eclose
-    ) %>%
-    select(-species)
+    )
 
 df_long <- df_wide %>%
   pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
@@ -382,8 +389,9 @@ df_long <- df_wide %>%
     #                       TRUE ~ as.numeric(tt))) %>%
     # drop_na(tt) %>%
     # mutate(tt = na_if(tt, 999)) %>%
-    # remove short-lived eclosed bugs/culled on eclosion
-    filter(!(instar == "long" & tt == 0))
+  
+  # drop longevity durations for short-lived eclosed bugs/culled on eclosion
+  filter(!(instar == "long" & tt == 0))
 ```
 
 

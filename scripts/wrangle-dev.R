@@ -10,8 +10,8 @@ source(here("scripts/wrangle_utils.R"))
 
 # dev calcs -----------------------------------------------------------------
 ## df prep
-  # establish some "default" filters and groups for larval and adult dev,
-  # with some extra manipulations depending on the life stage.
+# establish some "default" filters and groups for larval and adult dev,
+# with some extra manipulations depending on the life stage.
 
 PrepLarvalSS <- function(long_df){
   long_df %>%
