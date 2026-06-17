@@ -34,9 +34,9 @@ source(here::here("scripts/_mss/load.R"))
 
 ## utils
 ```{r utilities}
-# for (main) plots
-p <- list()
-# ps for supp plots...?
+# for patchworking
+p <- list() # main plots
+ps <- list() # supp plots
 
 # (temp) function to save results
 ResToCsv <- function(res, filename){
@@ -45,6 +45,16 @@ ResToCsv <- function(res, filename){
   path <- paste0("out/mss-stats/", filename, "_", today, ".csv")
   
   write.csv(res, here::here(path), row.names = TRUE)
+}
+
+# dont pass in/specify a plot object to save: just use
+# default ggsave behaviour (saves most recently generated plot)
+ResToFig <- function(filename){
+  #p <- gg
+  fn <- paste0("~/Documents/PHD/_phd-outputs/mss-ntw/figs/", filename, ".png")
+  
+  ggsave(filename = here::here(fn), #plot = p, 
+         dpi = "print")
 }
 ```
 
@@ -137,11 +147,17 @@ p$surv_pup
 
 ### supp
 ```{r supp fig pup survival}
-dfs_viz$wide %>%
-  .plotfn() +
-  labs(y = "% survival to pupation") +
-  facet_wrap(~year)
+ps <- list_modify(
+  ps,
+  surv_pup =
+    dfs_viz$wide %>%
     CalcSurvProps_def() %>% #ResToCsv("ss/surv-supp")
+    .plotfn() +
+    labs(y = "% survival to pupation") +
+    facet_wrap(~year)
+)
+
+ps$surv_pup
 ```
 
 ### stats
@@ -177,6 +193,8 @@ summary(mods$m2)
     ylim(c(0, 1))
 }
 ```
+
+
 ```{r main fig adult survival}
 # TODO include sample size?
 p <- list_modify(
@@ -201,14 +219,18 @@ p$surv_ec
 ### supp
 
 ```{r supp fig ec survival}
+ps <- list_modify(
+  ps,
+  surv_ec = 
+    dfs_viz$wide %>%
+    CalcSurvProps_def() %>% 
+    .plotfn() +
+    labs(y = "% survival to eclosion") +
+    facet_wrap(~year) +
+    ylim(c(0, 1))
+)
 
-dfs_viz$wide %>%
-  CalcSurvProps_def() %>%
-  .plotfn() +
-  labs(y = "% survival to eclosion") +
-  facet_wrap(~year) +
-  ylim(c(0, 1))
-
+ps$surv_ec
 ```
 
 ### stats
@@ -247,15 +269,34 @@ anova(mods$m1a, test = "Chisq") #%>% ResToCsv("ec-surv")
 summary(mods$m1a)
 ```
 
-## collated main fig
+## collated figs
 
 ```{r}
+# main
 p$surv_pup + theme(legend.position = "none") + 
   p$surv_ec +
   plot_layout(axes = "collect", guides = "collect") &
   labs(y = "% survival") &
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5))  
 
+#ResToFig("dev-surv")
+
+# supp
+(ps$surv_pup + 
+    theme(legend.position = "top",
+                     legend.margin = margin()) +
+    labs(y = "% survival\nto pupation",
+                    x = element_blank())
+  ) / 
+  (ps$surv_ec + 
+     labs(y = "% survival\nto eclosion") +
+     guides(col = "none", shape = "none", lty = "none") +
+     theme(legend.position = "none")
+   ) +
+  plot_layout(axes = "collect", #guides = "collect"
+              )
+
+#ResToFig("supp/dev-surv")
 ```
 
 ## sample sizes
@@ -326,25 +367,34 @@ p$mass_pupsex # use this, per stats
 ### supp
 
 ```{r supp figs pup mass}
-# sexes combined
-df %>%
-  PrepAdultSS() %>%
-  ungroup(starts_with("trt")) %>% 
-  group_by(trt, trt.type, trt.minT, .add = TRUE) %>%
-  CalcDevSS() %>% #View()
-  .plotfn() +
-  facet_wrap(~ year)
-
-# sexes parsed (use this one)
-df %>%
-  PrepAdultSS() %>%
-  ungroup(starts_with("trt")) %>% 
-  group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
-  .plotfn() +
-  facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
-             scales = "free")
+ps <- list_modify(
+  ps,
+  # sexes combined
+  mass_pup =
+    df %>%
+    PrepAdultSS() %>%
+    ungroup(starts_with("trt")) %>% 
+    group_by(trt, trt.type, trt.minT, .add = TRUE) %>%
+    CalcDevSS() %>% #View()
+    .plotfn() +
+    facet_wrap(~ year) +
+    ylab("pupal mass (g)"),
+  
+  # sexes parsed (use this one)
+  mass_pupsex =
+  df %>%
+    PrepAdultSS() %>%
+    ungroup(starts_with("trt")) %>% 
+    group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>% 
     CalcDevSS() %>% #ResToCsv("ss/mass-pup-sex-supp")
+    .plotfn() +
+    facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
+               scales = "free") +
+    ylab("pupal mass (g)")
+)
 
+ps$mass_pup
+ps$mass_pupsex
 ```
 
 
@@ -412,36 +462,34 @@ p$mass_ecsex
 ### supp
 
 ```{r supp figs eclosion mass}
-# .plotfn <- function(x) {
-#   x %>%
-#     Plot_Dev() +
-#     aes(y = avg.mass) +
-#     geom_point(size = 2) +
-#     geom_line(show.legend = TRUE) +
-#     geom_errorbar(aes(ymax = avg.mass + se.mass,
-#                       ymin = avg.mass - se.mass),
-#                   width = 0.5, #lty = "solid", show.legend = FALSE,
-#                   ) 
-# }
-
-# sexes combined
-df %>%
-  PrepAdultSS() %>%
-  ungroup(starts_with("trt")) %>% 
-  group_by(trt, trt.type, trt.minT, .add = TRUE) %>%
-  CalcDevSS() %>%
-  .plotfn() +
-  facet_wrap(~ year)
+ps <- list_modify(
+  ps,
+  # sexes combined
+  mass_ec =
+    df %>%
+    PrepAdultSS() %>%
+    ungroup(starts_with("trt")) %>% 
+    group_by(trt, trt.type, trt.minT, .add = TRUE) %>%
+    CalcDevSS() %>%
+    .plotfn() +
+    facet_wrap(~ year) +
+    ylab("adult mass (g)"),
+  
+  # sexes parsed 
+  mass_ecsex =
+    df %>%
+    PrepAdultSS() %>%
+    ungroup(starts_with("trt")) %>% 
+    group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
     CalcDevSS() %>% #ResToCsv("ss/mass-ec-sex-supp")
+    .plotfn() +
+    facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
+               scales = "free") +
+    ylab("adult mass (g)")
+)
 
-# sexes parsed 
-df %>%
-  PrepAdultSS() %>%
-  ungroup(starts_with("trt")) %>% 
-  group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
-  .plotfn() +
-  facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
-             scales = "free") 
+ps$mass_ec
+ps$mass_ecsex
 ```
 
 ### stats
@@ -472,16 +520,34 @@ AIC(mods$m1, mods$m3, mods$m4) # keeping just the 2way with minT*sex is better
 
 anova(mods$m3) #%>% ResToCsv("ec-mass")
 ```
-## collated main fig
+
+
+## collated figs
 
 ```{r}
 
+# main
 p$mass_pupsex + theme(legend.position = "none") +
   p$mass_ecsex +
   plot_layout(axes = "collect", #guides = "collect"
               widths = c(0.9, 1)) &
   labs(x = p_scales$xlab_minT) &
   theme(plot.title = element_text(hjust = 0.5))
+
+#ResToFig("dev-mass")
+
+# supp
+(ps$mass_pupsex +
+    theme(legend.position = "top",
+          legend.margin = margin()) +
+    labs(x = element_blank())) / 
+  (ps$mass_ecsex +
+     theme(legend.position = "none") +
+     guides(col = "none", lty = "none", shape = "none"))  +
+  plot_layout(axes = "collect", #guides = "collect"
+              )
+
+#ResToFig("supp/dev-mass")
 ```
 
 # (3) development time
@@ -520,13 +586,18 @@ p$dev_la
 
 ### supp
 ```{r supp fig time to pup}
-dfs_viz$long %>%
-  filter(instar == "pupa") %>%
-  .plotfn() +
-  facet_wrap(~ year) +
-  labs(y = "larval duration (days)")
+ps <- list_modify(
+  ps,
+  time_pup = 
+    dfs_viz$long %>%
     CalcDevSS_ad() %>% #ResToCsv("ss/time-supp")
+    filter(instar == "pupa") %>%
+    .plotfn() +
+    facet_wrap(~ year) +
+    labs(y = "larval duration (days)")
+)
 
+ps$time_pup
 ```
 
 ### stats
@@ -578,15 +649,20 @@ p$dev_pup
 ### supp
 
 ```{r}
-dfs_viz$long %>%
-  filter(instar == "eclose",
-         #tt < 45
-         ) %>%
-  CalcDevSS_ad() %>%
-  .plotfn() +
-  facet_wrap(~ year) +
-  labs(y = "pupal duration (days)")
+ps <- list_modify(
+  ps,
+  time_ec = 
+    dfs_viz$long %>%
+    filter(instar == "eclose",
+           #tt < 45
+    ) %>%
+    CalcDevSS_ad() %>%
+    .plotfn() +
+    facet_wrap(~ year) +
+    labs(y = "pupal duration (days)")
+)
 
+ps$time_ec
 ```
 
 ### stats
@@ -609,13 +685,28 @@ anova(mods$m1) #%>% ResToCsv("ec-timeto") # keep the 3way
 ```
 
 
-## collated main fig
+## collated figs
 
 ```{r}
+# main
 p$dev_la + p$dev_pup +
   plot_layout(axes = "collect", guides = "collect") &
   theme(plot.title = element_text(hjust = 0.5))
 
+#ResToFig("dev-time")
+
+# supp
+(ps$time_pup +
+    theme(legend.position = "top",
+          legend.margin = margin()) +
+    labs(x = element_blank())) / 
+  (ps$time_ec +
+     theme(legend.position = "none") +
+     guides(col = "none", lty = "none", shape = "none"))  +
+  plot_layout(axes = "collect", #guides = "collect"
+              )
+
+#ResToFig("supp/dev-time")
 ```
 
 
