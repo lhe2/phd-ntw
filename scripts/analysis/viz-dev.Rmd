@@ -5,7 +5,10 @@ date: "2025-12-01"
 
 # # preamble & loading
 
-data viz for ntw 2025
+exploratory data viz for ntw 2025
+
+suuuper disorganised LOL. do ur best navigating through the headers :)
+
 
 ```{r set pathfinding}
 here::i_am("scripts/analysis/viz-dev.Rmd")
@@ -27,12 +30,23 @@ source(here("scripts/analysis/utils/viz.R"))
 ```{r load data, message=FALSE, warning=FALSE}
 source(here("scripts/analysis/load-dev.R"))
 
+dfs_all <- dfs_tidy %>%
+  lapply(., \(df) {
+    df %>%
+      filter(#!(pop == "lab" & diet == "TB"),
+             pop != "col") %>%
+      mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
+                                   pop == "lab" ~ "lab",
+                                   pop == "field" ~ "field")) %>%
+      mutate(across(c(starts_with("trt"), "year"), as.factor))
+  })
+
 # make some factors for graphing ease
 dfs_tidy <- dfs_tidy %>%
   lapply(., \(df) {
     df %>%
       filter(!(pop == "lab" & diet == "TB"),
-             pop != "col")
+             pop != "col") %>%
       mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
                                    pop == "lab" ~ "lab",
                                    pop == "field" ~ "field")) %>%
@@ -1597,8 +1611,74 @@ dfs_tidy$wide %>%
   #scale_fill_discrete(labels = c("0", "1", "2", "3", "died")) +
   theme_bw()
 ```
+
 # # EDA
 
+## wandering stuff
+
+```{r}
+# survival from wand to pup:
+# do most things that wander attempt to pupate? (yes)
+dfs_tidy$wide %>%
+  mutate(is.wand = case_when(!is.na(jdate.wander) ~ 1,
+                             is.na(jdate.wander) & !is.na(jdate.pmd) ~ 0)) %>%
+  PrepSurvProps() %>%
+  ungroup(year) %>%
+  summarise(n = sum(!is.na(is.wand)),
+            n.wand = sum(is.wand == 1, na.rm = TRUE),
+            n.pup = sum(is.pup > 0, na.rm = TRUE),
+            prop.wand = n.pup/n.wand,
+            se.wand = seprop(prop.wand, n.wand)) %>% View()
+  ggplot(aes(y = prop.wand, x = trt.minT,
+             col = trt.type, shape = pop,
+             group = interaction(trt.type, pop))) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = prop.wand + se.wand,
+                    ymin = prop.wand - se.wand),
+                width = 0.25) +
+  scale_color_hue(direction = -1)
+
+# does wandering time vary?  
+dfs_tidy$wide %>%
+  mutate(tt = case_when(!is.na(jdate.LPI) ~ jdate.LPI - jdate.wander,
+                        TRUE ~ jdate.pupa - jdate.wander)) %>%
+  group_by(pop, trt.type, trt.minT) %>%
+  summarise(avg = mean(tt, na.rm = TRUE),
+            se = se(tt)) %>%
+  ggplot(aes(y = avg, x = trt.minT,
+             shape = pop, lty = pop, col = trt.type,
+             group = interaction(pop, trt.type))) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
+                width = 0.25, lty = "solid", show.legend = FALSE)
+```
+
+
+## survival to pup in 2023
+
+```{r}
+dfs_tidy$wide %>%
+  filter(year == 2023,
+         pop == "lab") %>%
+  group_by(year, cohort) %>%
+  CalcSurvProps_def() %>%
+  ggplot(aes(y = prop.pup, x = trt.minT,
+             col = cohort, group = cohort)) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = prop.pup + se.pup,
+                    ymin = prop.pup - se.pup),
+                width = 0.25) +
+  facet_wrap(~trt.type) +
+  scale_color_discrete(labels = c("A" = "feb 1",
+                                  "B" = "feb 2",
+                                  "C" = "june",
+                                  "D" = "jul"))
+  
+```
 ## later larval performance
 
 per KS 2021: Responses of MS to HW
