@@ -125,7 +125,7 @@ p <- list_modify(
     dfs_viz$wide %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
-    CalcSurvProps() %>%
+    CalcSurvProps() %>% #ResToCsv("ss/surv")
     .plotfn() +
     labs(#y = "% survived to pupation",
       title = "hatch to pupation"
@@ -138,10 +138,10 @@ p$surv_pup
 ### supp
 ```{r supp fig pup survival}
 dfs_viz$wide %>%
-  CalcSurvProps_def() %>%
   .plotfn() +
   labs(y = "% survival to pupation") +
   facet_wrap(~year)
+    CalcSurvProps_def() %>% #ResToCsv("ss/surv-supp")
 ```
 
 ### stats
@@ -188,7 +188,7 @@ p <- list_modify(
            ) %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
-    CalcSurvProps() %>%
+    CalcSurvProps() %>% 
     .plotfn() +
     labs(#y = "% pupa eclosed",
          title = "pupa to eclosion",
@@ -216,8 +216,7 @@ dfs_viz$wide %>%
 ```{r main stats surv to ec}
 # filter df bc of including mass.pupa in the model
 df <- dfs_stats$dev_expt %>%
-  filter(!is.na(is.ec),
-         !is.na(mass.pupa))
+  filter(!is.na(mass.pupa))
 
 mods <- list(
   m1 = glm(is.ec ~ year*pop*trt.minT,
@@ -264,6 +263,7 @@ p$surv_pup + theme(legend.position = "none") +
 dfs_viz$wide %>%
   group_by(year, pop, trt) %>%
   summarise(n = sum(!is.na(is.pup)),
+            wand = sum(!is.na(jdate.wander), na.rm = TRUE),
             pup = sum(is.pup == 1, na.rm = TRUE),
             ec = sum(is.ec == 1, na.rm = TRUE),
             LPI = sum(is.pup == 2, na.rm = TRUE)) #%>% ResToCsv("n-surv")
@@ -313,7 +313,7 @@ p <- list_modify(
     PrepAdultSS() %>%
     group_by(sex, .add = TRUE) %>%
     ungroup(year) %>%
-    CalcDevSS() %>%
+    CalcDevSS() %>% #ResToCsv("ss/mass-pup-sex")
     .plotfn() +
     facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
     labs(title = "pupa") 
@@ -340,10 +340,10 @@ df %>%
   PrepAdultSS() %>%
   ungroup(starts_with("trt")) %>% 
   group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
-  CalcDevSS() %>%
   .plotfn() +
   facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
              scales = "free")
+    CalcDevSS() %>% #ResToCsv("ss/mass-pup-sex-supp")
 
 ```
 
@@ -361,9 +361,9 @@ anova(mods$m1) # ok to just focus on the 2 ways of trt/pop/year and main effect 
 mods <- list_modify(
   mods,
   m2 = lm(mass.pupa ~ (year + pop + trt.minT + sex)^2,
-           data = df),
+           data = dfs_stats$dev_expt),
   m3 = lm(mass.pupa ~ (year + pop + trt.minT)^2 + sex,
-           data = df)
+           data = dfs_stats$dev_expt)
 )
 
 anova(mods$m3, mods$m2, mods$m1)
@@ -399,7 +399,7 @@ p <- list_modify(
     PrepAdultSS() %>%
     group_by(sex, .add = TRUE) %>%
     ungroup(year) %>%
-    CalcDevSS() %>%
+    CalcDevSS() %>% #ResToCsv("ss/mass-ec-sex")
     .plotfn() +
     facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
     labs(title = "adult")
@@ -432,13 +432,13 @@ df %>%
   CalcDevSS() %>%
   .plotfn() +
   facet_wrap(~ year)
+    CalcDevSS() %>% #ResToCsv("ss/mass-ec-sex-supp")
 
 # sexes parsed 
 df %>%
   PrepAdultSS() %>%
   ungroup(starts_with("trt")) %>% 
   group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
-  CalcDevSS() %>%
   .plotfn() +
   facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
              scales = "free") 
@@ -508,7 +508,7 @@ p <- list_modify(
     dfs_viz$long %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
-    CalcDevSS() %>%
+    CalcDevSS() %>% #ResToCsv("ss/time")
     filter(instar == "pupa") %>%
     .plotfn() +
     labs(title = "hatch to pupation",
@@ -521,11 +521,11 @@ p$dev_la
 ### supp
 ```{r supp fig time to pup}
 dfs_viz$long %>%
-  CalcDevSS_ad() %>%
   filter(instar == "pupa") %>%
   .plotfn() +
   facet_wrap(~ year) +
   labs(y = "larval duration (days)")
+    CalcDevSS_ad() %>% #ResToCsv("ss/time-supp")
 
 ```
 
