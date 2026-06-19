@@ -33,6 +33,32 @@ source(here("scripts/analysis/utils/filters.R"))
 source(here("scripts/analysis/utils/viz.R"))
 source(here("scripts/analysis/utils/stats.R"))
 
+## export functions ----------------------------------------------------------
+
+# function to save results (specify dev/ or tents/)
+## dfs-* = from load.R
+## N-* = other results
+## anova/* = stats
+## ss/* = viz
+ResToCsv <- function(res, filename){
+  res <- as.data.frame(res)
+  today <- format(Sys.time(), "%y%m%d")
+  path <- paste0("out/mss-stats/", filename, "_", today, ".csv")
+  
+  write.csv(res, here::here(path), row.names = TRUE)
+}
+
+# dont pass in/specify a plot object to save: just use
+# default ggsave behaviour (saves most recently generated plot)
+## specify if going to figs/supp/
+ResToFig <- function(filename){
+  #p <- gg
+  fn <- paste0("~/Documents/PHD/_phd-outputs/mss-ntw/figs/", filename, ".png")
+  
+  ggsave(filename = here::here(fn), #plot = p, 
+         dpi = "print")
+}
+
 # development data --------------------------------------------------------
 
 ## development data

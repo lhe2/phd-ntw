@@ -32,30 +32,11 @@ main results/figs:
 source(here::here("scripts/_mss/load.R"))
 ```
 
-## utils
-```{r utilities}
-# for patchworking
+## plots
+```{r}
+# for saving/exporting patchworks
 p <- list() # main plots
 ps <- list() # supp plots
-
-# (temp) function to save results
-ResToCsv <- function(res, filename){
-  res <- as.data.frame(res)
-  today <- format(Sys.time(), "%y%m%d")
-  path <- paste0("out/mss-stats/", filename, "_", today, ".csv")
-  
-  write.csv(res, here::here(path), row.names = TRUE)
-}
-
-# dont pass in/specify a plot object to save: just use
-# default ggsave behaviour (saves most recently generated plot)
-ResToFig <- function(filename){
-  #p <- gg
-  fn <- paste0("~/Documents/PHD/_phd-outputs/mss-ntw/figs/", filename, ".png")
-  
-  ggsave(filename = here::here(fn), #plot = p, 
-         dpi = "print")
-}
 ```
 
 ## legend fns
@@ -135,7 +116,7 @@ p <- list_modify(
     dfs_viz$wide %>%
     PrepSurvProps() %>%
     ungroup(year) %>%
-    CalcSurvProps() %>% #ResToCsv("ss/surv")
+    CalcSurvProps() %>% #ResToCsv("dev/ss/surv")
     .plotfn() +
     labs(#y = "% survived to pupation",
       title = "hatch to pupation"
@@ -151,7 +132,7 @@ ps <- list_modify(
   ps,
   surv_pup =
     dfs_viz$wide %>%
-    CalcSurvProps_def() %>% #ResToCsv("ss/surv-supp")
+    CalcSurvProps_def() %>% #ResToCsv("dev/ss/surv-supp")
     .plotfn() +
     labs(y = "% survival to pupation") +
     facet_wrap(~year)
@@ -175,7 +156,7 @@ mods <- list_modify(
            family = "binomial", data = dfs_stats$dev_expt)
 )
 
-anova(mods$m2, test = "Chisq") #%>% ResToCsv("pup-surv")
+anova(mods$m2, test = "Chisq") #%>% ResToCsv("dev/anova/surv-pup")
 summary(mods$m2)
 ```
 
@@ -265,7 +246,7 @@ AIC(mods$m2, mods$m1a)
 anova(mods$m2, mods$m1a, test = "Chisq")
 # more complex model is slightly better, per AIC
 
-anova(mods$m1a, test = "Chisq") #%>% ResToCsv("ec-surv")
+anova(mods$m1a, test = "Chisq") #%>% ResToCsv("dev/anova/surv-ec")
 summary(mods$m1a)
 ```
 
@@ -307,7 +288,7 @@ dfs_viz$wide %>%
             wand = sum(!is.na(jdate.wander), na.rm = TRUE),
             pup = sum(is.pup == 1, na.rm = TRUE),
             ec = sum(is.ec == 1, na.rm = TRUE),
-            LPI = sum(is.pup == 2, na.rm = TRUE)) #%>% ResToCsv("n-surv")
+            LPI = sum(is.pup == 2, na.rm = TRUE)) #%>% ResToCsv("dev/N-surv")
 ```
 
 
@@ -354,7 +335,7 @@ p <- list_modify(
     PrepAdultSS() %>%
     group_by(sex, .add = TRUE) %>%
     ungroup(year) %>%
-    CalcDevSS() %>% #ResToCsv("ss/mass-pup-sex")
+    CalcDevSS() %>% #ResToCsv("dev/ss/mass-pup-sex")
     .plotfn() +
     facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
     labs(title = "pupa") 
@@ -386,7 +367,7 @@ ps <- list_modify(
     PrepAdultSS() %>%
     ungroup(starts_with("trt")) %>% 
     group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>% 
-    CalcDevSS() %>% #ResToCsv("ss/mass-pup-sex-supp")
+    CalcDevSS() %>% #ResToCsv("dev/ss/mass-pup-sex-supp") 
     .plotfn() +
     facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
                scales = "free") +
@@ -421,7 +402,7 @@ anova(mods$m3, mods$m2, mods$m1)
 AIC(mods$m3, mods$m2, mods$m1)
 ## m3 = lowest AIC
 
-anova(mods$m3) #%>% ResToCsv("pup-mass")
+anova(mods$m3) #%>% ResToCsv("dev/anova/mass-pup")
 summary(mods$m3)
 ```
 
@@ -449,7 +430,7 @@ p <- list_modify(
     PrepAdultSS() %>%
     group_by(sex, .add = TRUE) %>%
     ungroup(year) %>%
-    CalcDevSS() %>% #ResToCsv("ss/mass-ec-sex")
+    CalcDevSS() %>% #ResToCsv("dev/ss/mass-ec-sex")
     .plotfn() +
     facet_wrap(~ sex, labeller = as_labeller(p_scales$facs_sex)) +
     labs(title = "adult")
@@ -481,7 +462,7 @@ ps <- list_modify(
     PrepAdultSS() %>%
     ungroup(starts_with("trt")) %>% 
     group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
-    CalcDevSS() %>% #ResToCsv("ss/mass-ec-sex-supp")
+    CalcDevSS() %>% #ResToCsv("dev/ss/mass-ec-sex-supp")
     .plotfn() +
     facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
                scales = "free") +
@@ -570,18 +551,18 @@ p$mass_pupsex + theme(legend.position = "none") +
 ```{r main fig time to pup}
 p <- list_modify(
   p,
-  dev_la =
+  time_pup =
     dfs_viz$long %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
-    CalcDevSS() %>% #ResToCsv("ss/time")
+    CalcDevSS() %>% #ResToCsv("dev/ss/timeto")
     filter(instar == "pupa") %>%
     .plotfn() +
     labs(title = "hatch to pupation",
          )
 )
 
-p$dev_la
+p$time_pup
 ```
 
 ### supp
@@ -590,7 +571,7 @@ ps <- list_modify(
   ps,
   time_pup = 
     dfs_viz$long %>%
-    CalcDevSS_ad() %>% #ResToCsv("ss/time-supp")
+    CalcDevSS_ad() %>% #ResToCsv("dev/ss/timeto-supp")
     filter(instar == "pupa") %>%
     .plotfn() +
     facet_wrap(~ year) +
@@ -616,26 +597,26 @@ mods <- list_modify(
 )
 
 #AIC(mods$m2, mods$m1)
-anova(mods$m2) #%>% ResToCsv("pup-timeto")
+anova(mods$m2) #%>% ResToCsv("dev/anova/timeto-pup")
 summary(mods$m2)
 ```
 
 
-## pupal duration
+## time to eclosion
 
 outliers are only in the ctrl trt so just ignore ig
 
 ```{r main fig pup duration}
 p <- list_modify(
   p,
-  dev_pup = 
+  time_ec = 
     dfs_viz$long %>%
     filter(instar == "eclose",
            #tt < 45
            ) %>%
     PrepAdultSS() %>%
     ungroup(year) %>%
-    CalcDevSS() %>%
+    CalcDevSS() %>% 
     # mutate(avg.tt = avg.tt - 15,
     #        se.tt = se.tt - 15) %>%
     .plotfn() +
@@ -643,7 +624,7 @@ p <- list_modify(
          )
 )
 
-p$dev_pup
+p$time_ec
 ```
 
 ### supp
@@ -680,7 +661,7 @@ mods <- list(
 # # high influence
 # dfs_stats$dev_expt[which(cooks.distance(mods$m1) > 4/length(residuals(mods$m1))),] #%>% View()
 
-anova(mods$m1) #%>% ResToCsv("ec-timeto") # keep the 3way
+anova(mods$m1) #%>% ResToCsv("dev/anova/timeto-ec") # keep the 3way
 # i think this is prob bc of how Late the 2024 bugs were collected LOL
 ```
 
@@ -689,7 +670,7 @@ anova(mods$m1) #%>% ResToCsv("ec-timeto") # keep the 3way
 
 ```{r}
 # main
-p$dev_la + p$dev_pup +
+p$time_pup+ p$time_ec +
   plot_layout(axes = "collect", guides = "collect") &
   theme(plot.title = element_text(hjust = 0.5))
 
@@ -704,7 +685,7 @@ p$dev_la + p$dev_pup +
      theme(legend.position = "none") +
      guides(col = "none", lty = "none", shape = "none"))  +
   plot_layout(axes = "collect", #guides = "collect"
-              )
+              ) 
 
 #ResToFig("supp/dev-time")
 ```
@@ -717,14 +698,14 @@ dfs_viz$long %>%
 
 
 ### results table
-```{r}
+```{r results table longevity}
 dfs_viz$long %>%
   filter(if.fridge == 0,
          instar == "long") %>%
   # TODO include sex?
   CalcDevSS_ad() %>% 
   select(c(year, pop, trt.minT, trt.type, n,
-           ends_with("tt"))) #%>% ResToCsv("longevity")
+           ends_with("tt"))) #%>% ResToCsv("dev/ss/timeto-longevity")
 ```
 
 # ## (5) fitness 
