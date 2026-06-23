@@ -145,9 +145,12 @@ ps$surv_pup
 ```{r main stats pup survival}
 mods <- list(
   m1 = glm(is.pup ~ year*pop*trt.minT,
+           family = "binomial", data = dfs_stats$dev_expt),
+  m1a = glm(is.pup ~ year*pop*trt.minT + as.factor(is.sup),
            family = "binomial", data = dfs_stats$dev_expt)
 )
 
+AIC(mods$m1, mods$m1a) # technically better w sup but also lots of missing obs
 anova(mods$m1, test = "Chisq") # can drop the 3-way
 
 mods <- list_modify(
@@ -206,9 +209,9 @@ ps <- list_modify(
     dfs_viz$wide %>%
     CalcSurvProps_def() %>% 
     .plotfn() +
+    #geom_point(aes(size = sqrt(n))) +
     labs(y = "% survival to eclosion") +
-    facet_wrap(~year) +
-    ylim(c(0, 1))
+    facet_wrap(~year)
 )
 
 ps$surv_ec
@@ -217,7 +220,8 @@ ps$surv_ec
 ### stats
 
 ```{r main stats surv to ec}
-# filter df bc of including mass.pupa in the model
+# filter df bc of including mass.pupa in the model -- m1
+# will fit extra observations
 df <- dfs_stats$dev_expt %>%
   filter(!is.na(mass.pupa))
 
@@ -249,6 +253,23 @@ anova(mods$m2, mods$m1a, test = "Chisq")
 anova(mods$m1a, test = "Chisq") #%>% ResToCsv("dev/anova/surv-ec")
 summary(mods$m1a)
 ```
+
+```{r}
+# looking at pup mass
+dfs_viz$wide %>%
+    filter(is.na(is.LPI),
+           !is.na(is.ec)
+           ) %>%
+    PrepSurvProps() %>%
+    ungroup(year) %>%
+  group_by(is.ec, .add = TRUE) %>%
+  summarise(n = n(),
+            avg.wmass = mean(mass.wander, na.rm = TRUE),
+            se.wmass= se(mass.wander),
+            avg.pmass = mean(mass.pupa, na.rm = TRUE),
+            se.pmass = se(mass.pupa)) %>% View()
+```
+
 
 ## collated figs
 
@@ -368,9 +389,11 @@ ps <- list_modify(
     ungroup(starts_with("trt")) %>% 
     group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>% 
     CalcDevSS() %>% #ResToCsv("dev/ss/mass-pup-sex-supp") 
+    #filter(trt != 260) %>%
     .plotfn() +
     facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
-               scales = "free") +
+               #scales = "free"
+               ) +
     ylab("pupal mass (g)")
 )
 
@@ -463,9 +486,11 @@ ps <- list_modify(
     ungroup(starts_with("trt")) %>% 
     group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
     CalcDevSS() %>% #ResToCsv("dev/ss/mass-ec-sex-supp")
+    #filter(trt != 260) %>%
     .plotfn() +
     facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
-               scales = "free") +
+               #scales = "free"
+               ) +
     ylab("adult mass (g)")
 )
 
@@ -480,27 +505,40 @@ ps$mass_ecsex
 mods <- list(
     m1 = lm(mass.eclose ~ year*pop*trt.minT*sex + mass.pupa,
            data = dfs_stats$dev_expt),
-    m2 = lm(mass.eclose ~ year*pop*trt.minT*sex,
+    m1a = lm(mass.eclose ~ year*pop*trt.minT*sex,
+            data = dfs_stats$dev_expt),
+    m1b = lm(mass.eclose ~ year*pop*trt.minT + mass.pupa,
             data = dfs_stats$dev_expt)
 )
 
-AIC(mods$m1, mods$m2) # yes, based on AIC
+AIC(mods$m1, mods$m1a, mods$m1b) # yes, based on AIC
 
 # which interactions to keep?
-anova(mods$m1) # main effs, and 2-way with minT:sex
+anova(mods$m1) # main effs, and 2-ways with minT:sex, year:sex
 
 mods <- list_modify(
   mods,
-  m3 = lm(mass.eclose ~ year + pop + trt.minT*sex + mass.pupa,
-          data = df),
-  m4 = lm(mass.eclose ~ (year + pop + trt.minT + sex)^2 + mass.pupa,
+  m3 = lm(mass.eclose ~ (year + pop + trt.minT + sex)^2 + mass.pupa,
+          data = dfs_stats$dev_expt),
+  m4 = lm(mass.eclose ~ (year + pop + trt.minT)^2 + sex + mass.pupa,
+          data = dfs_stats$dev_expt),
+  m5 = lm(mass.eclose ~ year*sex + pop + trt.minT*sex + mass.pupa,
           data = dfs_stats$dev_expt)
 )
 
-AIC(mods$m1, mods$m3, mods$m4) # keeping just the 2way with minT*sex is better
+anova(mods$m3)
+anova(mods$m4)
+AIC(mods$m1, mods$m3, mods$m4, mods$m5) # isolating the 2ways is better
 
-anova(mods$m3) #%>% ResToCsv("ec-mass")
+anova(mods$m3, mods$m4) #m4 better
+anova(mods$m4, mods$m5) #m5 not better than m4?
+anova(mods$m3, mods$m4, mods$m5)
+
+# just keep the one with the 2 ways bc way easier to explain in methods lol
+anova(mods$m3) #%>% ResToCsv("dev/anova/mass-ec")
+summary(mods$m3)
 ```
+
 
 
 ## collated figs
@@ -585,10 +623,14 @@ ps$time_pup
 ```{r main stats pup dev rate}
 mods <- list(
   m1 = lm(tt.pupa ~ year*pop*trt.minT,
+           data = dfs_stats$dev_expt),
+  m1a = lm(tt.pupa ~ year*pop*trt.minT + as.factor(is.sup),
            data = dfs_stats$dev_expt)
 )
 
+AIC(mods$m1, mods$m1a) # including sup is better lol
 anova(mods$m1) # ok to focus on 2ways
+anova(mods$m1a)
 
 mods <- list_modify(
   mods,
@@ -596,7 +638,7 @@ mods <- list_modify(
            dfs_stats$dev_expt)
 )
 
-#AIC(mods$m2, mods$m1)
+AIC(mods$m2, mods$m1a)
 anova(mods$m2) #%>% ResToCsv("dev/anova/timeto-pup")
 summary(mods$m2)
 ```
@@ -672,7 +714,8 @@ anova(mods$m1) #%>% ResToCsv("dev/anova/timeto-ec") # keep the 3way
 # main
 p$time_pup+ p$time_ec +
   plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5))
+  theme(plot.title = element_text(hjust = 0.5)) &
+  ylim(c(20, 33))
 
 #ResToFig("dev-time")
 
@@ -689,6 +732,21 @@ p$time_pup+ p$time_ec +
 
 #ResToFig("supp/dev-time")
 ```
+## sup
+```{r}
+dfs_viz$long %>%
+  filter(is.pup > 0) %>%
+  group_by(is.sup) %>%
+  CalcDevSS_ad() %>% 
+  filter(instar == "pupa") %>% #View()
+  .plotfn() +
+  aes(alpha = as.factor(is.sup),
+      group = interaction(trt.type, pop, is.sup)) +
+  scale_alpha_manual(values = c(`0` = 1, `1` = 0.7)) +
+  facet_grid(#is.sup
+             ~ year)
+```
+
 
 
 dfs_viz$long %>%

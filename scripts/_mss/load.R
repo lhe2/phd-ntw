@@ -64,6 +64,12 @@ ResToFig <- function(filename){
 ## development data
 source(here("scripts/analysis/load-dev.R"))
 
+# dfs_tidy <- dfs_tidy %>%
+#   lapply(., \(x){
+#     x %>%
+#       filter(!(year == 2023 & cohort %in% c("A", "B")))
+#   })
+
 # viz dfs: drop colony bugs + factorised for graphing
 dfs_viz <- list(
   wide = dfs_tidy$wide,
