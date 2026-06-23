@@ -5,13 +5,99 @@ date: "2024-02-08"
 
 purpose: comparing F1s to parents
 
-# 0. load data, helper fns
+# load data, helper fns
 ```{r}
-source("./helpers_ntw.R")
+here::i_am("scripts/analysis/2023/analyses-F1.Rmd")
+```
+
+```{r}
+library(here)
+library(tidyverse)
+source(here("scripts/wrangle_utils.R"))
+
 # map(other_helpers, ~discard(., .p = ~all))
   # working on it: https://stackoverflow.com/questions/63533428/in-r-remove-list-of-list-based-on-name
 ```
 
+```{r}
+source(here("scripts/analysis/2023/load-F1.R"))
+
+dfs_F1 <- dfs_F1 %>%
+  lapply(., \(x){
+    x %>%
+      mutate(across(starts_with(c("trt", "parent")), as.factor),
+             pop = factor(pop, levels = c("parent", "F1")))
+  })
+```
+
+# 260623 viz for lab mtg
+```{r}
+# prep fns
+.calc3 <- function(x){
+  x %>%
+    summarise(n = n(),
+              avg.surv = sum(is.pup == 1, na.rm = TRUE)/sum(!is.na(is.pup)),
+              se.surv = seprop(avg.surv, sum(is.pup == 1, na.rm = TRUE)),
+              avg.mass = mean(mass.pupa, na.rm = TRUE),
+              se.mass = se(mass.pupa),
+              avg.tt = mean(tt.pupa, na.rm = TRUE),
+              se.tt = se(tt.pupa)
+    ) %>%
+    pivot_longer(cols = starts_with(c("avg", "se")),
+                 names_to = c(".value", "response"),
+                 names_sep = "\\.") %>% #View()
+    mutate(response = factor(response, levels = c("surv", "tt", "mass")),)
+}
+
+.plotgg <- function(){
+  list(
+    geom_point(size = 2),
+    geom_errorbar(aes(ymax = avg + se,
+                      ymin = avg - se),
+                  #width = 0.25
+                  ),
+    facet_wrap(~ response, scales = "free_y",
+               labeller = as_labeller(c(`surv` = "survival to pup", 
+                                        `tt` = "time to pup", 
+                                        `mass` = "pup mass"))),
+    scale_color_hue(direction = -1),
+    theme_bw()
+  )
+}
+```
+
+```{r}
+dfs_F1$wide %>%
+  filter(pop == "F1") %>%
+  group_by(across(c(starts_with(c("trt", "parent")), "pop", "tent"))) %>%
+  .calc3() %>% #View()
+  ggplot(aes(y = avg, x = trt.type,
+             col = interaction(parent.minT, parent.trtsex),
+             shape = interaction(parent.minT, parent.trtsex), 
+             lty = interaction(parent.minT, parent.trtsex),
+             group = tent)) +
+  geom_line() +
+    geom_point(size = 2) +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_wrap(~response, scales = "free_y",
+             labeller = as_labeller(c(`surv` = "survival to pup", 
+                                        `tt` = "time to pup", 
+                                        `mass` = "pup mass"))) +
+  labs(shape = "parent trt",
+       col = "parent trt",
+       lty = "parent trt") +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+  
+```
+
+
+
+
+
+#### ARCHIVE ####
 # 1. subsetting
 ```{r}
 F1s <- wide_all %>% filter.F1s()

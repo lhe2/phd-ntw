@@ -3,12 +3,168 @@ title: "acc_analyses"
 date: "2023-12-07"
 ---
 
-# 0.1 load data & packages
-```{r message = FALSE}
-source("./helpers_ntw.R")
-rm(list=c(temps_helpers, NT_helpers))
+# load data & packages
+```{r}
+here::i_am("scripts/analysis/2023/analyses_acc.Rmd")
 ```
 
+```{r message = FALSE}
+library(tidyverse)
+library(here)
+
+source(here("scripts/analysis/2023/load-acc.R"))
+
+dfs_acc <- dfs_acc %>%
+  lapply(., \(x){
+    x %>%
+      mutate(across(starts_with("trt"), as.factor),
+             instar.enter = factor(instar.enter, levels = c("hatch", "3rd", "4th")))
+  })
+
+dfs_acc$wide <- dfs_acc$wide %>%
+  filter(jdate.hatch < 19500) %>%
+  mutate(jdate.exit = case_when(is.na(jdate.exit) ~ jdate.pupa,
+                                TRUE ~ jdate.exit))
+dfs_acc$long <- dfs_acc$wide %>%
+    pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+                 names_to = c(".value", "instar"),
+                 values_drop_na = TRUE,
+                 names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)"))
+```
+
+# viz for 260603 lab mtg
+```{r}
+# prep fns
+.calc3 <- function(x){
+  x %>%
+    summarise(n = n(),
+              avg.surv = sum(is.pup == 1, na.rm = TRUE)/sum(!is.na(is.pup)),
+              se.surv = seprop(avg.surv, sum(is.pup == 1, na.rm = TRUE)),
+              avg.mass = mean(mass.pupa, na.rm = TRUE),
+              se.mass = se(mass.pupa),
+              avg.tt = mean(tt.pupa, na.rm = TRUE),
+              se.tt = se(tt.pupa)
+    ) %>%
+    pivot_longer(cols = starts_with(c("avg", "se")),
+                 names_to = c(".value", "response"),
+                 names_sep = "\\.") %>% #View()
+    mutate(response = factor(response, levels = c("surv", "tt", "mass")),
+           trt = case_when(trt == 260 ~ "26±0",
+                           trt == 426 ~ "33±7"))
+}
+
+.plotgg <- function(){
+  list(
+    geom_point(size = 2),
+    geom_errorbar(aes(ymax = avg + se,
+                      ymin = avg - se),
+                  #width = 0.25
+                  ),
+    facet_wrap(~ response, scales = "free_y",
+               labeller = as_labeller(c(`surv` = "survival to pup", 
+                                        `tt` = "time to pup", 
+                                        `mass` = "pup mass"))),
+    scale_color_hue(direction = -1),
+    theme_bw()
+  )
+}
+```
+
+
+```{r stuff for 260623 lab mtg}
+# big 3
+dfs_acc$wide %>%
+  group_by(trt, instar.enter) %>%
+  .calc3() %>%
+  ggplot(aes(y = avg, x = instar.enter, shape = trt,
+             col = trt)) +
+  .plotgg() +
+  labs(shape = "treatment", col = "treatment",
+       x = "instar entered treatment")
+
+# alt viz
+dfs_acc$wide %>%
+  mutate(exit = case_when(!is.na(jdate.pmd) ~ jdate.pmd,
+                          TRUE ~ jdate.wander),
+         timeat26 = case_when(trt == 260 ~ jdate.pupa-jdate.hatch,
+                              instar.enter == "3rd" ~ jdate.3rd-jdate.hatch,
+                              instar.enter == "4th" ~ jdate.4th-jdate.hatch,
+                              TRUE ~ 0),
+         timeat40 = case_when(trt == 260 ~ 0,
+                              instar.enter == "3rd" ~ exit - jdate.3rd,
+                              instar.enter == "4th" ~ exit - jdate.4th,
+                              TRUE ~ exit - jdate.hatch)) %>%
+  group_by(trt, instar.enter) %>%
+  summarise(n = n(),
+            avgtime.at26 = mean(timeat26, na.rm = TRUE),
+            setime.at26 = se(timeat26),
+            avgtime.at40 = mean(timeat40, na.rm = TRUE),
+            setime.at40 = se(timeat40),
+            
+            avg.surv = sum(is.pup == 1, na.rm = TRUE)/sum(!is.na(is.pup)),
+            se.surv = seprop(avg.surv, sum(is.pup == 1, na.rm = TRUE)),
+            avg.mass = mean(mass.pupa, na.rm = TRUE),
+            se.mass = se(mass.pupa),
+            avg.tt = mean(tt.pupa, na.rm = TRUE),
+            se.tt = se(tt.pupa)
+  ) %>%
+    pivot_longer(cols = contains("time"),
+               names_to = c(".value", "at"),
+               names_sep = "\\.") %>% #View()
+  pivot_longer(cols = starts_with(c("avg.", "se.")),
+               names_to = c(".value", "response"),
+               names_sep = "\\.") %>% #View()
+  mutate(response = factor(response, levels = c("surv", "tt", "mass")),
+         trt = case_when(trt == 260 ~ "26±0",
+                         trt == 426 ~ "33±7")) %>%
+  filter(at == "at26",
+         #at == "at40"
+         ) %>% #View()
+  ggplot(aes(y = avg,
+             x = avgtime,
+             shape = instar.enter, col = trt)) +
+  # geom_errorbarh(aes(xmax = avgtime + setime,
+  #                    xmin = avgtime - setime), height = 0.008) +
+  .plotgg() +
+  labs(#x = "days at 33±7C (enter to wand)",
+       x = "days at 26C (hatch to wand or transfer)")
+
+# trajectories
+dfs_acc$long %>%
+  filter(!(instar %in% c("culled", "change", "prop"))) %>%
+  group_by(trt, instar.enter, instar) %>%
+  summarise(n = n(),
+            avg.mass = mean(mass, na.rm = TRUE),
+            se.mass = se(mass),
+            avg.tt = mean(tt, na.rm = TRUE),
+            se.tt = se(tt)
+  ) %>%
+  filter(instar %in% c("3rd", "4th", "5th", "wander", "pupa")) %>%
+  mutate(instar = factor(instar, levels = c("3rd", "4th", "5th", "wander", "pupa"))) %>%
+    pivot_longer(cols = starts_with(c("avg.", "se.")),
+               names_to = c(".value", "response"),
+               names_sep = "\\.") %>%
+  ggplot(aes(y = avg, x = instar, 
+             col = trt, lty = instar.enter, shape = instar.enter,
+             group = interaction(trt, instar.enter))) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg + se,
+                    ymin = avg - se),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_wrap(~ response, scales = "free_y",
+             labeller = as_labeller(c(`mass` = "mass",
+                                      `tt` = "days"))) +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+  
+
+```
+
+
+
+
+### ARCHIVE ALL OF THIS!!! ###
 # 1.0 super simple stats
 ```{r}
 # acc stats
