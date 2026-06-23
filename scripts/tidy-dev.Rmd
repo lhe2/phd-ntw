@@ -12,8 +12,6 @@ tidy data from all ntw-related expts for wrangling/analyses.
 final code from this `.Rmd` is purled to a `.R` script; rerun `purl` step as needed to update the wrangling for analyses. outputs data from all expts to keep it all standard, but load each data subset into its analysis script with the corresponding `load_*.R` script.
 
 
-*NOTE:* missing F1 dev data tidying!
-
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
 here::i_am("scripts/tidy-dev.Rmd")
@@ -92,7 +90,7 @@ dfs_filtered <- list(
            !is.na(instar.enter), # drop non-expt bugs
            # instar.enter == "hatch" | 
            #   pop == "field" & instar.enter %in% c("1st", "2nd"),
-           pop %in% c("field", "lab"),
+           #pop %in% c("field", "lab"), # drop F1s
            #!(trt %in% c("ctrl", "267", "330")),
            !(reason.ignore %in% c("lost", "early field")) |
              is.na(reason.ignore),
@@ -106,7 +104,8 @@ dfs_filtered <- list(
               #"instar.enter",  
               "jdate.collected", "jdate.enter", 
               "jdate.stuck", "jdate.15", "jdate.died",
-              "parent.tent", "src", "trt.stage", "grp.trt")),
+              #"parent.tent", "src",
+              "trt.stage", "grp.trt")),
 
   y24 = dfs_imported[["y24"]] %>%
     filter(is.na(species),
@@ -248,7 +247,8 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
 
 # 2024: redo survival coding, trt group
 dfs_stdised[["y24"]] <- dfs_stdised[["y24"]] %>% 
-  mutate(#jdate.LPI = NA, 
+  mutate(jdate.LPI = NA, 
+         parent.tent = NA, src = NA,
          jdate.exit = NA, is.ctrl = NA,
          trt.group = case_when(id < 1000 ~ 100,
                                id > 2000 ~ 2000,
@@ -266,7 +266,8 @@ dfs_stdised[["y24"]] <- dfs_stdised[["y24"]] %>%
 
 # 2025: redo survival coding/notes; add timepts, col ctrl info (per 2023)
 dfs_stdised[["y25"]] <- dfs_stdised[["y25"]] %>% 
-  mutate(fate.dev = case_when(!is.na(jdate.eclose) & !is.na(jdate.long) ~ "ec",
+  mutate(parent.tent = NA, src = NA,
+         fate.dev = case_when(!is.na(jdate.eclose) & !is.na(jdate.long) ~ "ec",
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
                               !is.na(jdate.culled) | !is.na(notes.ignore)  ~ "other",
                               !is.na(jdate.pmd) ~ "pmd"),
@@ -353,6 +354,7 @@ df_wide <-
 
 # # prep for final export
 
+## collate
 ```{r add calcs for pivot}
 df_wide <- df_wide %>%
   select(-species) %>%
@@ -374,12 +376,16 @@ df_wide <- df_wide %>%
             ## TODO omit tt.fridge? not that useful. could calculate on the fly later
            #tt.exit = jdate.exit - jdate.hatch
             ## NOTE omit: just add this in later or else sorta interferes w PrepLarvalSS
-         mass.change = (mass.pupa - mass.eclose)/mass.pupa,
-         mass.prop = mass.pupa/mass.eclose
     )
 
-df_long <- df_wide %>%
-  pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
+```
+
+
+## pivot fn
+```{r}
+tolong <- function(x){
+  x %>%
+    pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
                  names_pattern = ("([a-z]*\\d*)\\.(\\d*[a-z]*)")) %>%
@@ -392,8 +398,9 @@ df_long <- df_wide %>%
   
   # drop longevity durations for short-lived eclosed bugs/culled on eclosion
   filter(!(instar == "long" & tt == 0))
+}
+  
 ```
-
 
 # # cleanup
 ```{r remove intermediate objects}

@@ -7,14 +7,15 @@
 source(here::here("scripts/R/tidy-dev.R"))
 
 dfs_acc <- list(
-  wide = df_wide,
-  long = df_long
-) %>%
-  lapply(., \(x){
-    x %>%
-      filter(year == 2023 & pop == "lab" &
-               trt %in% c(260, 426)
-      )
-  })
+  wide = df_wide %>%
+    filter(year == 2023 & pop == "lab" &
+             trt %in% c(260, 426)) %>%
+    select(-parent.tent)
+)
 
-rm(df_wide, df_long)
+dfs_acc <- list_modify(
+  dfs_acc,
+  long = dfs_acc$wide %>% tolong()
+)
+
+rm(df_wide, tolong)

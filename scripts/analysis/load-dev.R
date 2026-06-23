@@ -7,18 +7,21 @@
 source(here::here("scripts/R/tidy-dev.R"))
 
 dfs_tidy <- list(
-  wide = df_wide,
-  long = df_long
-  ) %>%
-  lapply(., \(x){
-    x %>%
-      filter(year == 2023 & (instar.enter == "hatch" |
-                               pop == "col" |
-                               (pop == "field" & instar.enter %in% c("1st", "2nd"))) |
-               year %in% c(2024, 2025),
-             trt %in% c(260, 419, 426, 433)
-      ) %>%
-      select(-instar.enter)
-  })
+  wide = df_wide %>%
+    mutate(mass.change = (mass.pupa - mass.eclose)/mass.pupa,
+           mass.prop = mass.pupa/mass.eclose) %>%
+    filter(year == 2023 & (instar.enter == "hatch" |
+                             pop == "col" |
+                             (pop == "field" & instar.enter %in% c("1st", "2nd"))) |
+             year %in% c(2024, 2025),
+           trt %in% c(260, 419, 426, 433)
+    ) %>%
+    select(-c(instar.enter, parent.tent))
+)
 
-rm(df_wide, df_long)
+dfs_tidy <- list_modify(
+  dfs_tidy,
+  long = dfs_tidy$wide %>% tolong()
+)
+
+rm(df_wide, tolong)

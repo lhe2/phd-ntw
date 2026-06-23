@@ -7,16 +7,19 @@
 source(here::here("scripts/R/tidy-dev.R"))
 
 dfs_temps <- list(
-  wide = df_wide,
-  long = df_long
-) %>%
-  lapply(., \(x){
-    x %>%
-      filter(year == 2023 & pop == "lab" & 
-               instar.enter == "hatch" &
-               trt %in% c(260, 267, 330, 426)
-      ) %>%
-      select(-instar.enter)
-  })
+  wide = df_wide %>%
+    filter(year == 2023 & pop == "lab" & 
+             instar.enter == "hatch" &
+             trt %in% c(260, 267, 330, 426)
+    ) %>%
+    select(-c(instar.enter, parent.tent))
+)
 
-rm(df_wide, df_long)
+
+dfs_temps <- list_modify(
+  dfs_temps,
+  long = dfs_tidy$wide %>% tolong()
+)
+
+
+rm(df_wide, tolong)
