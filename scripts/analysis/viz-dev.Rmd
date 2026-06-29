@@ -30,18 +30,22 @@ source(here("scripts/analysis/utils/viz.R"))
 ```{r load data, message=FALSE, warning=FALSE}
 source(here("scripts/analysis/load-dev.R"))
 
+# make some factors for graphing ease
+
+# incls all pops + yrs
 dfs_all <- dfs_tidy %>%
   lapply(., \(df) {
     df %>%
       filter(#!(pop == "lab" & diet == "TB"),
-             pop != "col") %>%
-      mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
-                                   pop == "lab" ~ "lab",
-                                   pop == "field" ~ "field")) %>%
+             # != "col"
+             ) %>%
+      # mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
+      #                              pop == "lab" ~ "lab",
+      #                              pop == "field" ~ "field")) %>%
       mutate(across(c(starts_with("trt"), "year"), as.factor))
   })
 
-# make some factors for graphing ease
+# just lab vs field
 dfs_tidy <- dfs_tidy %>%
   lapply(., \(df) {
     df %>%
@@ -1612,7 +1616,9 @@ dfs_tidy$wide %>%
   theme_bw()
 ```
 
-# # EDA
+# # misc EDA
+
+(EDA mostly related to larval stuff... newer stuff on top)
 
 ## wandering stuff
 
@@ -2157,20 +2163,77 @@ df %>%
 
 ```
 
-
-
-
 # ### adult dev
 
 ## longevity
-### EDA: fridge bugs
+
+
+### EDA
+
+#### effect of colony
+
+```{r}
+# does being a colony bug or not affect longevity?
+## (doesnt seem so)
+
+dfs_all$long %>%
+  filter(if.fridge == 0,
+         instar == "long") %>%
+  filter(pop != "field",
+         !(pop == "lab" & diet == "TB"),
+         year != 2024) %>%
+  select(-c(trt.ctrl, trt.group)) %>% #View()
+  CalcDevSS_ad() %>% View()
+  ggplot(aes(y = avg.tt, x = trt.minT,
+             shape = trt.type,
+             group = interaction(trt.type, year))) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.tt + se.tt, ymin = avg.tt - se.tt),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_grid(year ~ pop)
+```
+
+
+#### effect of sex/mating
+```{r}
+# does being mated or not have an effect on longevity?
+# parse out all yrs/sex/mate status.
+## tldr: hard to say? need to check w stats...
+
+dfs_all$long %>%
+  filter(pop != "col",
+         !(pop == "lab" & diet == "TB")) %>%
+  filter(if.fridge == 0,
+         instar == "long") %>%
+  mutate(if.mated = factor(if.mated)) %>%
+  PrepAdultSS() %>%
+  group_by(across(c(sex, if.mated)), .add = TRUE) %>%
+  CalcDevSS() %>%
+  ggplot(aes(y = avg.tt, x = trt.minT, 
+             color = trt.type, lty = pop,
+             shape = if.mated,
+             group = interaction(trt.type, pop, if.mated))
+         ) +
+  geom_point(size = 2) +
+  geom_line(show.legend = TRUE) +
+  geom_errorbar(aes(ymax = avg.tt + se.tt,
+                    ymin = avg.tt - se.tt),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  facet_grid(sex ~ year) +
+  scale_shape_manual(values = c(`0` = 1, `1` = 16)) +
+  scale_color_hue(direction = -1) +
+  theme_bw()
+```
+
+#### fridge bugs
 
 ```{r EDA fridge bugs, eval = FALSE}
 # EDA: effect of including fridge bugs?
 .prepfn <- function(x){
   x %>%
-    PrepAdultSS() %>%
-    filter(instar == "long")
+    filter(instar == "long") %>%
+    PrepAdultSS()
 }
 
 .plotfn <- function(x){
@@ -2187,20 +2250,20 @@ df %>%
 }
 
 # EDA: keep fridge bugs in the count
-dfs_tidy$long %>%
+dfs_all$long %>%
   .prepfn() %>%
   CalcDevSS() %>%
   .plotfn() +
   aes(group = interaction(pop))
 
 # EDA: parse out the fridge bugs
-dfs_tidy$long %>%
-  mutate(if.fridge = case_when(is.na(if.fridge) ~ "no",
-                               TRUE ~ "yes")) %>%
+dfs_all$long %>%
+  filter(!is.na(if.fridge)) %>%
+  mutate(if.fridge = case_when(if.fridge == 0 ~ "no",
+                               if.fridge == 1 ~ "yes")) %>%
+    group_by(if.fridge) %>%
   .prepfn() %>%
-  group_by(if.fridge, .add = TRUE) %>%
   CalcDevSS() %>%
-  #filter(is.na(if.fridge)) %>%
   .plotfn() +
   aes(group = interaction(pop, if.fridge),
       lty = if.fridge, shape = if.fridge)
