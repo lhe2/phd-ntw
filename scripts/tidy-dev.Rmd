@@ -200,12 +200,13 @@ dfs_stdised <- list(
 })
 ```
 
-### standardising values + matching cols for merging
+### standardising values + matching columns for merging
 
 cols that mean different things for different yrs:
 - `trt.ctrl`: ctrl bug type
   - 2023: if diurnal ctrl or not
   - 2025: if colony ctrl or not
+- `is.ctrl`: if colony bug or not (for mating stuff)
   
 individual standardising of cols:
 - dev cols thru 8th
@@ -230,7 +231,7 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
          trt.group = case_when(pop == "lab" & diet == "TB" ~ 1000,
                                pop == "lab" & diet == "LD" ~ 2000,
                                pop == "field" ~ 100),
-         fate.dev = case_when(!is.na(jdate.eclose) ~ "ec",
+         fate.dev = case_when(!is.na(jdate.eclose | pop == "col") ~ "ec",
                               !is.na(jdate.pupa) | !is.na(jdate.LPI) ~ "pup",
                               reason.ignore %in% c("wet diet", "accidental", "hot larva", "cut") | 
                                 final.fate %in% c("accidental", "culled") ~ "other",
@@ -241,7 +242,8 @@ dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>%
                                   TRUE ~ NA_real_),
          jdate.pmd = case_when(!is.na(jdate.culled) ~ NA_real_,
                                TRUE ~ jdate.pmd), 
-         is.ctrl = case_when(trt.flucT == 2.5 ~ "diurnal")
+         is.ctrl = case_when(#trt.flucT == 2.5 ~ "diurnal",
+                             pop == "col" ~ "col")
          ) %>% 
   select(-c("final.fate", "reason.ignore"))
 
@@ -350,6 +352,10 @@ df_wide <-
       ) %>%
     # drop field bugs that die within 1 day
     filter(jdate.exit - jdate.hatch > 1 | is.na(jdate.hatch) | is.na(jdate.exit))
+
+# add in colony bug trt info
+df_wide[df_wide$pop == "col", c("trt.minT", "trt.maxT", "trt.meanT")] <- 26
+df_wide[df_wide$pop == "col", "trt.flucT"] <- 0
 ```
 
 # # prep for final export
