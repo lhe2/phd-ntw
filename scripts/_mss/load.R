@@ -33,6 +33,51 @@ source(here("scripts/analysis/utils/filters.R"))
 source(here("scripts/analysis/utils/viz.R"))
 source(here("scripts/analysis/utils/stats.R"))
 
+## legend functions --------------------------------------------------------
+
+# development plots (pop vs trt.type by minT)
+Plot_Dev <- function(df){
+  df %>%
+    ggplot(data = df %>% arrange(desc(trt)), # plot ctrl over NTW if overplotted
+           mapping = aes(x = trt.minT,
+                         shape = pop,
+                         lty = pop,
+                         col = trt.type,
+                         group = interaction(pop, trt.type)
+           )) +
+    labs(lty = "population", shape = "population",
+         col = "maximum larval\ntemperature",
+         x = p_scales$xlab_minT
+    ) +
+    scale_color_manual(values = p_scales$cols_trttype,  
+                       labels = p_scales$labs_trttype) +
+    scale_shape_manual(values = p_scales$shp_pop) +
+    scale_linetype_manual(values = p_scales$lty_pop) +
+    scale_x_discrete(labels = p_scales$labs_minT) +
+    guides(shape = guide_legend(override.aes = list(linetype = c("solid", "255F"))),
+           color = guide_legend(order = 1)) +
+    theme_bw()
+}
+
+# fitness plots (trted sex vs minT)
+Plot_Fit <- function(df){
+  df %>%
+    ggplot(aes(x = trt.minT,
+               lty = trt.mate, 
+               shape = trt.mate,
+               group = trt.mate,
+               col = trt.mate)) +
+    labs(col = "heat-treated sex", lty = "heat-treated sex", shape = "heat-treated sex",
+         x = p_scales$xlab_minT) +
+    scale_shape_manual(values = p_scales$shp_trtsex, labels = p_scales$labs_trtmate) +
+    scale_color_manual(values = p_scales$cols_trtsex, labels = p_scales$labs_trtmate) +
+    scale_linetype_manual(values = p_scales$lty_trtsex, labels = p_scales$labs_trtmate) +
+    scale_x_discrete(labels = c(p_scales$labs_trt)) +
+    guides(shape = guide_legend(override.aes = list(linetype = c("blank", "solid",
+                                                                 "3223", "4224")))) +
+    theme_bw()
+}
+
 ## export functions ----------------------------------------------------------
 
 # function to save results (specify dev/ or tents/)
@@ -53,7 +98,7 @@ ResToCsv <- function(res, filename){
 ## specify if going to figs/supp/
 ResToFig <- function(filename){
   #p <- gg
-  fn <- paste0("~/Documents/PHD/_phd-outputs/mss-ntw/figs/", filename, ".png")
+  fn <- paste0("~/Documents/PHD/_phd/docs/mss-ntw/figs/", filename, ".png")
   
   ggsave(filename = here::here(fn), #plot = p, 
          dpi = "print")
@@ -70,7 +115,7 @@ source(here("scripts/analysis/load-dev.R"))
 #       filter(!(year == 2023 & cohort %in% c("A", "B")))
 #   })
 
-# viz dfs: drop colony bugs + factorised for graphing
+# viz dfs: drop colony bugs + factorise for graphing
 dfs_viz <- list(
   wide = dfs_tidy$wide,
   long = dfs_tidy$long

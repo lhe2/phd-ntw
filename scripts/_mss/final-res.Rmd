@@ -32,57 +32,11 @@ main results/figs:
 source(here::here("scripts/_mss/load.R"))
 ```
 
-## plots
+## plot objects
 ```{r}
 # for saving/exporting patchworks
 p <- list() # main plots
 ps <- list() # supp plots
-```
-
-## legend fns
-```{r}
-# development plots (pop vs trt.type by minT)
-Plot_Dev <- function(df){
-  df %>%
-    ggplot(data = df %>% arrange(desc(trt)), # plot ctrl over NTW if overplotted
-           mapping = aes(x = trt.minT,
-                         shape = pop,
-                         lty = pop,
-                         col = trt.type,
-                         group = interaction(pop, trt.type)
-           )) +
-    labs(lty = "population", shape = "population",
-         col = "maximum larval\ntemperature",
-         x = p_scales$xlab_minT
-         ) +
-    scale_color_manual(values = p_scales$cols_trttype,  
-                       labels = p_scales$labs_trttype) +
-    scale_shape_manual(values = p_scales$shp_pop) +
-    scale_linetype_manual(values = p_scales$lty_pop) +
-    scale_x_discrete(labels = p_scales$labs_minT) +
-    guides(shape = guide_legend(override.aes = list(linetype = c("solid", "255F"))),
-           color = guide_legend(order = 1)) +
-    theme_bw()
-}
-
-# fitness plots (trted sex vs minT)
-Plot_Fit <- function(df){
-  df %>%
-    ggplot(aes(x = trt.minT,
-               lty = trt.mate, 
-               shape = trt.mate,
-               group = trt.mate,
-               col = trt.mate)) +
-    labs(col = "heat-treated sex", lty = "heat-treated sex", shape = "heat-treated sex",
-         x = p_scales$xlab_minT) +
-    scale_shape_manual(values = p_scales$shp_trtsex, labels = p_scales$labs_trtmate) +
-    scale_color_manual(values = p_scales$cols_trtsex, labels = p_scales$labs_trtmate) +
-    scale_linetype_manual(values = p_scales$lty_trtsex, labels = p_scales$labs_trtmate) +
-    scale_x_discrete(labels = c(p_scales$labs_trt)) +
-    guides(shape = guide_legend(override.aes = list(linetype = c("blank", "solid",
-                                                                 "3223", "4224")))) +
-    theme_bw()
-}
 ```
 
 # ## development
