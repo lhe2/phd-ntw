@@ -703,18 +703,91 @@ dfs_viz$long %>%
 
 
 
+# (4) longevity
+
+## [>] longevity
+
+```{r}
 dfs_viz$long %>%
   filter(if.fridge == 0,
-         instar == "long") %>%
+         instar == "long",
+         if.mated == 1, 
+         year != 2024) %>%
+  #group_by(across(sex)) %>% # dont group by sex, per stats
+  CalcDevSS_ad() %>% #View()
+  Plot_Dev() +
+  aes(y = avg.tt) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_errorbar(aes(ymax = avg.tt + se.tt,
+                    ymin = avg.tt - se.tt),
+                width = 0.25, lty = "solid", show.legend = FALSE) +
+  #facet_grid(sex~year, labeller = labeller(sex = c(p_scales$facs_sex))) +
+  facet_wrap(~ year) +
+  labs(y = "lifespan (days)")
+```
+
+### [>] stats
+do years separately!
+```{r}
+# df prep
+dfs <- list(
+  y23 = dfs_stats$dev_expt %>% filter(year == 2023),
+  y25 = dfs_stats$dev_expt %>% filter(year == 2025)
+) %>%
+  lapply(., \(x){
+    x %>%
+      filter(if.fridge == 0, if.mated == 1)
+  })
+```
+
+```{r}
+# 2023 longev
+mods <- list(
+  m1 = lm(tt.long ~ pop*trt.minT, data = dfs$y23),
+  m1a = lm(tt.long ~ pop*trt.minT*sex, data = dfs$y23)
+)
+
+anova(mods$m1, mods$m1a) # use the one w/o sex
+
+mods <- list_modify(
+  mods,
+  m2 = lm(tt.long ~ pop*trt.minT + mass.eclose, data = dfs$y23)
+)
+
+anova(mods$m1, mods$m2) # ec mass doesnt improve model
+
+anova(mods$m1) #%>% ResToCsv("dev/anova/long-23") # nothin matters!!
+```
+
+```{r}
+# 2025 longev
+mods <- list(
+  m1 = lm(tt.long ~ pop*trt.minT, data = dfs$y25),
+  m1a = lm(tt.long ~ pop*trt.minT*sex, data = dfs$y25)
+)
+
+anova(mods$m1, mods$m1a)  # use the one w/o sex
+
+mods <- list_modify(
+  mods,
+  m2 = lm(tt.long ~ pop*trt.minT + mass.eclose, data = dfs$y25)
+)
+
+anova(mods$m1, mods$m2) # ec mass doesnt improve model
+
+anova(mods$m1) #%>% ResToCsv("dev/anova/long-25") # minT matters...!!
 ```
 
 
-### results table
-```{r results table longevity}
+## sample sizes
+```{r sample sizes longevity, eval=FALSE}
 dfs_viz$long %>%
   filter(if.fridge == 0,
-         instar == "long") %>%
-  # TODO include sex?
+         instar == "long",
+         year != 2024,
+         if.mated == 1) %>%
+  # TODO include sex? see stats first
   CalcDevSS_ad() %>% 
   select(c(year, pop, trt.minT, trt.type, n,
            ends_with("tt"))) #%>% ResToCsv("dev/ss/timeto-longevity")
