@@ -10,9 +10,9 @@ dfs_tidy <- list(
   wide = df_wide %>%
     mutate(mass.change = (mass.pupa - mass.eclose)/mass.pupa,
            mass.prop = mass.pupa/mass.eclose) %>%
-    filter(year == 2023 & (instar.enter == "hatch" |
+    filter((year == 2023 & (instar.enter == "hatch" |
                              pop == "col" |
-                             (pop == "field" & instar.enter %in% c("1st", "2nd"))) |
+                             (pop == "field" & instar.enter %in% c("1st", "2nd")))) |
              year %in% c(2024, 2025),
            trt %in% c(260, 419, 426, 433)
     ) %>%
