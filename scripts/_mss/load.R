@@ -160,7 +160,9 @@ dfs_viz <- list_modify(
   dfs_viz,
   eggs = dfs_tidy$tents %>% # ss_nocol
     filter(trt.pop != "col") %>% # drop colony-only tents
-    select(-mate.col) %>% 
+    select(-c(mate.col, trt.pop,
+              #mate.pop,
+              )) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>%
     CalcTentCounts() %>%
@@ -169,7 +171,9 @@ dfs_viz <- list_modify(
   
   eggs_noyr = dfs_tidy$tents %>% # ss_nocol
     filter(trt.pop != "col") %>% # drop colony-only tents
-    select(-mate.col) %>% 
+    select(-c(mate.col, trt.pop,
+              #mate.pop,
+              )) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>%
     CalcTentCounts() %>%
@@ -210,6 +214,7 @@ dfs_stats[c("eggs_all", "eggs_expt")] <- dfs_stats[c("eggs_all", "eggs_expt")] %
       filter(mate.pop != "field", mate.type != "virgin", # drop 2024 stuff
              trt.pop != "col", # drop colony-only tents
              ) %>% 
+      select(-c(mate.col, mate.pop, trt.pop)) %>% 
       CalcTentCounts() %>%
       mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
                                   mate.trt == 433 ~ 33,
