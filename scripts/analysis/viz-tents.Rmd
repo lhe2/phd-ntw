@@ -24,8 +24,34 @@ source(here("scripts/wrangle-tents.R"))
 ## df prep
 
 ```{r load data, message=FALSE, warning=FALSE}
+# get per-enclosure fridge status
+source(here("scripts/analysis/load-dev.R"))
+
+df <- dfs_tidy$wide %>%
+  filter(!is.na(cage)) %>%
+  group_by(across(c("cage", "year"))) %>%
+  summarise(f.fridge = case_when(sex == "f" & (sum(if.fridge) > 0) ~ 1,
+                                 TRUE ~ 0),
+            m.fridge = case_when(sex == "m" & (sum(if.fridge) > 0) ~ 1,
+                                 TRUE ~ 0)) %>% 
+  unique() %>% #View()
+  summarise(f.fridge = sum(f.fridge),
+            m.fridge = sum(m.fridge)) %>% #View()
+  mutate(trt.fridge = case_when(f.fridge == 0 & m.fridge == 0 ~ "none",
+                                f.fridge > m.fridge ~ "f",
+                                f.fridge < m.fridge ~ "m",
+                                TRUE ~ "both")) %>%
+  select(c("cage", "year", "trt.fridge"))
+  
+
+
+## append fridge info to main tents df
 source(here("scripts/R/tidy-tents.R"))
 
+dfs_tidy$tents <- merge(dfs_tidy$tents, df,
+                        by = c("cage", "year"))
+
+# prep tents
 # some default dfs grouped by yr
 dfs_tents <- list(
   # count dfs
@@ -103,7 +129,151 @@ dfs_tents$n_pertent %>%
   geom_bar()
 ```
 
-# # effect of col bugs
+# # effect of col, fridge
+
+TLDR i think numbers are too all over the place to rly be able to say anything lol (too many n=1 for different treatment variable combinations).
+
+## util
+```{r}
+.calcfn <- function(x){
+  x %>%
+  group_by(across(c(year, starts_with(c("mate", "trt"))))) %>%
+  CalcTentSS() %>% #View()
+  pivot_longer(cols = starts_with(c("avg", "se")),
+               names_to = c(".value", "response"),
+               names_pattern = "^(avg|se)\\.(.*)")
+}
+
+.plotfn <- function(){
+  list(
+      geom_point(),
+      geom_line(),
+      geom_errorbar(aes(ymax = avg + se,
+                        ymin = avg - se),
+                    lty = "solid", width = 0.25, show.legend = FALSE)
+    )
+}
+    
+
+df <- dfs_tents$n_pertent %>%
+  filter(mate.type != "virgin",
+         year != 2024,
+         mate.pop != "field") %>%
+  mutate(mate.col = case_when(is.na(mate.col) ~ "none",
+                              TRUE ~ mate.col)) %>%
+  .calcfn()
+```
+
+```{r}
+# effect of col vs lab
+
+# within bugs (ctrl)
+## basically, not enough of a sample size to be confident if col has an effect lol
+## but probably should omit the tents with purely col bugs (i.e. trt.pop == "col")
+df %>%
+  #select(-trt.pop) %>% # is the same as mate.pop for this
+  #.calcfn() %>%
+  filter(mate.trt == 260,
+         response %in% c("coll.perf", "p.hatch.perc")
+         ) %>% #View()
+  ggplot(aes(y = avg, x = mate.col,
+             #shape = trt.pop, group = interaction(trt.pop)
+             )) +
+  .plotfn() +
+  facet_grid(response ~ year) 
+
+# btwn bugs
+## similarly, not enough of a sample size to be confident..
+## so could probably squash?
+df %>%
+  filter(mate.trt != 260,
+         response %in% c("sqrt.coll.perf", "p.hatch.perc")) %>%
+  ggplot(aes(y = avg, x = mate.trt,
+             col = mate.col,
+             group = interaction(mate.col))) +
+  .plotfn() +
+  facet_grid(response ~ year, scales = "free_y")
+
+
+# fridge stuff...
+# interaction of col x fridge?
+## not enough sample size to detect...
+df %>%
+  filter(mate.trt == 260,
+         response %in% c("coll.perf", "p.hatch.perc")) %>%
+  ggplot(aes(y = avg, x = mate.col,
+             col = trt.fridge,
+             group = trt.fridge)) +
+  .plotfn() +
+  facet_grid(response ~ year)
+
+df %>%
+  filter(mate.trt != 260,
+         response %in% c("coll.perf", "p.hatch.perc")) %>%
+  ggplot(aes(y = avg, x = mate.col,
+             lty = trt.fridge,
+             col = trt.minT,
+             group = interaction(trt.minT, trt.fridge))) +
+  .plotfn() +
+  facet_grid(response ~ year)
+
+# just fridge
+## mehhhhh
+dfs_tents$n_pertent %>%
+  filter(mate.type != "virgin",
+         year != 2024,
+         mate.pop != "field") %>%
+  select(-mate.col) %>%
+  .calcfn() %>%
+  filter(mate.trt == 260,
+         response %in% c("coll.perf", "p.hatch.perc")) %>%
+  ggplot(aes(y = avg, x = trt.pop,
+             col = trt.fridge,
+             group = trt.fridge)) +
+    .plotfn() +
+    facet_grid(response ~ year)
+
+## difference is prob not that detectable..
+dfs_tents$n_pertent %>%
+  filter(mate.type != "virgin",
+         year != 2024,
+         mate.pop != "field") %>%
+  select(-mate.col) %>%
+  .calcfn() %>%
+  filter(mate.trt != 260,
+         response %in% c("coll.perf", "p.hatch.perc")) %>%
+  ggplot(aes(y = avg, x = trt.minT,
+             lty = trt.fridge, col = trt.fridge,
+             group = trt.fridge)) +
+    .plotfn() +
+    facet_grid(response ~ year)
+```
+
+
+
+
+## counting hatch prop
+```{r}
+# checking to see if my math is right...
+
+dfs_tents$n_pertent %>%
+  filter(year == 2025, mate.trt == 260,
+         mate.pop == "lab", mate.type == "within",
+         is.na(mate.col)) %>% #View() 
+  # ## CHECKING ##
+  # mutate(#tot.hatch = sum(n.hatch),
+  #        #tot.coll = sum(n.coll), # just do these later at the pop level
+  #   p.hatch = n.hatch/n.coll) %>%
+  # summarise(pop.phatch = sum(n.hatch)/sum(n.coll),
+  #           per.phatch = sum(p.hatch)/6) %>% # check if match w/ below
+  # #####
+  
+  group_by(across(c(year, starts_with(c("mate", "trt"))))) %>%
+  CalcTentSS() # use perc!
+  
+```
+
+
 # # effect of col bugs (1)
 
 2026-06-29: dont love how i did this LOL. redoing above
