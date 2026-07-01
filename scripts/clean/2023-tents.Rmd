@@ -266,7 +266,8 @@ dfs_cleaned[["pairs"]] <- dfs_cleaned[["pairs"]] %>%
                          as.numeric(id) < 1000 ~ "field"),
          if.fridge = case_when(#jdate.paired != jdate.ec ~ "x",
                                jdate.paired == jdate.ec ~ 0,
-                               jdate.paired > jdate.ec ~ 1)
+                               jdate.paired > jdate.ec | 
+                                 !is.na(jdate.paired) & is.na(jdate.ec) ~ 1)
          ) %>%
   rename(if.mated = mated)
   

@@ -325,9 +325,18 @@ dfs_stdised <- list(
     select(c("cage", starts_with(c("trt", "pop")))) %>%
     distinct() %>%
     .GenerateCageMateInfo() %>% #View() %>%
-    # fixes (NOT solo f tents: 301P, 301U, 107H...)
-    filter(!(mate.type == "virgin" & !(cage %in% c("107-cage", "301-T"))),
-           !(cage == "301-M" & pop.f == "lab")) ,
+    # fixes 
+    filter(
+      ## (NOT solo f tents: 301P, 301U, 107H...)
+      !(mate.type == "virgin" & !(cage %in% c("107-cage", "301-T"))),
+           !(cage == "301-M" & pop.f == "lab"),
+      ## remove duplicate cages (bc col/lab mixing sighs.
+      ## pick the pop for whichever there's more individuals of)
+      !(cage == "107-C" & pop.m == "lab"),
+      !(cage == "301-L" & pop.m == "col"),
+      !(cage == "301-M" & pop.m == "col" #pop.m == "lab"
+        )
+      ) ,
   
   events = 
     dfs_filtered[["ad23"]] %>%

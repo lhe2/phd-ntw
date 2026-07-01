@@ -22,7 +22,7 @@ source(here("scripts/wrangle_utils.R"))
 
 CalcTentCounts <- function(raw_df){
   raw_df %>%
-    group_by(across(c("year", "cage", starts_with(c("mate", "trt"))))) %>%
+    group_by(across(c("year", "cage", starts_with(c("mate", "trt")))), .add = TRUE) %>%
     summarise(
       n.f = sum(f.added),
       n.m = sum(m.added),
@@ -82,12 +82,13 @@ CalcTentSS <- function(grpd_df){
       # eggs hatched (props)
       #p.hatch.perc = n.hatch/n.coll,
       ## do earlier -- will get dups from prop.hatch per tent if not sum()'d beforehand
-      ## per cage for each trt group
+      ## per cage for each trt group (sample mean)
       avg.p.hatch.perc = mean(p.hatch.perc, na.rm = TRUE), # does this mess up the n.cages lol
       se.p.hatch.perc = seprop(avg.p.hatch.perc, n.cages.total),
-      ## per trt group
-      p.hatch = n.total.hatch/n.total.coll,
-      se.hatch = seprop(p.hatch, n.total.coll),
+      ## per trt group (population mean)
+      avg.p.hatch.pop = n.total.hatch/n.total.coll,
+      se.p.hatch.pop = seprop(avg.p.hatch.pop, n.total.coll),
+      
       # until n.viable is handled properly, n.coll = n.viable
       # p.hatch = sum(n.hatch)/sum(n.viable), 
       # se.hatch = seprop(p.hatch, sum(n.viable))
