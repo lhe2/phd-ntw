@@ -801,6 +801,9 @@ dfs_viz$long %>%
 
 ## # eggs laid
 
+PROBABLY this is better just as a table lol
+also how tf to do stats when only some trts have eggs and some dont? (maybe just do separate years)
+
 ```{r main fig eggs laid}
 pd = position_dodge(0.35)
 
@@ -848,7 +851,18 @@ p$eggs_laid
 p$eggs_laidnoyr
 ```
 
+### stats (WIP)
+```{r stats eggs laid}
+# READING IN PROGRESS... see tents-stats.Rmd
+mods <- list(
+  all = lm(sqrt.coll.perf ~ n.f + mate.trt + mate.ishs + year,
+           data = dfs$all)
+)
+```
+
 ## # eggs hatched
+
+PROBABLY this is just better as a table
 
 ```{r main fig eggs hatched}
 .plotfn <- function(x){
@@ -901,6 +915,37 @@ dfs_viz$eggs_noyr %>%
   select(c(year, trt.minT, trt.mate, 
            starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg-results_noyr")
 ```
+
+## sample sizes
+```{r}
+# TODO ideally use the same as the viz but maybe need to use the stats one lol cuz its on the per-tent level
+# need to check the colony filtering on this...
+
+# per cage
+dfs_stats$eggs_all %>%
+  filter(year != 2024, trt.pop == "lab") %>%
+  group_by(year, trt.minT, trt.mate, cage) %>%
+  summarise(perc.f = sum(n.f),
+            perc.m = sum(n.m),
+            perc.rat = n.f/n.m,
+            perc.coll = sum(n.coll),
+            perc.hatch = sum(n.hatch)) #%>% ResToCsv("tents/n/percage")
+
+# per trt combo
+dfs_stats$eggs_all %>%
+  filter(year != 2024, trt.pop == "lab") %>% 
+  mutate(rat = n.f/n.m,
+         tot.ads = n.f + n.m) %>%
+  group_by(year,  trt.minT, trt.mate) %>%
+  summarise(n = n(),
+            tot.f = sum(n.f),
+            tot.m = sum(n.m),
+            avg.rat = mean(rat),
+            avg.ads = mean(tot.ads),
+            tot.coll = sum(n.coll),
+            tot.hatch = sum(n.hatch)) %>% View() #%>% ResToCsv("tents/n/pertrt")
+```
+
 
 ## collated main fig
 ```{r collated eggs viz}

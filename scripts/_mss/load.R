@@ -175,29 +175,51 @@ dfs_viz <- list_modify(
     CalcTentCounts() %>%
     group_by(across(c(starts_with(c("mate", "trt"))))) %>%
     CalcTentSS() %>%
-    mutate(year = NA)
+    mutate(year = NA) # for lapply later
 )
 
 dfs_viz[c("eggs", "eggs_noyr")] <- dfs_viz[c("eggs", "eggs_noyr")] %>%
   lapply(.,\(x){
     x %>%
-      FilterForLabEggs() %>% # drops 2024 stuff here
+      # drop 2024 stuff & unmated tents
+      filter(mate.pop != "field", mate.type != "virgin") %>%
       # make factors
       mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
                                   mate.trt == 433 ~ 33,
                                   TRUE ~ 26),
              across(c("year", "mate.trt", starts_with("trt")), as.factor),
-             mate.type = factor(mate.type, levels = c("within", "between", "virgin")),
+             mate.type = factor(mate.type, levels = c("within", "between"#, "virgin"
+                                                      )),
              trt.mate = factor(trt.mate, levels = c("neither", "both", "f", "m"))
              
       )}
   )
 
 
+# stats df
+dfs_stats <- list_modify(
+  dfs_stats,
+  eggs_all = dfs_tidy$tents,
+  eggs_expt = dfs_tidy$tents %>%
+    filter(mate.trt != 260)
+)
 
-
-  
-
+dfs_stats[c("eggs_all", "eggs_expt")] <- dfs_stats[c("eggs_all", "eggs_expt")] %>%
+  lapply(., \(x){
+    x %>%
+      filter(mate.pop != "field", mate.type != "virgin", # drop 2024 stuff
+             trt.pop != "col", # drop colony-only tents
+             ) %>% 
+      CalcTentCounts() %>%
+      mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
+                                  mate.trt == 433 ~ 33,
+                                  TRUE ~ 26),
+             across(c("year", starts_with(c("trt", "mate"))), as.factor),
+             # relevel for stats comparisons
+             mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")),
+             mate.trt = recode_factor(mate.trt, `260` = "26", `419` = "19", `426` = "26", `433` = "33")
+      )
+  })
 
 # cleanup -----------------------------------------------------------------
 
