@@ -231,7 +231,7 @@ dfs <- dfs_imported %>%
   lapply(., \(x) {
     x %>% 
       #filter(!is.na(jdate.pupa)) %>%
-      mutate(tt.pupa = jdate.pupa - jdate.hatch,
+      mutate(#tt.pupa = jdate.pupa - jdate.hatch,
              devrate.pupa = 1/tt.pupa) %>%
       filter(!is.na(tt.pupa))
   })
@@ -391,7 +391,7 @@ dfs <- dfs_imported %>%
   lapply(., \(x) {
     x %>% 
       filter(!is.na(jdate.pupa)) %>%
-      mutate(tt.pupa = jdate.pupa - jdate.hatch,
+      mutate(#tt.pupa = jdate.pupa - jdate.hatch,
              devrate.pupa = 1/tt.pupa)
   })
 

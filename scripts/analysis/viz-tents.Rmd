@@ -104,6 +104,9 @@ dfs_tents$n_pertent %>%
 ```
 
 # # effect of col bugs
+# # effect of col bugs (1)
+
+2026-06-29: dont love how i did this LOL. redoing above
 
 figuring out how to accomodate...
 
@@ -144,7 +147,7 @@ p1 <- dfs_tents$ss_nocol %>%
   labs(#caption = "mate.type and mate.pop = lab for col"
        caption = "col ignored") +
   scale_shape_manual(values = 16) +
-  guides(shape = "none")
+  guides(shape = "none") 
 
 p2 <- dfs_tents$ss_matecol %>%
   mutate(mate.col = replace_na(mate.col, "na")) %>%
@@ -153,7 +156,8 @@ p2 <- dfs_tents$ss_matecol %>%
   labs(#caption = "mate.type = col",
        caption = "col ctrl trt parsed") +
   scale_shape_manual(values = c(17, 15, 16)) +
-  guides(shape = "none")
+  guides(shape = "none") +
+  theme(axis.title.y = element_blank())
 
 p3 <- dfs_tents$ss_allcol %>%
   mutate(mate.col = replace_na(mate.col, "na")) %>%
@@ -161,7 +165,8 @@ p3 <- dfs_tents$ss_allcol %>%
   .plotfn() +
   labs(#caption = "mate.type and mate.pop for\nlab/col are distinct",
        caption = "col ctrl trt + col matings parsed") +
-  scale_shape_manual(values = c(3, 17, 15, 16)) 
+  scale_shape_manual(values = c(3, 17, 15, 16)) +
+  theme(axis.title.y = element_blank())
 
 p1
 p2

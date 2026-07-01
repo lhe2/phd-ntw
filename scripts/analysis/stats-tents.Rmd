@@ -87,16 +87,17 @@ dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
       recode_factor(`419` = "19", `426` = "26", `433` = "33")
 ```
 
-# ### exptal only ###
-- eggs/F: if the distribution is skewed right with mean greater than 1-3,  then round values to the nearest integer and use poisson
 
-# # Z: eggs laid (try 2)
 
-## model type + Z
 
 - 2026-05-31:
  - trying out better model diagnosing first lol (for ntw mss final stats)
  - testing response variable transform + model type
+ 
+ 
+## Z: eggs laid
+
+### model type + Z
  
 ```{r warning = FALSE}
 # look at overall distribution
@@ -200,9 +201,15 @@ mods$nb_log %>% GetModelResults()
 ## nothin matters!!!!
 ```
 
+
+```{r}
+# eggs hatch (do the zero inflated here...)
+
 ```
 
-## sep yrs?
+
+
+### sep yrs?
 ```{r warning = FALSE}
 # try doing stats per yr using the negbin(log+1)
 
@@ -232,11 +239,13 @@ mods %>% GetModelResults()
  
 
 
-# # Z: eggs laid (try 1)
+# ### TRY 2: exptal only
 
 2026-05-31: archived trying out modeling eggs laid, focusing on just the expt bugs
 
-## diagnosing Z
+## Z: eggs laid
+
+### diagnostics + transforms
 
 - tldr
   - offset... sometimes helps
@@ -301,7 +310,7 @@ mods %>% GetModelResults()
 mods %>% lapply(., AIC)
 ```
 
-## testing different pred vars
+### testing different pred vars
 - using the mod: `glm(round(n.coll.perf) ~ mate.trt*mate.ishs + n.f + year, family = "poisson")` as the base
 
 ```{r eval = FALSE}
@@ -314,7 +323,7 @@ mods <- list(
 ```
 
 
-# ### all bugs (ref only) ###
+# ### TRY 1: all bugs, ref only
 
 - 2026-02-10 after wkly mtg, just for ref only. but TLDR:
   - `n.f` and `year` should be inluded in the eggs laid mods
@@ -324,9 +333,9 @@ mods <- list(
   - need to run on a subset of the data without the ctrls (or else just as ctrls vs hot bc 26-26 mating group is confounded w/ `mate.ishs` and `mate.trt`)
   - do the hatching as `c(# hatch, # coll)` (not as success/failures)
 
-# # Z: eggs laid
+## Z: eggs laid
 
-## diagnosing Z
+### diagnosing Z
 
 trying out different response variables for the egg numbers.
 
@@ -367,7 +376,7 @@ mods <- list(
 mods %>% DiagnoseModel() # use sqrt -- more balanced
 ```
 
-## trying pred vars
+### trying pred vars
 
 figuring out which vars to include in the model and what model to use
 - Z: eggs laid/collected
@@ -380,7 +389,7 @@ figuring out which vars to include in the model and what model to use
   - [x] testing interactions:
     - code as `trt.f*trt.m + ishs.f*ishs.m`?
     
-### trts
+#### trts
 - how to code the trts?
 
 ```{r eval=FALSE, warning=FALSE}
@@ -445,7 +454,7 @@ mods$int3 %>% GetModelResults()
 ```
 
 
-### cage    
+#### cage    
 - works when fixed (and sig) but not rly what we're trying to do here...
 
 ```{r try 2, eval=FALSE, warning=FALSE}
@@ -497,7 +506,7 @@ resid(mods$test) # try -- when `cage` is included, resids are 0
 
 ```
 
-### trying stuff w joel
+#### trying stuff w joel
 - trying stuff with the mods:
   - use just a subset of the hot bugs only
   - try looking at the trt interaction + dropping different terms
@@ -543,15 +552,15 @@ glm(n.coll.perf + 1 ~ mate.trt*mate.ishs + n.f + year,
 ```
 
 
-# # Z: eggs hatched
+## Z: eggs hatched
 
-## diagnosing Z
+### diagnosing Z
 
 - dont need `n.f` in the model...? tho maybe need `n.coll.perf`?
 - they all REALLY suck... need a different model? drop that one ctrl point?
   - try zero-inflated poissons!
   
-### glms (bad: bc dist)
+#### glms (bad: bc dist)
 ```{r , eval=FALSE, warning=FALSE, message=FALSE}
 # i also just think this is bad bc of the preds LOL...
 # regular glms:
@@ -588,7 +597,7 @@ mods <- list(
 mods %>% DiagnoseModel()
 ```
 
-### zips (try 1)
+#### zips (try 1)
 - need to code the trts differently.. otherwise warnings
 
 ```{r eval=FALSE}
@@ -613,7 +622,7 @@ mods %>% DiagnoseModel2()
 #qqnorm(resid(mods$raw_p)); qqline(resid(mods$raw_p))
 ```
 
-### zips (try 2)
+#### zips (try 2)
 - zip model wont fit if the trts are too piecemealy, so try just `mate.trt * mate.ishs`
   - (try `year` and `n.f` later)
 
@@ -633,18 +642,18 @@ mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it ne
 
 ```
 
-## trying pred vars
+### trying pred vars
 
 - where Z: eggs hatched
   - (glms are sorta wonky bc the distribution is sooo bad to begin w lol... (try ZIP model instead))
   - nts: dont need number of F for this.. just # of eggs coll???
 
-# # Z: binomial (hatch, laid)
+## Z: binomial (hatch, laid)
 
 - [wip] Z: binomial (ie # hatch, # coll)
   - wonkkkyyy...
 
-## trying pred vars
+### trying pred vars
 - seems like `trt` of the m/f is more impt? (everything sig except `trt.ishs`...)
 - but go look at data transforming before continuing more lol
 
@@ -681,7 +690,7 @@ mods <- list(
 mods %>% GetModelResults()
 #anova(mods$raw_sf, mods$raw_hc, test = "Chisq") # breaks bc of cbind?
 ```
-# # misc
+# ### misc
 
 ## sample sizes
 
