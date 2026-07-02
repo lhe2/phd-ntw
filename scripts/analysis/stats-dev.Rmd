@@ -128,6 +128,33 @@ list(
   rbindlist(fill = TRUE, idcol = "subset") %>% #View()
   WriteModelResultsCsv("pup-surv_anova-final")
 ```
+
+```{r testing writing fns, eval=FALSE}
+# TODO wip: testing functions for writing results to csv
+
+# writing results
+list(
+  mods_pupsurv$expt_fullint %>% 
+    anova(test = "Chisq") %>% as.data.frame() %>%
+    mutate(subset = "expt", vars = rownames(.), 
+           .before = 1),
+  mods_pupsurv$all_fullint %>% 
+    anova(test = "Chisq") %>% as.data.frame() %>%
+    mutate(subset = "all", vars = rownames(.), 
+           .before = 1)
+  ) %>%
+  rbindlist() %>%
+  WriteModelResults("test2")
+  # want to shorten this process. see test 3
+
+
+list(
+  mods_pupsurv$expt_fullint %>% 
+    WriteModelResultsDf(., "expt"),
+  mods_pupsurv$all_fullint %>% 
+    WriteModelResultsDf("all")
+  ) %>%
+  WriteModelResultsCsv("test3")
 ```
 
 
