@@ -128,7 +128,6 @@ list(
   rbindlist(fill = TRUE, idcol = "subset") %>% #View()
   WriteModelResultsCsv("pup-surv_anova-final")
 ```
-```
 
 
 ## pupal mass
@@ -286,6 +285,8 @@ mods_puptime %>%
   WriteModelResultsCsv("pup-time_dredge")
   
 ```
+
+
 # # longevity
 
 ```{r}
@@ -301,6 +302,9 @@ mods <- list(
 anova(mods$m1) # can drop if looking at everyone
 anova(mods$m2) # sex matters if looking at mated bugs only...
 ```
+
+
+
 # # misc
 
 ## sample sizes

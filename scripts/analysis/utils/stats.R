@@ -16,17 +16,17 @@ GetModelResults <- function(x){
   x %>% lapply(., \(x){
     list(anova_wchisq = anova(x, test = "Chisq"),
          model_summary = summary(x)
-         )
-    })
+    )
+  })
 }
 
 
 # (WIP) write csv of anova results
 ## USAGE (WriteModCsv)
-  # writes csvs of outputs for single model objects or for bound lists of multiple models.
+# writes csvs of outputs for single model objects or for bound lists of multiple models.
 ## ARGS
-  # mod: pass in actual model object/just the filename (var names break if using dot)
-  # filename: desired file name as a string
+# mod: pass in actual model object/just the filename (var names break if using dot)
+# filename: desired file name as a string
 WriteModelResultsCsv <- function(mod, filename){
   path <- paste0("figs/out/", filename, ".csv")
   
@@ -55,7 +55,7 @@ DiagnoseModel <- function(mod){
       # gridExtra::grid.arrange(grobs = autoplot(x, which = 1:2, na.action="fail")@plots,
       #                            top = x$formula)
       autoplot(x, which = 1:2, na.action="fail") + labs(caption = x$formula)
-      )
+    )
   })
   
   ## trying to shove in functionality for the zeroinfl models
