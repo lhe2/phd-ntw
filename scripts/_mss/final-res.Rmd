@@ -841,7 +841,7 @@ dfs_viz$eggs %>%
 
 # per cage
 dfs_stats$eggs_all %>%
-  filter(year != 2024, trt.pop == "lab") %>%
+  filter(year != 2024) %>%
   group_by(year, trt.minT, trt.mate, cage) %>%
   summarise(perc.f = sum(n.f),
             perc.m = sum(n.m),
@@ -851,7 +851,7 @@ dfs_stats$eggs_all %>%
 
 # per trt combo
 dfs_stats$eggs_all %>%
-  filter(year != 2024, trt.pop == "lab") %>% 
+  filter(year != 2024) %>% 
   mutate(rat = n.f/n.m,
          tot.ads = n.f + n.m) %>%
   group_by(year,  trt.minT, trt.mate) %>%

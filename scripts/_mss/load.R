@@ -167,7 +167,7 @@ dfs_viz <- list_modify(
     ## (not that relevant if all bugs are lab)
     # mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
     #                             TRUE ~ as.character(mate.pop))) %>%
-    # select(-c(mate.col, trt.pop, mate.pop)) %>% 
+    select(-c(mate.col, trt.pop, mate.pop)) %>%
     # calc SS
     CalcTentCounts() %>%
     group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
@@ -196,7 +196,9 @@ dfs_stats[c("eggs_all", "eggs_expt")] <- dfs_stats[c("eggs_all", "eggs_expt")] %
       filter(mate.pop != "field", mate.type != "virgin", # drop 2024 stuff
              trt.pop != "col", # drop colony-only tents
              ) %>% 
-      select(-c(mate.col, mate.pop, trt.pop)) %>% 
+      select(-c(mate.col, mate.pop, 
+                trt.pop # not needed once everything is lab
+                )) %>% 
       CalcTentCounts() %>%
       mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
                                   mate.trt == 433 ~ 33,
