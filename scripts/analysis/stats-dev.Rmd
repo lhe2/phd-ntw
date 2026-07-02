@@ -65,7 +65,8 @@ dfs_imported <- list(
              ) %>%
       mutate(is.pup = case_when(is.pup == 2 ~ 1,
                                 TRUE ~ is.pup), # treat LPI as pup
-             across(c("year", "trt.minT", "trt.type", "trt"), as.factor))
+             across(c("year", "trt.minT", "trt.type", "trt"), as.factor),
+             pop = factor(pop, levels = c("lab", "field")))
   })
 ```
 
@@ -284,6 +285,21 @@ mods_puptime %>%
   rbindlist(fill = TRUE, idcol = "subset") %>%
   WriteModelResultsCsv("pup-time_dredge")
   
+```
+# # longevity
+
+```{r}
+# include sex? parse the mating? drop 2024? (same qns as the viz)
+
+mods <- list(
+  m1 = lm(tt.long ~ year*pop*trt.minT*sex,
+          data = dfs_imported$expt),
+  m2 = lm(tt.long ~ year*pop*trt.minT*sex,
+          data = dfs_imported$expt %>% filter(if.mated == 1))
+)
+
+anova(mods$m1) # can drop if looking at everyone
+anova(mods$m2) # sex matters if looking at mated bugs only...
 ```
 # # misc
 
