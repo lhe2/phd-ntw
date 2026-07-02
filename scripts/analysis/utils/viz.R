@@ -58,4 +58,13 @@ CalcErrHt <- function(y, pct = 0.07){
   max(y) * pct
 }
 
+### PALETTES ###
 
+## in development -- see this (https://stackoverflow.com/questions/43440068/ggplot2-fix-colors-to-factor-levels)
+# df$color <- as.factor(df$color, levels = c(1, 0))
+# cbPallete <- c("1"= "green", "0"="red")
+# 
+# ggplot(data = df) + geom_bar(x = df$x, 
+#                              y = df$y,
+#                              fill = df$color) +
+#   scale_fill_manual(values = cbPallete)

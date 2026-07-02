@@ -112,7 +112,6 @@ CalcTentSS <- function(grpd_df){
     ungroup()
 }
 
-
 #  ## TODO FUTZING CalcTentsSS: sth is wrong with the p_hatch lol
 #.CalcTentsSS_testing <- function(x){
 # dfs_tidy$tents %>% # for testing -- should get 37 rows
