@@ -22,6 +22,37 @@ GetModelResults <- function(x){
 
 
 # (WIP) write csv of anova results
+# TODO WIP: gets clunky if passing in a binded list df lol bc of the rownames...
+
+## USAGE (WriteModDf)
+# for similar model outputs that should be grouped together (via rbindlist),
+# create dfs with the subset name + rownames in prep for WriteModCsv
+# (doesnt work for dredged results lol)
+## ARGS
+# mod: ok to pass in dot or actual model
+# subsetname: name of the subset as a string
+
+# WriteModelResultsDf <- function(mod, subsetname){
+#   df <- anova(mod, test = "Chisq") %>%
+#     as.data.frame() %>%
+#     mutate(subset = {{subsetname}},
+#            vars = rownames(.),
+#            .before = 1)
+#   
+#   return(df) # dont know if need this...
+# }
+
+# # OR do this:
+# writeresults <- function(modlist){
+#   modlist %>%
+#     lapply(., (x){
+#       anova(mod, test = "Chisq") %>%
+#         as.data.frame() %>%
+#         mutate(vars = rownames(.), .before = 1)
+#     })
+# } # then mutate subsetnames lol and rbind
+
+
 ## USAGE (WriteModCsv)
   # writes csvs of outputs for single model objects or for bound lists of multiple models.
 ## ARGS
