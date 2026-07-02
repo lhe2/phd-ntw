@@ -141,3 +141,135 @@ CalcSupProps_def <- function(wide_df){
     PrepSupProps() %>%
     CalcSupProps()
 }
+
+
+# UNIFIED FNS -------------------------------------------------------------
+
+# works with steps = "all"
+# to check: steps = "prep", "calc"
+# @params: type = larval or adult
+# @params: steps = prep, calc, or all
+
+## calc dev ss -------------------------------------------------------------
+# .CalcDevSS2 <- function(long_df, type, steps){
+#   import_df <- long_df
+#   
+#   .PrepSS <- function(df){
+#     if (type == "larval") {
+#       grpd_df <- df %>%
+#         filter(pop != "col",
+#                !is.na(diet), # some random bugs...
+#                !instar %in% c("eclose", "long"
+#                               #"exit", # NOTE breaks groups. too many unique exit dates
+#                               #"fridge", # NOTE omit for now. not that useful
+#                )) %>%
+#         group_by(across(c(year, pop, diet, starts_with("trt"), instar)))
+#       
+#       return(grpd_df)
+#     } else if (type == "adult") {
+#       grpd_df <- df %>%
+#         filter(instar %in% c("pupa", "eclose", "long"
+#                              #"fridge"
+#         )) %>%
+#         group_by(across(c(year, pop, diet, starts_with("trt"), instar))) %>%
+#         mutate(mass = mass/1000)
+#       
+#       return(grpd_df)
+#     }
+#   }
+#   
+#   .CalcDf <- function(df){
+#     ss_df <- df %>%
+#       mutate(logmass = log(mass),
+#              #mass_g = mass/1000, # only want to do this for adults tho lol..
+#              devrate = 1/tt) %>%
+#       summarise(n = n(),
+#                 across(.cols = c(mass, logmass, #mass_g, 
+#                                  tt, devrate),
+#                        .fns = list(avg = ~ mean(.x, na.rm = TRUE),
+#                                    se = se),
+#                        .names = "{.fn}.{.col}")) %>%
+#       ungroup()
+#     
+#     return(ss_df)
+#   }
+#   
+#   if (steps == "prep") {
+#     import_df %>% .PrepSS()
+#   } else if (steps == "calc") {
+#     import_df %>% .CalcSS()
+#   } else if (steps == "all") {
+#     import_df %>% .PrepSS() %>% .CalcSS()
+#   }
+#   
+# }
+
+## calc props ---------------------------------
+# UNTESTED
+# @params: type = "sup" (or NA?)
+# @params: steps = calc, prep, all
+# .CalcSurvProps2 <- function(wide_df, type, steps){
+#   import_df <- wide_df
+#   
+#   .PrepProps <- function(df){
+#     grpd_df <- df %>%
+#       filter(is.pup != 2, # drop culled
+#              pop != "col",
+#              !is.na(diet)) %>% 
+#       group_by(across(c(year, pop, diet, starts_with("trt"))))
+#     
+#     return(grpd_df)
+#   }
+#   
+#   .CalcProps <- function(df){
+#     if(type == "sup") {
+#       ss_df <- df %>%
+#       summarise(N = n(),
+#                 surv_tot = sum(is.pup == 1),
+#                 surv_0th = sum(is.pup == 1 & is.na(sup)),
+#                 surv_6th = sum(is.pup == 1 & sup == 6, na.rm = TRUE),
+#                 surv_7th = sum(is.pup == 1 & sup == 7, na.rm = TRUE),
+#                 surv_8th = sum(is.pup == 1 & sup == 8, na.rm = TRUE),
+#                 died_tot = sum(is.pup == 0),
+#                 died_0th = sum(is.pup == 0 & is.na(sup)),
+#                 died_6th = sum(is.pup == 0 & sup == 6, na.rm = TRUE),
+#                 died_7th = sum(is.pup == 0 & sup == 7, na.rm = TRUE),
+#                 died_8th = sum(is.pup == 0 & sup == 8, na.rm = TRUE),
+#       ) %>%
+#         pivot_longer(cols = starts_with(c("surv", "died")),
+#                      names_to = c("status", ".value"),
+#                      names_sep = "_") %>%
+#         mutate(not = N - tot,
+#                across(c("not", "0th", "6th", "7th", "8th"), ~ ./N,
+#                       .names = "p_{.col}")) %>%
+#         rename_with(~ paste0("n_", .x), matches("^(not)|^(\\dth)")) %>%
+#         pivot_longer(cols = starts_with(c("n_", "p_")),
+#                      names_to = c(".value", "sup"), names_sep = "_") %>%
+#         mutate(sup = gsub(sup, pattern = "th", replacement = ""),
+#                sup = case_when(sup == "not" & status == "surv" ~ "died",
+#                                sup == "not" & status == "died" ~ "survived",
+#                                TRUE ~ as.character(sup))
+#         ) %>%
+#         ungroup()
+#       
+#       return(ss_df)
+#       
+#     } else {
+#       ss_df <- df %>%
+#         summarise(n = n(),
+#                   prop.pup = sum(is.pup == 1)/n,
+#                   se.pup = seprop(prop.pup, n)) %>%
+#         ungroup()
+#       
+#       return(ss_df)
+#     }
+#   }
+#   
+#   if(steps == "prep"){
+#     import_df %>% .PrepProps()
+#   } else if (steps == "calc") {
+#     import_df %>% .CalcProps()
+#   } else if (steps == "all"){
+#     import_df %>% .PrepProps() %>% .CalcProps()
+#   }
+# }

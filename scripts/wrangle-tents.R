@@ -100,3 +100,21 @@ CalcTentSS <- function(grpd_df){
 }
 
 
+# df prep -----------------------------------------------------------------
+
+.GroupDefault <- function(x){
+  x <- x %>%
+    group_by(across(c(year, star??elits_with(c("mate", "trt", "is")))))
+  
+  if(rlang::has_name(x, "cage")){
+    x <- x %>%
+      group_by(across(cage), .add = TRUE)
+  }
+}
+
+#' BLEHH this doesnt rly work.
+#' by default, the cage-level SS needs to have "cage" anyway lol
+#' for mate type combo-level, SS needs to omit the "trt.ishs" 
+#'  (only cares about about `mate.*` and `trt.*` cols.)
+#' and i think by default i'll always have the year in it anyway lol.
+#' .. should see what viz-tents.Rmd actually needs lolll...
