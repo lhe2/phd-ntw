@@ -816,71 +816,6 @@ dfs_viz$eggs %>%
 
 ```
 
-# ## (OLD) fitness 
-
-## utils
-```{r}
-# stats dfs
-dfs <- list(
-  all = dfs_stats$eggs_expt,
-  # just analyse by yr..
-  y23 = dfs_stats$eggs_expt %>% filter(year == 2023),
-  y25 = dfs_stats$eggs_expt %>% filter(year == 2025)
-)
-```
-
-## # eggs laid
-
-PROBABLY this is better just as a table lol
-also how tf to do stats when only some trts have eggs and some dont? (maybe just do separate years)
-
-```{r main fig eggs laid}
-pd = position_dodge(0.35)
-
-.plotfn <- function(x){
-  x %>%
-    Plot_Fit() +
-    aes(#y = avg.coll.perf, 
-      y = avg.sqrt.coll.perf, 
-    ) +
-    geom_point(size = 2, position = pd) +
-    geom_line(position = pd, show.legend = TRUE) +
-    # very overwhelming w error bars lol
-    # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
-    #                   ymin = avg.coll.perf - se.coll.perf,),
-    #               lty = "solid", width = 0.25) +
-    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
-                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
-                  lty = "solid", width = 0.5, position = pd,
-                  show.legend = FALSE) +
-    # geom_text(aes(label = n.f.total),
-    #           vjust = -0.25, hjust = -0.25, position = "jitter",
-    #           show.legend = FALSE) +
-    # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
-    #           vjust = -0.5, hjust = -0.5, #position = "jitter",
-    #           show.legend = FALSE
-    #           ) +
-    labs(#caption = "mean±se; lab only; N = # F",
-      #y = "sqrt [eggs laid per female]", 
-      title = "sqrt [eggs laid per female]"
-    )
-}
-
-p <- list_modify(
-  p,
-  eggs_laid = 
-    dfs_viz$eggs %>%
-    .plotfn() +
-    facet_grid(~year),
-  
-  eggs_laidnoyr = dfs_viz$eggs_noyr %>%
-    .plotfn()
-)
-
-p$eggs_laid
-p$eggs_laidnoyr
-```
-
 ### stats (WIP)
 ```{r stats eggs laid}
 # READING IN PROGRESS... see tents-stats.Rmd
@@ -890,60 +825,13 @@ mods <- list(
 )
 ```
 
-## # eggs hatched
-
-PROBABLY this is just better as a table
-
-```{r main fig eggs hatched}
-.plotfn <- function(x){
-  x %>%
-    Plot_Fit() +
-    aes(y = p.hatch) +
-    geom_errorbar(aes(ymax = p.hatch + se.hatch,
-                      ymin = p.hatch - se.hatch,),
-                  lty = "solid", width = 0.25, show.legend = FALSE) +
-    # geom_text(aes(label = n.total.coll),
-    #           vjust = -0.5, hjust = -0.5, position = "jitter",
-    #           show.legend = FALSE) +
-    # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
-    #       vjust = -0.5, hjust = -0.5, size = 3
-    #       #position = "jitter"
-    #       ) +
-    #geom_point(aes(size=sqrt(n.total.coll)) +, # looks dumb
-    geom_point(size = 2) +
-    geom_line() +
-    labs(#caption = "lab only; overall hatch prop. per mating combination",
-      #y = "proportion eggs hatched",
-      title = "proportion eggs hatched")
-}
-
-p <- list_modify(
-  p,
-  eggs_hatch = 
-    dfs_viz$eggs %>%
-    .plotfn() +
-    facet_wrap(~ year),
-  
-    eggs_hatchnoyr = 
-    dfs_viz$eggs_noyr %>%
-    .plotfn()
-)
-
-p$eggs_hatch
-p$eggs_hatchnoyr # do not combine years... LOL
-```
-
-## results table
+### results table
 ```{r}
 # TODO drop the colony F + expt M tents (from 2025?) but 
 # this wasnt tracked in 2023...
 dfs_viz$eggs %>%
   select(c(year, trt.minT, trt.mate, 
            starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg results")
-
-dfs_viz$eggs_noyr %>%
-  select(c(year, trt.minT, trt.mate, 
-           starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg-results_noyr")
 ```
 
 ## sample sizes
@@ -975,26 +863,6 @@ dfs_stats$eggs_all %>%
             tot.coll = sum(n.coll),
             tot.hatch = sum(n.hatch)) %>% View() #%>% ResToCsv("tents/n/pertrt")
 ```
-
-
-## collated main fig
-```{r collated eggs viz}
-# yrs faceted
-p$eggs_laid + p$eggs_hatch +
-  plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.title.y = element_blank(),
-        legend.position = "bottom")
-
-# years combined
-p$eggs_laidnoyr + p$eggs_hatchnoyr +
-  labs(caption = "years combined") +
-  plot_layout(axes = "collect", guides = "collect") &
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.title.y = element_blank(),
-        legend.position = "bottom")
-```
-
 
 # ## dump (ref only)
 

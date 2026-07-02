@@ -52,15 +52,16 @@ dfs_tidy$tents <- merge(dfs_tidy$tents, df,
                         by = c("cage", "year"))
 
 # prep tents
-# some default dfs grouped by yr
+# some default dfs grouped by yr, then other variables of interest
 dfs_tents <- list(
   # count dfs
   n_pertent = dfs_tidy$tents %>%
     CalcTentCounts(),
   
+  # testing effect of col/lab: drop trt.fridge otherwise get weird dups
   ## treat col like lab bugs
   n_nocol = dfs_tidy$tents %>%
-    select(-mate.col) %>% 
+    select(-c(mate.col, trt.fridge)) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))) %>%
     CalcTentCounts(),
@@ -68,12 +69,13 @@ dfs_tents <- list(
   # viz dfs
   ## treat all col like lab expt bugs
   ss_nocol = dfs_tidy$tents %>%
-    select(-mate.col) %>% 
+    select(-c(mate.col, trt.fridge)) %>% 
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop))),
   
   ## treats col like lab expt bugs, but notes which sex was the col
   ss_matecol = dfs_tidy$tents %>% 
+    select(-trt.fridge) %>%
     mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
                                 TRUE ~ as.character(mate.pop)),
            mate.col = na_if(mate.col, "both")),
@@ -82,6 +84,7 @@ dfs_tents <- list(
   ss_allcol = dfs_tidy$tents
 )
 
+# calc ss
 dfs_tents[3:5] <- dfs_tents[3:5] %>%
   lapply(., \(x){
     x %>%
@@ -89,6 +92,19 @@ dfs_tents[3:5] <- dfs_tents[3:5] %>%
       group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
       CalcTentSS()
   })
+
+dfs_tents <- list_modify(
+  dfs_tents,
+  ss_noyr = dfs_tidy$tents %>%
+    select(-c(mate.col, trt.fridge)) %>% 
+    mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
+                                TRUE ~ as.character(mate.pop))) %>%
+    filter(trt.pop != "col") %>% # drop colony-only tents
+    CalcTentCounts() %>%
+    group_by(across(c(starts_with(c("mate", "trt"))))) %>%
+    CalcTentSS() %>%
+    mutate(year = NA) # for lapply later
+)
 
 # add other cols; make into factors for graphing ease
 dfs_tents <- dfs_tents %>%
@@ -292,15 +308,15 @@ figuring out how to accomodate...
            #mate.trt == 260
            ) %>%
     ###############################
-   ggplot(aes(y = p.hatch, x = n.total.coll,
+   ggplot(aes(y = avg.p.hatch.pop, x = n.total.coll,
              col = mate.trt, 
              shape = mate.col
              )) +
     geom_point(size = 2) +
     geom_text(aes(label = n.f.total),
               hjust = 1.25, vjust = -1.3, show.legend = FALSE) + 
-    geom_errorbar(aes(ymax = p.hatch + se.hatch,
-                      ymin = p.hatch - se.hatch),
+    geom_errorbar(aes(ymax = avg.p.hatch.pop + se.p.hatch.pop,
+                      ymin = avg.p.hatch.pop - se.p.hatch.pop),
                   width = CalcErrWd(x = dfs_tents$ss_nocol$n.total.coll,
                                     pct = 0.025)
     ) +
@@ -450,11 +466,11 @@ dfs_tents$n_pertent %>%
 # both yrs
 dfs_tents$ss_nocol %>%
   FilterForLabEggs() %>%
-  ggplot(aes(y = p.hatch, x = n.total.coll, 
+  ggplot(aes(y = avg.p.hatch.pop, x = n.total.coll, 
              col = mate.trt, shape = mate.istrt)) +
   geom_point() +
-  geom_errorbar(aes(ymax = p.hatch + se.hatch,
-                    ymin = p.hatch - se.hatch),
+  geom_errorbar(aes(ymax = avg.p.hatch.pop + se.p.hatch.pop,
+                    ymin = avg.p.hatch.pop - se.p.hatch.pop),
                 width = 100) +
   # x err bar is too small to notice for 2025
   facet_wrap(mate.type ~ year) +
@@ -470,11 +486,11 @@ dfs_tents$ss_nocol %>%
         mutate(mate.istrt = case_when(mate.istrt == "both" ~ "*F + *M",
                                mate.istrt == "f" ~ "*F + M",
                                mate.istrt == "m" ~ "F + *M")) %>%
-    ggplot(aes(y = p.hatch, x = n.total.coll,
+    ggplot(aes(y = avg.p.hatch.pop, x = n.total.coll,
                col = mate.trt, shape = mate.istrt)) +
     geom_point(size = 2) +
-    geom_errorbar(aes(ymax = p.hatch + se.hatch,
-                      ymin = p.hatch - se.hatch),
+    geom_errorbar(aes(ymax = avg.p.hatch.pop + se.p.hatch.pop,
+                      ymin = avg.p.hatch.pop - se.p.hatch.pop),
                   width = CalcErrWd(x = dfs_tents$ss_nocol$n.total.coll, 
                                     pct = 0.05)) +
     # x err bar is too small to notice so omit
@@ -501,6 +517,109 @@ dfs_tents$ss_nocol %>%
   .plotfn() +
   labs(caption = "2025; N = # females")
 ```
+
+## ignore yr
+do Nawt not combine the yrs (i.e. need to parse!!!)
+
+```{r}
+pd = position_dodge(0.35)
+
+.plotfn <- function(x){
+  x %>%
+    filter(mate.pop != "field", mate.type != "virgin",
+           trt.pop != "col") # drop colony-only tents
+  %>%
+    ggplot(aes(x = trt.minT,
+               lty = trt.mate, 
+               shape = trt.mate,
+               group = interaction(trt.mate, mate.pop),
+               col = trt.mate))
+}
+```
+
+
+```{r}
+# eggs laid
+.plotfn2 <- function(){
+  list(
+    aes(y = avg.sqrt.coll.perf,),
+    geom_point(size = 2, position = pd),
+    geom_line(position = pd, show.legend = TRUE),
+  # very overwhelming w error bars lol
+    # geom_errorbar(aes(ymax = avg.coll.perf + se.coll.perf,
+    #                   ymin = avg.coll.perf - se.coll.perf,),
+    #               lty = "solid", width = 0.25) +
+    geom_errorbar(aes(ymax = avg.sqrt.coll.perf + se.sqrt.coll.perf,
+                      ymin = avg.sqrt.coll.perf - se.sqrt.coll.perf),
+                  lty = "solid", width = 0.5, position = pd,
+                  show.legend = FALSE),
+    # geom_text(aes(label = n.f.total),
+    #           vjust = -0.25, hjust = -0.25, position = "jitter",
+    #           show.legend = FALSE) +
+    # geom_text(aes(label = paste0(n.cages.total, "C, ", n.f.total, "F")),
+    #           vjust = -0.5, hjust = -0.5, #position = "jitter",
+    #           show.legend = FALSE
+    #           ) +
+    labs(#caption = "mean±se; lab only; N = # F",
+      #y = "sqrt [eggs laid per female]", 
+      title = "sqrt [eggs laid per female]"
+    )
+ 
+)
+  }
+
+dfs_tents$ss_nocol %>%
+  filter(mate.pop != "field", mate.type != "virgin") %>%
+  View()
+  .plotfn() +
+  .plotfn2() +
+  facet_grid(~ year)
+
+dfs_tents$ss_noyr %>%
+  .plotfn() +
+  .plotfn2()
+
+```
+
+```{r}
+# eggs hatched
+
+.plotfn2 <- function(){
+  list(
+      aes(y = avg.p.hatch.pop),
+        geom_point(),
+  geom_line(),
+    geom_errorbar(aes(ymax = avg.p.hatch.pop + se.p.hatch.pop,
+                      ymin = avg.p.hatch.pop - se.p.hatch.pop,),
+                  lty = "solid", width = 0.25, show.legend = FALSE),
+    # geom_text(aes(label = n.total.coll),
+    #           vjust = -0.5, hjust = -0.5, position = "jitter",
+    #           show.legend = FALSE) +
+    # geom_text(aes(label = paste0(n.cages.total, "C,", n.f.total, "F")),
+    #       vjust = -0.5, hjust = -0.5, size = 3
+    #       #position = "jitter"
+    #       ) +
+    #geom_point(aes(size=sqrt(n.total.coll)) +, # looks dumb
+    labs(#caption = "lab only; overall hatch prop. per mating combination",
+      #y = "proportion eggs hatched",
+      title = "proportion eggs hatched")
+  )
+  
+}
+
+dfs_tents$ss_nocol %>%
+  .plotfn() +
+  .plotfn2() +
+  facet_grid(~ year)
+
+dfs_tents$ss_noyr %>%
+  .plotfn() +
+  .plotfn2()
+
+
+```
+
+
 
 # # eggs laid
 
