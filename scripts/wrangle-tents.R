@@ -48,6 +48,19 @@ CalcTentCounts <- function(raw_df){
 #' 
 CalcTentSS <- function(grpd_df){
   
+  # # TODO TROUBLESHOOTING:
+  # # trying to get it so can supply a dots argument (e.g."yr") and count_df
+  # # but have a default grouping (across(mate, trt))
+  # if(!missing(...)) {
+  #   grp <- as.character(!!!rlang::enquos(...))
+  #   
+  #   grpd_df <- count_df %>%
+  #     group_by(across(c(grp, starts_with(c("mate", "trt")))), .add = TRUE)
+  # } else {
+  #   grpd_df <- count_df %>%
+  #     group_by(across(starts_with(c("mate", "trt"))))
+  # }
+  
   grpd_df %>%
     # # troubleshooting: should get 27 rows (w/ yr)
     # dfs_tidy$tents %>%
@@ -99,6 +112,61 @@ CalcTentSS <- function(grpd_df){
     ungroup()
 }
 
+
+#  ## TODO FUTZING CalcTentsSS: sth is wrong with the p_hatch lol
+#.CalcTentsSS_testing <- function(x){
+# dfs_tidy$tents %>% # for testing -- should get 37 rows
+#   .CalcTentCounts() %>% #View() # metrics at individ cage level
+#   group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
+#   summarise(
+#     # grand totals
+#     ## see notes on calc'ing tent duration
+#     #n.cages.total = n(), # TODO should be n.total.cages to match?
+#     n.total_cages = n(),
+#     #n.f.total = sum(n.f), # TODO should be n.total.f to match?
+#     n.total_f = sum(n.f),
+#     n.total_coll = sum(n.coll),
+#     n.total_hatch = sum(n.hatch),
+#     
+#     # eggs collected
+#     ## these look rly bad compared to the daily level LOL
+#     avg_coll.total = mean(n.coll),
+#     se_coll.total = se(n.coll),
+#     avg_coll.perf = mean(n.coll.perf),
+#     se_coll.perf = se(n.coll.perf),
+#     ## transformed
+#     avg_sqrt.coll.perf = mean(sqrt.coll.perf),
+#     se_sqrt.coll.perf = se(sqrt.coll.perf),
+#     avg_sqrt.hatch.perf = mean(sqrt.hatch.perf),
+#     se_sqrt.hatch.perf = se(sqrt.hatch.perf),
+#     
+#     # eggs hatched (overall count)
+#     avg_hatch = mean(n.hatch),
+#     se_hatch = se(n.hatch),
+#     # (doesnt rly make sense to have count per f?)
+#     
+#     # eggs hatched (props)
+#     #p.hatch.perc = n.hatch/n.coll,
+#     ## do earlier -- will get dups from prop.hatch per tent if not sum()'d beforehand
+#     ## per cage for each trt group
+#     avg_p.hatch.perc = mean(p.hatch.perc, na.rm = TRUE), # does this mess up the n.cages lol
+#     se_p.hatch.perc = seprop(avg_p.hatch.perc, n.total_cages#n.cages.total
+#     ),
+#     ## per trt group
+#     p.hatch = n.total_hatch/n.total_coll,
+#     se_p.hatch = seprop(p.hatch, n.total_coll),
+#     # until n.viable is handled properly, n.coll = n.viable
+#     # p.hatch = sum(n.hatch)/sum(n.viable), 
+#     # se.hatch = seprop(p.hatch, sum(n.viable))
+#   ) %>%
+#   #filter(mate.type == "within", mate.pop == "lab", mate.trt == 426) %>%
+#   mutate(across(.cols = everything(), 
+#                 ~ replace(.x, is.nan(.x), NA))) %>% #View()
+#   pivot_longer(#starts_with(c("n", "avg", "se")),
+#     contains("_"),
+#     names_to = c(".value", "response"),
+#     names_sep = "_") %>% View()
+#}
 
 # df prep -----------------------------------------------------------------
 
