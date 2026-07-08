@@ -61,11 +61,13 @@ dfs <- list(
   
   # use for hatching
   mated = dfs_tidy$tents %>% #dfs$tents
-    FilterForLabEggs(),
+    filter(mate.pop != "field",
+           mate.type != "virgin"),
   
   matedexptl = dfs_tidy$tents %>% #dfs$exptal
-    FilterForLabEggs() %>%
-    filter(mate.trt != 260)
+    filter(mate.pop != "field",
+           mate.type != "virgin",
+           mate.trt != 260)
 )
 
 # calc per tent SS and add cols/format

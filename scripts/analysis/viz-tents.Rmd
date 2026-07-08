@@ -465,7 +465,8 @@ dfs_tents$n_pertent %>%
 ```{r}
 # both yrs
 dfs_tents$ss_nocol %>%
-  FilterForLabEggs() %>%
+  #FilterForLabEggs() %>%
+  filter(trt.pop != "col", mate.type != "virgin") %>% #View()
   ggplot(aes(y = avg.p.hatch.pop, x = n.total.coll, 
              col = mate.trt, shape = mate.istrt)) +
   geom_point() +
@@ -473,7 +474,7 @@ dfs_tents$ss_nocol %>%
                     ymin = avg.p.hatch.pop - se.p.hatch.pop),
                 width = 100) +
   # x err bar is too small to notice for 2025
-  facet_wrap(mate.type ~ year) +
+  facet_wrap(year ~ interaction(mate.type, trt.pop)) +
   #labs(x = "total eggs collected") +
   scale_color_manual(values = p_scales$cols_trt)
 ```
