@@ -11,15 +11,17 @@ stats analyses for ntw 2025
 here::i_am("scripts/analysis/stats-tents.Rmd")
 library(here)
 
-library(lme4) # glm, lm, glmer
+library(lme4) # glmer, glmer.nb (mixed effs)
 #library(lmerTest) # lmer
 ## lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 #library(MuMIn) # dredge (nested model comparisons)
 library(pscl) # zeroinfl
 library(MASS) # glm.nb
 
-library(ggfortify) # autoplot (diagnosing)
 library(tidyverse)
+
+select <- dplyr::select
+  ## if MASS:select is misbehaving
 
 library(conflicted)
 conflicts_prefer(
@@ -27,9 +29,6 @@ conflicts_prefer(
   dplyr::filter(),
   dplyr::select()
 )
-
-# select <- dplyr::select
-  ## if MASS:select is misbehaving
 
 # library(survival) # for fitting 
 # library(survminer) # for plotting

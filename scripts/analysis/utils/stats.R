@@ -4,6 +4,7 @@
 # checks if the object being passed in is a list or not
 # (i.e. list of fitted model objs or single obj -- converts to list if not)
 
+library(ggfortify) # autoplot (diagnosing)
 
 # OUTPUT ------------------------------------------------------------------
 
@@ -77,7 +78,7 @@ DiagnoseModel2 <- function(mod){
   mod %>% lapply(., \(x){
     fitted <- fitted(x)
     res <- resid(x)
-    
+
     ## resid vs fitted
     plot(fitted, res)
     lines(lowess(fitted, res), col = "red")
