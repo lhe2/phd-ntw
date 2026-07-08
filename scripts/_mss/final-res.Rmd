@@ -186,6 +186,14 @@ mods <- list(
            family = "binomial", data = df)
 )
 
+
+drop1(mods$m1, scope = ~year + pop + trt.minT, test = "LRT")
+drop1(mods$m1, test = "LRT")
+drop1(mods$m1, .~., test = "LRT")
+
+drop1(mods$m1a, test = "LRT")
+# can drop the 3way...
+
 AIC(mods$m1, mods$m1a) 
 anova(mods$m1, mods$m1a, test = "Chisq")
 # including mass is better, per anova + aic
@@ -263,7 +271,7 @@ dfs_viz$wide %>%
             wand = sum(!is.na(jdate.wander), na.rm = TRUE),
             pup = sum(is.pup == 1, na.rm = TRUE),
             ec = sum(is.ec == 1, na.rm = TRUE),
-            LPI = sum(is.pup == 2, na.rm = TRUE)) #%>% ResToCsv("dev/N-surv")
+            LPI = sum(is.pup == 2, na.rm = TRUE)) #%>% ResToCsv("dev/n/surv")
 ```
 
 
@@ -686,19 +694,22 @@ p$time_pup+ p$time_ec +
 
 #ResToFig("supp/dev-time")
 ```
+
 ## sup
 ```{r}
 dfs_viz$long %>%
-  filter(is.pup > 0) %>%
+  filter(is.pup > 0,
+         !is.na(pop)) %>%
   group_by(is.sup) %>%
   CalcDevSS_ad() %>% 
   filter(instar == "pupa") %>% #View()
   .plotfn() +
-  aes(alpha = as.factor(is.sup),
-      group = interaction(trt.type, pop, is.sup)) +
-  scale_alpha_manual(values = c(`0` = 1, `1` = 0.7)) +
-  facet_grid(#is.sup
-             ~ year)
+  #aes(alpha = as.factor(is.sup)) +
+  geom_line(aes(group = interaction(trt.type, pop))) +
+  #scale_alpha_manual(values = c(`0` = 1, `1` = 0.7)) +
+  facet_grid(is.sup ~ year, labeller = labeller(is.sup = c("0" = "5 instars",
+                                                           "1" = "6+ instars"))) +
+  labs(y = "time to pupation (days)")
 ```
 
 
