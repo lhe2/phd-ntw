@@ -158,7 +158,7 @@ source(here("scripts/R/tidy-tents.R"))
 
 dfs_viz <- list_modify(
   dfs_viz,
-  eggs = dfs_tidy$tents %>% 
+  eggs_n = dfs_tidy$tents %>% 
     # pre-filter pops
     filter(trt.pop != "col", # drop colony-only tents
            mate.pop != "field", mate.type != "virgin" # drop field, 2024 stuff, unmated tents
@@ -168,19 +168,31 @@ dfs_viz <- list_modify(
     # mutate(mate.pop = case_when(mate.pop == "col" ~ "lab",
     #                             TRUE ~ as.character(mate.pop))) %>%
     select(-c(mate.col, trt.pop, mate.pop)) %>%
-    # calc SS
-    CalcTentCounts() %>%
+    CalcTentCounts()
+)
+
+dfs_viz <- list_modify(
+  dfs_viz,
+  eggs_ss = dfs_viz$eggs_n %>%
     group_by(across(c("year", starts_with(c("mate", "trt"))))) %>%
-    CalcTentSS() %>%
-    # make factors
+    CalcTentSS()
+    )
+
+
+# make factors
+dfs_viz[c("eggs_n", "eggs_ss")] <- dfs_viz[c("eggs_n", "eggs_ss")] %>%
+  lapply(., \(x){
+    x %>%
     mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
                                 mate.trt == 433 ~ 33,
                                 TRUE ~ 26),
            across(c("year", "mate.trt", starts_with("trt")), as.factor),
            mate.type = factor(mate.type, levels = c("within", "between")),
            trt.mate = factor(trt.mate, levels = c("neither", "both", "f", "m"))
-           )
-  )
+    )
+  })
+    
+
 
 # stats dfs
 dfs_stats <- list_modify(
