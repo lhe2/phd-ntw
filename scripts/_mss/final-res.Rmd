@@ -703,9 +703,9 @@ dfs_viz$long %>%
 
 
 
-# (4) longevity
+# (4) lifespan
 
-## [>] longevity
+## lifespan
 
 ```{r}
 dfs_viz$long %>%
@@ -725,13 +725,15 @@ dfs_viz$long %>%
   #facet_grid(sex~year, labeller = labeller(sex = c(p_scales$facs_sex))) +
   facet_wrap(~ year) +
   labs(y = "lifespan (days)")
+#ResToFig("dev-long")
 ```
 
-### [>] stats
+### stats
 do years separately!
 ```{r}
 # df prep
 dfs <- list(
+  all = dfs_stats$dev_all,
   y23 = dfs_stats$dev_expt %>% filter(year == 2023),
   y25 = dfs_stats$dev_expt %>% filter(year == 2025)
 ) %>%
@@ -743,11 +745,21 @@ dfs <- list(
 
 ```{r}
 # 2023 longev
+
+# check if ctrls and expt are different
+anova(lm(tt.long ~ pop*trt.type, data = filter(dfs$all, year == 2023)))
+anova(lm(tt.long ~ pop*trt, data = filter(dfs$all, year == 2023)))
+## nope!
+
+# ANOVA
 mods <- list(
   m1 = lm(tt.long ~ pop*trt.minT, data = dfs$y23),
   m1a = lm(tt.long ~ pop*trt.minT*sex, data = dfs$y23)
 )
 
+add1(mods$m1, scope = ~ . + sex + mass.eclose, test = "F")
+
+#add1(mods$m1a, scope = formula(mods$m1a)[-2], test = "F")
 anova(mods$m1, mods$m1a) # use the one w/o sex
 
 mods <- list_modify(
@@ -762,11 +774,19 @@ anova(mods$m1) #%>% ResToCsv("dev/anova/long-23") # nothin matters!!
 
 ```{r}
 # 2025 longev
+
+# check if ctrls and expt are different
+anova(lm(tt.long ~ pop*trt.type, data = filter(dfs$all, year == 2025)))
+anova(lm(tt.long ~ pop*trt, data = filter(dfs$all, year == 2025))) # yes, but prob bc of unbalanced groups
+## so nope!
+
+# ANOVA
 mods <- list(
   m1 = lm(tt.long ~ pop*trt.minT, data = dfs$y25),
   m1a = lm(tt.long ~ pop*trt.minT*sex, data = dfs$y25)
 )
 
+add1(mods$m1, scope = ~ . + sex + mass.eclose, test = "F")
 anova(mods$m1, mods$m1a)  # use the one w/o sex
 
 mods <- list_modify(
@@ -779,7 +799,6 @@ anova(mods$m1, mods$m2) # ec mass doesnt improve model
 anova(mods$m1) #%>% ResToCsv("dev/anova/long-25") # minT matters...!!
 ```
 
-
 ## sample sizes
 ```{r sample sizes longevity, eval=FALSE}
 dfs_viz$long %>%
@@ -787,32 +806,107 @@ dfs_viz$long %>%
          instar == "long",
          year != 2024,
          if.mated == 1) %>%
-  # TODO include sex? see stats first
   CalcDevSS_ad() %>% 
-  select(c(year, pop, trt.minT, trt.type, n,
+  select(c(year, pop, trt, n,
            ends_with("tt"))) #%>% ResToCsv("dev/ss/timeto-longevity")
 ```
 
-# ## (5) fitness
+# ## (5) fitness (WIP)
 
-```{r}
-dfs_viz$eggs %>%
-    pivot_longer(cols = starts_with(c("avg", "se")),
-               names_to = c(".value", "response"),
-               names_pattern = "^(avg|se)\\.(.*)") %>%
-  filter(response %in% c("sqrt.coll.perf", "p.hatch.perc")) %>%
-  mutate(response = factor(response, levels = c("sqrt.coll.perf", "p.hatch.perc"))) %>%
-  #ggplot(aes(y = avg, x = mate.trt)) +
-  Plot_Fit() +
-  geom_point() +
-  geom_line() +
-  geom_errorbar(aes(ymax = avg + se, ymin = avg - se),
-                width = 0.25, lty = "solid", show.legend = FALSE) +
-  aes(y = avg) +
-  facet_grid(response ~ year, scales = "free_y",
-             labeller = labeller(response = c("sqrt.coll.perf" = "sqrt[eggs collected\nper female]",
-                                              "p.hatch.perc" = "proportion eggs hatched\nper enclosure")))
+## fitness
+```{r box and whisker}
+pd <- 0.75
+
+gg <- dfs_viz$eggs_n %>%
+  ggplot(aes(y = n.coll.perf)) +
+  geom_boxplot(#position = position_dodge(width = pd),
+               outlier.shape = NA) +
+  geom_point(data = dfs_viz$eggs_n,
+             aes(size = n.f),
+             position = position_dodge(width = pd),
+             alpha = 0.6) +
+  scale_radius(range = c(0.5, 5)) +
+  labs(y = "total eggs collected per female",
+       size = "total females per enclosure",
+       ) +
+  facet_wrap(~year) +
+  theme_bw() +
+  theme(legend.position = "top",
+        legend.box = "vertical",
+        legend.margin = margin()) +
+  guides(color = guide_legend(order = 1),
+         size = guide_legend(order = 2))
+
+# x as minT
+gg +
+  aes(x = trt.minT, col = trt.mate,) +
+  #geom_point(aes(group = trt.mate)) +
+  scale_color_manual(values = p_scales$cols_trtsex, labels = p_scales$labs_trtmate) +
+  scale_x_discrete(labels = p_scales$labs_trt) +
+  labs(col = "heat-treated parent",
+       x = p_scales$xlab_minT)
+#ResToFig("fit-coll-bytrt")
+
+# x as trted sex
+gg + 
+  aes(col = trt.minT, x = trt.mate) +
+  #geom_point(aes(group = trt.minT)) +
+  scale_color_manual(values = p_scales$cols_minT, labels = p_scales$labs_minT) +
+  scale_x_discrete(labels = p_scales$labs_trtmate) +
+  labs(col = p_scales$xlab_minT,
+       x = "heat-treated parent")
+#ResToFig("fit-coll-bysex")
+```
+
+
+
+```{r point plot}
+.plotfn <- function(x){
+  x %>%
+    Plot_Fit() +
+    geom_point() +
+    geom_line() +
+    geom_errorbar(aes(ymax = avg + se, ymin = avg - se),
+                  width = 0.25, lty = "solid", show.legend = FALSE) +
+    aes(y = avg) +
+    facet_wrap(~ year) 
+}
+
+p <- list_modify(
+  p,
+  fit_coll = dfs_viz$eggs_ss %>%
+    SSToLong() %>%
+    filter(response == "sqrt.coll.perf") %>%
+    .plotfn() +
+    labs(y = "sqrt[eggs collected\nper female]"),
   
+  fit_hatch = dfs_viz$eggs_ss %>%
+  SSToLong() %>%
+  filter(response == "p.hatch.perc") %>%
+  .plotfn() +
+  labs(y = "proportion eggs hatched\nper enclosure") 
+) 
+
+p$fit_coll
+p$fit_hatch
+
+(p$fit_coll +
+    theme(strip.background.y = element_blank(),
+          strip.text.y = element_blank(),
+          axis.title.x = element_blank()
+          )
+  ) /
+  (p$fit_hatch +
+     theme(strip.background = element_blank(),
+           strip.text = element_blank(),
+           legend.position = "none"
+           )
+   ) +
+  plot_layout(axes = "collect", guides = "collect"
+              ) &
+  theme(legend.position = "top",
+        axis.title.y = element_text(margin = margin(), size = 10))
+#ResToFig("fit-pts")
 
 ```
 
@@ -827,14 +921,12 @@ mods <- list(
 
 ### results table
 ```{r}
-# TODO drop the colony F + expt M tents (from 2025?) but 
-# this wasnt tracked in 2023...
-dfs_viz$eggs %>%
+dfs_viz$eggs_ss %>%
   select(c(year, trt.minT, trt.mate, 
            starts_with(c("n.", "avg.", "se.")))) #%>% ResToCsv("egg results")
 ```
 
-## sample sizes
+## [ ] sample sizes
 ```{r}
 # TODO ideally use the same as the viz but maybe need to use the stats one lol cuz its on the per-tent level
 # need to check the colony filtering on this...
