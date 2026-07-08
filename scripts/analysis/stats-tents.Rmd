@@ -56,6 +56,7 @@ source(here("scripts/R/tidy-tents.R"))
 dfs <- list(
 
   # incl virgins; can use for laying but not hatching
+  ## BUT note that for final viz, only looking at mated tents
   all = dfs_tidy$tents %>%
     filter(mate.pop != "field"),
   
@@ -90,11 +91,153 @@ dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
 
 
 
+# ### TRY 4: for mss
+(focusing on eggs collected first, then eggs hatched?)
+eggs collected ~ # females + hs sex * hs trt + 1|enclosure
+
+## df prep
+```{r}
+# df prep
+## drop col stuff, 2024
+df <- dfs$mated %>%
+  filter(mate.pop != "col",
+         year != 2024) %>%
+  select(-c(mate.col, mate.pop, trt.pop))
+
+y23 <- filter(df, year == 2023)
+y25 <- filter(df, year == 2025)
+```
+
+## 2023 only
+```{r}
+# raw vs rounded?
+mods <- list(
+  poi0 = glm(n.coll.perf ~ n.f + mate.trt*mate.ishs,
+             data = y23, family = "poisson"),
+  poi = glm(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs,
+            data = y23, family = "poisson"),
+  poioff = glm(n.coll ~ n.f + mate.trt*mate.ishs,
+               data = y23, family = "poisson",
+               offset = n.f)
+)
+
+summary(mods$poi0)
+summary(mods$poi)
+
+# diagnose them
+anova(mods$poi0, test = "Chisq")
+sum(resid(mods$poi0,type="pearson")^2)/df.residual(mods$poi0) # look at variance #69.08362
+mods["poi0"] %>% DiagnoseModel2()
+
+anova(mods$poi, test = "Chisq")
+sum(resid(mods$poi,type="pearson")^2)/df.residual(mods$poi) #69.29671
+## rounded looks pretty similar to the raw so just use the rounded
+
+anova(mods$poioff, test = "Chisq")
+sum(resid(mods$poioff,type="pearson")^2)/df.residual(mods$poioff) # 226.4761
+
+AIC(mods$poi0, mods$poi, mods$poioff) # offset is not bueno
+```
+
+```{r}
+# add the mixed eff model (and also cage as a fixed eff)
+mods <- list_modify(
+  mods,
+  poic = glm(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + cage,
+             data = y23, family = "poisson"),
+  poim = glmer(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + (1|cage),
+               data = y23, family = "poisson")
+)
+
+## compare them
+AIC(mods$poi, mods$poic, mods$poim)
+summary(mods$poic)
+summary(mods$poim) # see fixed eff w/o cage
+
+anova(mods$poim, mods$poic, mods$poi, test = "Chisq")
+anova(moids$poi, mods$poim)
+
+anova(mods$poim)
+drop1(mods$poic, test = "Chisq")
+drop1(mods$poim, test = "Chisq") # LRT on the fixed effs, per https://www.ssc.wisc.edu/sscc/pubs/MM/MM_TestEffects.html
+anova(mods$poim, mods$poi, test = "Chisq") #idk wtf this means or if these mods are comparable TBH, since $poi isnt rly "nested" in $poim
+mods[c("poi", "poic", "poim")] %>% DiagnoseModel2() #tbh the diagnosis is bad LOL -- plot vs resids is wonky
+
+## so probably try fitting to an nb to see if the diagnostics look better?
+```
+```{r}
+mods <- list_modify(
+  mods,
+  nb = glm.nb(n.coll.perf ~ n.f + mate.trt*mate.ishs,
+              data = y23),
+  nbc = glm.nb(n.coll.perf ~ n.f + mate.trt*mate.ishs + cage,
+               data = y23), # will throw lots of warnings
+  nbm = glmer.nb(n.coll.perf ~ n.f + mate.trt*mate.ishs + (1|cage),
+                 data = y23)
+)
+
+AIC(mods$poi, mods$nb, mods$nbc, mods$nbm) # probably use nb model
+mods[c("nb", "nbc", "nbm")] %>% DiagnoseModel2() #nb and nbm are better...(nbm is slightly better...?) nbc is too singular lol
+
+## generally, still issues w/ singular fits
+  # so maybe need to try the ctrl vs hot 2 grp thing joel suggested...
+```
+```{r}
+mods <- list_modify(
+  mods,
+  poi_cve = glm(round(n.coll.perf) ~ n.f + trt.type,
+                      data = y23, family = "poisson")
+  )
+
+anova(mods$poi_cve, test = "Chisq") # so there is a difference btwn ctrl/expt...
+```
+```{r}
+mods <- list_modify(
+  mods,
+  poi_expt = glm(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs,
+                 data = filter(y23, trt.type == "expt"),
+                 family = "poisson"),
+  poic_expt = glm(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + cage,
+                  data = filter(y23, trt.type == "expt"),
+                  family = "poisson"), # bad bc singular fits
+  poim_expt = glmer(round(n.coll.perf) ~ n.f + mate.trt*mate.ishs + (1|cage),
+                    data = filter(y23, trt.type == "expt"),
+                    family = "poisson")
+)
+
+mods[c("poi_expt", "poic_expt", "poim_expt")] %>% DiagnoseModel2()
+AIC(mods$poi_expt, mods$poim_expt)
+  # reg poi is better diagnostics tho worse AIC
+anova(mods$poim_expt, mods$poi_expt) # mixed mod is also better from anova..
+
+anova(mods$poi_expt, test = "Chisq")
+summary(mods$poim_expt) 
+  # tho cant rly estimate variance when N<5 (see stats lab 9)... (i.e what we have here for tents lol)
+  # https://stats.stackexchange.com/questions/601851/variance-estimation-for-small-sample-size
+
+
+
+```
+
+
+
+# # EDA effect of col
+
+2026-07-03: ignoring this.. since per the viz it gets too piecemealy anyway
+
+```{r}
+# TODO wip
+#' sth like:
+#' 
+#' eggs laid ~ trt.f*is.col.f + trt.m*is.col.m maybe?
+```
+
+# ### TRY 3: exptal only
+
 
 - 2026-05-31:
  - trying out better model diagnosing first lol (for ntw mss final stats)
  - testing response variable transform + model type
- 
  
 ## Z: eggs laid
 
@@ -208,8 +351,6 @@ mods$nb_log %>% GetModelResults()
 
 ```
 
-
-
 ### sep yrs?
 ```{r warning = FALSE}
 # try doing stats per yr using the negbin(log+1)
@@ -236,8 +377,6 @@ AIC(mods$all, mods$all_noyr, mods$y23, mods$y25)
 mods %>% GetModelResults()
 ## nothin matters!!!
 ```
-
- 
 
 
 # ### TRY 2: exptal only
