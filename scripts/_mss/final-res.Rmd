@@ -824,23 +824,24 @@ dfs_viz$long %>%
            ends_with("tt"))) #%>% ResToCsv("dev/ss/timeto-longevity")
 ```
 
-# ## (5) fitness (WIP)
+# ## (5) reproduction
 
-## fitness
+## eggs collected
 ```{r box and whisker}
 pd <- 0.75
 
 gg <- dfs_viz$eggs_n %>%
   ggplot(aes(y = n.coll.perf)) +
-  geom_boxplot(#position = position_dodge(width = pd),
+  geom_boxplot(position = position_dodge(width = pd),
                outlier.shape = NA) +
   geom_point(data = dfs_viz$eggs_n,
              aes(size = n.f),
              position = position_dodge(width = pd),
-             alpha = 0.6) +
-  scale_radius(range = c(0.5, 5)) +
+             alpha = 0.5) +
+  #scale_size(range = c(1.5, 5.5)) +
+  scale_size_area(max_size = 6) +
   labs(y = "total eggs collected per female",
-       size = "total females per enclosure",
+       size = "total females",
        ) +
   facet_wrap(~year) +
   theme_bw() +
@@ -873,7 +874,7 @@ gg +
 
 
 
-```{r point plot}
+```{r point plot, eval=FALSE}
 .plotfn <- function(x){
   x %>%
     Plot_Fit() +
@@ -932,7 +933,52 @@ mods <- list(
 )
 ```
 
-### results table
+## eggs hatched
+```{r box and whisker}
+pd <- 0.75
+
+gg <- dfs_viz$eggs_n %>% #mutate(log = log(n.coll)) %>% View()
+  ggplot(aes(y = p.hatch.perc)) +
+  geom_boxplot(position = position_dodge(width = pd),
+               outlier.shape = NA
+               ) +
+  geom_point(data = dfs_viz$eggs_n,
+             aes(size = log(n.coll)),
+             position = position_dodge(width = pd),
+             alpha = 0.5) +
+  scale_radius(range = c(1, 6)) +
+  #scale_size_area(max_size = 6) +
+  labs(y = "percent eggs hatched",
+       size = "ln[total eggs collected]",
+       ) +
+  facet_wrap(~year) +
+  theme_bw() +
+  theme(legend.position = "top",
+        legend.box = "vertical",
+        legend.margin = margin()) +
+  guides(color = guide_legend(order = 1),
+         size = guide_legend(order = 2))
+
+# x as minT
+gg +
+  aes(x = trt.minT, col = trt.mate,) +
+  #geom_point(aes(group = trt.mate)) +
+  scale_color_manual(values = p_scales$cols_trtsex, labels = p_scales$labs_trtmate) +
+  scale_x_discrete(labels = p_scales$labs_trt) +
+  labs(col = "heat-treated parent",
+       x = p_scales$xlab_minT)
+#ResToFig("fit-hatch-bytrt")
+
+# x as trted sex
+gg + 
+  aes(col = trt.minT, x = trt.mate) +
+  #geom_point(aes(group = trt.minT)) +
+  scale_color_manual(values = p_scales$cols_minT, labels = p_scales$labs_minT) +
+  scale_x_discrete(labels = p_scales$labs_trtmate) +
+  labs(col = p_scales$xlab_minT,
+       x = "heat-treated parent")
+#ResToFig("fit-hatch-bysex")
+```
 ```{r}
 dfs_viz$eggs_ss %>%
   select(c(year, trt.minT, trt.mate, 
