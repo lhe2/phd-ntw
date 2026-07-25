@@ -2183,7 +2183,7 @@ dfs_all$long %>%
          !(pop == "lab" & diet == "TB"),
          year != 2024) %>%
   select(-c(trt.ctrl, trt.group)) %>% #View()
-  CalcDevSS_ad() %>% View()
+  CalcDevSS_ad() %>% #View()
   ggplot(aes(y = avg.tt, x = trt.minT,
              shape = trt.type,
              group = interaction(trt.type, year))) +
@@ -2281,7 +2281,12 @@ df %>%
 # EDA: effect of including fridge bugs?
 .prepfn <- function(x){
   x %>%
-    filter(instar == "long") %>%
+    filter(instar == "long",
+           pop != "col") %>%
+    # combine lab + TB
+    mutate(diet = case_when(pop == "lab" ~ "LD",
+                            TRUE ~ diet)) %>%
+    select(-trt.group) %>%
     PrepAdultSS()
 }
 
@@ -2301,21 +2306,40 @@ df %>%
 # EDA: keep fridge bugs in the count
 dfs_all$long %>%
   .prepfn() %>%
-  CalcDevSS() %>%
+  CalcDevSS() %>% #View()
   .plotfn() +
   aes(group = interaction(pop))
 
 # EDA: parse out the fridge bugs
 dfs_all$long %>%
-  filter(!is.na(if.fridge)) %>%
+  filter(!is.na(if.fridge),
+         year != 2024) %>%
   mutate(if.fridge = case_when(if.fridge == 0 ~ "no",
                                if.fridge == 1 ~ "yes")) %>%
     group_by(if.fridge) %>%
   .prepfn() %>%
-  CalcDevSS() %>%
+  CalcDevSS() %>% #View()
   .plotfn() +
   aes(group = interaction(pop, if.fridge),
-      lty = if.fridge, shape = if.fridge)
+      lty = if.fridge, shape = if.fridge) +
+  geom_point(aes(size = n)) +
+  scale_x_discrete(labels = p_scales$labs_trt)
+
+## include sex?
+dfs_all$long %>%
+  filter(!is.na(if.fridge),
+         year != 2024) %>%
+  mutate(if.fridge = case_when(if.fridge == 0 ~ "no",
+                               if.fridge == 1 ~ "yes")) %>%
+    group_by(if.fridge, sex) %>%
+  .prepfn() %>%
+  CalcDevSS() %>% #View()
+  .plotfn() +
+  aes(group = interaction(pop, if.fridge),
+      lty = if.fridge, shape = if.fridge) +
+  geom_point(aes(size = n)) +
+  facet_grid(sex ~ year) +
+  scale_x_discrete(labels = p_scales$labs_trt)
 ```
 
 ### main figs

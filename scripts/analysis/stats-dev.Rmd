@@ -17,7 +17,7 @@ here::i_am("scripts/analysis/stats-dev.Rmd")
 library(here)
 library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
-library(MuMIn) # dredge (nested model comparisons)
+#library(MuMIn) # dredge (nested model comparisons)
 library(tidyverse)
 
 library(conflicted)
@@ -289,8 +289,11 @@ mods_puptime %>%
 ```
 
 
-# # longevity
+# # adult 
 
+## longevity
+
+### effect of sex
 ```{r}
 # include sex? parse the mating? drop 2024? (same qns as the viz)
 
@@ -304,6 +307,65 @@ mods <- list(
 anova(mods$m1) # can drop if looking at everyone
 anova(mods$m2) # sex matters if looking at mated bugs only...
 ```
+
+### effect of fridge 
+```{r}
+# per mss, drop 2024
+dfs <- list(
+  all = dfs_imported$all %>% filter(year != 2024),
+  expt = dfs_imported$expt %>% filter(year != 2024)
+)
+
+mods <- list(
+  m1 = lm(tt.long ~ year*pop*trt*as.factor(if.fridge),
+          data = dfs$all), 
+  m1a = lm(tt.long ~ year*pop*trt*as.factor(if.fridge),
+          data = dfs$all %>% filter(if.mated == 1)),
+  m2 = lm(tt.long ~ year*pop*trt.minT*as.factor(if.fridge),
+          data = dfs$expt),
+  m2a = lm(tt.long ~ year*pop*trt*as.factor(if.fridge),
+          data = dfs$expt %>% filter(if.mated == 1))
+)
+
+anova(mods$m1) # all trts
+anova(mods$m1a) # all trts, mated only
+anova(mods$m2) # expt only
+anova(mods$m2a) # expt, mated only
+
+# fridge effects only fall out if looking at the mated, exptal bugs... (i.e. so can include them back in the results i guess?)
+
+# for each year?
+mods <- list(
+  y23 = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+          data = dfs$expt %>% filter(if.mated == 1, year == 2023)),
+  y25 = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+          data = dfs$expt %>% filter(if.mated == 1, year == 2025))
+)
+
+anova(mods$y23)
+anova(mods$y25) # fridge matters in 2025 though probably bc n=1 for some combinations
+```
+
+## fridge and sex?
+```{r}
+# per mss, drop 2024
+dfs <- list(
+  all = dfs_imported$all %>% filter(year != 2024),
+  expt = dfs_imported$expt %>% filter(year != 2024)
+)
+
+mods <- list(
+  m1 = lm(tt.long ~ year*sex*pop*trt*as.factor(if.fridge),
+          data = dfs$expt),
+  m1a = lm(tt.long ~ year*pop*trt + sex*as.factor(if.fridge),
+           data = dfs$expt))
+
+anova(mods$m1)
+anova(mods$m1a)
+
+# probably not that much.. (again, issues due to N=1)
+```
+
 
 
 

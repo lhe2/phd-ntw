@@ -718,11 +718,16 @@ dfs_viz$long %>%
 
 # (4) lifespan
 
+- comments on EDAs:
+  - mating status matters, so only use mated bugs.
+  - doesnt seem to be affected if you're a colony bug.
+  - effect of fridge: not signif if yrs are consolidated for mated bugs only. if yrs are parsed, signif in 2025 only but probably bc of N.
+  - effect of sex: only matters for expt, mated bugs (if yrs are consolidated)
 ## lifespan
 
 ```{r}
 dfs_viz$long %>%
-  filter(if.fridge == 0,
+  filter(#if.fridge == 0,
          instar == "long",
          if.mated == 1, 
          year != 2024) %>%
@@ -730,19 +735,31 @@ dfs_viz$long %>%
   CalcDevSS_ad() %>% #View()
   Plot_Dev() +
   aes(y = avg.tt) +
-  geom_point(size = 2) +
+  geom_point(aes(size = n),
+             alpha = 0.6) +
   geom_line() +
   geom_errorbar(aes(ymax = avg.tt + se.tt,
                     ymin = avg.tt - se.tt),
                 width = 0.25, lty = "solid", show.legend = FALSE) +
   #facet_grid(sex~year, labeller = labeller(sex = c(p_scales$facs_sex))) +
   facet_wrap(~ year) +
-  labs(y = "lifespan (days)")
+  ylim(c(2, 15)) +
+  labs(y = "lifespan (days)",
+       size = "N") +
+  scale_size_area(max_size = 6.5) +
+  guides(color = guide_legend(override.aes = list(alpha = 1, size = 2), order = 1),
+         shape = guide_legend(override.aes = list(alpha = 1, size = 2,
+                                                  linetype = c("solid", "255F")),
+                              order = 2),
+         lty = guide_legend(order = 2),
+         size = guide_legend(override.aes = list(alpha = 0.65), order = 3))
+  
 #ResToFig("dev-long")
 ```
 
 ### stats
 do years separately!
+
 ```{r}
 # df prep
 dfs <- list(
@@ -752,7 +769,8 @@ dfs <- list(
 ) %>%
   lapply(., \(x){
     x %>%
-      filter(if.fridge == 0, if.mated == 1)
+      filter(#if.fridge == 0, 
+             if.mated == 1)
   })
 ```
 
@@ -773,7 +791,7 @@ mods <- list(
 add1(mods$m1, scope = ~ . + sex + mass.eclose, test = "F")
 
 #add1(mods$m1a, scope = formula(mods$m1a)[-2], test = "F")
-anova(mods$m1, mods$m1a) # use the one w/o sex
+anova(mods$m1, mods$m1a) # sex does not improve model
 
 mods <- list_modify(
   mods,
@@ -800,16 +818,19 @@ mods <- list(
 )
 
 add1(mods$m1, scope = ~ . + sex + mass.eclose, test = "F")
-anova(mods$m1, mods$m1a)  # use the one w/o sex
+anova(mods$m1, mods$m1a)  # sex doesnt improve model
 
 mods <- list_modify(
   mods,
   m2 = lm(tt.long ~ pop*trt.minT + mass.eclose, data = dfs$y25)
 )
 
-anova(mods$m1, mods$m2) # ec mass doesnt improve model
+anova(mods$m1, mods$m2) # if no fridge bugs, ec mass doesnt improve model. otherwise marginal
 
 anova(mods$m1) #%>% ResToCsv("dev/anova/long-25") # minT matters...!!
+
+# if you drop 40-33?
+anova(lm(tt.long ~ pop*trt.minT, data = dfs$y25 %>% filter(trt.minT != 33))) # similar results
 ```
 
 ## sample sizes
