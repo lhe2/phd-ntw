@@ -11,10 +11,13 @@ p_scales <- list(
   labs_minT = c("260" = "26", "419" = "19", "426" = "26", "433" = "33"),
   labs_trttype = c("ctrl" = "26°C (control)", "expt" = "40°C (nighttime\nwarming)"),
   labs_trtsex = c("f" = "female only", "m" = "male only", "both" = "male + female"),
-  labs_trtmate = c("both" = "both", "f" = "female", "m" = "male", "neither" = "neither (control)"),
+  labs_trtmate = c("both" = "both", "f" = "female", "m" = "male", "neither" = "neither\n(control)"),
   
   # values
   cols_trt = c("260" = "#00A3B6", "419" = "#4B1D91", "426" = "#A71B4B", "433" = "#F9C25C"),
+  cols_minT = c("19" = "#51127CFF", #"26" = "#B63679FF", 
+                "26" = "#F1605DFF",
+                "33" = "#FB8861FF"), 
   cols_trttype = c(#"ctrl" = "#6BAED6", 
     "ctrl" = "steelblue1",
     "expt" = "#FEB24C"),
@@ -41,6 +44,14 @@ p_scales <- list(
                    values = c(`1` = "solid", `0` = "dashed"),
                    limits = c("1", "0"))
 )
+
+# for more condensed plotting of SS
+SSToLong <- function(wide_ss){
+  wide_ss %>%
+    pivot_longer(cols = starts_with(c("avg", "se")),
+                 names_to = c(".value", "response"),
+                 names_pattern = "^(avg|se)\\.(.*)")
+}
 
 ### PLOTTING ###
 ## adding error bars 
