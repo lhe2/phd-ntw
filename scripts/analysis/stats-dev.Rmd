@@ -5,7 +5,9 @@ date: "2025-12-02"
 
 # # preamble & loading
 
-stats analyses for ntw 2025
+stats EDAs for ntw 2025.
+
+organised by life stage/main metric (can sort of just keep appending down a section)
 
 ```{r set pathfinding}
 here::i_am("scripts/analysis/stats-dev.Rmd")

@@ -97,16 +97,16 @@ dfs_filtered <- list(
          notes.hatch = notes) %>%
     drop_na(id.tent)
 )
-    
-
 ```
 
 
-## - consolidation, fixing column format + values
+
+## - consolidation & fixing column format + values
 
 bc i majorly messed up with how i did my hatch data collection so now i am paying the price 👍
 
-the summed # of hatchlings per day is being appended to the daily tent happenings
+the summed # of hatchlings per day is being appended to the daily tent happenings.
+
 
 ```{r reshape hatch data}
 #data_tents <- merge(data_tentstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
@@ -144,15 +144,7 @@ dfs_cleaned <- list(
 ```
 
 (values to fix: nas and stuff.. replacements... unks... etc... better strings to filter on... see above)
-```{r formatting}
-# consolidate
-#data_hatch <- select(data_hatch, -date.coll)
-
-# data_tents <- merge(data_tentstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
-
-# data_tents <- left_join(data_tentstats, data_hatch, by = c("date.coll" = "date.hatched", "id.tent"), all = TRUE) 
-
-# per-df cleaning
+```{r post-merge value fixes}
 dfs_cleaned <- list_modify(
   dfs_cleaned,
   tents = dfs_cleaned[["tents"]] %>%
@@ -181,6 +173,16 @@ dfs_cleaned <- list_modify(
                             TRUE ~ 1)) %>%
     naniar::replace_with_na_all(condition = ~.x %in% c("unk", "na"))
 )
+```
+
+
+```{r formatting}
+# consolidate
+#data_hatch <- select(data_hatch, -date.coll)
+
+# data_tents <- merge(data_tentstats, data_hatch, by = c("date.coll", "id.tent"), all = TRUE) 
+
+# data_tents <- left_join(data_tentstats, data_hatch, by = c("date.coll" = "date.hatched", "id.tent"), all = TRUE) 
 
 # column/value standardising
 ## column formatting

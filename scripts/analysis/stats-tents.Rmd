@@ -108,9 +108,11 @@ y23 <- filter(df, year == 2023)
 y25 <- filter(df, year == 2025)
 ```
 
-## 2023 only
+## 2023 only 
+
+### (trying different models)
 ```{r}
-# raw vs rounded?
+# raw vs rounded poisson?
 mods <- list(
   poi0 = glm(n.coll.perf ~ n.f + mate.trt*mate.ishs,
              data = y23, family = "poisson"),
@@ -165,6 +167,7 @@ mods[c("poi", "poic", "poim")] %>% DiagnoseModel2() #tbh the diagnosis is bad LO
 
 ## so probably try fitting to an nb to see if the diagnostics look better?
 ```
+
 ```{r}
 mods <- list_modify(
   mods,
@@ -182,6 +185,7 @@ mods[c("nb", "nbc", "nbm")] %>% DiagnoseModel2() #nb and nbm are better...(nbm i
 ## generally, still issues w/ singular fits
   # so maybe need to try the ctrl vs hot 2 grp thing joel suggested...
 ```
+
 ```{r}
 mods <- list_modify(
   mods,
@@ -191,6 +195,7 @@ mods <- list_modify(
 
 anova(mods$poi_cve, test = "Chisq") # so there is a difference btwn ctrl/expt...
 ```
+
 ```{r}
 mods <- list_modify(
   mods,
@@ -214,11 +219,7 @@ anova(mods$poi_expt, test = "Chisq")
 summary(mods$poim_expt) 
   # tho cant rly estimate variance when N<5 (see stats lab 9)... (i.e what we have here for tents lol)
   # https://stats.stackexchange.com/questions/601851/variance-estimation-for-small-sample-size
-
-
-
 ```
-
 
 
 # # EDA effect of col

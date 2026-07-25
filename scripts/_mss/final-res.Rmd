@@ -22,8 +22,10 @@ main results/figs:
 1. survival: hatch to pupation; hatch to eclosion
 2. mass: pupal mass; eclosion mass
 3. development time: hatch to pupation, pupation to eclosion
-4. adult longevity (2023 vs 2025)
-5. adult fitness (2023 vs 2025)
+4. adult lifespan (2023 vs 2025)
+5. adult reproduction (2023 vs 2025)
+
+- everything should have a supp + stats section :)
 
 
 # loading
