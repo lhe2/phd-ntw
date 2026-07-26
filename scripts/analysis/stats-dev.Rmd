@@ -291,6 +291,37 @@ mods_puptime %>%
 
 # # adult 
 
+## [/] surv to ec
+
+```{r}
+# TODO reorganise this lol...
+df <- dfs_imported$expt %>%
+  filter(!is.na(mass.pupa))
+
+mods <- list(
+  m1 = glm(is.ec ~ year*pop*mass.pupa,
+           family = "binomial", data = df),
+  m1a = glm(is.ec ~ mass.pupa,
+            family = "binomial", 
+            data = df %>% filter(!is.na(year), !is.na(pop))),
+  m1b = glm(is.ec ~ year*pop + mass.pupa,
+            family = "binomial", data = df),
+  m2 = glm(is.ec ~ year*pop*trt.minT,
+           family = "binomial", data = df),
+  m3 = glm(is.ec ~ year*pop*trt.minT + mass.pupa,
+           family = "binomial", data = df)
+)
+
+anova(mods$m1a, mods$m1b, mods$m1, mods$m2, mods$m3) # no(?) diff in using either trt/mass.pup for predictor
+
+anova(mods$m1a, test = "Chisq")
+anova(mods$m1b, test = "Chisq")
+anova(mods$m1, test = "Chisq")
+anova(mods$m2, test = "Chisq")
+# trt is not signif, tho pup mass is (this agrees w fig)
+
+anova(mods$m3, test = "Chisq")
+```
 ## longevity
 
 ### effect of sex
