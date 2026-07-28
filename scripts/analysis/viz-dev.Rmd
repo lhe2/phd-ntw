@@ -110,6 +110,34 @@ AddLeg_Patchwork <- function(){
 
 
 # # survival to pup
+
+## all data
+```{r}
+# all data
+
+dfs_tidy$wide %>%
+  filter(is.pup < 2,
+         trt.type == "expt") %>%
+  ggplot(aes(y = is.pup, x = year,
+             col = trt.minT,
+             shape = trt.type,
+             )) +
+  geom_point(position = "jitter") +
+  facet_wrap(~pop) +
+  scale_color_hue(direction = -1)
+
+dfs_tidy$wide %>%
+  filter(is.pup < 2,
+         trt.type == "expt") %>%
+  ggplot(aes(x = as.factor(is.pup), 
+             y = trt.minT,
+             col = pop
+             )) +
+  geom_point(position = "jitter") +
+  facet_wrap(~year)
+```
+
+## trying versions for mss
 ```{r eval = FALSE}
 # sep years (rough variations)
 
@@ -332,6 +360,21 @@ p1 + p2 +
 
 
 # # pup mass
+
+## all data
+```{r}
+dfs_tidy$wide %>%
+  filter(is.pup < 2,
+         trt.type == "expt",
+         !is.na(sex)) %>%
+  ggplot(aes(y = mass.pupa, x = trt.minT,
+             col = year,
+             shape = sex)) +
+  geom_point(position = "jitter", 
+             size = 1.5) +
+  facet_grid(~pop)
+```
+
 
 ## years parsed
 
@@ -682,6 +725,17 @@ dfs_tidy$long %>%
 
 
 # # pup time
+
+## all data
+```{r}
+dfs_tidy$wide %>%
+  filter(trt.type == "expt") %>%
+  ggplot(aes(y = tt.pupa, x = trt.minT,
+             col = year,)) +
+  geom_point(position = "jitter", 
+             size = 1.5) +
+  facet_grid(~pop)
+```
 
 ### days to pup
 ```{r days to pup, eval = FALSE}
