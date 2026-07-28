@@ -218,6 +218,35 @@ anova(mods$m1a, test = "Chisq") #%>% ResToCsv("dev/anova/surv-ec")
 summary(mods$m1a)
 ```
 
+```{r alt stats surv to ec}
+# excluding pupal mass
+
+mods <- list(
+  m1 = glm(is.ec ~ year*pop*trt.minT,
+           family = "binomial", data = dfs_stats$dev_expt)
+)
+
+drop1(mods$m1, scope = ~year + pop + trt.minT, test = "LRT")
+drop1(mods$m1, .~., test = "LRT")
+
+drop1(mods$m1, test = "LRT") # can drop the 3way...
+anova(mods$m1, test = "Chisq") # 3way is ns
+
+# 2 ways only
+mods <- list_modify(
+  mods,
+  m2 = glm(is.ec ~ (year + pop + trt.minT)^2,
+           family = "binomial", data = dfs_stats$dev_expt),
+)
+
+AIC(mods$m2, mods$m1)  # more complex is very slightly better
+anova(mods$m2, mods$m1, test = "Chisq")
+# tho not significantly different
+
+anova(mods$m2, test = "Chisq") #%>% ResToCsv("dev/anova/surv-ec")
+summary(mods$m2) # sth about 2024...
+```
+
 ```{r}
 # looking at pup mass
 dfs_viz$wide %>%
@@ -599,10 +628,12 @@ anova(mods$m1a)
 mods <- list_modify(
   mods,
   m2 = lm(tt.pupa ~ (year + pop + trt.minT)^2,
+           dfs_stats$dev_expt),
+  m2a = lm(tt.pupa ~ (year + pop + trt.minT)^2 + as.factor(is.sup),
            dfs_stats$dev_expt)
 )
 
-AIC(mods$m2, mods$m1a)
+AIC(mods$m2, mods$m2a, mods$m1, mods$m1a)
 anova(mods$m2) #%>% ResToCsv("dev/anova/timeto-pup")
 summary(mods$m2)
 ```
