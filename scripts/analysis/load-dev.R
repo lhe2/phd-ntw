@@ -14,7 +14,8 @@ dfs_tidy <- list(
                              pop == "col" |
                              (pop == "field" & instar.enter %in% c("1st", "2nd")))) |
              year %in% c(2024, 2025),
-           trt %in% c(260, 419, 426, 433)
+           trt %in% c(260, 419, 426, 433),
+           !(year == 2023 & src == "F1")
     ) %>%
     select(-c(instar.enter, parent.tent))
 )
