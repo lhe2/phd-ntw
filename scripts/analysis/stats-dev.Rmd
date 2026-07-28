@@ -72,7 +72,7 @@ dfs_imported <- list(
   })
 ```
 
-# # pupal 
+# ### pupal 
 
 ## main results
 
@@ -288,6 +288,42 @@ mods_puptime %>%
   
 ```
 
+## EDA: other terms
+2026-07-28 what terms to include?
+
+### dev time
+
+```{r}
+mods <- list(
+  m1 = lm(tt.pupa ~ pop*trt.minT*year, data = dfs_imported$expt),
+  m2 = lm(tt.pupa ~ pop*trt.minT*year + as.factor(is.sup), data = dfs_imported$expt)
+)
+
+anova(mods$m1, mods$m2)
+AIC(mods$m1, mods$m2) #including sup is better
+
+summary(mods$m1)
+summary(mods$m2)
+```
+### mass
+```{r}
+df <- dfs_imported$expt %>%
+  filter(!is.na(sex))
+
+mods <- list(
+  m1 = lm(mass.pupa ~ pop*trt.minT*year, data = df),
+  m2 = lm(mass.pupa ~ pop*trt.minT*year*sex, data = df),
+  m3 = lm(mass.pupa ~ pop*trt.minT*year + sex, data = df)
+)
+
+anova(mods$m1, mods$m3, mods$m2) # adding sex (1way) is better
+AIC(mods$m1, mods$m2, mods$m3)
+summary(mods$m1)
+summary(mods$m3)
+```
+
+
+
 ## EDA: random yr (2)
 2026-07-27 trying this again after doing some more reading...
 
@@ -429,7 +465,138 @@ mods_pup_randyr <- list(
 ```
 
 
-# # adult
+# ### adult
+
+## EDA: other terms
+2026-07-28 what other terms to include?
+
+### surv to ec
+```{r}
+df <- dfs_imported$expt %>%
+  filter(!is.na(mass.pupa))
+
+mods <- list(
+  m1 = glm(is.ec ~ year*pop*trt.minT,
+           family = "binomial", data = df),
+  m2 = glm(is.ec ~ year*pop*trt.minT + mass.pupa,
+           family = "binomial", data = df)
+)
+
+anova(mods$m1, mods$m2, test = "Chisq") # better to add pupal mass
+AIC(mods$m1, mods$m2)
+
+summary(mods$m1)
+summary(mods$m2)
+```
+
+### eclosion mass
+
+```{r}
+df <- dfs_imported$expt %>%
+  filter(!is.na(mass.pupa))
+
+# incl sex, pupal mass?
+mods <- list(
+    # w/ sex
+    m1 = lm(mass.eclose ~ year*pop*trt.minT*sex,
+           data = df),
+    m1a = lm(mass.eclose ~ year*pop*trt.minT*sex + mass.pupa,
+            data = df),
+    # w/o sex
+    m2 = lm(mass.eclose ~ year*pop*trt.minT,
+            data = df),
+    m2a = lm(mass.eclose ~ year*pop*trt.minT + mass.pupa,
+            data = df)
+)
+
+anova(mods$m2, mods$m2a, mods$m1, mods$m1a) 
+  # adding sex is w/e but mass is impt
+AIC(mods$m2, mods$m2a, mods$m1, mods$m1a)
+  # adding mass reduces AIC a lot; technically so does sex
+  # best is to have sex and mass pupa..
+summary(mods$m2)
+summary(mods$m1)
+summary(mods$m1a)
+
+# try sex as a random eff
+mods <- list(
+  m0 = lm(mass.eclose ~ year*pop*trt.minT + mass.pupa,
+            data = df),
+  m1 = lm(mass.eclose ~ year*pop*trt.minT*sex + mass.pupa,
+            data = df),
+  m2 = lmer(mass.eclose ~ year*pop*trt.minT + (1|sex) + mass.pupa,
+            data = df) # warning: rank deficient
+)
+
+anova(mods$m2, mods$m1, mods$m0) # fixed is better...?
+```
+
+
+
+## EDA: random year
+
+2026-07-28 like pup responses, compare if models with yr as random are better. (just use the full interaction model bc easier to compare w the null this way)
+
+### survival to ec
+```{r}
+mods <- list(
+  fm = glm(is.ec ~ year*pop*trt.minT,
+           family = "binomial", data = dfs_imported$expt),
+  m0 = glm(is.ec ~ pop*trt.minT,
+           family = "binomial", data = dfs_imported$expt),
+  mm = glmer(is.ec ~ pop*trt.minT + (1|year),
+           family = "binomial", data = dfs_imported$expt)
+) 
+
+# fit is singular for glmer, sort of an issue bc LME assumes missing data is 
+# "missing at random" (https://stats.stackexchange.com/questions/354279/can-a-linear-mixed-model-handle-missing-data-that-is-not-missing-at-random)
+
+anova(mods$mm, mods$fm, mods$m0) # not diff from e/o tho
+
+```
+
+### time to ec
+
+```{r}
+mods <- list(
+  m0 = lm(tt.eclose ~ pop*trt.minT, data = dfs_imported$expt),
+  fm = lm(tt.eclose ~ pop*trt.minT*year, data = dfs_imported$expt),
+  mm = lmer(tt.eclose ~ pop*trt.minT + (1|year), data = dfs_imported$expt)
+)
+
+anova(mods$mm, mods$fm, mods$m0) # need to include yr; fixed is better
+
+summary(mods$fm)
+```
+
+### ec mass
+```{r}
+mods <- list(
+  m0 = lm(mass.eclose ~ pop*trt.minT + sex, data = dfs_imported$expt),
+  fm = lm(mass.eclose ~ pop*trt.minT*year + sex, data = dfs_imported$expt),
+  mm = lmer(mass.eclose ~ pop*trt.minT + sex + (1|year), data = dfs_imported$expt)
+)
+
+anova(mods$mm, mods$fm, mods$m0) # need to include yr; fixed is better
+
+summary(mods$fm)
+```
+
+### longevity
+```{r}
+df <- dfs_imported$expt %>%
+  filter(if.mated == 1)
+mods <- list(
+  m0 = lm(tt.long ~ pop*trt.minT + sex, data = dfs_imported$expt),
+  fm = lm(tt.long ~ pop*trt.minT*year + sex, data = dfs_imported$expt),
+  mm = lmer(tt.long ~ pop*trt.minT + sex + (1|year), data = dfs_imported$expt)
+)
+
+anova(mods$mm, mods$fm, mods$m0) # need to include yr; fixed is better
+
+summary(mods$fm)
+```
+
 
 ## EDA: pupal mass
 
@@ -556,13 +723,31 @@ anova(mods$m2a) # expt, mated only
 # fridge effects only fall out if looking at the mated, exptal bugs... (i.e. so can include them back in the results i guess?)
 
 # for each year?
+df <- dfs$expt %>%
+  filter(if.mated == 1,
+         !is.na(if.fridge))
+
+mods <- list(
+  y23a = lm(tt.long ~ pop*trt,
+          data = df %>% filter(year == 2023)),
+  y23b = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+          data = df %>% filter(year == 2023)),
+  y25a = lm(tt.long ~ pop*trt,
+          data = df %>% filter(year == 2025)),
+  y25b = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+          data = df %>% filter(year == 2025))
+)
+
+anova(mods$y23a, mods$y23b) # doesnt matter in 2023
+anova(mods$y25a, mods$y25b) # matters in 2025 (but prob cuz i kept better track..)
+
+# with all data
 mods <- list(
   y23 = lm(tt.long ~ pop*trt*as.factor(if.fridge),
           data = dfs$expt %>% filter(if.mated == 1, year == 2023)),
   y25 = lm(tt.long ~ pop*trt*as.factor(if.fridge),
           data = dfs$expt %>% filter(if.mated == 1, year == 2025))
 )
-
 anova(mods$y23)
 anova(mods$y25) # fridge matters in 2025 though probably bc n=1 for some combinations
 ```
@@ -589,7 +774,7 @@ anova(mods$m1a)
 
 
 
-# # misc
+# ### misc
 
 ## sample sizes
 ```{r}
