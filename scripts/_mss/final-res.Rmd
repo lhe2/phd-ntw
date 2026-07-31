@@ -126,14 +126,13 @@ summary(mods$m2)
     Plot_Dev() +
     aes(y = prop.ec) +
     geom_line(show.legend = TRUE) +
-    geom_point(size = 2,) +
+    geom_point(size = 2) +
     geom_errorbar(aes(ymax = prop.ec + se.ec,
                       ymin = prop.ec - se.ec),
                   width = 0.25, lty = "solid", show.legend = FALSE) +
     ylim(c(0, 1))
 }
 ```
-
 
 ```{r main fig adult survival}
 # TODO include sample size?
@@ -163,11 +162,14 @@ ps <- list_modify(
   ps,
   surv_ec = 
     dfs_viz$wide %>%
-    CalcSurvProps_def() %>% 
+    CalcSurvProps_def() %>%
     .plotfn() +
+    #geom_point(aes(size = n.pup)) +
     #geom_point(aes(size = sqrt(n))) +
     labs(y = "% survival to eclosion") +
+    #scale_size_area(max_size = 6.5) +
     facet_wrap(~year)
+  # TODO adjust y-lim if including pt size
 )
 
 ps$surv_ec
@@ -464,23 +466,27 @@ ps <- list_modify(
   # sexes combined
   mass_ec =
     df %>%
+    #filter(trt.type == "expt") %>%
     PrepAdultSS() %>%
     ungroup(starts_with("trt")) %>% 
     group_by(trt, trt.type, trt.minT, .add = TRUE) %>%
     CalcDevSS() %>%
     .plotfn() +
+    #geom_point(aes(size = n)) +
     facet_wrap(~ year) +
     ylab("adult mass (g)"),
   
   # sexes parsed 
   mass_ecsex =
     df %>%
+    #filter(trt.type == "expt") %>%
     PrepAdultSS() %>%
     ungroup(starts_with("trt")) %>% 
     group_by(trt, trt.type, trt.minT, sex, .add = TRUE) %>%
     CalcDevSS() %>% #ResToCsv("dev/ss/mass-ec-sex-supp")
     #filter(trt != 260) %>%
     .plotfn() +
+    #geom_point(aes(size = n)) +
     facet_grid(sex ~ year, labeller = labeller(sex = c(p_scales$facs_sex)),
                #scales = "free"
                ) +
