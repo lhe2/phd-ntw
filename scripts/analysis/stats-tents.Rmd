@@ -15,6 +15,7 @@ library(lme4) # glmer, glmer.nb (mixed effs)
 #library(lmerTest) # lmer
 ## lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 #library(MuMIn) # dredge (nested model comparisons)
+library(car) # Anova
 library(pscl) # zeroinfl
 library(MASS) # glm.nb
 
@@ -91,26 +92,63 @@ dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
 
 
 
-# ### TRY 4: for mss
+# ### TRY 4: EDAs for mss
+
+couple of different explorations per feedback from july 2026 mtgs
+
+## simpler models
+
+2026-07-29 bc of all the imbalances in the numbers, just keep the predictors simple
+
+```{r warning = FALSE}
+# all data
+df <- dfs$all %>%
+  filter(year != 2024,
+         mate.pop != "col")
+
+mods <- list(
+  m1 = glm(n.coll.perf ~ mate.type + n.f + year,
+           family = "poisson", data = df),
+  m2 = glm(n.coll.perf ~ trt.type + n.f + year,
+           family = "poisson", data = df),
+  m3 = glm(n.coll.perf ~ trt.type*mate.type + n.f + year,
+           family = "poisson", data = df),
+  m4 = glm(n.coll.perf ~ mate.trt*mate.istrt + n.f + year,
+           family = "poisson", data = df)
+)
+
+anova(mods$m1, test = "Chisq") 
+anova(mods$m2, test = "Chisq")
+# differences for both mate/trt type... (so btwn ctrls/within are diff)
+
+Anova(mods$m3, type = 2) # var order matters
+# (everything matters...)
+
+anova(mods$m4, test = "Chisq")
+Anova(mods$m4, type = 2, 
+      test.statistic = "LR",
+      error.estimate = "deviance") 
+  ## TODO idk what im doin here. does the LR Chisq col = the deviance col?
+# everything matters...
+```
+
+## trying diffrent models types
 (focusing on eggs collected first, then eggs hatched?)
 eggs collected ~ # females + hs sex * hs trt + 1|enclosure
 
-## df prep
+using 2023 eggs collected only (bc doing stats separately for each yr in mss), seeing 1) what response variable and 2) what distribution to use
+
 ```{r}
 # df prep
-## drop col stuff, 2024
-df <- dfs$mated %>%
+# per mss, drop col stuff and 2024
+y23 <- dfs$mated %>%
   filter(mate.pop != "col",
          year != 2024) %>%
-  select(-c(mate.col, mate.pop, trt.pop))
+  select(-c(mate.col, mate.pop, trt.pop)) %>%
+  filter(year == 2023)
 
-y23 <- filter(df, year == 2023)
-y25 <- filter(df, year == 2025)
 ```
 
-## 2023 only 
-
-### (trying different models)
 ```{r}
 # raw vs rounded poisson?
 mods <- list(
@@ -345,7 +383,6 @@ AIC(mods$gau, mods$qpoi, #mods$gam, # cant get LL for qpoi
 mods$nb_log %>% GetModelResults()
 ## nothin matters!!!!
 ```
-
 
 ```{r}
 # eggs hatch (do the zero inflated here...)
@@ -594,7 +631,6 @@ mods$int3 %>% GetModelResults()
 
 ```
 
-
 #### cage    
 - works when fixed (and sig) but not rly what we're trying to do here...
 
@@ -611,9 +647,11 @@ mods <- list(
 
 mods %>% GetModelResults()
 
+mods %>% DiagnoseModel()
 ```
 
 - `cage` breaks things. not rly sure why though... (colinearity?)
+
 ```{r try 1 cages break, eval=FALSE, warning=FALSE, message=FALSE}
 # drop tents with only 1 m/f trt combo (colinear?) for diagnosing
 dfs <- list_modify(

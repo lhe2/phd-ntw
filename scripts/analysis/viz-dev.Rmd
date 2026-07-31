@@ -730,8 +730,11 @@ dfs_tidy$long %>%
 ```{r}
 dfs_tidy$wide %>%
   filter(trt.type == "expt") %>%
+  mutate(sup = case_when(is.na(sup) ~ 0,
+                         TRUE ~ sup)) %>%
   ggplot(aes(y = tt.pupa, x = trt.minT,
-             col = year,)) +
+             col = year,
+             shape = as.factor(sup))) +
   geom_point(position = "jitter", 
              size = 1.5) +
   facet_grid(~pop)

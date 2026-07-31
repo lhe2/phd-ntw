@@ -19,6 +19,7 @@ library(lme4) # glm, lm, glmer
 #library(lmerTest) # lmer
 #library(MuMIn) # dredge (nested model comparisons)
 library(tidyverse)
+library(car)
 
 library(conflicted)
 conflicts_prefer( 
@@ -133,7 +134,6 @@ list(
   WriteModelResultsCsv("pup-surv_anova-final")
 ```
 
-
 ### pupal mass
 
 ```{r}
@@ -143,6 +143,33 @@ dfs <- dfs_imported %>%
                  !is.na(sex))
   })
 ```
+
+#### v2
+
+2026-07-29 fucking around and messing w variable order
+
+```{r}
+# selecting terms with step
+step(lm(mass.pupa ~ year*pop*trt.minT, data = dfs_imported$expt),
+     direction = "backward",
+     scope = ~ . ^ 2)
+
+## drop 3way
+```
+
+```{r}
+mods <- list(
+  m1 = lm(mass.pupa ~ year*pop*trt.minT, data = dfs_imported$expt),
+  m2 = lm(mass.pupa ~ (year + pop + trt.minT)^2, 
+          data = dfs_imported$expt)
+)
+
+Anova(mods$m1, type = 2) # drop 3-way
+Anova(mods$m2, type = 2)
+anova(mods$m2)
+```
+
+#### v1
 
 - exptal: 1-ways, `year:minT`, and `minT:pop` are sig
 
@@ -228,6 +255,42 @@ anova(mods_pupmass$expt_2way, mods_pupmass$expt_3way, test = "Chisq")
 
 ### time to pup
 
+#### v2
+
+2026-07-29 messing around w variable order
+
+```{r}
+# stepwise regression
+step(lm(tt.pupa ~ year*pop*trt.minT, data = dfs_imported$expt),
+     scope = ~ .^2,
+     direction = "backward")
+## drop 3way, pop:Tmin
+```
+
+```{r}
+# variable order
+
+mods <- list(
+  m1 = lm(tt.pupa ~ (year+pop+trt.minT)^2,
+          data = dfs_stats$dev_expt),
+  m2 = lm(tt.pupa ~ (pop+trt.minT+year)^2,
+          data = dfs_stats$dev_expt),
+  m3 = lm(tt.pupa ~ (trt.minT+year + pop)^2,
+          data = dfs_stats$dev_expt)
+)
+
+Anova(mods$m1, type = 2)
+Anova(mods$m2, type = 2)
+Anova(mods$m3)
+# results are all the same with type 2 (regardless of variable order)
+anova(mods$m3)
+anova(mods$m2)
+anova(mods$m1)
+# for type 1, mostly affects how sig year is or not
+```
+
+#### v1
+
 ```{r pup time df prep}
 dfs <- dfs_imported %>%
   lapply(., \(x) {
@@ -238,7 +301,6 @@ dfs <- dfs_imported %>%
       filter(!is.na(tt.pupa))
   })
 ```
-
 
 ```{r pup time model generation}
 mods_puptime <- list(
@@ -288,6 +350,7 @@ mods_puptime %>%
   
 ```
 
+
 ## EDA: other terms
 2026-07-28 what terms to include?
 
@@ -304,7 +367,12 @@ AIC(mods$m1, mods$m2) #including sup is better
 
 summary(mods$m1)
 summary(mods$m2)
+
+# same ANOVA?
+anova(mods$m1)
+anova(mods$m2) # year is more sig
 ```
+
 ### mass
 ```{r}
 df <- dfs_imported$expt %>%
@@ -312,16 +380,24 @@ df <- dfs_imported$expt %>%
 
 mods <- list(
   m1 = lm(mass.pupa ~ pop*trt.minT*year, data = df),
+  m1a = lm(mass.pupa ~ pop*trt.minT*year, data = dfs_imported$expt),
   m2 = lm(mass.pupa ~ pop*trt.minT*year*sex, data = df),
   m3 = lm(mass.pupa ~ pop*trt.minT*year + sex, data = df)
 )
 
+# same ANOVA if including sex?
 anova(mods$m1, mods$m3, mods$m2) # adding sex (1way) is better
 AIC(mods$m1, mods$m2, mods$m3)
-summary(mods$m1)
+anova(mods$m1)
+anova(mods$m3) # main results still hold if sex is dropped
+summary(mods$m1) 
 summary(mods$m3)
-```
 
+# compare models w/o sex fitted to different data
+anova(mods$m1)
+anova(mods$m1a) # pop:minT slightly more sig
+summary(mods$m1a) # same R^2 as m1
+```
 
 
 ## EDA: random yr (2)
@@ -363,8 +439,18 @@ anova(mods$mm, mods$fm, mods$m0)
 
 summary(mods$mm)
 summary(mods$fm)
-```
 
+# type III Anova
+#library(car)
+Anova(mods$fm, type = 3)
+
+df <- dfs_imported$expt %>% 
+  mutate(across(is.character, as.numeric),
+         across(is.factor, as.numeric)) %>%
+  na.omit(c("pop", "trt.minT", "year", "tt.pupa"))
+cor(df$pop, df$trt.minT, df$year, df$tt.pupa)
+# NOTE: holding here lol... contrasts not working properly (singular fits)
+```
 
 ### pup mass
 
@@ -382,9 +468,6 @@ summary(mods$fm)
 
 # fixed is barely better than mixed!
 ```
-
-
-
 
 
 ## EDA: random yr (1)
@@ -465,6 +548,7 @@ mods_pup_randyr <- list(
 ```
 
 
+
 # ### adult
 
 ## EDA: other terms
@@ -478,15 +562,23 @@ df <- dfs_imported$expt %>%
 mods <- list(
   m1 = glm(is.ec ~ year*pop*trt.minT,
            family = "binomial", data = df),
+  m1a = glm(is.ec ~ year*pop*trt.minT,
+           family = "binomial", data = dfs_imported$expt),
   m2 = glm(is.ec ~ year*pop*trt.minT + mass.pupa,
            family = "binomial", data = df)
 )
 
 anova(mods$m1, mods$m2, test = "Chisq") # better to add pupal mass
-AIC(mods$m1, mods$m2)
+AIC(mods$m1, mods$m1a, mods$m2)
 
 summary(mods$m1)
+summary(mods$m1a)
 summary(mods$m2)
+
+# same ANOVA?
+anova(mods$m1, test = "Chisq") # pop **, yr:pop .
+anova(mods$m1a, test = "Chisq") # pop ***, yr:pop .
+anova(mods$m2, test = "Chisq") # pop **, pop:minT **, 3way .
 ```
 
 ### eclosion mass
@@ -502,21 +594,38 @@ mods <- list(
            data = df),
     m1a = lm(mass.eclose ~ year*pop*trt.minT*sex + mass.pupa,
             data = df),
+    m1b = lm(mass.eclose ~ year*pop*trt.minT*sex,
+           data = dfs_imported$expt),
     # w/o sex
     m2 = lm(mass.eclose ~ year*pop*trt.minT,
             data = df),
     m2a = lm(mass.eclose ~ year*pop*trt.minT + mass.pupa,
-            data = df)
+            data = df),
+    m2b = lm(mass.eclose ~ year*pop*trt.minT,
+             data = dfs_imported$expt)
 )
 
+# compare models
 anova(mods$m2, mods$m2a, mods$m1, mods$m1a) 
   # adding sex is w/e but mass is impt
 AIC(mods$m2, mods$m2a, mods$m1, mods$m1a)
   # adding mass reduces AIC a lot; technically so does sex
   # best is to have sex and mass pupa..
 summary(mods$m2)
+summary(mods$m2a)
 summary(mods$m1)
 summary(mods$m1a)
+
+# same ANOVA results?
+## simplest
+anova(mods$m2) # yr ***, pop ***, minT *, pop:minT **
+anova(mods$m2b) # same
+## adding terms
+anova(mods$m2a) # with mass; main effs ***
+anova(mods$m1) # with sex; main effs ***; pop:trt **; sex 2-ways *
+anova(mods$m1a) # with mass+sex; main effs ***; year:sex ., trt:sex *
+# tldr main effs stay sig. interactions w/ sex vary
+
 
 # try sex as a random eff
 mods <- list(
@@ -530,7 +639,6 @@ mods <- list(
 
 anova(mods$m2, mods$m1, mods$m0) # fixed is better...?
 ```
-
 
 
 ## EDA: random year
@@ -581,6 +689,7 @@ anova(mods$mm, mods$fm, mods$m0) # need to include yr; fixed is better
 
 summary(mods$fm)
 ```
+
 
 ### longevity
 ```{r}
@@ -711,7 +820,7 @@ mods <- list(
           data = dfs$all %>% filter(if.mated == 1)),
   m2 = lm(tt.long ~ year*pop*trt.minT*as.factor(if.fridge),
           data = dfs$expt),
-  m2a = lm(tt.long ~ year*pop*trt*as.factor(if.fridge),
+  m2a = lm(tt.long ~ year*pop*trt.minT*as.factor(if.fridge),
           data = dfs$expt %>% filter(if.mated == 1))
 )
 
@@ -719,6 +828,7 @@ anova(mods$m1) # all trts
 anova(mods$m1a) # all trts, mated only
 anova(mods$m2) # expt only
 anova(mods$m2a) # expt, mated only
+Anova(mods$m2a)
 
 # fridge effects only fall out if looking at the mated, exptal bugs... (i.e. so can include them back in the results i guess?)
 
@@ -728,13 +838,13 @@ df <- dfs$expt %>%
          !is.na(if.fridge))
 
 mods <- list(
-  y23a = lm(tt.long ~ pop*trt,
+  y23a = lm(tt.long ~ pop*trt.minT,
           data = df %>% filter(year == 2023)),
-  y23b = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+  y23b = lm(tt.long ~ pop*trt.minT*as.factor(if.fridge),
           data = df %>% filter(year == 2023)),
-  y25a = lm(tt.long ~ pop*trt,
+  y25a = lm(tt.long ~ pop*trt.minT,
           data = df %>% filter(year == 2025)),
-  y25b = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+  y25b = lm(tt.long ~ pop*trt.minT*as.factor(if.fridge),
           data = df %>% filter(year == 2025))
 )
 
@@ -743,9 +853,9 @@ anova(mods$y25a, mods$y25b) # matters in 2025 (but prob cuz i kept better track.
 
 # with all data
 mods <- list(
-  y23 = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+  y23 = lm(tt.long ~ pop*trt.minT*as.factor(if.fridge),
           data = dfs$expt %>% filter(if.mated == 1, year == 2023)),
-  y25 = lm(tt.long ~ pop*trt*as.factor(if.fridge),
+  y25 = lm(tt.long ~ pop*trt.minT*as.factor(if.fridge),
           data = dfs$expt %>% filter(if.mated == 1, year == 2025))
 )
 anova(mods$y23)
