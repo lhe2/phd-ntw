@@ -92,11 +92,13 @@ dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
 
 
 
-# ### TRY 4: EDAs for mss
+# ## TRY 3: EDAs for mss
 
 couple of different explorations per feedback from july 2026 mtgs
 
-## simpler models
+2026-07-31 post-mortem: allowed to bench this now :)
+
+## trying simpler models
 
 2026-07-29 bc of all the imbalances in the numbers, just keep the predictors simple
 
@@ -132,8 +134,9 @@ Anova(mods$m4, type = 2,
 # everything matters...
 ```
 
-## trying diffrent models types
-(focusing on eggs collected first, then eggs hatched?)
+## trying mixed models
+
+trying cage as a random effect. (focusing on eggs collected first, then eggs hatched?)
 eggs collected ~ # females + hs sex * hs trt + 1|enclosure
 
 using 2023 eggs collected only (bc doing stats separately for each yr in mss), seeing 1) what response variable and 2) what distribution to use
@@ -260,9 +263,11 @@ summary(mods$poim_expt)
 ```
 
 
-# # EDA effect of col
+## EDA: effect of col
 
-2026-07-03: ignoring this.. since per the viz it gets too piecemealy anyway
+does effect of col matter?
+
+2026-07-03: now ignoring this.. since per the viz it gets too piecemealy anyway
 
 ```{r}
 # TODO wip
@@ -271,14 +276,19 @@ summary(mods$poim_expt)
 #' eggs laid ~ trt.f*is.col.f + trt.m*is.col.m maybe?
 ```
 
-# ### TRY 3: exptal only
 
+# ## TRY 2: exptal only
+
+per mtg feedback, focus on expt bugs only -- trying out transforming response variable (for eggs laid)
+
+## try 2: (more) eggs laid transforms
+
+TODO 
+- try offsets for egg poissons?
 
 - 2026-05-31:
  - trying out better model diagnosing first lol (for ntw mss final stats)
  - testing response variable transform + model type
- 
-## Z: eggs laid
 
 ### model type + Z
  
@@ -417,11 +427,9 @@ mods %>% GetModelResults()
 ```
 
 
-# ### TRY 2: exptal only
+## try 1: eggs laid transforms
 
 2026-05-31: archived trying out modeling eggs laid, focusing on just the expt bugs
-
-## Z: eggs laid
 
 ### diagnostics + transforms
 
@@ -501,7 +509,7 @@ mods <- list(
 ```
 
 
-# ### TRY 1: all bugs, ref only
+# ## TRY 1: all bugs (ref only)
 
 - 2026-02-10 after wkly mtg, just for ref only. but TLDR:
   - `n.f` and `year` should be inluded in the eggs laid mods
@@ -511,7 +519,7 @@ mods <- list(
   - need to run on a subset of the data without the ctrls (or else just as ctrls vs hot bc 26-26 mating group is confounded w/ `mate.ishs` and `mate.trt`)
   - do the hatching as `c(# hatch, # coll)` (not as success/failures)
 
-## Z: eggs laid
+## eggs laid
 
 ### diagnosing Z
 
@@ -685,7 +693,7 @@ resid(mods$test) # try -- when `cage` is included, resids are 0
 
 ```
 
-#### trying stuff w joel
+### trying stuff w joel
 - trying stuff with the mods:
   - use just a subset of the hot bugs only
   - try looking at the trt interaction + dropping different terms
@@ -731,7 +739,7 @@ glm(n.coll.perf + 1 ~ mate.trt*mate.ishs + n.f + year,
 ```
 
 
-## Z: eggs hatched
+## eggs hatched
 
 ### diagnosing Z
 
@@ -827,7 +835,7 @@ mods %>% DiagnoseModel2() # resids are a little tighter w the negbin. does it ne
   - (glms are sorta wonky bc the distribution is sooo bad to begin w lol... (try ZIP model instead))
   - nts: dont need number of F for this.. just # of eggs coll???
 
-## Z: binomial (hatch, laid)
+## binomial (hatch, laid)
 
 - [wip] Z: binomial (ie # hatch, # coll)
   - wonkkkyyy...
