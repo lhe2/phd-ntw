@@ -15,9 +15,10 @@ library(tidyverse)
 library(patchwork) # plot_layout
 
 # stats
-library(lme4) # glm, lm, glmer
+library(lme4) # lmer, glmer
+library(lmerTest) # overload lme4::lmer to get p-vals on fixed effs
+library(car) # type II, III ANOVAs
 library(ggfortify) # autoplot (diagnosing)
-#library(pscl) # zeroinfl
 
 conflicted::conflicts_prefer(
   dplyr::select(),

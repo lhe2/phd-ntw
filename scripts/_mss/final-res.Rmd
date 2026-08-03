@@ -16,6 +16,8 @@ for collated viz + stats results for ntw mss
     -   supp viz = includes year and sex (if applicable)
 -   notes on the stats:
     -   main stats = focuses on the NTW bugs and population, minimum temp as predictors
+    - variable order does matter lol (ie `pop*minT` vs `minT*pop`). for the most part, will do models as pop first. 
+    - using [this method](https://lmackerman.com/notebooks/prose_statistics.nb.html#Interaction_effect) for testing signif of effects
     
 main results/figs:
 
@@ -98,7 +100,45 @@ ps$surv_pup
 ```
 
 ### stats
-```{r main stats pup survival}
+
+```{r NEW main stats pup survival}
+# fit models
+mods <- list(
+  int = glmer(is.pup ~ pop*trt.minT + (1|year),
+              family = "binomial", data = dfs_stats$dev_expt),
+  add = glmer(is.pup ~ pop + trt.minT + (1|year),
+              family = "binomial", data = dfs_stats$dev_expt),
+  pop = glmer(is.pup ~ pop + (1|year),
+              family = "binomial", data = dfs_stats$dev_expt),
+  minT = glmer(is.pup ~ trt.minT + (1|year),
+               family = "binomial", data = dfs_stats$dev_expt)
+)
+
+anova(mods$add, mods$int) # int is sig
+drop1(mods$int, 
+      #scope = ~ ., 
+      test = "Chisq") # same result as above for p-val
+
+anova(mods$int)
+summary(mods$int)
+
+Anova(mods$int, type = 2, test.statistic = "Chisq")
+drop1(mods$add, 
+      #scope = ~ ., 
+      test = "Chisq")
+
+anova(mods$add, mods$pop)
+anova(mods$add, mods$minT)
+drop1(mods$add, 
+      #scope = ~ ., 
+      test = "Chisq")
+
+
+
+```
+
+
+```{r OLD main stats pup survival}
 mods <- list(
   m1 = glm(is.pup ~ year*pop*trt.minT,
            family = "binomial", data = dfs_stats$dev_expt),
