@@ -13,6 +13,11 @@
 .RData
 # User-specific files
 .Ruserdata
+# other data formats
+.Rda
+.rda
+.Rds
+.rds
 # Example code in package build process
 *-Ex.R
 # Output files from R CMD build
