@@ -36,8 +36,7 @@ main results/figs:
 source(here::here("scripts/_mss/load.R"))
 ```
 
-## plot objects
-```{r}
+```{r plot objects}
 # for saving/exporting patchworks
 p <- list() # main plots
 ps <- list() # supp plots
@@ -48,6 +47,8 @@ ps <- list() # supp plots
 # (1) survival
 
 ## survival to pup
+
+### main
 
 ```{r plot prep pup survival}
 .plotfn <- function(x){
@@ -138,7 +139,8 @@ drop1(mods$add,
 ```
 
 
-```{r OLD main stats pup survival}
+
+```{r OLD main stats pup survival, eval = FALSE}
 mods <- list(
   m1 = glm(is.pup ~ year*pop*trt.minT,
            family = "binomial", data = dfs_stats$dev_expt),
@@ -160,6 +162,9 @@ summary(mods$m2)
 ```
 
 ## survival to eclosion
+
+### main
+
 ```{r plot prep ec survival}
 .plotfn <- function(x){
   x %>%
@@ -217,7 +222,7 @@ ps$surv_ec
 
 ### stats
 
-```{r main stats surv to ec}
+```{r OLD main stats surv to ec, eval = FALSE}
 # filter df bc of including mass.pupa in the model -- m1
 # will fit extra observations
 df <- dfs_stats$dev_expt %>%
@@ -367,6 +372,8 @@ dfs_viz$wide %>%
 
 ## pupal mass
 
+### main
+
 drop LPIs bc mass isnt accurate
 
 ```{r df prep pup mass}
@@ -438,7 +445,7 @@ ps$mass_pupsex
 
 
 ### stats
-```{r main stats pup mass}
+```{r OLD main stats pup mass, eval = FALSE}
 mods <- list(
   m1 = lm(mass.pupa ~ year*pop*trt.minT*sex,
            data = dfs_stats$dev_expt
@@ -465,6 +472,8 @@ summary(mods$m3)
 ```
 
 ## eclosion mass
+
+### main
 
 ```{r df prep eclosion mass}
 df <- dfs_viz$long %>%
@@ -539,7 +548,7 @@ ps$mass_ecsex
 
 ### stats
 
-```{r}
+```{r OLD eclosion stats, eval = FALSE}
 # include pupal mass?
 mods <- list(
     m1 = lm(mass.eclose ~ year*pop*trt.minT*sex + mass.pupa,
@@ -625,6 +634,9 @@ p$mass_pupsex + theme(legend.position = "none") +
 ```
 
 ## time to pupation
+
+### main
+
 ```{r main fig time to pup}
 p <- list_modify(
   p,
@@ -659,7 +671,7 @@ ps$time_pup
 ```
 
 ### stats
-```{r main stats pup dev rate}
+```{r OLD main stats pup dev rate, eval = FALSE}
 mods <- list(
   m1 = lm(tt.pupa ~ year*pop*trt.minT,
            data = dfs_stats$dev_expt),
@@ -686,6 +698,8 @@ summary(mods$m2)
 
 
 ## time to eclosion
+
+### main
 
 outliers are only in the ctrl trt so just ignore ig
 
@@ -730,7 +744,7 @@ ps$time_ec
 ```
 
 ### stats
-```{r}
+```{r OLD stats ec time, eval = FALSE}
 mods <- list(
   m1 = lm(tt.eclose ~ year*trt.minT*pop,
           data = dfs_stats$dev_expt)
@@ -774,7 +788,8 @@ p$time_pup+ p$time_ec +
 #ResToFig("supp/dev-time")
 ```
 
-## sup
+## supernumerary
+
 ```{r}
 dfs_viz$long %>%
   filter(is.pup > 0,
@@ -791,8 +806,6 @@ dfs_viz$long %>%
   labs(y = "time to pupation (days)")
 ```
 
-
-
 # (4) lifespan
 
 - comments on EDAs:
@@ -801,6 +814,8 @@ dfs_viz$long %>%
   - effect of fridge: not signif if yrs are consolidated for mated bugs only. if yrs are parsed, signif in 2025 only but probably bc of N.
   - effect of sex: only matters for expt, mated bugs (if yrs are consolidated)
 ## lifespan
+
+### main
 
 ```{r}
 dfs_viz$long %>%

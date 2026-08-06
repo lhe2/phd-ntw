@@ -19,10 +19,17 @@ library(lme4) # lmer, glmer
 library(lmerTest) # overload lme4::lmer to get p-vals on fixed effs
 library(car) # type II, III ANOVAs
 library(ggfortify) # autoplot (diagnosing)
+library(afex) # mixed models
+
+# exporting results
+library(broom)
+library("broom.mixed")
+# library(clipr)
 
 conflicted::conflicts_prefer(
   dplyr::select(),
-  dplyr::filter())
+  dplyr::filter(),
+  lmerTest::lmer())
 
 # utils ----------------------------------------------------------
 library(here)
@@ -87,7 +94,9 @@ Plot_Fit <- function(df){
 ## anova/* = stats
 ## ss/* = viz
 ResToCsv <- function(res, filename){
-  res <- as.data.frame(res)
+  res <- as.data.frame(res) 
+  # TODO use broom::tidy()...?
+  # res <- tidy(res)
   today <- format(Sys.time(), "%y%m%d")
   path <- paste0("out/mss-stats/", filename, "_", today, ".csv")
   

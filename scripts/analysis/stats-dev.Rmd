@@ -15,15 +15,22 @@ here::i_am("scripts/analysis/stats-dev.Rmd")
 
 ```{r load libraries, message=FALSE}
 library(here)
-library(lme4) # glm, lm, glmer
-#library(lmerTest) # lmer
-#library(MuMIn) # dredge (nested model comparisons)
 library(tidyverse)
-library(car)
+
+# stats
+library(lme4) # glm, lm, glmer
+library(lmerTest) # lmer overload
+#library(MuMIn) # dredge (nested model comparisons)
+library(car) # type 2, 3 anovas
+library(afex) # mixed models
+
+# exporting via tidy()
+#library(broom)
+#library("broom.mixed")
 
 library(conflicted)
 conflicts_prefer( 
-  #lmerTest::lmer, # dont rlly need..
+  #lmerTest::lmer,
   dplyr::filter
 )
 # lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
@@ -76,6 +83,8 @@ dfs_imported <- list(
 # ### pupal 
 
 ## main results
+
+trying out which models to use for final mss.
 
 ### survival to pup
 
@@ -144,7 +153,7 @@ dfs <- dfs_imported %>%
   })
 ```
 
-#### v2
+#### v2 var order
 
 2026-07-29 fucking around and messing w variable order
 
@@ -169,7 +178,7 @@ Anova(mods$m2, type = 2)
 anova(mods$m2)
 ```
 
-#### v1
+#### v1 dredge
 
 - exptal: 1-ways, `year:minT`, and `minT:pop` are sig
 
@@ -255,7 +264,7 @@ anova(mods_pupmass$expt_2way, mods_pupmass$expt_3way, test = "Chisq")
 
 ### time to pup
 
-#### v2
+#### v2 var order
 
 2026-07-29 messing around w variable order
 
@@ -289,7 +298,7 @@ anova(mods$m1)
 # for type 1, mostly affects how sig year is or not
 ```
 
-#### v1
+#### v1 dredge
 
 ```{r pup time df prep}
 dfs <- dfs_imported %>%
