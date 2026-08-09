@@ -4,8 +4,14 @@
 # checks if the object being passed in is a list or not
 # (i.e. list of fitted model objs or single obj -- converts to list if not)
 
+# stats/viz
 library(ggfortify) # autoplot (diagnosing)
+
+# exporting results
+library(broom) # tidy stat tables to tibbles
+library("broom.mixed") 
 library(clipr) # copy stuff to clipboard
+
 
 # OUTPUT ------------------------------------------------------------------
 

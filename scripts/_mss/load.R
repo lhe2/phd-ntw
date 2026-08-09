@@ -16,18 +16,16 @@ library(patchwork) # plot_layout
 
 # stats
 library(lme4) # lmer, glmer
-library(lmerTest) # overload lme4::lmer to get p-vals on fixed effs; drop1
+library(lmerTest) # overload lme4::lmer to get p-vals on fixed effs 
+  ## drop1/anova(type=2) for lmms
 library(car) # type II, III ANOVAs
-library(ggfortify) # autoplot (diagnosing)
 
-# exporting results
-library(broom)
-library("broom.mixed")
 
 conflicted::conflicts_prefer(
   dplyr::select(),
   dplyr::filter(),
-  lmerTest::lmer())
+  lmerTest::lmer() # to make things of class lmerModLmerTest
+  )
 
 # utils ----------------------------------------------------------
 library(here)

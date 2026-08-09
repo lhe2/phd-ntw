@@ -113,19 +113,26 @@ mods <- list(
   no_pop = glmer(is.pup ~ trt.minT + (1|year),
                  family = "binomial", data = dfs_stats$dev_expt),
   no_minT = glmer(is.pup ~ pop + (1|year),
-                  family = "binomial", data = dfs_stats$dev_expt)
+                  family = "binomial", data = dfs_stats$dev_expt),
+  fixed = glm(is.pup ~ pop*trt.minT + year,
+              family = "binomial", data = dfs_stats$dev_expt)
 )
 
-# test sig of effs (df, X^2, p) 
-anova(mods$add, mods$int)# int: 2, 17.902,***
-anova(mods$no_pop, mods$add) # pop: 1, 42.646, ***
-anova(mods$no_minT, mods$add) # minT: 2, 78.428, ***
+# # # test sig of effs (df, X^2, p) 
+# anova(mods$int, mods$fixed)
+ anova(mods$add, mods$int, test = "Chisq") # int: 2, 17.902,***
+
+# anova(mods$no_pop, mods$add) # pop: 1, 42.646, ***
+# anova(mods$no_minT, mods$add) # minT: 2, 78.428, ***
 
 ## tldr just do drop1 on the int and add models. (tho they lack the AIC/etc..)
 ## see: https://stats.stackexchange.com/questions/193643/likelihood-ratio-vs-score-vs-wald-test-different-p-values-which-to-use
 ## these refit the models and do LRT
-drop1(mods$int, test = "Chisq")
-drop1(mods$add, test = "Chisq")
+drop1(mods$int, test = "Chisq") 
+drop1(mods$add, test = "Chisq") 
+# Anova(update(mods$int, 
+#              contrasts = c("contr.sum", "contr.poly")), # should be list of x1 = contr, etc.
+#       type = 3)
 
 ## (diff X^2 results from drop1 bc Anova does Wald tests (X^2) and not refitting model after dropping terms)
 ## also, cant specify test=F here.
@@ -134,9 +141,10 @@ drop1(mods$add, test = "Chisq")
 
 # get effect sizes
 anova(mods$int)
+MuMIn::r.squaredGLMM(mods$int) # get R^2
 summary(mods$int) 
 mods$int %>% glance()
-  tidy() %>% write_clip() 
+  #tidy() %>% write_clip() 
 #%>% ResToCsv("summ/surv-pup") # missing var of rand effs tho
 ```
 
@@ -253,18 +261,37 @@ ps$surv_ec
 mods <- list(
   int = glmer(is.ec ~ pop*trt.minT + (1|year),
               family = "binomial", data = dfs_stats$dev_expt),
+  ## singular fits
   add = glmer(is.ec ~ pop + trt.minT + (1|year),
               family = "binomial", data = dfs_stats$dev_expt),
   no_minT = glmer(is.ec ~ pop + (1|year),
               family = "binomial", data = dfs_stats$dev_expt),
   no_pop = glmer(is.ec ~ trt.minT + (1|year),
-               family = "binomial", data = dfs_stats$dev_expt)
+               family = "binomial", data = dfs_stats$dev_expt),
+  ## glm versions
+  add_F = glm(is.ec ~ pop + trt.minT + year,
+              family = "binomial", data = dfs_stats$dev_expt),
+  add_F2 = glm(is.ec ~ pop + trt.minT,
+              family = "binomial", data = dfs_stats$dev_expt),
+  int_F = glm(is.ec ~ pop*trt.minT,
+              family = "binomial", data = dfs_stats$dev_expt)
 )
 
-# test sig of effs (df, X^2, p)
+# # test sig of effs (df, X^2, p)
 anova(mods$int, mods$add) # int: 2, 2.488, 0.2882
-anova(mods$add,mods$no_minT) # minT: 2, 2.6909, 0.2604
-anova(mods$add, mods$no_pop) # pop: 1, 12.289, ***
+# anova(mods$add,mods$no_minT) # minT: 2, 2.6909, 0.2604
+# anova(mods$add, mods$no_pop) # pop: 1, 12.289, ***
+
+drop1(mods$int, test = "Chisq") 
+drop1(mods$add, test = "Chisq")
+drop1(mods$add_F, test = "Chisq") # glm_add similar results to glmer_add
+
+anova(mods$int, mods$int_F, mods$add_F2) 
+# F2 is best, tho they are all similar. just use the glmer LOL
+
+## comparing the additive models
+summary(mods$add)
+summary(mods$add_F) # similar betas to the glmer
 
 # get effect sizes
 summary(mods$int) # do on the int (instead add) bc otherwise var is actually 0 lol
@@ -508,10 +535,10 @@ mods <- list(
 
 ## include sex? -- yes
 ## (variations of tests...)
-anova(mods$int2, mods$int) # sex: 1, 6.3869, *
-drop1(mods$int)
-drop1(mods$int, scope = c("sex"), ddf = "lme4", test = "Chisq")
-drop1(mods$int, scope = c("sex", "pop:trt.minT"), test = "Chisq")
+#anova(mods$int2, mods$int) # sex: 1, 6.3869, *
+drop1(mods$int, scope = c("sex")) # keep sex
+# drop1(mods$int, scope = c("sex"), ddf = "lme4", test = "Chisq")
+# drop1(mods$int, scope = c("sex", "pop:trt.minT"), test = "Chisq")
 
 # fit full and depleted models
 mods <- list_modify(
@@ -525,17 +552,23 @@ mods <- list_modify(
   # no_sex mod is just the above comparison
 )
 
-# test sig of effs (df, X^2, p)
-anova(mods$int, mods$add) # int: 2, 8.4835, *
-drop1(mods$int, scope = c("pop:trt.minT"), test = "Chisq")
-drop1(mods$int, scope = c("pop:trt.minT"), ddf = "lme4", test = "Chisq")
+# # test sig of effs (df, X^2, p)
+# anova(mods$int, mods$add) %>% write_clip() # int: 2, 8.4835, *
+# drop1(mods$int, scope = c("pop:trt.minT"), test = "Chisq")
+# drop1(mods$int, scope = c("pop:trt.minT"), ddf = "lme4", test = "Chisq")
+# 
+# anova(mods$add, mods$no_pop) # pop: 1, 126.32, ***
+ anova(mods$add,mods$no_minT, test = "F") # minT: 2, 36.642, ***
+# drop1(mods$add, scope = c("pop", "trt.minT", "sex"), test = "Chisq")
+# drop1(mods$add, scope = c("pop", "trt.minT", "sex"), ddf = "lme4", test = "Chisq")
 
-anova(mods$add, mods$no_pop) # pop: 1, 126.32, ***
-anova(mods$add,mods$no_minT) # minT: 2, 36.642, ***
-drop1(mods$add, scope = c("pop", "trt.minT", "sex"), test = "Chisq")
-drop1(mods$add, scope = c("pop", "trt.minT", "sex"), ddf = "lme4", test = "Chisq")
-
-
+# drop1(mods$int, scope = c("pop:trt.minT")) 
+# drop1(mods$add)
+ drop1(lm(mass.pupa ~ pop*trt.minT + sex + year, data = df), 
+       scope = ~ .)
+# jk just use anova.lmerModLmerTest
+anova(mods$int, type = 2) # F test
+#Anova(mods$int, type = 2) # Wald X^2
 
 # get effect sizes
 summary(mods$int)
@@ -656,7 +689,8 @@ mods <- list(
 )
 
 ## include sex? -- yes
-anova(mods$int2, mods$int) # sex: 1, 27.7, ***
+#anova(mods$int2, mods$int) # sex: 1, 27.7, ***
+drop1(mods$int, scope = "sex") #yes
 
 # fit full and depleted models
 mods <- list_modify(
@@ -670,10 +704,14 @@ mods <- list_modify(
   # no_sex mod is just the above comparison
 )
 
-# test sig of effs (df, X^2, p)
-anova(mods$int, mods$add) # int: 2, 10.683, **
-anova(mods$add, mods$no_pop) # pop: 1, 40.148, ***
-anova(mods$add,mods$no_minT) # minT: 2, 7.6602, *
+# # test sig of effs (df, X^2, p)
+# anova(mods$int, mods$add) # int: 2, 10.683, **
+# anova(mods$add, mods$no_pop) # pop: 1, 40.148, ***
+# anova(mods$add,mods$no_minT) # minT: 2, 7.6602, *
+
+# drop1(mods$int, scope = "pop:trt.minT")
+# drop1(mods$add)
+anova(mods$int, type = 2) 
 
 # get effect sizes
 summary(mods$int)
@@ -816,10 +854,14 @@ mods <- list(
              data = dfs_stats$dev_expt)
 )
 
-# test sig of effs (df, X^2, p)
-anova(mods$int, mods$add) # int: 2, 2.6775, 0.2622
-anova(mods$add, mods$no_pop) # pop: 1, 22.863, ***
-anova(mods$add,mods$no_minT) # minT: 2, 133.33, ***
+# # test sig of effs (df, X^2, p)
+# anova(mods$int, mods$add) # int: 2, 2.6775, 0.2622
+# anova(mods$add, mods$no_pop) # pop: 1, 22.863, ***
+# anova(mods$add,mods$no_minT) # minT: 2, 133.33, ***
+
+# drop1(mods$int) # int is ns
+# drop1(mods$add) 
+anova(mods$int, type = 2)
 
 # get effect sizes 
 # TODO: revist. they have diff results
@@ -913,16 +955,19 @@ mods <- list(
              data = dfs_stats$dev_expt)
 )
 
-# test sig of effs (df, X^2, p)
-Anova(mods$int, test.statistic="Chisq")
-Anova(mods$int, test.statistic="F")
-drop1(mods$int, ddf = "Kenward-Roger")
-drop1(mods$int)
+# # test sig of effs (df, X^2, p)
+# Anova(mods$int, test.statistic="Chisq")
+# Anova(mods$int, test.statistic="F")
+# drop1(mods$int, ddf = "Kenward-Roger")
+# drop1(mods$int)
+# 
+# anova(mods$int, mods$add) # int: 2, 3.3228, 0.1899
+# anova(mods$add, mods$no_pop) # pop: 1, 0.8621, 0.3532
+# anova(mods$add,mods$no_minT) # minT: 2, 41.554, ***
 
-anova(mods$int, mods$add) # int: 2, 3.3228, 0.1899
-anova(mods$add, mods$no_pop) # pop: 1, 0.8621, 0.3532
-anova(mods$add,mods$no_minT) # minT: 2, 41.554, ***
-
+# drop1(mods$int) # ns
+# drop1(mods$add)
+anova(mods$int, type = 2) 
 
 
 # get effect sizes 
