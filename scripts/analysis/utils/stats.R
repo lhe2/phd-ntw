@@ -5,6 +5,7 @@
 # (i.e. list of fitted model objs or single obj -- converts to list if not)
 
 library(ggfortify) # autoplot (diagnosing)
+library(clipr) # copy stuff to clipboard
 
 # OUTPUT ------------------------------------------------------------------
 

@@ -16,15 +16,13 @@ library(patchwork) # plot_layout
 
 # stats
 library(lme4) # lmer, glmer
-library(lmerTest) # overload lme4::lmer to get p-vals on fixed effs
+library(lmerTest) # overload lme4::lmer to get p-vals on fixed effs; drop1
 library(car) # type II, III ANOVAs
 library(ggfortify) # autoplot (diagnosing)
-library(afex) # mixed models
 
 # exporting results
 library(broom)
 library("broom.mixed")
-# library(clipr)
 
 conflicted::conflicts_prefer(
   dplyr::select(),
@@ -62,8 +60,15 @@ Plot_Dev <- function(df){
     scale_shape_manual(values = p_scales$shp_pop) +
     scale_linetype_manual(values = p_scales$lty_pop) +
     scale_x_discrete(labels = p_scales$labs_minT) +
-    guides(shape = guide_legend(override.aes = list(linetype = c("solid", "255F"))),
-           color = guide_legend(order = 1)) +
+    guides(color = guide_legend(override.aes = list(alpha = 1, size = 2),
+                                order = 1),
+           shape = guide_legend(override.aes = list(alpha = 1, size = 2,
+                                                    linetype = c("solid", "255F")),
+                                order = 2),
+           lty = guide_legend(order = 2),
+           size = guide_legend(override.aes = list(alpha = 0.65),
+                               order = 3)
+           ) +
     theme_bw()
 }
 
