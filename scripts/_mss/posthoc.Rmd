@@ -1,0 +1,276 @@
+---
+title: "ntw mss posthoc"
+date: "2026-08-09"
+---
+
+# preamble and setup
+
+main script was getting way too long
+
+- READING DUMP
+  - https://rcompanion.org/rcompanion/d_08.html
+
+
+```{r pathfinding, message=FALSE}
+here::i_am("scripts/_mss/posthoc.Rmd")
+```
+
+- for NTW, models fit based on final models from `final-res.Rmd`. for CTRL, checked if int was sig.
+- if int was sig in either NTW or CTRL models, did simple contrasts. if int was ns, used additive model and got EMMs per factor. 
+
+## loading
+
+```{r data and lib, message=FALSE}
+library(emmeans) # post-hoc tests
+source(here::here("scripts/_mss/load.R"))
+
+# create df of just same minT group
+dfs_stats <- list_modify(
+  dfs_stats,
+  dev_ph = dfs_stats$dev_all %>% filter(trt.minT == 26)
+)
+```
+
+```{r}
+# maybe make these objects for exporting instead lol...
+# instead of %>% tidy %>% write_clip
+```
+
+  
+# # survival
+
+## pupal
+
+```{r}
+# NTW
+mods <- glmer(is.pup ~ pop*trt.minT + (1|year),
+             family = "binomial", data = dfs_stats$dev_expt)
+
+anova(mods, update(mods, . ~ . - pop:trt.minT),
+      test = "Chisq") # int is sig
+drop1(update(mods, . ~ . - pop:trt.minT), test = "Chisq") # both are sig
+
+emms <- emmeans(mods, c("pop", "trt.minT"), type = "response")
+
+pairs(emms, simple = "pop") 
+pairs(emms, simple = "trt.minT")
+```
+
+```{r}
+# CTRL VS EXPT
+# fit
+mods <- list(
+  int = glmer(is.pup ~ pop*trt.type + (1|year),
+             family = "binomial", data = dfs_stats$dev_ph),
+  add = glmer(is.pup ~ pop + trt.type + (1|year),
+             family = "binomial", data = dfs_stats$dev_ph)
+)
+
+# check main effs and int
+anova(mods$add, mods$int, test = "Chisq") # int is sig
+drop1(mods$add, test = "Chisq") # pop is sig
+
+# get means and compare
+emms <- emmeans(mods$int, c("pop", "trt.type"), type = "response")
+pairs(emms, simple = "pop") 
+pairs(emms, simple = "trt.type")
+```
+
+## adult
+
+```{r}
+# NTW
+mods <- glmer(is.ec ~ pop*trt.minT + (1|year),
+             family = "binomial", data = dfs_stats$dev_expt)
+
+anova(mods, update(mods, . ~ . - pop:trt.minT),
+      test = "Chisq") # int is ns
+drop1(update(mods, . ~ . - pop:trt.minT), test = "Chisq") # pop is sig
+
+# get emms separately
+emms <- list(
+  pop = emmeans(mods, "pop", type = "response"),
+  trt = emmeans(mods, "trt.minT", type = "response")
+  )
+
+pairs(emms$pop)
+pairs(emms$trt)
+```
+
+```{r}
+# CTRL VS EXPT
+# fit
+mods <- list(
+  int = glmer(is.ec ~ pop*trt.type + (1|year),
+             family = "binomial", data = dfs_stats$dev_ph),
+  add = glmer(is.ec ~ pop + trt.type + (1|year),
+             family = "binomial", data = dfs_stats$dev_ph)
+)
+## both singular fits - not super surprising bc lab generally has high survival
+
+# check main effs and int
+anova(mods$add, mods$int, test = "Chisq") # int is barely sig
+drop1(mods$add, test = "Chisq") # pop is sig
+## int is the better model, but bc int is borderline, get EMMs on the int mod for 1 factor at a time
+
+# get means and compare
+emms <- list(
+  pop = emmeans(mods$int, "pop", type = "response"),
+  trt = emmeans(mods$int, "trt.type", type = "response")
+)
+  
+pairs(emms$pop) 
+pairs(emms$trt)
+```
+
+
+# # mass
+
+## pupal
+
+```{r}
+# NTW
+mods <- lmer(mass.pupa ~ pop*trt.minT + sex + (1|year),
+             data = dfs_stats$dev_expt %>% filter(!is.na(sex)))
+
+anova(mods, type = 2) # all sig
+
+emms <- list(
+  int = emmeans(mods, c("pop", "trt.minT")),
+  sex = emmeans(mods, "sex")
+  )
+
+pairs(emms$int, simple = "pop")
+pairs(emms$int, simple = "trt.minT")
+pairs(emms$sex)
+```
+
+```{r}
+# CTRL VS EXPT
+# fit
+mods <- lmer(mass.pupa ~ pop*trt.type + sex + (1|year),
+             data = dfs_stats$dev_ph %>% filter(!is.na(sex)))
+
+# check main effs and int
+anova(mods, type = 2) # all are sig
+
+# get means and compare
+emms <- list(
+  int = emmeans(mods, c("pop", "trt.type")),
+  sex = emmeans(mods, "sex")
+  )
+
+pairs(emms$int, simple = "pop")
+pairs(emms$int, simple = "trt.type")
+pairs(emms$sex)
+```
+
+## adult
+
+```{r}
+# NTW
+mods <- lmer(mass.eclose ~ pop*trt.minT + sex + (1|year),
+             data = dfs_stats$dev_expt %>% filter(!is.na(sex)))
+anova(mods, type = 2) # all sig
+
+emms <- list(
+  int = emmeans(mods, c("pop", "trt.minT")),
+  sex = emmeans(mods, "sex")
+  )
+
+pairs(emms$int, simple = "pop") %>% tidy() %>% write_clip()
+pairs(emms$int, simple = "trt.minT") %>% tidy() %>% write_clip()
+pairs(emms$sex) %>% tidy() %>% write_clip()
+```
+
+```{r}
+# CTRL VS EXPT
+# fit
+mods <- lmer(mass.eclose ~ pop*trt.type + sex + (1|year),
+             data = dfs_stats$dev_ph %>% filter(!is.na(sex)))
+
+# check main effs and int
+anova(mods$int, type = 2) # all are sig
+
+# get means and compare
+emms <- list(
+  int = emmeans(mods$int, c("pop", "trt.type")),
+  sex = emmeans(mods$int, "sex")
+  )
+
+pairs(emms$int, simple = "pop")
+pairs(emms$int, simple = "trt.type")
+pairs(emms$sex)
+```
+
+
+# # dev time
+
+## pupal
+
+```{r}
+# NTW
+mods <- lmer(tt.pupa ~ pop*trt.minT + (1|year),
+             data = dfs_stats$dev_expt)
+anova(mods, type = 2) # ME are sig, int is ns
+
+# get EMMs
+emms <- list(
+  pop = emmeans(mods, "pop"),
+  trt = emmeans(mods, "trt.minT")
+)
+  
+pairs(emms$pop)
+pairs(emms$trt)
+```
+
+```{r}
+# CTRL VS EXPT
+# fit
+mods <- lmer(tt.pupa ~ pop*trt.type + (1|year),
+             data = dfs_stats$dev_ph)
+
+# check main effs and int
+anova(mods, type = 2) # all sig
+
+# get means and compare
+emms <- emmeans(mods, c("pop", "trt.type"))
+
+pairs(emms, simple = "pop")
+pairs(emms, simple = "trt.type")
+```
+
+## adult
+
+```{r}
+# NTW
+mods <- lmer(tt.eclose ~ pop*trt.minT + (1|year),
+             data = dfs_stats$dev_expt)
+anova(mods, type = 2) # trt is sig, int is ns
+
+# get EMMs
+emms <- list(
+  pop = emmeans(mods, "pop"),
+  trt = emmeans(mods, "trt.minT")
+)
+  
+pairs(emms$pop) %>% tidy()
+pairs(emms$trt) %>% tidy()
+```
+
+```{r}
+# CTRL VS EXPT
+# fit
+mods <- lmer(tt.eclose ~ pop*trt.type + (1|year),
+             data = dfs_stats$dev_ph)
+
+# check main effs and int
+anova(mods, type = 2) # all sig
+
+# get means and compare
+emms <- emmeans(mods, c("pop", "trt.type"))
+
+pairs(emms, simple = "pop")
+pairs(emms, simple = "trt.type")
+```
+

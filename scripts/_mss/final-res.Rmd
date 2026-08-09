@@ -29,6 +29,7 @@ main results/figs:
 5. adult reproduction (2023 vs 2025)
 
 - everything should have a supp + stats section :)
+- posthoc is in a separate script.
 
 
 # loading
