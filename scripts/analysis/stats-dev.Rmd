@@ -22,7 +22,7 @@ library(lme4) # glm, lm, glmer
 library(lmerTest) # lmer overload
 #library(MuMIn) # dredge (nested model comparisons)
 library(car) # type 2, 3 anovas
-library(afex) # mixed models
+#library(afex) # mixed models
 
 # exporting via tidy()
 #library(broom)
@@ -30,7 +30,7 @@ library(afex) # mixed models
 
 library(conflicted)
 conflicts_prefer( 
-  #lmerTest::lmer,
+  lmerTest::lmer,
   dplyr::filter
 )
 # lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
