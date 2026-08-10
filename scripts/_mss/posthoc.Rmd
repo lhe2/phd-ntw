@@ -52,8 +52,9 @@ drop1(update(mods, . ~ . - pop:trt.minT), test = "Chisq") # both are sig
 
 emms <- emmeans(mods, c("pop", "trt.minT"), type = "response")
 
-pairs(emms, simple = "pop") 
-pairs(emms, simple = "trt.minT")
+# pairs(emms, simple = "pop") 
+# pairs(emms, simple = "trt.minT")
+pairs(emms, simple = "each", combine = TRUE) 
 ```
 
 ```{r}
@@ -72,8 +73,10 @@ drop1(mods$add, test = "Chisq") # pop is sig
 
 # get means and compare
 emms <- emmeans(mods$int, c("pop", "trt.type"), type = "response")
-pairs(emms, simple = "pop") 
-pairs(emms, simple = "trt.type")
+
+# pairs(emms, simple = "pop") 
+# pairs(emms, simple = "trt.type")
+pairs(emms, simple = "each", combine = TRUE)
 ```
 
 ## adult
@@ -95,6 +98,7 @@ emms <- list(
 
 pairs(emms$pop)
 pairs(emms$trt)
+rbind(pairs(emms$pop), pairs(emms$trt))
 ```
 
 ```{r}
@@ -121,6 +125,7 @@ emms <- list(
   
 pairs(emms$pop) 
 pairs(emms$trt)
+rbind(pairs(emms$pop), pairs(emms$trt))
 ```
 
 
@@ -139,10 +144,26 @@ emms <- list(
   int = emmeans(mods, c("pop", "trt.minT")),
   sex = emmeans(mods, "sex")
   )
+emms$int
+
 
 pairs(emms$int, simple = "pop")
 pairs(emms$int, simple = "trt.minT")
+pairs(emms$int, simple = "each", combine = TRUE)
 pairs(emms$sex)
+
+rbind(pairs(emms$int, simple = "each", combine = TRUE), pairs(emms$sex))
+
+# visualise...
+with_emm_options(gg.theme = ggplot2::theme_bw(),
+                 emmip(mods, pop ~ trt.minT | sex, 
+      CIs = TRUE, 
+      ))
+
+with_emm_options(gg.theme = ggplot2::theme_bw(),
+                 emmip(mods, trt.minT ~ pop | sex, 
+      CIs = TRUE, 
+      ))
 ```
 
 ```{r}
@@ -160,9 +181,10 @@ emms <- list(
   sex = emmeans(mods, "sex")
   )
 
-pairs(emms$int, simple = "pop")
-pairs(emms$int, simple = "trt.type")
-pairs(emms$sex)
+# pairs(emms$int, simple = "pop")
+# pairs(emms$int, simple = "trt.type")
+# pairs(emms$sex)
+rbind(pairs(emms$int, simple = "each", combine = TRUE), pairs(emms$sex))
 ```
 
 ## adult
@@ -178,9 +200,11 @@ emms <- list(
   sex = emmeans(mods, "sex")
   )
 
-pairs(emms$int, simple = "pop") %>% tidy() %>% write_clip()
-pairs(emms$int, simple = "trt.minT") %>% tidy() %>% write_clip()
-pairs(emms$sex) %>% tidy() %>% write_clip()
+pairs(emms$int, simple = "pop")
+pairs(emms$int, simple = "trt.minT")
+pairs(emms$sex)
+
+rbind(pairs(emms$int, simple = "each", combine = TRUE), pairs(emms$sex))
 ```
 
 ```{r}
@@ -194,13 +218,15 @@ anova(mods$int, type = 2) # all are sig
 
 # get means and compare
 emms <- list(
-  int = emmeans(mods$int, c("pop", "trt.type")),
-  sex = emmeans(mods$int, "sex")
+  int = emmeans(mods, c("pop", "trt.type")),
+  sex = emmeans(mods, "sex")
   )
 
 pairs(emms$int, simple = "pop")
 pairs(emms$int, simple = "trt.type")
 pairs(emms$sex)
+
+rbind(pairs(emms$int, simple = "each", combine = TRUE), pairs(emms$sex))
 ```
 
 
@@ -222,6 +248,8 @@ emms <- list(
   
 pairs(emms$pop)
 pairs(emms$trt)
+
+rbind(pairs(emms$pop), pairs(emms$trt))
 ```
 
 ```{r}
@@ -236,8 +264,10 @@ anova(mods, type = 2) # all sig
 # get means and compare
 emms <- emmeans(mods, c("pop", "trt.type"))
 
-pairs(emms, simple = "pop")
-pairs(emms, simple = "trt.type")
+# pairs(emms, simple = "pop")
+# pairs(emms, simple = "trt.type")
+
+pairs(emms, simple = "each", combine = TRUE)
 ```
 
 ## adult
@@ -254,8 +284,10 @@ emms <- list(
   trt = emmeans(mods, "trt.minT")
 )
   
-pairs(emms$pop) %>% tidy()
-pairs(emms$trt) %>% tidy()
+# pairs(emms$pop) %>% tidy()
+# pairs(emms$trt) %>% tidy()
+
+rbind(pairs(emms$pop), pairs(emms$trt))
 ```
 
 ```{r}
@@ -270,7 +302,10 @@ anova(mods, type = 2) # all sig
 # get means and compare
 emms <- emmeans(mods, c("pop", "trt.type"))
 
-pairs(emms, simple = "pop")
-pairs(emms, simple = "trt.type")
+# pairs(emms, simple = "pop")
+# pairs(emms, simple = "trt.type")
+
+pairs(emms, simple = "each", combine = TRUE)
+```
 ```
 
