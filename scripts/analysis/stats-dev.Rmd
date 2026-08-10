@@ -560,6 +560,75 @@ mods_pup_randyr <- list(
 
 # ### adult
 
+## EDA: longevity again
+
+2026-08-10 include fridge?
+
+```{r}
+# 2023
+mods <- list(
+  all = lm(tt.long ~ pop*trt.minT, 
+             data = dfs_imported$expt %>% filter(year == 2023,
+                                                 if.mated == 1)),
+  nof = lm(tt.long ~ pop*trt.minT, 
+             data = dfs_imported$expt %>% filter(year == 2023,
+                                                 if.fridge == 0,
+                                                 if.mated == 1))
+)
+
+Anova(mods$all, type = 2)
+Anova(mods$nof, type = 2)
+# for both, everything ns zzz
+```
+
+```{r}
+# 2025
+mods <- list(
+  all = lm(tt.long ~ pop*trt.minT, 
+             data = dfs_imported$expt %>% filter(year == 2025,
+                                                 if.mated == 1)),
+  nof = lm(tt.long ~ pop*trt.minT, 
+             data = dfs_imported$expt %>% filter(year == 2025,
+                                                 if.fridge == 0,
+                                                 if.mated == 1))
+)
+
+Anova(mods$all, type = 2)
+Anova(mods$nof, type = 2)
+# similar results.. so ig incl fridge lol
+```
+
+```{r}
+# both yrs?
+mods <- list(
+  all = lm(tt.long ~ pop*trt.minT + year, 
+             data = dfs_imported$expt %>% filter(year != 2024,
+                                                 if.mated == 1)),
+  nof = lm(tt.long ~ pop*trt.minT + year, 
+             data = dfs_imported$expt %>% filter(year != 2024,
+                                                 if.fridge == 0,
+                                                 if.mated == 1)),
+  allmm = lmer(tt.long ~ pop*trt.minT + (1|year), 
+             data = dfs_imported$expt %>% filter(year != 2024,
+                                                 if.mated == 1)),
+  nofmm = lmer(tt.long ~ pop*trt.minT + (1|year), 
+             data = dfs_imported$expt %>% filter(year != 2024,
+                                                 if.fridge == 0,
+                                                 if.mated == 1))
+)
+
+Anova(mods$all, type = 2)
+Anova(mods$nof, type = 2)
+# for fixed, results are similarish.. (trt.minT has some effect if fridge is excluded)
+
+drop1(mods$allmm, type = 2)
+drop1(update(mods$allmm, ~ . -pop:trt.minT), type = 2)
+drop1(mods$nofmm, type = 2)
+drop1(update(mods$nofmm, ~ . -pop:trt.minT), type = 2)
+# for mixed, results are similar (nothing fawkn matters)
+```
+
+
 ## EDA: other terms
 2026-07-28 what other terms to include?
 

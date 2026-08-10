@@ -1077,7 +1077,39 @@ dfs_viz$long %>%
 #ResToFig("dev-long")
 ```
 
+
 ### stats
+
+including fridge bugs did not qualitatively affect models so were kept in
+
+```{r}
+# 2023
+
+mods <- lm(tt.long ~ pop*trt.minT, 
+             data = dfs_stats$dev_expt %>% filter(year == 2023,
+                                                 if.mated == 1))
+
+drop1(mods, scope = ~ ., test = "F")
+# nothing is sig
+```
+
+```{r}
+# 2025
+mods <- lm(tt.long ~ pop*trt.minT, 
+             data = dfs_stats$dev_expt %>% filter(year == 2025,
+                                                 if.mated == 1))
+
+# not sure why this isnt the same... cuz drop1 doesnt refit?
+anova(update(mods, ~ . - pop:trt.minT),
+      update(mods, ~ trt.minT), test = "F")
+
+drop1(mods, scope = ~ ., test = "F")
+# trt is sig
+```
+
+
+
+### stats (old)
 do years separately!
 
 ```{r}
