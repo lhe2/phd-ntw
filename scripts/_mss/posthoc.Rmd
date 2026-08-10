@@ -307,5 +307,89 @@ emms <- emmeans(mods, c("pop", "trt.type"))
 
 pairs(emms, simple = "each", combine = TRUE)
 ```
+
+# # lifespan
+
+## 2023
+```{r}
+# NTW
+mods <- lm(tt.long ~ pop*trt.minT,
+           data = dfs_stats$dev_expt %>% filter(year == 2023, if.mated == 1))
+
+drop1(mods, test = "F") # int is ns, so use the additive
+mods <- update(mods, ~ . - pop:trt.minT)
+
+drop1(mods, test = "F") # everything ns
+
+emms <- list(
+  pop = emmeans(mods, "pop"),
+  trt = emmeans(mods, "trt.minT")
+  )
+
+pairs(emms$pop)
+pairs(emms$trt)
+rbind(pairs(emms$pop), pairs(emms$trt))
+```
+
+```{r}
+# CTRL
+mods <- lm(tt.long ~ pop*trt.type,
+           data = dfs_stats$dev_ph %>% filter(year == 2023, if.mated == 1))
+
+drop1(mods, test = "F") # int is ns, so use the additive
+mods <- update(mods, ~ . - pop:trt.type)
+
+drop1(mods, test = "F") # pop is sig
+
+emms <- list(
+  pop = emmeans(mods, "pop"),
+  trt = emmeans(mods, "trt.type")
+  )
+
+pairs(emms$pop)
+pairs(emms$trt)
+rbind(pairs(emms$pop), pairs(emms$trt))
+```
+
+## 2025
+
+```{r}
+# NTW
+mods <- lm(tt.long ~ pop*trt.minT,
+           data = dfs_stats$dev_expt %>% filter(year == 2025, if.mated == 1))
+
+drop1(mods, test = "F") # int is ns, so use the additive
+mods <- update(mods, ~ . - pop:trt.minT)
+
+drop1(mods, test = "F") # trt is sig
+
+emms <- list(
+  pop = emmeans(mods, "pop"),
+  trt = emmeans(mods, "trt.minT")
+  )
+
+pairs(emms$pop)
+pairs(emms$trt)
+rbind(pairs(emms$pop), pairs(emms$trt))
+```
+
+```{r}
+# CTRL
+mods <- lm(tt.long ~ pop*trt.type,
+           data = dfs_stats$dev_ph %>% filter(year == 2025, if.mated == 1))
+
+drop1(mods, test = "F") # int on the cusp... so use the additive
+mods <- update(mods, ~ . - pop:trt.type)
+
+drop1(mods, test = "F") # all ns
+
+emms <- list(
+  pop = emmeans(mods, "pop"),
+  trt = emmeans(mods, "trt.type")
+  )
+
+pairs(emms$pop)
+pairs(emms$trt)
+rbind(pairs(emms$pop), pairs(emms$trt))
 ```
 
