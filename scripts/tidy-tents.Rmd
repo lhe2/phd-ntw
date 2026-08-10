@@ -132,7 +132,9 @@ note: revisiting fertile eggs
           select(c("cage", starts_with("mate"))) #%>% View()
         ,
         all = TRUE, by = "cage") %>%
-  mutate(across(starts_with(c("eggs", "f.", "m.")), replace_na, 0))
+  mutate(across(starts_with(c("eggs", "f.", "m.")), 
+                ~ replace_na(.x, 0)
+         ))
 }
 
 
