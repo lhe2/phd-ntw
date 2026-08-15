@@ -42,7 +42,7 @@ dfs_all <- dfs_tidy %>%
       # mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
       #                              pop == "lab" ~ "lab",
       #                              pop == "field" ~ "field")) %>%
-      mutate(across(c(starts_with("trt"), "year"), as.factor))
+      mutate(across(c(starts_with("trt"), "year"), ~ as.factor(.x)))
   })
 
 # just lab vs field
@@ -54,7 +54,7 @@ dfs_tidy <- dfs_tidy %>%
       mutate(trt.facet = case_when(trt == 260 ~ "ctrl",
                                    pop == "lab" ~ "lab",
                                    pop == "field" ~ "field")) %>%
-      mutate(across(c(starts_with("trt"), "year"), as.factor))
+      mutate(across(c(starts_with("trt"), "year"), ~ as.factor(.x)))
   })
 ```
 
@@ -1207,8 +1207,8 @@ dfs$all %>%
     PrepLarvalSS() %>%
     group_by(across(c("sup", "is.sup")), .add = TRUE) %>%
     CalcDevSS() %>%
-    mutate(across(ends_with("sup"), replace_na, 0),
-           across(ends_with("sup"), as.factor))
+    mutate(across(ends_with("sup"), ~ replace_na(.x, 0)),
+           across(ends_with("sup"), ~ as.factor(.x)))
 }
 
 .plotfn <- function(x){
@@ -1263,8 +1263,8 @@ df %>%
     group_by(across(c("sup", "is.sup", "is.pup")), .add = TRUE) %>%
     CalcDevSS() %>%
     # (dont mutate is.pup here)
-    mutate(across(ends_with("sup"), replace_na, 0),
-           across(c(starts_with("is"), ends_with("sup")), as.factor))
+    mutate(across(ends_with("sup"), ~ replace_na(.x, 0)),
+           across(c(starts_with("is"), ends_with("sup")), ~ as.factor(.x)))
 }
 
 .plotfn <- function(x){
@@ -1609,7 +1609,7 @@ dfs <- list(
     group_by(is.pup, .add = TRUE) %>% # idk..
     CalcDevSS() %>%
     mutate(#across(ends_with("sup"), replace_na, 0),
-           across(c(starts_with("is")), as.factor)) %>%
+           across(c(starts_with("is")), ~ as.factor(.x))) %>%
      filter(!is.na(is.pup),
             !(instar %in% c("pupa", "hatch"))),
   
@@ -1620,7 +1620,7 @@ dfs <- list(
            ) %>%
     group_by(across(c(year, pop, diet, starts_with("trt"), instar, is.pup))) %>%
     CalcDevSS() %>%
-    mutate(across(starts_with("is"), as.factor))
+    mutate(across(starts_with("is"), ~ as.factor(.x)))
 )
 
 ggplot(dfs$pup %>% filter(trt == 433), 
@@ -1942,8 +1942,8 @@ df <- dfs_tidy$wide %>%
          tt.mid2 = jdate.wander - jdate.3rd,
          dev.mid2 = 1/tt.mid2
          ) %>%
-  mutate(across(c(starts_with("trt"), "year"), as.factor),
-         across(starts_with("mass"), log)) %>%
+  mutate(across(c(starts_with("trt"), "year"), ~ as.factor(.x)),
+         across(starts_with("mass"), ~ log(.x))) %>%
   filter(is.sup == 0) %>%
   
   ## OPTIONAL: set grouping by year or not

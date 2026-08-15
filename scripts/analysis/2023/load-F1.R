@@ -32,7 +32,7 @@ dfs_F1 <- list(
 
 dfs_F1 <- list_modify(
   dfs_F1,
-  long = dfs_F1$wide %>% ToLong()
+  long = dfs_F1$wide %>% DevToLong()
 )
 
 

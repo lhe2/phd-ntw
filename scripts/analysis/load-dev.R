@@ -23,7 +23,7 @@ dfs_tidy <- list(
 
 dfs_tidy <- list_modify(
   dfs_tidy,
-  long = dfs_tidy$wide %>% ToLong()
+  long = dfs_tidy$wide %>% DevToLong()
 )
 
 rm(df_wide)

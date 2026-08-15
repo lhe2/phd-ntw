@@ -45,14 +45,6 @@ p_scales <- list(
                    limits = c("1", "0"))
 )
 
-# for more condensed plotting of SS
-SSToLong <- function(wide_ss){
-  wide_ss %>%
-    pivot_longer(cols = starts_with(c("avg", "se")),
-                 names_to = c(".value", "response"),
-                 names_pattern = "^(avg|se)\\.(.*)")
-}
-
 ### PLOTTING ###
 ## adding error bars 
 # use with geom_errorbar/errorbarh to set width/height

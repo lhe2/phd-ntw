@@ -15,7 +15,7 @@ dfs_acc <- list(
 
 dfs_acc <- list_modify(
   dfs_acc,
-  long = dfs_acc$wide %>% ToLong()
+  long = dfs_acc$wide %>% DevToLong()
 )
 
 rm(df_wide)

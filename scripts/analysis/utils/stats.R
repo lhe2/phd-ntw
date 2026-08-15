@@ -6,6 +6,7 @@
 
 # stats/viz
 library(ggfortify) # autoplot (diagnosing)
+library(performance)
 
 # exporting results
 library(broom) # tidy stat tables to tibbles

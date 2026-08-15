@@ -18,7 +18,7 @@ dfs_temps <- list(
 
 dfs_temps <- list_modify(
   dfs_temps,
-  long = dfs_tidy$wide %>% ToLong()
+  long = dfs_tidy$wide %>% DevToLong()
 )
 
 
