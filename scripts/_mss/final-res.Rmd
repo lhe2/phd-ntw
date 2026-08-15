@@ -1053,7 +1053,7 @@ dfs_viz$long %>%
 
 ```{r}
 dfs_viz$long %>%
-  filter(#if.fridge == 0,
+  filter(if.fridge == 0,
          instar == "long",
          if.mated == 1, 
          year != 2024) %>%
@@ -1074,22 +1074,51 @@ dfs_viz$long %>%
        size = "N") +
   scale_size_area(max_size = 6.5) 
   
-#ResToFig("dev-long")
+#ResToFig("dev-long_nofridge")
 ```
 
 
 ### stats
 
-including fridge bugs did not qualitatively affect models so were kept in
+dropping fridge
+
+```{r}
+# fridge effect
+df <- dfs_stats$dev_expt %>%
+  filter(if.mated == 1)
+
+mods <- list(
+  all23 = lm(tt.long ~ pop*trt.minT + if.fridge, 
+             data = df %>% filter(year == 2023)),
+  nof23 = lm(tt.long ~ pop*trt.minT, 
+             data = df %>% filter(year == 2023,
+                                  if.fridge == 0)),
+  all25 = lm(tt.long ~ pop*trt.minT + if.fridge, 
+             data = df %>% filter(year == 2025)),
+  nof25 = lm(tt.long ~ pop*trt.minT, 
+             data = df %>% filter(year == 2025,
+                                  if.fridge == 0))
+)
+
+Anova(mods$all23, type = 2)
+Anova(mods$nof23, type = 2)
+## doesnt matter for 2023 as much
+
+Anova(mods$all25, type = 2)
+Anova(mods$nof25, type = 2)
+## matters in 2025 but results are still similar if fridge is dropped
+```
+
+
 
 ```{r}
 # 2023
-
 mods <- lm(tt.long ~ pop*trt.minT, 
              data = dfs_stats$dev_expt %>% filter(year == 2023,
-                                                 if.mated == 1))
+                                                 if.mated == 1,
+                                                 if.fridge == 0))
 
-drop1(mods, scope = ~ ., test = "F")
+drop1(mods, scope = ~ ., test = "F") %>% write_clip()
 # nothing is sig
 ```
 
@@ -1097,7 +1126,8 @@ drop1(mods, scope = ~ ., test = "F")
 # 2025
 mods <- lm(tt.long ~ pop*trt.minT, 
              data = dfs_stats$dev_expt %>% filter(year == 2025,
-                                                 if.mated == 1))
+                                                 if.mated == 1,
+                                                 if.fridge == 0))
 
 # not sure why this isnt the same... cuz drop1 doesnt refit?
 anova(update(mods, ~ . - pop:trt.minT),
@@ -1198,8 +1228,14 @@ dfs_viz$long %>%
 ```
 
 # ## (5) reproduction
+# reproduction
+TODO
+- check that all the tents being counted are actually tents for mating lol (e.g. wtf is 107-H in 2023)
 
 ## eggs collected
+
+### main
+
 ```{r box and whisker}
 pd <- 0.75
 
@@ -1297,16 +1333,85 @@ p$fit_hatch
 
 ```
 
-### stats (WIP)
-```{r stats eggs laid}
-# READING IN PROGRESS... see tents-stats.Rmd
+### stats
+
+```{r stats eggs laid 2023}
+# 2023
+df <- dfs_stats$eggs %>%
+  filter(year == 2023)
+
 mods <- list(
-  all = lm(sqrt.coll.perf ~ n.f + mate.trt + mate.ishs + year,
-           data = dfs$all)
+  all_win = glmer(n.coll ~ trt.type + (1|cage), offset = log(n.f),
+                  family = "poisson", data = df %>% filter(mate.type == "within")),
+  expt_win = glmer(n.coll ~ trt.minT + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(mate.type == "within" & trt.type == "expt")),
+  
+  # does not converge if int
+  all = glmer(n.coll ~ trt.minT * mate.ishs + (1|cage), offset = log(n.f),
+              family = "poisson", data = df),
+  all2 = glmer(n.coll ~ trt.minT + mate.ishs + (1|cage), offset = log(n.f),
+              family = "poisson", data = df),
+  expt_btwn = glmer(n.coll ~ trt.minT*mate.ishs + (1|cage), offset = log(n.f),
+                    family = "poisson", data = df %>% filter(mate.type == "between")),
+  expt_all = glmer(n.coll ~ trt.minT * mate.ishs + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(trt.type == "expt"))
 )
+
+# trt effects
+drop1(mods$all_win, test = "Chisq") # no diff btwn ctrl/hs LOLOL
+drop1(mods$expt_win, test = "Chisq") # no diff btwn hs groups
+
+# sex effects
+#drop1(mods$all, test = "Chisq") # int is ns
+drop1(update(mods$all, ~ . - trt.minT:mate.ishs), test = "Chisq") # no eff of minT or if m/f/both/none
+drop1(mods$all2, test = "Chisq")
+
+#drop1(mods$expt_btwn, test = "Chisq") # negligible int
+drop1(update(mods$expt_btwn, ~ . - trt.minT:mate.ishs), test = "Chisq") # no main effects
+
+#drop1(mods$expt_all, test = "Chisq") # interaction is ns
+drop1(update(mods$expt_all, ~ . - trt.minT:mate.ishs), test = "Chisq") # no effect of minT or hs!
 ```
 
+```{r stats eggs laid 2025}
+# 2025
+df <- dfs_stats$eggs %>%
+  filter(year == 2025)
+
+mods <- list(
+  all_win = glmer(n.coll ~ trt.type + (1|cage), offset = log(n.f),
+                  family = "poisson", data = df %>% filter(mate.type == "within")),
+  expt_win = glmer(n.coll ~ trt.minT + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(mate.type == "within" & trt.type == "expt")),
+  
+  all = glmer(n.coll ~ trt.minT*mate.ishs + (1|cage), offset = log(n.f),
+              family = "poisson", data = df), # feels kinda wrong lol
+  expt_btwn = glmer(n.coll ~ trt.minT * mate.ishs + (1|cage), offset = log(n.f),
+                    family = "poisson", data = df %>% filter(mate.type == "between")),
+  expt_all = glmer(n.coll ~ trt.minT * mate.ishs + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(trt.type == "expt"))
+)
+
+# trt effects
+drop1(mods$all_win, test = "Chisq") # no diff btwn ctrl/hs
+drop1(mods$expt_win, test = "Chisq") # no diff btwn hs groups
+
+# sex effects
+drop1(mods$all, test = "Chisq") # int is ns
+drop1(update(mods$all, ~ . - trt.minT:mate.ishs), test = "Chisq") # ME are ns
+
+#drop1(mods$expt_btwn, test = "Chisq") # int is ns
+drop1(update(mods$expt_btwn, ~ . - trt.minT:mate.ishs), test = "Chisq") # sex is barely sig
+
+#drop1(mods$expt_all, test = "Chisq") # interaction is ns
+drop1(update(mods$expt_all, ~ . - trt.minT:mate.ishs), test = "Chisq") # no effect of minT or hs!
+```
+
+
 ## eggs hatched
+
+### main
+
 ```{r box and whisker}
 pd <- 0.75
 
@@ -1352,6 +1457,91 @@ gg +
        x = "heat-treated parent")
 #ResToFig("fit-hatch-bysex")
 ```
+
+### stats
+```{r eggs hatched 2023}
+# 2023
+df <- dfs_stats$eggs %>%
+  filter(year == 2023) %>%
+  mutate(n.fail = n.coll - n.hatch) # otherwise breaks performance()
+
+# for mods that threw singular with cage, switched to fixed (per oberpiller et al 2022 recommendations)
+mods <- list(
+  all_win = glmer(cbind(n.hatch, n.fail) ~ trt.type + (1|cage),
+                  family = "binomial", data = df %>% filter(mate.type == "within")),
+  # singular w cage, switch to fixed
+  expt_win = glm(cbind(n.hatch, n.fail) ~ trt.minT,
+                   family = "binomial", data = df %>% filter(mate.type == "within" & trt.type == "expt")), 
+  
+  # check_model() does not like these
+  all = glm(cbind(n.hatch, n.fail) ~ trt.minT + mate.ishs, # still singular but bc of 426 having 0's
+              family = "binomial", data = df),
+  expt_btwn = glm(cbind(n.hatch, n.fail) ~ trt.minT,
+                    family = "binomial", data = df %>% filter(mate.type == "between")),
+  expt_all = glm(cbind(n.hatch, n.fail) ~ trt.minT * mate.ishs,
+                   family = "binomial", data = df %>% filter(trt.type == "expt"))
+)
+
+
+
+# trt effects
+drop1(mods$all_win, test = "Chisq") # no diff btwn ctrl/hs 
+drop1(mods$expt_win, test = "Chisq") # tho minT is sig?
+summary(mods$expt_win)
+
+# sex effects
+drop1(mods$all, test = "Chisq") # minT and sex are sig
+
+drop1(mods$expt_btwn, test = "Chisq") # minT is sig
+
+drop1(mods$expt_all, test = "Chisq") # interaction is sig
+drop1(update(mods$expt_all, ~ . - trt.minT:mate.ishs), test = "Chisq") # and main effects
+```
+
+```{r eggs hatched 2025}
+# 2025
+df <- dfs_stats$eggs %>%
+  filter(year == 2025) %>%
+  mutate(n.fail = n.coll - n.hatch) # otherwise breaks performance()
+
+mods <- list(
+  all_win = glmer(cbind(n.hatch, n.fail) ~ trt.type + (1|cage),
+                  family = "binomial", data = df %>% filter(mate.type == "within")),
+  expt_win = glm(cbind(n.hatch, n.fail) ~ trt.minT,
+                   family = "binomial", data = df %>% filter(mate.type == "within" & trt.type == "expt")), 
+  
+  all = glmer(cbind(n.hatch, n.fail) ~ trt.minT + mate.ishs + (1|cage),
+              family = "binomial", data = df),
+  # converges
+  expt_btwn = glmer(cbind(n.hatch, n.fail) ~ trt.minT*mate.ishs + (1|cage),
+                    family = "binomial", data = df %>% filter(mate.type == "between")),
+  expt_btwn2 = glmer(cbind(n.hatch, n.fail) ~ mate.ishs + (1|cage),
+                    family = "binomial", data = df %>% filter(mate.type == "between")),
+  # converges
+  expt_all = glmer(cbind(n.hatch, n.fail) ~ trt.minT * mate.ishs + (1|cage),
+                   family = "binomial", data = df %>% filter(trt.type == "expt"))
+)
+
+# trt effects
+drop1(mods$all_win, test = "Chisq") # no diff btwn ctrl/hs 
+drop1(mods$expt_win, test = "Chisq") # tho minT is sig?
+
+# sex effects
+drop1(mods$all, test = "Chisq") # minT is sig
+
+drop1(mods$expt_btwn, test = "Chisq") # int is ns
+drop1(update(mods$expt_btwn, ~ . - trt.minT:mate.ishs), test = "Chisq") # ME are ns
+
+drop1(mods$expt_all, test = "Chisq") # int is ns
+drop1(update(mods$expt_all, ~ . - trt.minT:mate.ishs), test = "Chisq") # minT is sig
+```
+
+
+
+
+## sample size tables
+
+### egg counts
 ```{r}
 dfs_viz$eggs_ss %>%
   select(c(year, trt.minT, trt.mate, 
@@ -1364,8 +1554,7 @@ dfs_viz$eggs_ss %>%
 # need to check the colony filtering on this...
 
 # per cage
-dfs_stats$eggs_all %>%
-  filter(year != 2024) %>%
+dfs_stats$eggs %>%
   group_by(year, trt.minT, trt.mate, cage) %>%
   summarise(perc.f = sum(n.f),
             perc.m = sum(n.m),
@@ -1374,8 +1563,7 @@ dfs_stats$eggs_all %>%
             perc.hatch = sum(n.hatch)) #%>% ResToCsv("tents/n/percage")
 
 # per trt combo
-dfs_stats$eggs_all %>%
-  filter(year != 2024) %>% 
+dfs_stats$eggs %>%
   mutate(rat = n.f/n.m,
          tot.ads = n.f + n.m) %>%
   group_by(year,  trt.minT, trt.mate) %>%

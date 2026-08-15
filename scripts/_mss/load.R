@@ -210,30 +210,24 @@ dfs_viz[c("eggs_n", "eggs_ss")] <- dfs_viz[c("eggs_n", "eggs_ss")] %>%
 # stats dfs
 dfs_stats <- list_modify(
   dfs_stats,
-  eggs_all = dfs_tidy$tents,
-  eggs_expt = dfs_tidy$tents %>%
-    filter(mate.trt != 260)
+  eggs = dfs_tidy$tents %>%
+    filter(mate.pop != "field", mate.type != "virgin", # drop 2024 stuff
+           trt.pop != "col", # drop colony-only tents
+           year != 2024,
+    ) %>% 
+    select(-c(mate.col, mate.pop, 
+              trt.pop # not needed once everything is lab
+    )) %>% 
+    CalcTentCounts() %>%
+    mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
+                                mate.trt == 433 ~ 33,
+                                TRUE ~ 26),
+           across(c("year", starts_with(c("trt", "mate"))), ~ as.factor(.x)),
+           # relevel for stats comparisons
+           mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")),
+           mate.trt = recode_factor(mate.trt, `260` = "26", `419` = "19", `426` = "26", `433` = "33")
+    )
 )
-
-dfs_stats[c("eggs_all", "eggs_expt")] <- dfs_stats[c("eggs_all", "eggs_expt")] %>%
-  lapply(., \(x){
-    x %>%
-      filter(mate.pop != "field", mate.type != "virgin", # drop 2024 stuff
-             trt.pop != "col", # drop colony-only tents
-             ) %>% 
-      select(-c(mate.col, mate.pop, 
-                trt.pop # not needed once everything is lab
-                )) %>% 
-      CalcTentCounts() %>%
-      mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
-                                  mate.trt == 433 ~ 33,
-                                  TRUE ~ 26),
-             across(c("year", starts_with(c("trt", "mate"))), as.factor),
-             # relevel for stats comparisons
-             mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")),
-             mate.trt = recode_factor(mate.trt, `260` = "26", `419` = "19", `426` = "26", `433` = "33")
-      )
-  })
 
 # cleanup -----------------------------------------------------------------
 

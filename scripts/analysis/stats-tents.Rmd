@@ -12,7 +12,7 @@ here::i_am("scripts/analysis/stats-tents.Rmd")
 library(here)
 
 library(lme4) # glmer, glmer.nb (mixed effs)
-#library(lmerTest) # lmer
+library(lmerTest) # lmer
 ## lmerTest::lmer overloads lme4::lmerMod summary() and anova() to provide p-vals for the fixed effs
 #library(MuMIn) # dredge (nested model comparisons)
 library(car) # Anova
@@ -26,7 +26,7 @@ select <- dplyr::select
 
 library(conflicted)
 conflicts_prefer(
-  #lmerTest::lmer, # dont rlly need..
+  lmerTest::lmer,
   dplyr::filter(),
   dplyr::select()
 )
@@ -90,6 +90,172 @@ dfs$matedexptl$mate.trt <- dfs$matedexptl$mate.trt %>%
       recode_factor(`419` = "19", `426` = "26", `433` = "33")
 ```
 
+
+# ## TRY 4: mss EDAs again
+
+cuz now i have a better sense of what im doing...
+(top = most recent)
+
+## post-futz
+
+per "futzing", make simpler subsets lol w just predictors of interest (this feels more right...)
+
+```{r}
+# 2023
+df <- dfs$mated %>%
+  filter(year == 2023)
+
+mods <- list(
+  all_win = glmer(n.coll ~ trt.type + (1|cage), offset = log(n.f),
+                  family = "poisson", data = df %>% filter(mate.type == "within")),
+  expt_win = glmer(n.coll ~ trt.minT + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(mate.type == "within" & trt.type == "expt")),
+  
+  all = glmer(n.coll ~ mate.ishs + (1|cage), offset = log(n.f),
+              family = "poisson", data = df), # feels kinda wrong lol
+  expt_btwn = glmer(n.coll ~ trt.minT + (1|cage), offset = log(n.f),
+                    family = "poisson", data = df %>% filter(mate.type == "between")),
+  expt_all = glmer(n.coll ~ trt.minT * mate.ishs + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(trt.type == "expt"))
+)
+
+# trt effects
+drop1(mods$all_win, test = "Chisq") # no diff btwn ctrl/hs LOLOL
+drop1(mods$expt_win, test = "Chisq") # no diff btwn hs groups
+
+# sex effects
+drop1(mods$all, test = "Chisq") # no diff if m/f/both/none
+drop1(mods$expt_btwn, test = "Chisq") # no eff of hs
+#drop1(mods$expt_all, test = "Chisq") # interaction is ns
+drop1(update(mods$expt_all, ~ . - trt.minT:mate.ishs), test = "Chisq") # no effect of minT or hs!
+
+## copying this over for 2025 into main res...
+```
+
+## futzing
+
+```{r trying subsets}
+# try to just subset the mating groups?
+# (for performance, mostly lokoing at 'Score')
+df <- dfs$mated %>%
+  filter(year == 2023)
+
+mods<- list(  
+  poi_all = glmer(n.coll ~ mate.trt*mate.ishs + (1|cage), offset = log(n.f),
+                  family = "poisson", data = df),
+  poi_alla = glmer(n.coll ~ mate.trt + mate.ishs + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df),
+  poi_all2 = glmer(n.coll ~ trt.type*mate.istrt + (1|cage), offset = log(n.f), # **
+                  family = "poisson", data = df), 
+  poi_all2a = glmer(n.coll ~ trt.type + mate.istrt + (1|cage), offset = log(n.f), # **
+                    family = "poisson", data = df), 
+  poi_all3 = glmer(n.coll ~ trt.ishs.f + trt.ishs.m + trt.minT + (1|cage), offset = log(n.f),
+                  family = "poisson", data = df), 
+  poi_all3a = glmer(n.coll ~ trt.f + trt.m + trt.type + (1|cage), offset = log(n.f),
+                    family = "poisson", data = df)
+)
+check_model(mods$poi_all, panel = FALSE) %>% plot() # gr8 resids actually
+check_model(mods$poi_alla, panel = FALSE) %>% plot() # gr8 resids actually
+check_model(mods$poi_all2, panel = FALSE) %>% plot() # not the worst?
+compare_performance(mods$poi_all,  mods$poi_alla, mods$poi_all2, mods$poi_all2a, mods$poi_all3, mods$poi_all3a, rank = TRUE) 
+# 0.648, 0.588, 0.558, 0.648, 0.585, 0.617
+
+
+mods<- list( 
+  poi_expt = glmer(n.coll ~ mate.trt*mate.ishs + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(trt.type == "expt")),
+  poi_expt2 = glmer(n.coll ~ trt.minT*mate.istrt + (1|cage), offset = log(n.f),
+                  family = "poisson", data = df%>% filter(trt.type == "expt"))
+)
+
+check_model(mods$poi_expt, panel = FALSE) %>% plot() # not the worst, actually...
+compare_performance(mods$poi_expt, mods$poi_expt2) # 0.687 (same models lol)
+
+
+## win
+mods <- list(
+  poi_win = glmer(n.coll ~ mate.trt + (1|cage), offset = log(n.f),
+                  family = "poisson", data = filter(df, mate.type == "within")),
+  poi_win2 = glmer(sqrt(n.coll) ~ mate.trt + (1|cage), offset = log(n.f),
+                   family = "poisson", data = filter(df, mate.type == "within"))
+)
+
+check_model(mods$poi_win, panel = FALSE) %>% plot() # bad var
+check_model(mods$poi_win2, panel = FALSE) %>% plot() # meh var, doesnt do much?
+
+compare_performance(mods$poi_win) # 0.565
+
+## btwn
+mods<- list(   
+  poi_btwn = glmer(n.coll ~ mate.trt*mate.ishs + (1|cage), offset = log(n.f),
+                   family = "poisson", data = df %>% filter(mate.type == "between")),
+  poi_btwn2 = glmer(n.coll ~ mate.ishs + (1|cage), offset = log(n.f), # **
+                   family = "poisson", data = df %>% filter(mate.type == "between"))
+)
+
+check_model(mods$poi_btwn, panel = FALSE) %>% plot() # also not that bad?
+
+compare_performance(mods$poi_btwn, mods$poi_btwn2) # 0.796, 0.553)
+
+
+## TLDR: think we need to subset lowkey LOL..(i.e. for w/in and btwn). also just compare to control simply
+```
+
+
+```{r eval = FALSE}
+# lowkey hot garbage bc all the groups are combined?
+mods <- list(
+    poi = glmer(round(n.coll.perf) ~ 
+                  mate.trt*mate.ishs + n.f + (1|cage),
+              family = "poisson", 
+              data = dfs$mated %>% filter(year == 2023)),
+    poi_sq = glmer(round(sqrt(n.coll.perf)) ~ 
+                  mate.trt*mate.ishs + n.f + (1|cage),
+              family = "poisson", 
+              data = dfs$mated %>% filter(year == 2023))
+)
+
+# mods <- list_modify(
+#   mods,
+    # poi_log = glmer(log(n.coll.perf+1) ~ 
+    #               mate.trt*mate.ishs + n.f + (1|cage),
+    #           family = "poisson", 
+    #           data = dfs$mated %>% filter(year == 2023)),
+#       nb = glmer.nb(round(n.coll.perf) ~ 
+#                   mate.trt*mate.ishs + n.f + (1|cage),
+#               data = dfs$mated %>% filter(year == 2023)),
+#     nb_sq = glmer.nb(round(sqrt(n.coll.perf)) ~ 
+#                   mate.trt*mate.ishs + n.f + (1|cage),
+#               data = dfs$mated %>% filter(year == 2023))
+# )
+
+mod <- glmer(round(n.coll.perf) ~ 
+                  mate.trt*mate.ishs + n.f + (1|cage),
+              family = "poisson", 
+              data = dfs$mated %>% filter(year == 2023))
+
+# check
+check_model(mods$poi, panel = FALSE) %>% plot()
+check_model(mods$poi_sq, panel = FALSE) %>% plot()
+#check_model(mods$poi_log, panel = FALSE) %>% plot()
+check_model(mods$nb, panel = FALSE) %>% plot()
+check_model(mods$nb_sq, panel = FALSE) %>% plot()
+
+compare_performance(mods$poi, mods$poi_sq, mods$nb, mods$nb_sq) # log is busted
+
+summary(mods$poi)
+
+
+## OLD
+# compare
+anova(mods$poi, mods$nb, test = "Chisq")
+## not diff, and AICpoi > AICnb, so stick with poisson?
+
+# diagnose
+mods$poi %>% DiagnoseModel2()
+
+
+```
 
 
 # ## TRY 3: EDAs for mss

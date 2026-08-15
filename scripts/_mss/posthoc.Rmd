@@ -314,7 +314,8 @@ pairs(emms, simple = "each", combine = TRUE)
 ```{r}
 # NTW
 mods <- lm(tt.long ~ pop*trt.minT,
-           data = dfs_stats$dev_expt %>% filter(year == 2023, if.mated == 1))
+           data = dfs_stats$dev_expt %>% filter(year == 2023, 
+                                                if.mated == 1, if.fridge == 0))
 
 drop1(mods, test = "F") # int is ns, so use the additive
 mods <- update(mods, ~ . - pop:trt.minT)
@@ -334,33 +335,49 @@ rbind(pairs(emms$pop), pairs(emms$trt))
 ```{r}
 # CTRL
 mods <- lm(tt.long ~ pop*trt.type,
-           data = dfs_stats$dev_ph %>% filter(year == 2023, if.mated == 1))
+           data = dfs_stats$dev_ph %>% filter(year == 2023, 
+                                              if.mated == 1, if.fridge == 0))
 
-drop1(mods, test = "F") # int is ns, so use the additive
+drop1(mods, test = "F") # int is ns
+
 mods <- update(mods, ~ . - pop:trt.type)
-
 drop1(mods, test = "F") # pop is sig
 
 emms <- list(
   pop = emmeans(mods, "pop"),
   trt = emmeans(mods, "trt.type")
   )
+test(emms$pop, adjust = "bonferroni") %>% tidy() %>% write_clip()
+test(emms$trt, adjust = "bonferroni") %>% tidy() %>% write_clip()
 
 pairs(emms$pop)
 pairs(emms$trt)
-rbind(pairs(emms$pop), pairs(emms$trt))
+rbind(pairs(emms$pop), pairs(emms$trt)) 
 ```
 
 ## 2025
 
 ```{r}
+# fridge effects lol
+mods <- lm(tt.long ~ pop*trt.minT + if.fridge, 
+             data = dfs_stats$dev_expt %>% filter(year == 2025, if.mated == 1))
+
+drop1(mods, test = "F")
+
+emms <- emmeans(mods, "if.fridge")
+pairs(emms)
+```
+
+
+```{r}
 # NTW
 mods <- lm(tt.long ~ pop*trt.minT,
-           data = dfs_stats$dev_expt %>% filter(year == 2025, if.mated == 1))
+           data = dfs_stats$dev_expt %>% filter(year == 2025, 
+                                                if.mated == 1, if.fridge == 0))
 
-drop1(mods, test = "F") # int is ns, so use the additive
+drop1(mods, test = "F") # int is ns
+
 mods <- update(mods, ~ . - pop:trt.minT)
-
 drop1(mods, test = "F") # trt is sig
 
 emms <- list(
@@ -376,11 +393,12 @@ rbind(pairs(emms$pop), pairs(emms$trt))
 ```{r}
 # CTRL
 mods <- lm(tt.long ~ pop*trt.type,
-           data = dfs_stats$dev_ph %>% filter(year == 2025, if.mated == 1))
+           data = dfs_stats$dev_ph %>% filter(year == 2025, 
+                                              if.mated == 1, if.fridge == 0))
 
-drop1(mods, test = "F") # int on the cusp... so use the additive
+drop1(mods, test = "F") # int is ns so use additive
+
 mods <- update(mods, ~ . - pop:trt.type)
-
 drop1(mods, test = "F") # all ns
 
 emms <- list(
@@ -393,3 +411,4 @@ pairs(emms$trt)
 rbind(pairs(emms$pop), pairs(emms$trt))
 ```
 
+# eggs laid
