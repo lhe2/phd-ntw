@@ -2182,12 +2182,16 @@ dfs_tidy$long %>%
 ```{r MAIN mass loss, eval = FALSE}
 # NOTE: dropping out mass change stuff bc just using eclosion mass
 
-df <- dfs_tidy$long %>%
+df <- dfs_tidy$wide %>% 
+  mutate(mass.change = (mass.pupa - mass.eclose)/mass.pupa,
+         mass.prop = mass.pupa/mass.eclose) %>%
+  ToLong() %>%
   # PrepAdultSS() %>%
   filter(instar %in% c("pupa", "eclose", "change", "prop")) %>%
   group_by(across(c(pop, diet, starts_with("trt"), instar))) %>%
   #mutate(mass = mass/1000) %>%
   CalcDevSS() #%>% View()
+  
 
 .plotfn <- function(x){
   x %>%

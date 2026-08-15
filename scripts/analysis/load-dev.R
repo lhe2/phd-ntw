@@ -8,8 +8,9 @@ source(here::here("scripts/R/tidy-dev.R"))
 
 dfs_tidy <- list(
   wide = df_wide %>%
-    mutate(mass.change = (mass.pupa - mass.eclose)/mass.pupa,
-           mass.prop = mass.pupa/mass.eclose) %>%
+    # NOTE: not sure where else this used aside from dev EDAs?
+    # mutate(mass.change = (mass.pupa - mass.eclose)/mass.pupa,
+    #        mass.prop = mass.pupa/mass.eclose) %>%
     filter((year == 2023 & (instar.enter == "hatch" |
                              pop == "col" |
                              (pop == "field" & instar.enter %in% c("1st", "2nd")))) |
