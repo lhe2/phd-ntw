@@ -20,7 +20,7 @@ REVISIT
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("scripts/clean/2024-dev.Rmd")
+here::i_am("scripts/import/2024-dev.Rmd")
 library(here)
 ```
 
@@ -37,18 +37,18 @@ pre-filtering/value fixing
 df_raw <- df_import %>%
   filter(date.pmd != "ignore" | is.na(date.pmd)) %>%
   mutate(
-    across(-starts_with("notes"), gsub, pattern="\\?", replacement = ""), 
+    across(-starts_with("notes"), ~ gsub(.x, pattern="\\?", replacement = "")), 
     # removes `?`s from all columns excepts notes column (assuming its the last col in the df)
-    across(notes, gsub, pattern=",", replacement = ";"),
+    across(notes, ~ gsub(.x, pattern=",", replacement = ";")),
      # replaces commas w/ ;'s to avoid csv breaking
     
     #across(id, gsub, pattern="\\.\\d", replacement = "") ,
       # turns the repeat entries into whole numbers so theres no decimals going on after as.numeric(id)
       # but a terrible idea so not doing this anymore
     
-    across(date.pmd, gsub, pattern = "\\s\\w*", replacement = ""),
+    across(date.pmd, ~ gsub(.x, pattern = "\\s\\w*", replacement = "")),
     across(c(starts_with(c("date.", "stuck.")), "notes.lastevent"),  
-           gsub, pattern = "(\\d*/\\d*)", replacement = "\\1/24")
+           ~gsub(.x, pattern = "(\\d*/\\d*)", replacement = "\\1/24"))
     #across(starts_with(c("date.", "stuck.", "notes.lastevent")),  ~ ifelse(!is.na(.), paste0(.x, "/24"), NA)
     
   ) %>%
@@ -69,8 +69,8 @@ df_filtered <- df_raw %>%
 ```{r}
 df_cleaned <- df_filtered %>%
   mutate(
-    across(starts_with(c("date.", "stuck.")),  as.Date, format = "%m/%d/%y"),
-    across(starts_with(c("mass.", "treatment", "id", "date")), as.numeric),
+    across(starts_with(c("date.", "stuck.")),  ~as.Date(.x, format = "%m/%d/%y")),
+    across(starts_with(c("mass.", "treatment", "id", "date")), ~ as.numeric(.x)),
     time.enter = as.character(lubridate::hm(time.enter)) # breaks write_csv if left as a `lubridate` object
   ) %>% 
   rename(trt = treatment,

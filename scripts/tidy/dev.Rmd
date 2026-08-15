@@ -11,17 +11,22 @@ tidy data from all ntw-related expts for wrangling/analyses.
 
 final code from this `.Rmd` is purled to a `.R` script; rerun `purl` step as needed to update the wrangling for analyses. outputs data from all expts to keep it all standard, but load each data subset into its analysis script with the corresponding `load_*.R` script.
 
+## TODO
+- to double check:
+  - fridge/longevity 23+25 handling: 
+    - i think the upstream is mostly fixed now but double check before committing
+    - need to check the calcs, tho
 
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
-here::i_am("scripts/tidy-dev.Rmd")
+here::i_am("scripts/tidy/dev.Rmd")
 ```
 
 ```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
 # rerun this chunk if purled .R script needs to be updated.
 # save and apply updates to current .Rmd before purling!
 
-knitr::purl("tidy-dev.Rmd", here::here("scripts/R/tidy-dev.R"))
+knitr::purl("dev.Rmd", here::here("scripts/tidy/R/dev.R"))
 ```
 
 # load libs & pkgs
@@ -130,6 +135,7 @@ dfs_filtered <- list(
     # mutate(if.fridge = case_when(!is.na(jdate.ec) & 
     #                                (jdate.ec < jdate.paired) ~ "x")) %>%
     #filter(!is.na(jdate.died)) %>% 
+      ## TODO: this filter drops date.tent for fert bugs.. (so cant add an "if.fridge" on them)
     rename(jdate.eclose = jdate.ec,
            jdate.tent = jdate.paired,
            jdate.long = jdate.died,
@@ -159,6 +165,12 @@ dfs_filtered[c("a23", "a25")] <- dfs_filtered[c("a23", "a25")] %>%
 do in two steps (bc the col ctrls break `coalesce()` bc "missingness is uneven"):
 1. `left_join` larval dev onto existing adult dev
 2. `merge` remaining col adults into the dev data
+
+TODO:
+- not that straightforward to just unfilter the 2023 fert bugs + coalesce the missing dates bc of the direction of the joins/coalescing. would need to separately merge in the fert bugs i think...
+- bugs to check:
+  - 1209 (if correct: has jdate.ec and paired but not died)
+
 ```{r merging dfs by yr}
 # merge adult + larval data
 dfs_stdised <- list(
@@ -202,6 +214,7 @@ dfs_stdised <- list(
 
 ### standardising values + matching columns for merging
 
+(these need better names)
 cols that mean different things for different yrs:
 - `trt.ctrl`: ctrl bug type
   - 2023: if diurnal ctrl or not
@@ -220,6 +233,10 @@ individual standardising of cols:
   # pmd = died before pup/LPI -> finalise in next section
   # cull = non-pmd larval death
   # surv = death after eclosion
+
+# TODO:
+## add "if.def" here? (grep for wings, etc in notes) -- for 2023
+## convert pop of col bugs to "lab" ?
 
 # 2023: redo trt values, survival coding/notes, sup coding; add trt group
 dfs_stdised[["y23"]] <- dfs_stdised[["y23"]] %>% 
@@ -391,7 +408,7 @@ df_wide <- df_wide %>%
 ```{r}
 # TODO could drop jdate column after pivot maybe?
 # TODO move this elsewhere? (wrangle-*.R?)
-ToLong <- function(wide_df){
+DevToLong <- function(wide_df){
   wide_df %>%
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),
@@ -407,7 +424,6 @@ ToLong <- function(wide_df){
   # drop longevity durations for short-lived eclosed bugs/culled on eclosion
   filter(!(instar == "long" & tt == 0))
 }
-  
 ```
 
 # # cleanup

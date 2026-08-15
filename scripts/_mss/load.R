@@ -30,8 +30,8 @@ conflicted::conflicts_prefer(
 # utils ----------------------------------------------------------
 library(here)
 
-source(here("scripts/wrangle-dev.R"))
-source(here("scripts/wrangle-tents.R"))
+source(here("scripts/wrangle/dev.R"))
+source(here("scripts/wrangle/tents.R"))
 
 source(here("scripts/analysis/utils/filters.R"))
 source(here("scripts/analysis/utils/viz.R"))
@@ -167,7 +167,7 @@ dfs_stats <- list(
 # egg data ----------------------------------------------------------------
 
 ## viz dfs: 
-source(here("scripts/R/tidy-tents.R"))
+source(here::here("scripts/tidy/R/tents.R"))
 
 dfs_viz <- list_modify(
   dfs_viz,

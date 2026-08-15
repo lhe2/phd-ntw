@@ -11,14 +11,14 @@ final code is purled to a `.R` script, rerun `purl` step as needed to update the
 
 ```{r set paths, eval=FALSE, include=FALSE, purl=FALSE}
 # run this prior to other pathing stuff if things are breaking
-here::i_am("scripts/tidy-tents.Rmd")
+here::i_am("scripts/tidy/tents.Rmd")
 ```
 
 ```{r for purling, eval=FALSE, include=FALSE, purl=FALSE}
 # rerun this chunk if purled .R script needs to be updated.
 # save and apply updates to current .Rmd before purling!
 
-knitr::purl("tidy-tents.Rmd", here::here("scripts/R/tidy-tents.R"))
+knitr::purl("tents.Rmd", here::here("scripts/tidy/R/tents.R"))
 ```
 
 ## load libs & pkgs
@@ -65,6 +65,11 @@ roadmap:
 4. 2023/2025 are wrangled separately (bc of column name diffs), then combined for final export.
 5. 2024 is also handled manually bc of column mismatches that prevent usage of of the info generation functions. (i.e lack of m info)
 
+## TODO
+- somehow account for def m/f's that prob = unviable eggs?
+- drag along if.fridge
+- organise dfs to check if hatch rate decreases in cages where males have died out (i.e. org by hatch date rather than collection/addition date.. basically just tidy up the `hatch` df)
+- see also notes on fertile eggs.
 
 
 ## fns for info generation
@@ -270,6 +275,9 @@ dfs_export <- list_modify(
 
 # # 2023 data
 
+## TODO
+- include deformities?
+
 ## loading
 ```{r load 2023 tent data}
 dfs_imported <- list_modify(
@@ -316,6 +324,10 @@ dfs_filtered <- list(
 ### generate dfs
 ```{r prep 2023 tent data for wrangling}
 ## rerun the whole chunk to regenerate dfs_tents$events, $info
+# TODO 
+  # ctrl type/if.fridge info gets left behind in dfs_stdised,
+  # but will break the pivot if carried along... (bc its only for the individuals ig)
+
 dfs_stdised <- list(
   info = 
     dfs_filtered[["ad23"]] %>%
@@ -468,6 +480,9 @@ dfs_export <- list_modify(
 ```
 
 # # prep for final export
+
+## TODO 
+- somehow find a way to get `if.fridge` in here.. (needs to be at an individual level tho bc `df$tents` is at a tent per day level)
 
 ```{r export tent data}
 # bind and append any extra columns

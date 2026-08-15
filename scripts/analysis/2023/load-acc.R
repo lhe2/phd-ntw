@@ -4,7 +4,7 @@
 # load 2023 accumulation data into analysis scripts
 # NOTE: dfs arent called "dfs_tidy" like in the ntw one...
 
-source(here::here("scripts/R/tidy-dev.R"))
+source(here::here("scripts/tidy/R/dev.R"))
 
 dfs_acc <- list(
   wide = df_wide %>%

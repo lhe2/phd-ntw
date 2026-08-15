@@ -1,6 +1,8 @@
 # global wrangle util fns
 # 2026-03-11
 
+# aka the summary stats fns
+
 ### SUMMARY STATS ###
 # standard error
 se <- function(x){ 
@@ -12,3 +14,5 @@ se <- function(x){
 seprop <- function(p, n){
   sqrt((p*(1-p))/n)
 }
+
+

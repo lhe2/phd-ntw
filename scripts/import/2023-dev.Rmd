@@ -21,7 +21,7 @@ notes:
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("scripts/clean/2023-dev.Rmd")
+here::i_am("scripts/import/2023-dev.Rmd")
 library(here)
 ```
 
@@ -49,8 +49,8 @@ dfs_raw <- list(
 # standardise some column formats and merge
 df_all <- lapply(dfs_raw, \(x){
   x %>%
-    mutate(across(starts_with("date."),  as.Date, format = "%m/%d/%y")) %>%
-    mutate(mutate(across(starts_with("mass."), as.numeric)))
+    mutate(across(starts_with("date."),  ~ as.Date(.x, format = "%m/%d/%y"))) %>%
+    mutate(mutate(across(starts_with("mass."), ~ as.numeric(.x))))
 }) %>%
   data.table::rbindlist(fill = TRUE)
 ```
@@ -85,7 +85,7 @@ df_filtered[df_filtered$id == "1415", "sex"]$sex <- "m" # typo?
 ```{r}
 # julian date formatting
 df_cleaned <- df_filtered %>% 
-  mutate(across(starts_with("date."), as.numeric)) %>%
+  mutate(across(starts_with("date."), ~ as.numeric(.x))) %>%
   rename_with(., ~paste0("j", .), starts_with("date."))
 
 # value standardising

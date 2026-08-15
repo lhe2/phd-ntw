@@ -18,7 +18,7 @@ library(patchwork) # for plot_layout
 
 source(here("scripts/analysis/utils/filters.R"))
 source(here("scripts/analysis/utils/viz.R"))
-source(here("scripts/wrangle-tents.R"))
+source(here("scripts/wrangle/tents.R"))
 ```
 
 ## df prep
@@ -46,7 +46,7 @@ df <- dfs_tidy$wide %>%
 
 
 ## append fridge info to main tents df
-source(here("scripts/R/tidy-tents.R"))
+source(here::here("scripts/tidy/R/tents.R"))
 
 dfs_tidy$tents <- merge(dfs_tidy$tents, df,
                         by = c("cage", "year"))

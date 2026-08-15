@@ -18,7 +18,7 @@ APPEND 2025 FIXES LOL
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("scripts/clean/2023-tents.Rmd")
+here::i_am("scripts/import/2023-tents.Rmd")
 library(here)
 ```
 
@@ -190,8 +190,8 @@ dfs_cleaned <-
   dfs_cleaned %>% lapply(\(x){
     x %>%
       mutate(
-        across(starts_with("date"),  as.Date, format = "%m/%d/%y"),
-        across(starts_with(c("date", "n.")), as.numeric)) %>%
+        across(starts_with("date"),  ~ as.Date(.x, format = "%m/%d/%y")),
+        across(starts_with(c("date", "n.")), ~ as.numeric(.x))) %>%
       rename_with(~ paste0("j", .x), starts_with("date"))
   }
 )

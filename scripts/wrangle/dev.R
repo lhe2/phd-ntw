@@ -5,7 +5,17 @@
 ## just the wrangle/summary fns are here -- the filtering/grouping is in analysis-viz
 
 ## load math fns
-source(here("scripts/wrangle_utils.R"))
+source(here("scripts/wrangle/utils.R"))
+
+## TODO lowkey just make better names lol (esp for the "default" fns)
+## TODO move ToLong() in here?
+##      also make a "toLongSS" fn or sth to pivot all the responses lol so can just do avg + se, avg - se
+
+
+# pivoting ----------------------------------------------------------------
+
+# see wrangle/utils for SSToLong
+# see tidy/dev for DevToLong
 
 
 # dev calcs -----------------------------------------------------------------

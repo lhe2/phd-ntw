@@ -10,7 +10,7 @@ for importing stuff from gsheets cuz im so tired of re-doing this every time i m
 library(tidyverse)
 library(googlesheets4)
 
-here::i_am("scripts/import-gsheets.Rmd")
+here::i_am("scripts/import/import-gsheets.Rmd")
 library(here)
 
 paths <- list(

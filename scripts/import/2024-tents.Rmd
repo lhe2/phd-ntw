@@ -20,7 +20,7 @@ LAST RUN: 2026-05-29 (adding `if.mated` col)
 ```{r message = FALSE}
 library(tidyverse)
 
-here::i_am("scripts/clean/2024-tents.Rmd")
+here::i_am("scripts/import/2024-tents.Rmd")
 library(here)
 ```
 
@@ -94,7 +94,7 @@ dfs_cleaned <- list(
 dfs_cleaned <- dfs_cleaned %>%
   lapply(., \(x){
     x %>%
-      mutate(across(starts_with("date"), as.Date, format = "%m/%d/%y"),
+      mutate(across(starts_with("date"), ~ as.Date(.x, format = "%m/%d/%y")),
              across(starts_with(c("date", "f.", "eggs.", "trt", "id")), as.numeric)
       ) %>%
       rename_with(~ paste0("j", .x), starts_with("date"))

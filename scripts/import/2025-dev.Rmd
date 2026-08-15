@@ -13,7 +13,7 @@ re-run sections whenever the gsheets gets updated
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("scripts/clean/2025-dev.Rmd")
+here::i_am("scripts/import/2025-dev.Rmd")
 library(here)
 ```
 
@@ -37,8 +37,8 @@ note: use `cage` values from the tent csvs instead
 ```{r}
 # standardise column formats
 data <- data %>%
-  mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(c("id", starts_with(c("mass", "date"))), as.numeric)) %>% 
+  mutate(across(starts_with("date"), ~ as.Date(.x, format = "%m/%d/%Y")),
+         across(c("id", starts_with(c("mass", "date"))), ~ as.numeric(.x))) %>% 
   rename_with(~ paste0("j", .x), starts_with("date"))
 ```
 

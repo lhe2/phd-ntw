@@ -4,7 +4,7 @@
 # filter out ntw-only dev data and load into analysis scripts
 # (bc i did a lot of stuff in 2023)
 
-source(here::here("scripts/R/tidy-dev.R"))
+source(here::here("scripts/tidy/R/dev.R"))
 
 dfs_tidy <- list(
   wide = df_wide %>%

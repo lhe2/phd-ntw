@@ -16,7 +16,7 @@ adults and tents done separately here...
 library(tidyverse)
 #conflicts_prefer(dplyr::filter)
 
-here::i_am("scripts/clean/2025-tents.Rmd")
+here::i_am("scripts/import/2025-tents.Rmd")
 library(here)
 ```
 
@@ -44,8 +44,8 @@ data <- raw %>%
 ```{r}
 # formatting, renaming, column cleanup
 data <- data %>%
-  mutate(across(starts_with("trt"), as.numeric),
-         across(starts_with("date"), as.character)) %>%
+  mutate(across(starts_with("trt"), ~as.numeric(.x)),
+         across(starts_with("date"), ~as.character(.x))) %>%
   filter(!(is.na(cage)) & !is.na(date.removed))
 
 # individual fixes
@@ -75,8 +75,8 @@ data <- data %>%
   ) %>% 
   
   # adding stuff
-  mutate(across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-         across(starts_with("date"), as.numeric)) %>%
+  mutate(across(starts_with("date"), ~ as.Date(.x, format = "%m/%d/%Y")),
+         across(starts_with("date"), ~ as.numeric(.x))) %>%
   rename_with(~ paste0("j", .x), starts_with("date")) %>%
   mutate(if.culled = case_when(!is.na(jdate.culled) ~ "x"),
          if.fridge = case_when(jdate.added == jdate.eclosed ~ 0,
@@ -130,9 +130,9 @@ data <- data %>%
   lapply(., \(x){
     x %>%
       rename(cage = id.cage) %>%
-      mutate(across(starts_with("eggs."), as.numeric),
-             across(starts_with("date"), as.Date, format = "%m/%d/%Y"),
-             across(starts_with("date"), as.numeric)) %>%
+      mutate(across(starts_with("eggs."), ~ as.numeric(.x)),
+             across(starts_with("date"), ~ as.Date(.x, format = "%m/%d/%Y")),
+             across(starts_with("date"), ~ as.numeric(.x))) %>%
       rename_with(~ paste0("j", .x), starts_with("date"))
 })
 ```

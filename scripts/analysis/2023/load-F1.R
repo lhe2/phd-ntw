@@ -2,7 +2,7 @@
 
 # load F1 data
 
-source(here::here("scripts/R/tidy-dev.R"))
+source(here::here("scripts/tidy/R/dev.R"))
 
 dfs_F1 <- list(
   wide = df_wide %>%
