@@ -81,7 +81,7 @@ dfs <- dfs %>%
                                   mate.trt == 433 ~ 33,
                                   TRUE ~ 26),
              mate.ishs = factor(mate.ishs, levels = c("none", "both", "f", "m")),
-             across(c("year", starts_with(c("trt", "mate"))), as.factor)
+             across(c("year", starts_with(c("trt", "mate"))), ~ as.factor(.x))
              )
   })
 

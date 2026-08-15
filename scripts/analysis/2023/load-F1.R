@@ -32,8 +32,8 @@ dfs_F1 <- list(
 
 dfs_F1 <- list_modify(
   dfs_F1,
-  long = dfs_F1$wide %>% tolong()
+  long = dfs_F1$wide %>% ToLong()
 )
 
 
-rm(df_wide, tolong)
+rm(df_wide)

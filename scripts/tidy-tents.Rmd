@@ -132,8 +132,7 @@ note: revisiting fertile eggs
           select(c("cage", starts_with("mate"))) #%>% View()
         ,
         all = TRUE, by = "cage") %>%
-  mutate(across(starts_with(c("eggs", "f.", "m.")), 
-                ~ replace_na(.x, 0)
+  mutate(across(starts_with(c("eggs", "f.", "m.")), ~ replace_na(.x, 0)
          ))
 }
 
@@ -440,7 +439,7 @@ dfs_stdised = list(
     # skip .AppendCageMothEvents
       ## m info added at export
     mutate(across(c("eggs.collected", 
-                    "f.added", "f.active", "f.removed", "f.died"), replace_na, 0),
+                    "f.added", "f.active", "f.removed", "f.died"), ~ replace_na(.x, 0)),
            #f.removed = f.removed + f.died,
            eggs.unfert = eggs.collected) %>%
     select(-c("f.curr", "f.died", "f.removed",

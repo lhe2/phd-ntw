@@ -137,7 +137,7 @@ dfs_viz <- list(
     df %>%
       filter(!(pop == "lab" & diet == "TB"),
              pop != "col") %>%
-      mutate(across(c(starts_with("trt"), "year"), as.factor),
+      mutate(across(c(starts_with("trt"), "year"), ~ as.factor(.x)),
              pop = factor(pop, levels = c("lab", "field")))
   })
 
@@ -160,7 +160,7 @@ dfs_stats <- list(
       mutate(is.pup = case_when(!is.na(jdate.LPI) ~ 1,
                                 TRUE ~ is.pup)) %>%
       # factorise and set reference levels
-      mutate(across(c("year", "trt.minT", "trt.type", "trt"), as.factor),
+      mutate(across(c("year", "trt.minT", "trt.type", "trt"), ~ as.factor(.x)),
              pop = factor(pop, levels = c("lab", "field")))
   })
 
@@ -199,7 +199,7 @@ dfs_viz[c("eggs_n", "eggs_ss")] <- dfs_viz[c("eggs_n", "eggs_ss")] %>%
     mutate(trt.minT = case_when(mate.trt == 419 ~ 19,
                                 mate.trt == 433 ~ 33,
                                 TRUE ~ 26),
-           across(c("year", "mate.trt", starts_with("trt")), as.factor),
+           across(c("year", "mate.trt", starts_with("trt")), ~ as.factor(.x)),
            mate.type = factor(mate.type, levels = c("within", "between")),
            trt.mate = factor(trt.mate, levels = c("neither", "both", "f", "m"))
     )

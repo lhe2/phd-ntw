@@ -18,8 +18,8 @@ dfs_temps <- list(
 
 dfs_temps <- list_modify(
   dfs_temps,
-  long = dfs_tidy$wide %>% tolong()
+  long = dfs_tidy$wide %>% ToLong()
 )
 
 
-rm(df_wide, tolong)
+rm(df_wide)

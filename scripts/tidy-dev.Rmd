@@ -196,7 +196,7 @@ dfs_stdised <- list(
   # stdise column types
   x %>%
     mutate(across(c("id", "trt", starts_with("jdate"), ends_with("T", ignore.case = FALSE)),
-           as.numeric))
+           ~ as.numeric(.x)))
 })
 ```
 
@@ -389,8 +389,10 @@ df_wide <- df_wide %>%
 
 ## pivot fn
 ```{r}
-tolong <- function(x){
-  x %>%
+# TODO could drop jdate column after pivot maybe?
+# TODO move this elsewhere? (wrangle-*.R?)
+ToLong <- function(wide_df){
+  wide_df %>%
     pivot_longer(cols = starts_with(c("jdate", "mass", "tt")),
                  names_to = c(".value", "instar"),
                  values_drop_na = TRUE,
